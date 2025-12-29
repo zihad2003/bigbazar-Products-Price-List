@@ -5,12 +5,10 @@ import {
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// --- DATABASE CONFIG ---
 const supabaseUrl = 'https://dgdjjyxjnpzqqofdqxdp.supabase.co';
 const supabaseAnonKey = 'sb_publishable_cjsjwayzjMDQLS98ra5gtA_H0jqjXbg';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- UNIVERSAL VIDEO PARSER (FIXED FOR SHORT LINKS) ---
 const getEmbedUrl = (url) => {
   if (!url) return null;
   if (url.includes('facebook.com') || url.includes('fb.watch')) {
@@ -22,7 +20,7 @@ const getEmbedUrl = (url) => {
       return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}?autoplay=1`;
     }
   }
-  return null; // For short links, handle via oEmbed below
+  return null; 
 };
 
 export default function ProductSheetApp() {
@@ -33,9 +31,8 @@ export default function ProductSheetApp() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [editingId, setEditingId] = useState(null);
-  const [embedUrl, setEmbedUrl] = useState(null); // Added for async embed URL handling
+  const [embedUrl, setEmbedUrl] = useState(null);
   
-  // ADMIN SYSTEM
   const ADMIN_PASSWORD = "zihad2025";
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('bb_admin_auth') === 'true');
   const [passInput, setPassInput] = useState("");
@@ -67,30 +64,30 @@ export default function ProductSheetApp() {
     fetchProducts();
   }, []);
 
-  // Added useEffect to handle embed URL for TikTok short links using oEmbed
   useEffect(() => {
     if (selectedProduct && selectedProduct.video_url && selectedProduct.video_url.includes('tiktok.com')) {
       if (selectedProduct.video_url.includes('vt.tiktok.com')) {
-        // Use oEmbed for short links
         fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(selectedProduct.video_url)}`)
           .then(res => res.json())
           .then(data => {
             const match = data.html?.match(/src="([^"]+)"/);
-            if (match) {
-              setEmbedUrl(match[1]);
-            } else {
-              setEmbedUrl(null);
-            }
+            setEmbedUrl(match ? match[1] : null);
           })
           .catch(() => setEmbedUrl(null));
       } else {
-        // Use standard getEmbedUrl for full URLs
         setEmbedUrl(getEmbedUrl(selectedProduct.video_url));
       }
     } else {
       setEmbedUrl(getEmbedUrl(selectedProduct?.video_url));
     }
   }, [selectedProduct]);
+
+  const handleEdit = (p) => {
+    setEditingId(p.id);
+    setFormData({ name: p.name, price: p.price, category: p.category, badge: p.badge || '', video_url: p.video_url || '', description: p.description || '', imageFiles: [] });
+    setPreviews(p.gallery || [p.image_url]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
@@ -118,7 +115,7 @@ export default function ProductSheetApp() {
   };
 
   const sendOrder = (platform, product) => {
-    const message = `🛍️ *NEW ORDER: BIG BAZAR*\n\n📌 *Product:* ${product.name}\n💰 *Price:* ${product.price} BDT`;
+    const message = `🛍️ *NEW ORDER: BIG BAZAR*\n\n📌 *Product Name:* ${product.name}\n💰 *Selling Price:* ${product.price} BDT\n🏷️ *Category:* ${product.category}\n🖼️ *Photo:* ${product.image_url}\n\n_Confirm order?_`;
     if (platform === 'whatsapp') window.open(`https://wa.me/${CONTACT.whatsapp}?text=${encodeURIComponent(message)}`);
     else window.open(CONTACT.messenger);
   };
@@ -130,7 +127,7 @@ export default function ProductSheetApp() {
       <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
         <div className="bg-neutral-900 border border-white/5 p-10 rounded-[2.5rem] w-full max-w-sm shadow-2xl">
           <Lock className="text-red-600 mx-auto mb-6" size={40} />
-          <h2 className="text-2xl font-black text-white italic uppercase mb-8">Admin Access</h2>
+          <h2 className="text-2xl font-black text-white italic uppercase mb-8 tracking-tighter">Admin Access</h2>
           <form onSubmit={(e) => {
             e.preventDefault();
             if(passInput === ADMIN_PASSWORD) {
@@ -138,8 +135,8 @@ export default function ProductSheetApp() {
               localStorage.setItem('bb_admin_auth', 'true');
             } else { alert("Unauthorized"); }
           }} className="space-y-4">
-            <input type="password" value={passInput} onChange={(e) => setPassInput(e.target.value)} className="w-full p-4 rounded-xl bg-black text-white text-center border border-white/10 outline-none" placeholder="Password" />
-            <button type="submit" className="w-full bg-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest">Unlock</button>
+            <input type="password" value={passInput} onChange={(e) => setPassInput(e.target.value)} className="w-full p-4 rounded-xl bg-black text-white text-center border border-white/10 outline-none" placeholder="Enter Admin Password" />
+            <button type="submit" className="w-full bg-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest active:scale-95 transition-all">Unlock Dashboard</button>
           </form>
         </div>
       </div>
@@ -152,42 +149,50 @@ export default function ProductSheetApp() {
       <div className="pt-12 pb-6 px-6 bg-black sticky top-0 z-[100] border-b border-white/5">
         <div className="max-w-6xl mx-auto flex flex-col items-center">
           <h1 className="text-4xl font-black tracking-tighter italic uppercase text-center">BIG<span className="text-red-700">BAZAR</span></h1>
-          <div className="flex gap-2 mt-6 overflow-x-auto no-scrollbar w-full justify-center">
-            {categories.map(cat => (
-              <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-[9px] font-black uppercase transition-all ${activeCategory === cat ? 'bg-red-800 text-white shadow-lg' : 'bg-neutral-900 text-neutral-500 hover:text-white'}`}>{cat}</button>
-            ))}
-          </div>
+          
+          {/* CATEGORY FILTER - Hidden for Admin Management */}
+          {!isAdminView && (
+            <div className="flex gap-2 mt-6 overflow-x-auto no-scrollbar w-full justify-center">
+              {categories.map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-[9px] font-black uppercase transition-all ${activeCategory === cat ? 'bg-red-800 text-white shadow-lg' : 'bg-neutral-900 text-neutral-500 hover:text-white'}`}>{cat}</button>
+              ))}
+            </div>
+          )}
+
           {isAdmin && isAdminView && (
-            <button onClick={() => { setIsAdmin(false); localStorage.removeItem('bb_admin_auth'); }} className="mt-4 text-neutral-600 hover:text-red-600 flex items-center gap-1 text-[10px] font-bold uppercase"><LogOut size={12}/> Logout</button>
+            <button onClick={() => { setIsAdmin(false); localStorage.removeItem('bb_admin_auth'); }} className="mt-4 text-neutral-600 hover:text-red-600 flex items-center gap-1 text-[10px] font-bold uppercase"><LogOut size={12}/> Exit Admin</button>
           )}
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-12 pb-48">
-        {/* ADMIN FORM */}
+        {/* ADMIN FORM - REWRITTEN FOR CLARITY */}
         {isAdmin && isAdminView && (
           <div className="bg-neutral-900/50 rounded-[2.5rem] p-8 mb-20 max-w-xl mx-auto border border-white/5 shadow-2xl">
-            <h2 className="text-red-700 font-black uppercase text-xs mb-8 flex items-center justify-center gap-2 tracking-[0.3em]"><Tag size={14}/> {editingId ? 'Update' : 'Add'}</h2>
+            <h2 className="text-red-700 font-black uppercase text-xs mb-8 flex items-center justify-center gap-2 tracking-[0.3em]"><Tag size={14}/> {editingId ? 'Update Existing Item' : 'Add To Shop Catalog'}</h2>
             <form onSubmit={handleAddProduct} className="space-y-4">
-              <div onClick={() => fileInputRef.current.click()} className="min-h-[150px] bg-black rounded-2xl flex flex-wrap gap-2 p-4 items-center justify-center cursor-pointer border border-white/5">
-                 {previews.length > 0 ? previews.map((src, i) => (<img key={i} src={src} className="h-20 w-20 object-cover rounded-lg border border-white/10" alt="" />)) : <div className="text-center text-neutral-600"><Camera size={32} className="mx-auto mb-2" /><p className="text-[10px] font-bold uppercase">Photos</p></div>}
+              <div onClick={() => fileInputRef.current.click()} className="min-h-[150px] bg-black rounded-2xl flex flex-wrap gap-2 p-4 items-center justify-center cursor-pointer border border-white/5 hover:border-red-900/50 transition-all">
+                 {previews.length > 0 ? previews.map((src, i) => (<img key={i} src={src} className="h-20 w-20 object-cover rounded-lg border border-white/10" alt="" />)) : <div className="text-center text-neutral-600"><Camera size={32} className="mx-auto mb-2" /><p className="text-[10px] font-bold uppercase tracking-widest">Upload Product Photos</p></div>}
                  <input type="file" multiple ref={fileInputRef} className="hidden" onChange={(e) => {
                    const files = Array.from(e.target.files);
                    setFormData({...formData, imageFiles: files});
                    setPreviews(files.map(f => URL.createObjectURL(f)));
                  }} />
               </div>
-              <input value={formData.video_url} onChange={(e) => setFormData({...formData, video_url: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none" placeholder="Video URL" />
-              <input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none" placeholder="Name" required />
-              <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none min-h-[80px]" placeholder="Description" />
+              <input value={formData.video_url} onChange={(e) => setFormData({...formData, video_url: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="TikTok or Facebook Video Link" />
+              <input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="Full Product Name (e.g. Premium Men's Shirt)" required />
+              <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none min-h-[80px] focus:border-red-800 transition-all" placeholder="Tell customers about the quality and material..." />
               <div className="grid grid-cols-2 gap-4">
-                <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none" placeholder="Price" required />
-                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-neutral-400 outline-none" required>
-                  <option value="">Category</option>
+                <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="Selling Price (BDT)" required />
+                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-neutral-400 outline-none focus:border-red-800 transition-all" required>
+                  <option value="">Select Category</option>
                   {categories.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <button type="submit" className="w-full bg-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest">{status || "Publish Product"}</button>
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest hover:bg-red-700 shadow-lg transition-all">{status || (editingId ? "Apply Changes" : "Post Product To Live Shop")}</button>
+                {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({name:'', price:'', category:'', badge:'', imageFiles:[], video_url:'', description:''}); setPreviews([]); }} className="px-6 bg-neutral-800 rounded-xl uppercase font-black text-[10px] hover:bg-neutral-700 transition-all">Cancel</button>}
+              </div>
             </form>
           </div>
         )}
@@ -206,73 +211,46 @@ export default function ProductSheetApp() {
               </div>
               {isAdmin && isAdminView && (
                 <div className="absolute top-4 right-4 flex gap-2">
-                   <button onClick={(e) => { e.stopPropagation(); supabase.from('products').delete().eq('id', p.id).then(() => window.location.reload()); }} className="bg-black/90 p-2 rounded-full text-red-900 border border-white/5"><Trash2 size={14} /></button>
+                   <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="bg-black/90 p-2 rounded-full text-blue-500 border border-white/5 hover:bg-white shadow-xl"><Edit3 size={14} /></button>
+                   <button onClick={(e) => { e.stopPropagation(); if(window.confirm("Permanent Delete?")) supabase.from('products').delete().eq('id', p.id).then(() => window.location.reload()); }} className="bg-black/90 p-2 rounded-full text-red-900 border border-white/5 hover:bg-white shadow-xl"><Trash2 size={14} /></button>
                 </div>
               )}
             </div>
           ))}
         </div>
 
-        
-        {/* FOOTER - PREMIUM VERSION */}
+        {/* FOOTER */}
         <div className="mt-24 pt-16 border-t border-white/5 text-center pb-32 relative z-10">
-          <h3 className="text-neutral-500 font-black text-[10px] uppercase tracking-[0.6em] mb-12 italic opacity-60">
-            Connect With Us
-          </h3>
-          
+          <h3 className="text-neutral-500 font-black text-[10px] uppercase tracking-[0.6em] mb-12 italic opacity-60">Connect With Us</h3>
           <div className="flex justify-center gap-8 mb-16 px-4">
-            {/* Facebook */}
             <a href={CONTACT.facebook} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group outline-none cursor-pointer">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg 
-                transition-all duration-300 ease-out will-change-transform
-                group-hover:bg-[#1877F2] group-hover:shadow-[0_0_20px_rgba(24,119,242,0.4)] group-hover:-translate-y-1
-                group-active:scale-90 group-active:duration-75">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#1877F2] group-hover:-translate-y-1 group-active:scale-90">
                 <Facebook size={22} className="text-[#1877F2] group-hover:text-white transition-colors duration-300" />
               </div>
               <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">Facebook</span>
             </a>
-
-            {/* Instagram */}
             <a href={CONTACT.instagram} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group outline-none cursor-pointer">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg 
-                transition-all duration-300 ease-out will-change-transform
-                group-hover:bg-[#E4405F] group-hover:shadow-[0_0_20px_rgba(228,64,95,0.4)] group-hover:-translate-y-1
-                group-active:scale-90 group-active:duration-75">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#E4405F] group-hover:-translate-y-1 group-active:scale-90">
                 <Instagram size={22} className="text-[#E4405F] group-hover:text-white transition-colors duration-300" />
               </div>
               <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">Instagram</span>
             </a>
-
-            {/* WhatsApp (RESTORED WITH MATCHING DESIGN) */}
             <a href={`https://wa.me/${CONTACT.whatsapp}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group outline-none cursor-pointer">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg 
-                transition-all duration-300 ease-out will-change-transform
-                group-hover:bg-[#25D366] group-hover:shadow-[0_0_20px_rgba(37,211,102,0.4)] group-hover:-translate-y-1
-                group-active:scale-90 group-active:duration-75">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#25D366] group-hover:-translate-y-1 group-active:scale-90">
                 <MessageCircle size={22} className="text-[#25D366] group-hover:text-white transition-colors duration-300" />
               </div>
               <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">WhatsApp</span>
             </a>
-
-            {/* TikTok */}
             <a href={CONTACT.tiktok} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group outline-none cursor-pointer">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg 
-                transition-all duration-300 ease-out will-change-transform
-                group-hover:bg-white group-hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:-translate-y-1
-                group-active:scale-90 group-active:duration-75">
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-white group-hover:-translate-y-1 group-active:scale-90">
                 <Music2 size={22} className="text-white group-hover:text-black transition-colors duration-300" />
               </div>
               <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">TikTok</span>
             </a>
           </div>
-
-          <div className="space-y-3">
-            <p className="text-[8px] font-black uppercase tracking-[0.5em] text-neutral-700 flex items-center justify-center gap-2">
-              Engineered by <span className="text-red-700">Zihad</span> for Big Bazar
-            </p>
-            <p className="text-[6px] font-bold uppercase tracking-[0.3em] text-neutral-100/90">
-              Bariarhat, Chattogram • 2025
-            </p>
+          <div className="space-y-3 text-neutral-700 font-bold uppercase tracking-widest text-center">
+            <p className="text-[8px]">Engineered by <span className="text-red-700">Zihad</span> for Big Bazar</p>
+            <p className="text-[6px]">Bariarhat, Chattogram • 2025</p>
           </div>
         </div>
       </div>
@@ -288,15 +266,15 @@ export default function ProductSheetApp() {
                     <iframe title="Product Video" src={embedUrl} className="w-full h-full border-0" allowFullScreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
                   </div>
                 ) : (
-                  <img src={selectedProduct.image_url} className="w-full h-full object-contain" alt="" />
+                  <img src={selectedProduct.image_url} className="w-full h-full object-contain p-4" alt="" />
                 )}
             </div>
             <div className="p-8 text-center bg-neutral-950/80 backdrop-blur-md">
               <h2 className="text-xl font-black text-white mb-1 uppercase italic tracking-tighter leading-tight">{selectedProduct.name}</h2>
               <p className="text-red-700 font-black text-lg mb-6 shadow-sm tracking-wide">{selectedProduct.price} BDT</p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => sendOrder('whatsapp', selectedProduct)} className="bg-[#25D366] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">WhatsApp</button>
-                <button onClick={() => sendOrder('messenger', selectedProduct)} className="bg-[#0084FF] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">Messenger</button>
+                <button onClick={() => sendOrder('whatsapp', selectedProduct)} className="bg-[#25D366] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">WhatsApp Order</button>
+                <button onClick={() => sendOrder('messenger', selectedProduct)} className="bg-[#0084FF] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">Messenger Order</button>
               </div>
             </div>
           </div>
