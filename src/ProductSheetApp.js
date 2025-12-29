@@ -100,6 +100,7 @@ export default function ProductSheetApp() {
         }
       }
 
+     
       const productData = {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -110,6 +111,16 @@ export default function ProductSheetApp() {
         image_url: imageUrls[0] || null,
         gallery: imageUrls
       };
+
+      if (editingId) {
+        const { error } = await supabase.from('products').update(productData).eq('id', editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('products').insert([productData]);
+        if (error) throw error;
+      }
+      
+      window.location.reload();
 
       if (editingId) {
         await supabase.from('products').update(productData).eq('id', editingId);
