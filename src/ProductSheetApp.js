@@ -10,6 +10,7 @@ const supabaseUrl = 'https://dgdjjyxjnpzqqofdqxdp.supabase.co';
 const supabaseAnonKey = 'sb_publishable_cjsjwayzjMDQLS98ra5gtA_H0jqjXbg';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// --- UNIVERSAL VIDEO PARSER (FIXED FOR SHORT LINKS) ---
 const getEmbedUrl = (url) => {
   if (!url) return null;
   if (url.includes('facebook.com') || url.includes('fb.watch')) {
@@ -21,7 +22,7 @@ const getEmbedUrl = (url) => {
       return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}?autoplay=1`;
     }
   }
-  return null;
+  return null; // For short links, handle via oEmbed below
 };
 
 export default function ProductSheetApp() {
@@ -32,8 +33,9 @@ export default function ProductSheetApp() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [editingId, setEditingId] = useState(null);
-  const [embedUrl, setEmbedUrl] = useState(null);
+  const [embedUrl, setEmbedUrl] = useState(null); // Added for async embed URL handling
   
+  // ADMIN SYSTEM
   const ADMIN_PASSWORD = "zihad2025";
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('bb_admin_auth') === 'true');
   const [passInput, setPassInput] = useState("");
@@ -65,17 +67,24 @@ export default function ProductSheetApp() {
     fetchProducts();
   }, []);
 
+  // Added useEffect to handle embed URL for TikTok short links using oEmbed
   useEffect(() => {
     if (selectedProduct && selectedProduct.video_url && selectedProduct.video_url.includes('tiktok.com')) {
       if (selectedProduct.video_url.includes('vt.tiktok.com')) {
+        // Use oEmbed for short links
         fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(selectedProduct.video_url)}`)
           .then(res => res.json())
           .then(data => {
             const match = data.html?.match(/src="([^"]+)"/);
-            setEmbedUrl(match ? match[1] : null);
+            if (match) {
+              setEmbedUrl(match[1]);
+            } else {
+              setEmbedUrl(null);
+            }
           })
           .catch(() => setEmbedUrl(null));
       } else {
+        // Use standard getEmbedUrl for full URLs
         setEmbedUrl(getEmbedUrl(selectedProduct.video_url));
       }
     } else {
@@ -204,6 +213,7 @@ export default function ProductSheetApp() {
           ))}
         </div>
 
+        
         {/* FOOTER - PREMIUM VERSION */}
         <div className="mt-24 pt-16 border-t border-white/5 text-center pb-32 relative z-10">
           <h3 className="text-neutral-500 font-black text-[10px] uppercase tracking-[0.6em] mb-12 italic opacity-60">
