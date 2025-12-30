@@ -9,21 +9,21 @@ const supabaseUrl = 'https://dgdjjyxjnpzqqofdqxdp.supabase.co';
 const supabaseAnonKey = 'sb_publishable_cjsjwayzjMDQLS98ra5gtA_H0jqjXbg';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Robust extraction of TikTok Video ID
 const extractTikTokId = (url) => {
   if (!url) return null;
-  const match = url.match(/\/video\/(\d+)/) || url.match(/v2\/(\d+)/) || url.match(/(\d{15,25})/);
+  const match = url.match(/\/video\/(\d+)/) || url.match(/v2\/(\d+)/) || url.match(/^(\d{15,25})$/);
   return match ? match[1] : null;
 };
 
-const getEmbedUrl = (url) => {
+const getEmbedUrl = (url, isAutoPlay = true) => {
   if (!url) return null;
+  const auto = isAutoPlay ? "1" : "0";
   if (url.includes('facebook.com') || url.includes('fb.watch')) {
-    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&t=0&autoplay=1&mute=0`;
+    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&t=0&autoplay=${auto}&mute=1`;
   }
   const tiktokId = extractTikTokId(url);
   if (tiktokId) {
-    return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=1`;
+    return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=${auto}&mute=1&controls=0`;
   }
   return null; 
 };
@@ -37,6 +37,7 @@ export default function ProductSheetApp() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [editingId, setEditingId] = useState(null);
   const [embedUrl, setEmbedUrl] = useState(null);
+  const [hoveredProductId, setHoveredProductId] = useState(null);
   
   const ADMIN_PASSWORD = "zihad2025";
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('bb_admin_auth') === 'true');
@@ -70,20 +71,24 @@ export default function ProductSheetApp() {
   }, []);
 
   useEffect(() => {
-    if (selectedProduct && selectedProduct.video_url) {
-      if (selectedProduct.video_url.includes('vt.tiktok.com')) {
-        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(selectedProduct.video_url)}`)
-          .then(res => res.json())
-          .then(data => {
+    const resolveVideo = async () => {
+      if (selectedProduct?.video_url) {
+        if (selectedProduct.video_url.includes('vt.tiktok.com')) {
+          try {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(selectedProduct.video_url)}`);
+            const data = await res.json();
             const match = data.contents.match(/video\/(\d+)/) || data.contents.match(/v2\/(\d+)/);
-            if (match) setEmbedUrl(`https://www.tiktok.com/embed/v2/${match[1]}?autoplay=1`);
-            else setEmbedUrl(getEmbedUrl(selectedProduct.video_url));
-          })
-          .catch(() => setEmbedUrl(getEmbedUrl(selectedProduct.video_url)));
-      } else {
-        setEmbedUrl(getEmbedUrl(selectedProduct.video_url));
+            if (match) setEmbedUrl(`https://www.tiktok.com/embed/v2/${match[1]}?autoplay=1&mute=0`);
+            else setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
+          } catch {
+            setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
+          }
+        } else {
+          setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
+        }
       }
-    }
+    };
+    resolveVideo();
   }, [selectedProduct]);
 
   const handleEdit = (p) => {
@@ -117,9 +122,14 @@ export default function ProductSheetApp() {
         }
       }
       const payload = { 
-        name: formData.name, price: parseFloat(formData.price), category: formData.category, 
-        badge: formData.badge, video_url: formData.video_url, description: formData.description, 
-        image_url: imageUrls[0] || null, gallery: imageUrls 
+        name: formData.name, 
+        price: parseFloat(formData.price), 
+        category: formData.category, 
+        badge: formData.badge, 
+        video_url: formData.video_url, 
+        description: formData.description, 
+        image_url: imageUrls[0] || null, 
+        gallery: imageUrls 
       };
       if (editingId) await supabase.from('products').update(payload).eq('id', editingId);
       else await supabase.from('products').insert([payload]);
@@ -183,72 +193,56 @@ export default function ProductSheetApp() {
           <div className="bg-neutral-900/50 rounded-[2.5rem] p-8 mb-20 max-w-xl mx-auto border border-white/5 shadow-2xl">
             <h2 className="text-red-700 font-black uppercase text-xs mb-8 flex items-center justify-center gap-2 tracking-[0.3em]"><Tag size={14}/> {editingId ? 'Update Existing Item' : 'Add To Shop Catalog'}</h2>
             <form onSubmit={handleAddProduct} className="space-y-4">
-              
-              {/* UPDATED PERFECT IMAGE PREVIEW SECTION */}
               <div className="min-h-[180px] bg-black rounded-2xl p-4 border border-white/5 overflow-hidden">
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
                   {previews.map((src, i) => (
                     <div key={i} className="relative aspect-[3/4] group border border-white/10 rounded-xl overflow-hidden bg-neutral-900">
-                      <img 
-                        src={src} 
-                        className="h-full w-full object-cover transition-transform group-hover:scale-110" 
-                        alt="Preview" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => removePhoto(i)} 
-                        className="absolute top-1 right-1 bg-red-600/90 text-white p-1.5 rounded-full hover:bg-red-500 shadow-xl z-10"
-                      >
-                        <X size={12} strokeWidth={3} />
-                      </button>
-                      {i === 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-red-800 text-[7px] font-black uppercase text-center py-1">
-                          Main Cover
-                        </div>
-                      )}
+                      <img src={src} className="h-full w-full object-cover" alt="Preview" />
+                      <button type="button" onClick={() => removePhoto(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full z-10"><X size={10} /></button>
+                      {i === 0 && <div className="absolute bottom-0 inset-x-0 bg-red-800 text-[6px] font-black uppercase text-center py-1">Main Cover</div>}
                     </div>
                   ))}
-                  <button 
-                    type="button" 
-                    onClick={() => fileInputRef.current.click()} 
-                    className="aspect-[3/4] bg-neutral-900 rounded-xl flex flex-col items-center justify-center border border-dashed border-white/20 hover:border-red-800 hover:bg-neutral-800 transition-all gap-2"
-                  >
-                    <Plus size={24} className="text-neutral-500" />
-                    <span className="text-[8px] font-black uppercase text-neutral-600 tracking-tighter">Add Photo</span>
+                  <button type="button" onClick={() => fileInputRef.current.click()} className="aspect-[3/4] bg-neutral-900 rounded-xl flex flex-col items-center justify-center border border-dashed border-white/20 hover:border-red-800 transition-all">
+                    <Plus size={20} className="text-neutral-500" />
                   </button>
                 </div>
-                {previews.length === 0 && (
-                  <p className="text-[9px] text-center text-neutral-600 font-bold uppercase tracking-widest animate-pulse">
-                    No photos selected
-                  </p>
-                )}
-                <input 
-                  type="file" 
-                  multiple 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 0) {
-                      setFormData(prev => ({...prev, imageFiles: [...prev.imageFiles, ...files]}));
-                      const newPreviews = files.map(file => URL.createObjectURL(file));
-                      setPreviews(prev => [...prev, ...newPreviews]);
-                    }
-                  }} 
-                />
+                <input type="file" multiple ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
+                  const files = Array.from(e.target.files);
+                  setFormData(prev => ({...prev, imageFiles: [...prev.imageFiles, ...files]}));
+                  setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+                }} />
               </div>
 
               <input value={formData.video_url} onChange={(e) => setFormData({...formData, video_url: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="TikTok Link or ID" />
               <input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="Product Name" required />
               <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none min-h-[80px] focus:border-red-800 transition-all" placeholder="Product Details..." />
+              
               <div className="grid grid-cols-2 gap-4">
-                <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="Price (BDT)" required />
-                <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-neutral-400 outline-none focus:border-red-800 transition-all" required>
+                <select 
+                  value={formData.badge} 
+                  onChange={(e) => setFormData({...formData, badge: e.target.value})} 
+                  className="w-full p-4 rounded-xl bg-black border border-white/10 text-neutral-400 outline-none focus:border-red-800 transition-all"
+                >
+                  <option value="">No Badge</option>
+                  <option value="New Arrival">New Arrival</option>
+                  <option value="Best Seller">Best Seller</option>
+                  <option value="Hot">Hot</option>
+                  <option value="Sale">Sale</option>
+                  <option value="Limited">Limited</option>
+                </select>
+                <select 
+                  value={formData.category} 
+                  onChange={(e) => setFormData({...formData, category: e.target.value})} 
+                  className="w-full p-4 rounded-xl bg-black border border-white/10 text-neutral-400 outline-none focus:border-red-800 transition-all" 
+                  required
+                >
                   <option value="">Category</option>
                   {categories.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="w-full p-4 rounded-xl bg-black border border-white/10 text-white outline-none focus:border-red-800 transition-all" placeholder="Price (BDT)" required />
+
               <button type="submit" className="w-full bg-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest active:scale-95 transition-all">{status || (editingId ? "Save Changes" : "Post Product")}</button>
               {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({name:'', price:'', category:'', badge:'', imageFiles:[], video_url:'', description:''}); setPreviews([]); }} className="w-full py-2 text-neutral-500 font-black text-[10px] uppercase">Cancel Edit</button>}
             </form>
@@ -257,16 +251,27 @@ export default function ProductSheetApp() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {products.filter(p => activeCategory === "All" || p.category === activeCategory).map(p => (
-            <div key={p.id} onClick={() => { if(!isAdminView) { setSelectedProduct(p); setIsPlaying(!!p.video_url); } }} className="bg-neutral-900/30 rounded-[2.5rem] p-3 relative cursor-pointer border border-transparent hover:border-white/5 group transition-all">
+            <div 
+              key={p.id} 
+              onMouseEnter={() => setHoveredProductId(p.id)}
+              onMouseLeave={() => setHoveredProductId(null)}
+              onClick={() => { if(!isAdminView) { setSelectedProduct(p); setIsPlaying(!!p.video_url); } }} 
+              className="bg-neutral-900/30 rounded-[2.5rem] p-3 relative cursor-pointer border border-transparent hover:border-white/5 transition-all group"
+            >
               <div className="aspect-[3/4] bg-black rounded-2xl overflow-hidden mb-3 relative">
-                {p.image_url ? (
-                   <img src={p.image_url} className="w-full h-full object-cover" alt="" />
-                ) : (
-                   <div className="w-full h-full flex items-center justify-center bg-neutral-900">
-                      <Play fill="white" size={30} className="text-white opacity-20" />
-                   </div>
+                {p.badge && (
+                  <div className="absolute top-3 left-3 z-20 bg-red-700 text-white text-[7px] font-black uppercase px-2 py-1 rounded-md shadow-lg italic tracking-tighter">
+                    {p.badge}
+                  </div>
                 )}
-                {p.video_url && <div className="absolute inset-0 flex items-center justify-center"><div className="bg-red-700/90 p-3 rounded-full group-hover:scale-110 transition-transform"><Play fill="white" size={18} className="text-white ml-0.5" /></div></div>}
+                {hoveredProductId === p.id && p.video_url ? (
+                  <iframe src={getEmbedUrl(p.video_url, true)} className="w-full h-full border-0 pointer-events-none scale-[1.5]" />
+                ) : p.image_url ? (
+                  <img src={p.image_url} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-neutral-900"><Play fill="white" size={30} className="opacity-20" /></div>
+                )}
+                {p.video_url && <div className="absolute inset-0 flex items-center justify-center group-hover:opacity-0 transition-opacity"><div className="bg-red-700/90 p-3 rounded-full"><Play fill="white" size={18} className="text-white ml-0.5" /></div></div>}
               </div>
               <div className="px-1 text-center">
                 <h4 className="font-bold text-[10px] uppercase truncate text-neutral-300">{p.name}</h4>
@@ -275,7 +280,7 @@ export default function ProductSheetApp() {
               {isAdmin && isAdminView && (
                 <div className="absolute top-4 right-4 flex gap-2">
                    <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="bg-black/90 p-2 rounded-full text-blue-500 border border-white/5 hover:bg-white"><Edit3 size={14} /></button>
-                   <button onClick={(e) => { e.stopPropagation(); if(window.confirm("Delete permanently?")) supabase.from('products').delete().eq('id', p.id).then(() => window.location.reload()); }} className="bg-black/90 p-2 rounded-full text-red-900 border border-white/5 hover:bg-white"><Trash2 size={14} /></button>
+                   <button onClick={(e) => { e.stopPropagation(); if(window.confirm("Delete?")) supabase.from('products').delete().eq('id', p.id).then(() => window.location.reload()); }} className="bg-black/90 p-2 rounded-full text-red-900 border border-white/5 hover:bg-white"><Trash2 size={14} /></button>
                 </div>
               )}
             </div>
@@ -286,28 +291,20 @@ export default function ProductSheetApp() {
           <h3 className="text-neutral-500 font-black text-[10px] uppercase tracking-[0.6em] mb-12 italic opacity-60">Connect With Us</h3>
           <div className="flex justify-center gap-8 mb-16 px-4">
             <a href={CONTACT.facebook} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#1877F2] group-hover:-translate-y-1 group-active:scale-90">
-                <Facebook size={22} className="text-[#1877F2] group-hover:text-white" />
-              </div>
-              <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">Facebook</span>
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all group-hover:bg-[#1877F2] group-hover:-translate-y-1"><Facebook size={22} className="text-[#1877F2] group-hover:text-white" /></div>
+              <span className="text-[7px] font-black uppercase text-neutral-600">Facebook</span>
             </a>
             <a href={CONTACT.instagram} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#E4405F] group-hover:-translate-y-1 group-active:scale-90">
-                <Instagram size={22} className="text-[#E4405F] group-hover:text-white" />
-              </div>
-              <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">Instagram</span>
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all group-hover:bg-[#E4405F] group-hover:-translate-y-1"><Instagram size={22} className="text-[#E4405F] group-hover:text-white" /></div>
+              <span className="text-[7px] font-black uppercase text-neutral-600">Instagram</span>
             </a>
             <a href={`https://wa.me/${CONTACT.whatsapp}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-[#25D366] group-hover:-translate-y-1 group-active:scale-90">
-                <MessageCircle size={22} className="text-[#25D366] group-hover:text-white" />
-              </div>
-              <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">WhatsApp</span>
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all group-hover:bg-[#25D366] group-hover:-translate-y-1"><MessageCircle size={22} className="text-[#25D366] group-hover:text-white" /></div>
+              <span className="text-[7px] font-black uppercase text-neutral-600">WhatsApp</span>
             </a>
             <a href={CONTACT.tiktok} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-3 group">
-              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all duration-300 group-hover:bg-white group-hover:-translate-y-1 group-active:scale-90">
-                <Music2 size={22} className="text-white group-hover:text-black" />
-              </div>
-              <span className="text-[7px] font-black uppercase tracking-widest text-neutral-600 group-hover:text-white transition-colors">TikTok</span>
+              <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center border border-white/5 shadow-lg transition-all group-hover:bg-white group-hover:-translate-y-1"><Music2 size={22} className="text-white group-hover:text-black" /></div>
+              <span className="text-[7px] font-black uppercase text-neutral-600">TikTok</span>
             </a>
           </div>
           <div className="space-y-3 text-neutral-700 font-bold uppercase tracking-widest text-center">
@@ -318,35 +315,37 @@ export default function ProductSheetApp() {
       </div>
 
       {selectedProduct && !isAdminView && (
-        <div className="fixed inset-0 bg-black/98 z-[500] flex items-center justify-center p-4 backdrop-blur-xl transition-all duration-500">
-          <div className="bg-neutral-950 border border-white/5 rounded-[3rem] max-w-sm w-full overflow-hidden relative shadow-[0_0_100px_rgba(185,28,28,0.1)]">
+        <div className="fixed inset-0 bg-black/98 z-[500] flex items-center justify-center p-4 backdrop-blur-xl overflow-y-auto">
+          <div className="bg-neutral-950 border border-white/5 rounded-[3rem] max-w-sm w-full my-auto overflow-hidden relative shadow-2xl">
             <button onClick={() => { setSelectedProduct(null); setIsPlaying(false); setEmbedUrl(null); }} className="absolute top-6 right-6 z-[60] bg-black/50 text-white p-2 rounded-full hover:bg-red-700 transition-all"><X size={22}/></button>
-            <div className="h-[460px] w-full bg-black relative flex items-center justify-center overflow-hidden">
+            <div className="h-[400px] w-full bg-black relative flex items-center justify-center overflow-hidden">
                 {selectedProduct.video_url && isPlaying && embedUrl ? (
-                  <div className="w-full h-full scale-[1.06]">
-                    <iframe 
-                      title="Product Video" 
-                      src={embedUrl} 
-                      className="w-full h-full border-0" 
-                      allow="autoplay; encrypted-media; picture-in-picture; accelerometer; clipboard-write; gyroscope"
-                      allowFullScreen
-                    ></iframe>
-                  </div>
+                  <iframe src={embedUrl} className="w-full h-full border-0 scale-[1.06]" allow="autoplay; encrypted-media" />
                 ) : (
                   <img src={selectedProduct.image_url || "/api/placeholder/400/600"} className="w-full h-full object-contain p-4" alt="" />
                 )}
             </div>
-            <div className="p-8 text-center bg-neutral-950/80 backdrop-blur-md">
-              <h2 className="text-xl font-black text-white mb-1 uppercase italic tracking-tighter leading-tight">{selectedProduct.name}</h2>
-              <p className="text-red-700 font-black text-lg mb-3 tracking-wide">{selectedProduct.price} BDT</p>
+            <div className="p-8 text-center bg-neutral-950/80">
+              <h2 className="text-xl font-black text-white mb-1 uppercase italic tracking-tighter">{selectedProduct.name}</h2>
+              <p className="text-red-700 font-black text-lg mb-4">{selectedProduct.price} BDT</p>
               {selectedProduct.description && (
-                <p className="text-neutral-400 text-[10px] mb-6 leading-relaxed uppercase font-bold tracking-tight line-clamp-3">
+                <p className="text-neutral-400 text-[10px] mb-6 leading-relaxed uppercase font-bold whitespace-pre-line">
                   {selectedProduct.description}
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => sendOrder('whatsapp', selectedProduct)} className="bg-[#25D366] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">WhatsApp Order</button>
-                <button onClick={() => sendOrder('messenger', selectedProduct)} className="bg-[#0084FF] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:brightness-110 shadow-lg active:scale-95 transition-all">Messenger Order</button>
+              <div className="grid grid-cols-2 gap-3 mb-8">
+                <button onClick={() => sendOrder('whatsapp', selectedProduct)} className="bg-[#25D366] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase">WhatsApp</button>
+                <button onClick={() => sendOrder('messenger', selectedProduct)} className="bg-[#0084FF] text-white py-4 rounded-[1.2rem] font-black text-[10px] uppercase">Messenger</button>
+              </div>
+
+              <h4 className="text-[8px] font-black text-neutral-100 uppercase tracking-widest mb-4">Related Items</h4>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
+                {products.filter(p => p.category === selectedProduct.category && p.id !== selectedProduct.id).map(rp => (
+                  <div key={rp.id} onClick={() => { setSelectedProduct(rp); setEmbedUrl(null); }} className="min-w-[80px] cursor-pointer">
+                    <img src={rp.image_url} className="w-20 h-20 object-cover rounded-xl mb-1 opacity-60 hover:opacity-100 transition-opacity" alt="" />
+                    <p className="text-[6px] font-bold text-neutral-500 truncate">{rp.name}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
