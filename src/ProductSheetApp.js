@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Camera, Trash2, Loader2, Facebook, Instagram, Music2, 
+  Trash2, Loader2, Facebook, Instagram, Music2, 
   X, Lock, LogOut, Tag, Edit3, Play, MessageCircle, Plus 
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
@@ -11,8 +11,55 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const extractTikTokId = (url) => {
   if (!url) return null;
-  const match = url.match(/\/video\/(\d+)/) || url.match(/v2\/(\d+)/) || url.match(/^(\d{15,25})$/);
-  return match ? match[1] : null;
+  // Handle direct ID
+  if (/^\d{15,25}$/.test(url)) return url;
+  
+  try {
+    const urlObj = new URL(url.includes('http') ? url : `https://${url}`);
+    const pathname = urlObj.pathname;
+    
+    // Standard link: /@user/video/ID
+    const videoMatch = pathname.match(/\/video\/(\d+)/);
+    if (videoMatch) return videoMatch[1];
+    
+    // Alternative embed link: /embed/v2/ID
+    const embedMatch = pathname.match(/\/embed\/v2\/(\d+)/) || pathname.match(/\/embed\/(\d+)/);
+    if (embedMatch) return embedMatch[1];
+    
+    // Another variant: /v/ID
+    const vMatch = pathname.match(/\/v\/(\d+)/);
+    if (vMatch) return vMatch[1];
+  } catch (e) {
+    // Fallback regex if URL parsing fails
+    const match = url.match(/\/video\/(\d+)/) || url.match(/\/v\/(\d+)/) || url.match(/v2\/(\d+)/);
+    return match ? match[1] : null;
+  }
+  return null;
+};
+
+const resolveTikTokUrl = async (url) => {
+  if (!url) return null;
+  const isShortLink = url.includes('vt.tiktok.com') || 
+                     url.includes('vm.tiktok.com') || 
+                     url.includes('t.tiktok.com') || 
+                     url.includes('v.tiktok.com');
+  
+  if (!isShortLink) return url;
+
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+    const match = data.contents.match(/\/video\/(\d+)/) || 
+                  data.contents.match(/v2\/(\d+)/) || 
+                  data.contents.match(/"videoId":"(\d+)"/) ||
+                  data.contents.match(/video_id=(\d+)/);
+    
+    if (match) return `https://www.tiktok.com/video/${match[1]}`;
+    return url;
+  } catch (err) {
+    console.error("Failed to resolve TikTok short link:", err);
+    return url;
+  }
 };
 
 const getEmbedUrl = (url, isAutoPlay = true) => {
@@ -28,6 +75,7 @@ const getEmbedUrl = (url, isAutoPlay = true) => {
   return null; 
 };
 
+// @ts-ignore
 export default function ProductSheetApp() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,18 +121,30 @@ export default function ProductSheetApp() {
   useEffect(() => {
     const resolveVideo = async () => {
       if (selectedProduct?.video_url) {
-        if (selectedProduct.video_url.includes('vt.tiktok.com')) {
+        const url = selectedProduct.video_url;
+        const isShortLink = url.includes('vt.tiktok.com') || 
+                           url.includes('vm.tiktok.com') || 
+                           url.includes('t.tiktok.com') || 
+                           url.includes('v.tiktok.com');
+
+        if (isShortLink) {
           try {
-            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(selectedProduct.video_url)}`);
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
             const data = await res.json();
-            const match = data.contents.match(/video\/(\d+)/) || data.contents.match(/v2\/(\d+)/);
+            // Look for video ID in various places in the HTML
+            const match = data.contents.match(/\/video\/(\d+)/) || 
+                          data.contents.match(/v2\/(\d+)/) || 
+                          data.contents.match(/"videoId":"(\d+)"/) ||
+                          data.contents.match(/video_id=(\d+)/);
+            
             if (match) setEmbedUrl(`https://www.tiktok.com/embed/v2/${match[1]}?autoplay=1&mute=0`);
-            else setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
-          } catch {
-            setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
+            else setEmbedUrl(getEmbedUrl(url, true));
+          } catch (err) {
+            console.error("Failed to resolve TikTok short link:", err);
+            setEmbedUrl(getEmbedUrl(url, true));
           }
         } else {
-          setEmbedUrl(getEmbedUrl(selectedProduct.video_url, true));
+          setEmbedUrl(getEmbedUrl(url, true));
         }
       }
     };
@@ -112,6 +172,11 @@ export default function ProductSheetApp() {
     if (!isAdmin || !formData.name || !formData.price || !formData.category) return;
     try {
       setStatus("Syncing...");
+      let resolvedVideoUrl = formData.video_url;
+      if (resolvedVideoUrl && resolvedVideoUrl.includes('tiktok.com')) {
+        resolvedVideoUrl = await resolveTikTokUrl(resolvedVideoUrl);
+      }
+
       let imageUrls = previews.filter(src => typeof src === 'string' && src.startsWith('http'));
       if (formData.imageFiles.length > 0) {
         for (const file of formData.imageFiles) {
@@ -126,7 +191,7 @@ export default function ProductSheetApp() {
         price: parseFloat(formData.price), 
         category: formData.category, 
         badge: formData.badge, 
-        video_url: formData.video_url, 
+        video_url: resolvedVideoUrl, 
         description: formData.description, 
         image_url: imageUrls[0] || null, 
         gallery: imageUrls 
@@ -265,7 +330,7 @@ export default function ProductSheetApp() {
                   </div>
                 )}
                 {hoveredProductId === p.id && p.video_url ? (
-                  <iframe src={getEmbedUrl(p.video_url, true)} className="w-full h-full border-0 pointer-events-none scale-[1.5]" />
+                  <iframe title="Video Preview" src={getEmbedUrl(p.video_url, true)} className="w-full h-full border-0 pointer-events-none scale-[1.5]" />
                 ) : p.image_url ? (
                   <img src={p.image_url} className="w-full h-full object-cover" alt="" />
                 ) : (
@@ -320,7 +385,7 @@ export default function ProductSheetApp() {
             <button onClick={() => { setSelectedProduct(null); setIsPlaying(false); setEmbedUrl(null); }} className="absolute top-6 right-6 z-[60] bg-black/50 text-white p-2 rounded-full hover:bg-red-700 transition-all"><X size={22}/></button>
             <div className="h-[400px] w-full bg-black relative flex items-center justify-center overflow-hidden">
                 {selectedProduct.video_url && isPlaying && embedUrl ? (
-                  <iframe src={embedUrl} className="w-full h-full border-0 scale-[1.06]" allow="autoplay; encrypted-media" />
+                  <iframe title="TikTok Video" src={embedUrl} className="w-full h-full border-0 scale-[1.06]" allow="autoplay; encrypted-media" />
                 ) : (
                   <img src={selectedProduct.image_url || "/api/placeholder/400/600"} className="w-full h-full object-contain p-4" alt="" />
                 )}
