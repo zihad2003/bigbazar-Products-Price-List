@@ -35,37 +35,31 @@ export const resolveTikTokUrl = async (url) => {
 
     if (!isShortLink) return url;
 
-    // Check if running in Node.js (migration script)
+    // Check if running in Node.js
     if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-        const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
-        if (res.url && !res.url.includes('vt.tiktok') && !res.url.includes('vm.tiktok')) {
-            return res.url;
-        }
-        const getRes = await fetch(url);
-        if (getRes.url) return getRes.url;
+        try {
+            const res = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+            if (res.url && !res.url.includes('vt.tiktok') && !res.url.includes('vm.tiktok')) {
+                return res.url;
+            }
+            const getRes = await fetch(url);
+            if (getRes.url) return getRes.url;
+        } catch (e) { return url; }
     }
 
-    // Browser environment: 
-    // We try to resolve using a stable CORS proxy to follow the redirect.
+    // Browser environment: Use allorigins proxy
     try {
-        console.log("Attempting to resolve TikTok short link via proxy...", url);
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        // The proxy usually returns the final page content, but wait, we just need the URL.
-        // corsproxy.io follows redirects. The final response.url might be the proxy URL or the destination depending on implementation.
-        // Actually corsproxy.io simply tunnels the request.
-        // If we do a fetch, the browser follows redirects automatically.
-        // So response.url should be the final resolved URL (if the proxy handles headers correctly).
+        console.log("Resolving TikTok link via allorigins:", url);
+        // allorigins follows redirects server-side and returns the final status
+        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
 
-        // However, standard `fetch` in browser follows redirects.
-        // If corsproxy tunnels headers, we might land on tiktok.com/...
-
-        if (response.url && (response.url.includes('tiktok.com/video') || response.url.includes('tiktok.com/@'))) {
-            return response.url;
+        if (data.status && data.status.url) {
+            const resolved = data.status.url;
+            if (resolved.includes('tiktok.com/video') || resolved.includes('tiktok.com/@')) {
+                return resolved;
+            }
         }
-
-        // Fallback: sometimes we might get the HTML and need to parse navigation, but let's trust response.url first.
-        // If that fails, we can't do much.
         return url;
     } catch (e) {
         console.warn("Proxy resolution failed:", e);
@@ -90,6 +84,7 @@ export const getEmbedUrl = async (url, isAutoPlay = true) => {
 
     const tiktokId = extractTikTokId(resolvedUrl);
     if (tiktokId) {
+        // Updated embed URL format that is more reliable
         return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=${auto}&mute=0&controls=1&playsinline=1&music_info_bar_enabled=1`;
     }
 

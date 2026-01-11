@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, MessageCircle, Send, CheckCircle2, Truck, ShieldCheck, Clock } from 'lucide-react';
 import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage } from '../utils/messageTemplates';
-import { getEmbedUrl } from '../utils/tiktok';
+import { getEmbedUrl, resolveTikTokUrl } from '../utils/tiktok';
 import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
 
@@ -31,9 +31,16 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       setCurrentImageIndex(0);
       if (product?.video_url) {
         setEmbedSrc(null);
-        getEmbedUrl(product.video_url).then(url => {
-          if (url) setEmbedSrc(url);
-        });
+        const loadVideo = async () => {
+          let url = product.video_url;
+          if (url.includes('/t/') || url.includes('vt.tiktok') || url.includes('vm.tiktok')) {
+            const resolved = await resolveTikTokUrl(url);
+            if (resolved) url = resolved;
+          }
+          const embed = await getEmbedUrl(url);
+          if (embed) setEmbedSrc(embed);
+        };
+        loadVideo();
       }
     } else {
       const scrollY = document.body.style.top;
