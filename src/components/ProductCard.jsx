@@ -76,6 +76,18 @@ const ProductCard = ({ product, flashSale, onClick }) => {
         </div>
       )}
 
+      {/* New Badge */}
+      {product.is_new && !hasDiscount && (
+        <div className="absolute top-2 left-2 px-2 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-md shadow-lg z-10">
+          NEW ARRIVAL
+        </div>
+      )}
+      {product.is_new && hasDiscount && (
+        <div className="absolute top-8 left-2 px-2 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-md shadow-lg z-10 mt-1">
+          NEW
+        </div>
+      )}
+
       {/* Info Overlay */}
       <div className="absolute inset-x-0 bottom-0 p-4 pt-20 bg-gradient-to-t from-black via-black/90 to-transparent">
         <p className="text-white font-bold text-base truncate drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] mb-1">
