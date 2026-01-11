@@ -19,18 +19,51 @@ export const extractTikTokId = (url) => {
         const vMatch = pathname.match(/\/v\/(\d+)/);
         if (vMatch) return vMatch[1];
     } catch (e) {
-        // Fallback regex if URL parsing fails
-        const match = url.match(/\/video\/(\d+)/) || url.match(/\/v\/(\d+)/) || url.match(/v2\/(\d+)/);
-        return match ? match[1] : null;
+        return null;
     }
     return null;
 };
 
-// New function to fetch robust data using TikWM public API (handles short links & CORS via proxy)
+// Robust fetcher that tries multiple strategies
 export const fetchTikTokData = async (url) => {
     if (!url) return null;
 
-    // Strategy 1: allorigins proxy -> TikWM
+    // Strategy 1: TikTok OEmbed via AllOrigins Proxy (Official & Reliable for short links)
+    try {
+        console.log("Fetching TikTok data via OEmbed (proxied):", url);
+        const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(oembedUrl)}`;
+
+        const res = await fetch(proxyUrl);
+        const data = await res.json();
+
+        if (data.contents) {
+            const oembed = JSON.parse(data.contents);
+            if (oembed.thumbnail_url) {
+                // Try to find ID in html
+                // html usually contains: data-video-id="123..."
+                let id = null;
+                const idMatch = oembed.html && oembed.html.match(/data-video-id="(\d+)"/);
+                if (idMatch) id = idMatch[1];
+                else {
+                    // Try extracting form the cite url or similar
+                    const urlMatch = oembed.html && oembed.html.match(/video\/(\d+)/);
+                    if (urlMatch) id = urlMatch[1];
+                }
+
+                return {
+                    id: id,
+                    thumbnail: oembed.thumbnail_url,
+                    title: oembed.title,
+                    video: null
+                };
+            }
+        }
+    } catch (e) {
+        console.warn("OEmbed proxy failed:", e);
+    }
+
+    // Strategy 2: TikWM via AllOrigins Proxy (Backup)
     try {
         console.log("Fetching TikTok data via TikWM (allorigins):", url);
         const targetUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
@@ -54,15 +87,12 @@ export const fetchTikTokData = async (url) => {
         console.warn("TikWM allorigins failed:", e);
     }
 
-    // Strategy 2: corsproxy.io -> TikWM
+    // Strategy 3: TikWM via Corsproxy.io (Backup 2)
     try {
-        console.log("Fetching TikTok data via TikWM (corsproxy.io):", url);
         const targetUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-
         const res = await fetch(proxyUrl);
         const data = await res.json();
-
         if (data && data.code === 0 && data.data) {
             return {
                 id: data.data.id,
@@ -71,9 +101,7 @@ export const fetchTikTokData = async (url) => {
                 video: data.data.play
             };
         }
-    } catch (e) {
-        console.warn("TikWM corsproxy failed:", e);
-    }
+    } catch (e) { }
 
     return null;
 };
@@ -81,45 +109,30 @@ export const fetchTikTokData = async (url) => {
 export const resolveTikTokUrl = async (url) => {
     if (!url) return null;
 
-    // Check if it's a short link
     const isShortLink = url.includes('vt.tiktok.com') ||
         url.includes('vm.tiktok.com') ||
         url.includes('t.tiktok.com') ||
         url.includes('v.tiktok.com');
 
-    // If not short, return as is
     if (!isShortLink) return url;
 
-    // Try fetching data from TikWM first as it resolves internally
-    const tikData = await fetchTikTokData(url);
-    if (tikData && tikData.id) {
-        // Reconstruct a standard long URL from the ID
-        return `https://www.tiktok.com/@user/video/${tikData.id}`;
+    // Use usage data to resolve ID -> URL
+    const data = await fetchTikTokData(url);
+    if (data && data.id) {
+        return `https://www.tiktok.com/@user/video/${data.id}`;
     }
 
-    // Fallback: Browser environment proxy strategies
-    // 1. Try allorigins
+    // Last resort: Proxy HEAD request to follow redirect
     try {
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-        const data = await response.json();
-        if (data.status && data.status.url) {
-            const resolved = data.status.url;
-            if (resolved.includes('tiktok.com/video') || resolved.includes('tiktok.com/@')) {
-                return resolved;
-            }
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl);
+        const json = await res.json();
+        if (json.status && json.status.url) {
+            const resolved = json.status.url;
+            if (resolved.includes('tiktok.com/video')) return resolved;
         }
     } catch (e) { }
 
-    // 2. Try corsproxy
-    try {
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        if (response.url && (response.url.includes('tiktok.com/video') || response.url.includes('tiktok.com/@'))) {
-            return response.url;
-        }
-    } catch (e) { }
-
-    // 3. Fallback: Return original URL. 
     return url;
 };
 
@@ -131,21 +144,14 @@ export const getEmbedUrl = async (url, isAutoPlay = true) => {
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&t=0&autoplay=${auto}&mute=0`;
     }
 
-    // Try to extract ID directly first (fastest)
+    // 1. Try quick extraction
     let tiktokId = extractTikTokId(url);
 
-    // If no ID found (likely short link), try robust fetch
+    // 2. If short link or no ID, fetch robust data
     if (!tiktokId) {
-        // This handles short links effectively
         const data = await fetchTikTokData(url);
         if (data && data.id) {
             tiktokId = data.id;
-        } else {
-            // Fallback to resolving URL traditionally
-            const resolved = await resolveTikTokUrl(url);
-            if (resolved) {
-                tiktokId = extractTikTokId(resolved);
-            }
         }
     }
 
