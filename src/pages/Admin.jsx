@@ -147,7 +147,7 @@ export default function Admin() {
       video_url: product.video_url || '',
       is_sale: product.is_sale || false,
       is_hot: product.is_hot || false,
-      is_new: product.is_new || false,
+      is_new: product.is_new || product.badge === 'New Arrival' || false,
       is_sold_out: product.is_sold_out || false,
       category: product.category || 'Women'
     });
