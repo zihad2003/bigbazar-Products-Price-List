@@ -1,7 +1,9 @@
-
+// src/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://lrvtowerpdfyhvnjwphf.supabase.co';
-const supabaseAnonKey = 'sb_publishable_6UwQwF30pSy548nDN2XKpg_bmIU6BI-';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Fallback or explicit check
+if (!supabaseUrl || !supabaseAnonKey) console.warn("Missing Env Vars");
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
