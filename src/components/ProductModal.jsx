@@ -246,7 +246,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   <div className="p-2.5 bg-purple-500/20 text-purple-400 rounded-full"><Clock size={20} /></div>
                   <div>
                     <p className="text-white font-bold text-sm">Fast Delivery</p>
-                    <p className="text-neutral-500 text-xs">Returns within 7 days</p>
+                    <p className="text-neutral-500 text-xs">Returns within 2-3 days</p>
                   </div>
                 </div>
               </div>

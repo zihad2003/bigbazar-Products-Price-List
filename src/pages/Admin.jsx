@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Plus, Trash2, LogOut, Package, Image as ImageIcon, Search, LayoutDashboard, ShoppingBag, Upload, Edit, X, Play } from 'lucide-react';
+import { Plus, Trash2, LogOut, Package, Image as ImageIcon, Search, LayoutDashboard, ShoppingBag, Upload, Edit, X, Play, Menu } from 'lucide-react';
 import { resolveTikTokUrl } from '../utils/tiktok';
 import ConfirmationModal from '../components/ConfirmationModal';
 import UndoToast from '../components/UndoToast';
@@ -11,9 +11,10 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_sold_out: false, category: 'Women' });
+  const [form, setForm] = useState({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_new: false, is_sold_out: false, category: 'Women' });
   const [editingProduct, setEditingProduct] = useState(null);
   const [activeTab, setActiveTab] = useState('products');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [flashSale, setFlashSale] = useState({ active: false, percentage: 0, end_time: null, duration: 24 });
   const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, id: null });
   const [undoState, setUndoState] = useState({ isActive: false, productId: null });
@@ -26,6 +27,8 @@ export default function Admin() {
     fetchFlashSale();
     fetchBackEndSettings();
   }, []);
+
+  // ... (fetchBackEndSettings, saveSettings) - keep exactly as is
 
   const fetchBackEndSettings = async () => {
     // Fetch Contact
@@ -59,6 +62,7 @@ export default function Admin() {
     }
     setLoading(false);
   };
+
 
   const fetchFlashSale = async () => {
     const { data, error } = await supabase.from('site_settings').select('value').eq('key', 'flash_sale').single();
@@ -143,6 +147,7 @@ export default function Admin() {
       video_url: product.video_url || '',
       is_sale: product.is_sale || false,
       is_hot: product.is_hot || false,
+      is_new: product.is_new || false,
       is_sold_out: product.is_sold_out || false,
       category: product.category || 'Women'
     });
@@ -151,7 +156,7 @@ export default function Admin() {
 
   const cancelEdit = () => {
     setEditingProduct(null);
-    setForm({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_sold_out: false, category: 'Women' });
+    setForm({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_new: false, is_sold_out: false, category: 'Women' });
   };
 
   const handleSubmit = async (e) => {
@@ -173,6 +178,7 @@ export default function Admin() {
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       is_sale: form.is_sale,
       is_hot: form.is_hot,
+      is_new: form.is_new,
       is_sold_out: form.is_sold_out,
       video_url: finalVideoUrl,
       images: form.images, // Now saving the full array of images
@@ -258,9 +264,17 @@ export default function Admin() {
   );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-black/50 backdrop-blur-xl fixed h-full hidden lg:flex flex-col z-20">
+    <div className="min-h-screen bg-[#050505] text-white flex relative">
+      {/* Mobile Menu Toggle - Overlay Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-[#ce112d] rounded-full shadow-2xl text-white"
+      >
+        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Sidebar - Mobile Responsive */}
+      <aside className={`w-64 border-r border-white/5 bg-black/95 backdrop-blur-xl fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-8">
           <h1 className="text-2xl font-black italic tracking-tighter">
             <span className="text-white">BIG</span>
@@ -268,13 +282,13 @@ export default function Admin() {
           </h1>
         </div>
         <nav className="flex-1 px-4 space-y-2">
-          <button onClick={() => setActiveTab('products')} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('products'); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'products' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
             <LayoutDashboard size={20} /> Dashboard
           </button>
-          <button onClick={() => setActiveTab('promotions')} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'promotions' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('promotions'); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'promotions' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
             <Package size={20} /> Flash Sale
           </button>
-          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'text-neutral-400 hover:bg-white/5 hover:text-white'}`}>
             <LayoutDashboard size={20} /> Settings
           </button>
           <button className="w-full flex items-center gap-3 p-4 rounded-xl text-sm font-bold text-neutral-400 hover:bg-white/5 hover:text-white transition-all">
@@ -481,8 +495,8 @@ export default function Admin() {
                     <p className="text-[10px] text-neutral-600 mt-2">Try pasting a TikTok short link! We'll auto-resolve it.</p>
                   </div>
 
-                  <div className="flex gap-4 pt-2">
-                    {['is_sale', 'is_hot', 'is_sold_out'].map(key => (
+                  <div className="flex gap-4 pt-2 flex-wrap">
+                    {['is_sale', 'is_new', 'is_hot', 'is_sold_out'].map(key => (
                       <label key={key} className="flex items-center gap-2 cursor-pointer group">
                         <div className={`w-5 h-5 rounded border border-white/20 flex items-center justify-center transition-colors ${form[key] ? 'bg-[#ce112d] border-[#ce112d]' : 'bg-black/40'}`}>
                           {form[key] && <Plus size={14} className="text-white rotate-45" />}
