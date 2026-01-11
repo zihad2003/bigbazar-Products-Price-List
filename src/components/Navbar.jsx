@@ -7,8 +7,12 @@ const Navbar = ({ selectedCategory, onSelectCategory }) => {
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 flex flex-col items-center justify-center py-6 bg-black border-b border-white/5 backdrop-blur-xl transition-all duration-300">
             {/* Logo Section */}
-            <div className="mb-6">
-                <img src="/logo.png" alt="Big Bazar" className="h-16 md:h-20 object-contain drop-shadow-[0_0_15px_rgba(206,17,45,0.5)]" />
+            <div className="mb-6 flex flex-col items-center gap-2">
+                <img src="/b.jpg" alt="Big Bazar" className="h-12 md:h-14 object-contain rounded-lg" />
+                <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter select-none">
+                    <span className="text-white">BIG</span>
+                    <span className="text-[#ce112d]">BAZAR</span>
+                </h1>
             </div>
 
             {/* Navigation Pills */}
