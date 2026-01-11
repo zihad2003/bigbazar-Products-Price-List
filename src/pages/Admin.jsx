@@ -18,30 +18,45 @@ export default function Admin() {
   const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, id: null });
   const [undoState, setUndoState] = useState({ isActive: false, productId: null });
   const [contactInfo, setContactInfo] = useState({ whatsapp: '', facebook: '', tiktok: '', instagram: '' });
+  const [heroBanner, setHeroBanner] = useState({ active: false, text: '', subtext: '' });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     fetchProducts();
     fetchFlashSale();
-    fetchContactInfo();
+    fetchBackEndSettings();
   }, []);
 
-  const fetchContactInfo = async () => {
-    const { data } = await supabase.from('site_settings').select('value').eq('key', 'contact_info').single();
-    if (data?.value) {
-      setContactInfo(data.value);
-    }
+  const fetchBackEndSettings = async () => {
+    // Fetch Contact
+    const { data: contactData } = await supabase.from('site_settings').select('value').eq('key', 'contact_info').single();
+    if (contactData?.value) setContactInfo(contactData.value);
+
+    // Fetch Hero Banner
+    const { data: bannerData } = await supabase.from('site_settings').select('value').eq('key', 'hero_banner').single();
+    if (bannerData?.value) setHeroBanner(bannerData.value);
   };
 
-  const saveContactInfo = async () => {
+  const saveSettings = async () => {
     setLoading(true);
-    const { error } = await supabase.from('site_settings').upsert({
+
+    // Save Contact Info
+    const { error: contactError } = await supabase.from('site_settings').upsert({
       key: 'contact_info',
       value: contactInfo
     }, { onConflict: 'key' });
 
-    if (error) alert("Error saving settings: " + error.message);
-    else alert("Settings saved!");
+    // Save Hero Banner
+    const { error: bannerError } = await supabase.from('site_settings').upsert({
+      key: 'hero_banner',
+      value: heroBanner
+    }, { onConflict: 'key' });
+
+    if (contactError || bannerError) {
+      alert("Error saving settings: " + (contactError?.message || bannerError?.message));
+    } else {
+      alert("All settings saved successfully!");
+    }
     setLoading(false);
   };
 
@@ -312,8 +327,34 @@ export default function Admin() {
                   <input value={contactInfo.instagram} placeholder="https://instagram.com/..." className="w-full bg-black/40 p-4 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-white transition-colors" onChange={e => setContactInfo({ ...contactInfo, instagram: e.target.value })} />
                 </div>
 
-                <button onClick={saveContactInfo} disabled={loading} className="w-full py-4 bg-[#ce112d] hover:bg-[#a30d23] text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg hover:shadow-red-900/40 disabled:opacity-50">
-                  {loading ? 'Saving...' : 'Save Settings'}
+                <div className="pt-8 border-t border-white/5">
+                  <h3 className="text-xl font-bold mb-6 text-white italic">Hero <span className="text-[#ce112d]">Banner</span></h3>
+
+                  <div className="bg-black/40 p-6 rounded-xl border border-white/10 mb-4 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Activate Banner</h4>
+                      <p className="text-[10px] text-neutral-500">Replaces "Exclusive Collection / Big Bazar" header text.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={heroBanner.active} onChange={e => setHeroBanner({ ...heroBanner, active: e.target.checked })} />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ce112d]"></div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Banner Headline</label>
+                      <input value={heroBanner.text} placeholder="e.g. FLASH SALE" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-white transition-colors" onChange={e => setHeroBanner({ ...heroBanner, text: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Banner Subtext</label>
+                      <input value={heroBanner.subtext} placeholder="e.g. 50% OFF" className="w-full bg-black/40 p-4 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-white transition-colors" onChange={e => setHeroBanner({ ...heroBanner, subtext: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={saveSettings} disabled={loading} className="w-full py-4 bg-[#ce112d] hover:bg-[#a30d23] text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-lg hover:shadow-red-900/40 disabled:opacity-50">
+                  {loading ? 'Saving Settings...' : 'Save All Settings'}
                 </button>
               </div>
             </div>

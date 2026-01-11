@@ -11,26 +11,31 @@ export default function Home({ selectedCategory }) {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [flashSale, setFlashSale] = useState(null);
+  const [heroBanner, setHeroBanner] = useState(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const { productId } = useParams();
   const navigate = useNavigate();
 
-  // Fetch Flash Sale Settings with Real-time Subscription
+  // Fetch Site Settings (Flash Sale & Hero Banner) with Real-time Subscription
   useEffect(() => {
-    const fetchFlashSale = async () => {
-      const { data } = await supabase.from('site_settings').select('value').eq('key', 'flash_sale').single();
-      if (data?.value) setFlashSale(data.value);
+    const fetchSettings = async () => {
+      const { data: flashData } = await supabase.from('site_settings').select('value').eq('key', 'flash_sale').single();
+      if (flashData?.value) setFlashSale(flashData.value);
+
+      const { data: bannerData } = await supabase.from('site_settings').select('value').eq('key', 'hero_banner').single();
+      if (bannerData?.value) setHeroBanner(bannerData.value);
     };
 
-    fetchFlashSale();
+    fetchSettings();
 
     const channel = supabase
       .channel('public:site_settings')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'site_settings', filter: 'key=eq.flash_sale' }, (payload) => {
-        if (payload.new && payload.new.value) {
-          setFlashSale(payload.new.value);
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'site_settings' }, (payload) => {
+        if (payload.new) {
+          if (payload.new.key === 'flash_sale') setFlashSale(payload.new.value);
+          if (payload.new.key === 'hero_banner') setHeroBanner(payload.new.value);
         }
       })
       .subscribe();
@@ -127,23 +132,39 @@ export default function Home({ selectedCategory }) {
   return (
     <div className="min-h-screen px-4 pb-20 bg-black">
       {/* Hero Header */}
-      <header className="pt-10 pb-16 text-center">
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-xs font-bold tracking-widest text-neutral-500 uppercase mb-2"
-        >
-          Exclusive Collection
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="text-6xl md:text-8xl font-black tracking-tighter text-white"
-        >
-          Big Bazar
-        </motion.h1>
-        <div className="mt-8 flex justify-center">
+      <header className="pt-4 md:pt-10 pb-8 md:pb-16 text-center">
+        {heroBanner?.active ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gradient-to-r from-[#ce112d] to-purple-800 p-6 md:p-12 rounded-3xl relative overflow-hidden shadow-2xl shadow-red-900/20"
+          >
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 animate-pulse"></div>
+            <div className="relative z-10">
+              <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter text-white mb-2 uppercase drop-shadow-md">{heroBanner.text}</h2>
+              <p className="text-lg md:text-2xl font-bold text-white/90 tracking-widest uppercase">{heroBanner.subtext}</p>
+            </div>
+          </motion.div>
+        ) : (
+          <>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-[10px] md:text-xs font-bold tracking-widest text-neutral-500 uppercase mb-2"
+            >
+              Exclusive Collection
+            </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="text-5xl md:text-8xl font-black tracking-tighter text-white"
+            >
+              Big Bazar
+            </motion.h1>
+          </>
+        )}
+        <div className="mt-6 md:mt-8 flex justify-center">
           <span className="text-neutral-600 animate-bounce">↓</span>
         </div>
       </header>
