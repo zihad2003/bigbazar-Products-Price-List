@@ -77,12 +77,12 @@ const ProductCard = ({ product, flashSale, onClick }) => {
       )}
 
       {/* New Badge */}
-      {product.is_new && !hasDiscount && (
+      {(product.is_new || product.badge === 'New Arrival') && !hasDiscount && (
         <div className="absolute top-2 left-2 px-2 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-md shadow-lg z-10">
           NEW ARRIVAL
         </div>
       )}
-      {product.is_new && hasDiscount && (
+      {(product.is_new || product.badge === 'New Arrival') && hasDiscount && (
         <div className="absolute top-8 left-2 px-2 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider rounded-md shadow-lg z-10 mt-1">
           NEW
         </div>
