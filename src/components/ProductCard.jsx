@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import { useState, useEffect } from 'react';
+import { resolveTikTokUrl } from '../utils/tiktok';
 
 const ProductCard = ({ product, flashSale, onClick }) => {
   const { price, originalPrice, discountPercent, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
@@ -14,6 +15,12 @@ const ProductCard = ({ product, flashSale, onClick }) => {
         try {
           // Resolve standard URL first if needed (basic check)
           let videoUrl = product.video_url;
+
+          // Resolve short links if present
+          if (videoUrl.includes('vt.tiktok') || videoUrl.includes('vm.tiktok') || videoUrl.includes('/t/')) {
+            const resolved = await resolveTikTokUrl(videoUrl);
+            if (resolved) videoUrl = resolved;
+          }
 
           // Use oembed to get thumbnail
           const res = await fetch(`https://www.tiktok.com/oembed?url=${videoUrl}`);

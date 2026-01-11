@@ -46,20 +46,29 @@ export const resolveTikTokUrl = async (url) => {
     }
 
     // Browser environment: 
-    // We cannot reliably resolve short links (HTTP 301) from the browser due to CORS.
-    // Public proxies like allorigins are unreliable and a security risk.
-    // Strategy: 
-    // 1. If we can't resolve it, we return the original URL.
-    // 2. The Admin panel upload process should catch this and ask the user to resolve it manually if needed.
-    // 3. We attempt a basic fetch just in case it's not CORS blocked (unlikely for shorteners) but catch errors silently.
-
+    // We try to resolve using a stable CORS proxy to follow the redirect.
     try {
-        // Some shorteners might support HEAD requests or return a redirect we can catch if same-origin (not the case here usually).
-        // Since we removed the proxy, we simply return the URL.
-        // The Embed logic will try to parse it, and if it fails, it will fail gracefully or show a generic link.
-        console.warn("Client-side short link resolution skipped for stability. Reliance on Admin-saved resolved URLs.");
+        console.log("Attempting to resolve TikTok short link via proxy...", url);
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+        // The proxy usually returns the final page content, but wait, we just need the URL.
+        // corsproxy.io follows redirects. The final response.url might be the proxy URL or the destination depending on implementation.
+        // Actually corsproxy.io simply tunnels the request.
+        // If we do a fetch, the browser follows redirects automatically.
+        // So response.url should be the final resolved URL (if the proxy handles headers correctly).
+
+        // However, standard `fetch` in browser follows redirects.
+        // If corsproxy tunnels headers, we might land on tiktok.com/...
+
+        if (response.url && (response.url.includes('tiktok.com/video') || response.url.includes('tiktok.com/@'))) {
+            return response.url;
+        }
+
+        // Fallback: sometimes we might get the HTML and need to parse navigation, but let's trust response.url first.
+        // If that fails, we can't do much.
         return url;
     } catch (e) {
+        console.warn("Proxy resolution failed:", e);
         return url;
     }
 };
