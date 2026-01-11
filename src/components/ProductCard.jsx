@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import { useState, useEffect } from 'react';
-import { resolveTikTokUrl } from '../utils/tiktok';
+import { resolveTikTokUrl, fetchTikTokData } from '../utils/tiktok';
 
 const ProductCard = ({ product, flashSale, onClick }) => {
   const { price, originalPrice, discountPercent, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
@@ -10,30 +10,32 @@ const ProductCard = ({ product, flashSale, onClick }) => {
 
   useEffect(() => {
     if ((!product.image && !product.image_url && (!product.images || product.images.length === 0)) && product.video_url) {
-      // Attempt to fetch TikTok thumbnail
-      const fetchThumbnail = async () => {
+      // Attempt to fetch TikTok thumbnail via robust API
+      const loadThumbnail = async () => {
         try {
-          // Resolve standard URL first if needed (basic check)
-          let videoUrl = product.video_url;
-
-          // Resolve short links if present
-          if (videoUrl.includes('vt.tiktok') || videoUrl.includes('vm.tiktok') || videoUrl.includes('/t/')) {
-            const resolved = await resolveTikTokUrl(videoUrl);
-            if (resolved) videoUrl = resolved;
+          // 1. Try TikWM first (handles short links & gives high res cover)
+          const data = await fetchTikTokData(product.video_url);
+          if (data && data.thumbnail) {
+            setThumbnail(data.thumbnail);
+            return;
           }
 
-          // Use oembed to get thumbnail
+          // 2. Fallback to standard oembed (if TikWM fails - rare)
+          let videoUrl = product.video_url;
+          const resolved = await resolveTikTokUrl(videoUrl); // Resolves short link if needed
+          if (resolved) videoUrl = resolved;
+
           const res = await fetch(`https://www.tiktok.com/oembed?url=${videoUrl}`);
-          const data = await res.json();
-          if (data.thumbnail_url) {
-            setThumbnail(data.thumbnail_url);
+          const oembedData = await res.json();
+          if (oembedData.thumbnail_url) {
+            setThumbnail(oembedData.thumbnail_url);
           }
         } catch (e) {
           console.warn("Could not fetch TikTok thumbnail", e);
         }
       };
 
-      fetchThumbnail();
+      loadThumbnail();
     }
   }, [product]);
 
