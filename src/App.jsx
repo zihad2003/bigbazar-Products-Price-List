@@ -12,7 +12,7 @@ function PublicLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       <Navbar selectedCategory={category} onSelectCategory={setCategory} />
-      <main className="flex-grow pt-16">
+      <main className="flex-grow pt-48 md:pt-52">
         <Home selectedCategory={category} />
       </main>
       <Footer />
