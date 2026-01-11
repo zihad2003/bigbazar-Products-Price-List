@@ -47,24 +47,41 @@ export const resolveTikTokUrl = async (url) => {
         } catch (e) { return url; }
     }
 
-    // Browser environment: Use allorigins proxy
+    // Browser environment: 
+    // Strategy: Try allorigins first, then fallback to corsproxy.io, then return original.
+
+    // 1. Try allorigins (returns JSON with final URL)
     try {
         console.log("Resolving TikTok link via allorigins:", url);
-        // allorigins follows redirects server-side and returns the final status
         const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
         const data = await response.json();
 
         if (data.status && data.status.url) {
             const resolved = data.status.url;
+            // Ensure we actually got a long link back
             if (resolved.includes('tiktok.com/video') || resolved.includes('tiktok.com/@')) {
                 return resolved;
             }
         }
-        return url;
     } catch (e) {
-        console.warn("Proxy resolution failed:", e);
-        return url;
+        console.warn("allorigins resolution failed:", e);
     }
+
+    // 2. Try corsproxy.io (returns the HTML/Response of the final page)
+    try {
+        console.log("Resolving TikTok link via corsproxy.io:", url);
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+        // If the browser followed redirects through the proxy, response.url might be the final one
+        if (response.url && (response.url.includes('tiktok.com/video') || response.url.includes('tiktok.com/@'))) {
+            return response.url;
+        }
+    } catch (e) {
+        console.warn("corsproxy resolution failed:", e);
+    }
+
+    // 3. Fallback: Return original URL. 
+    return url;
 };
 
 export const getEmbedUrl = async (url, isAutoPlay = true) => {
@@ -84,7 +101,6 @@ export const getEmbedUrl = async (url, isAutoPlay = true) => {
 
     const tiktokId = extractTikTokId(resolvedUrl);
     if (tiktokId) {
-        // Updated embed URL format that is more reliable
         return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=${auto}&mute=0&controls=1&playsinline=1&music_info_bar_enabled=1`;
     }
 
