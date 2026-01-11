@@ -444,22 +444,19 @@ export default function Admin() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Product Name</label>
+                    <input required value={form.name} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, name: e.target.value })} />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Product Name</label>
-                      <input required value={form.name} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, name: e.target.value })} />
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Price (BDT)</label>
+                      <input required type="number" value={form.price} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, price: e.target.value })} />
                     </div>
                     <div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Price (BDT)</label>
-                        <input required type="number" value={form.price} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, price: e.target.value })} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Regular Price (Optional)</label>
-                        <input type="number" placeholder="For Discount Calculation" value={form.original_price} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, original_price: e.target.value })} />
-                      </div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Regular Price</label>
+                      <input type="number" placeholder="Optional" value={form.original_price} className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, original_price: e.target.value })} />
                     </div>
                   </div>
 
