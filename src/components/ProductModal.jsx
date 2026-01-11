@@ -32,12 +32,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       if (product?.video_url) {
         setEmbedSrc(null);
         const loadVideo = async () => {
-          let url = product.video_url;
-          if (url.includes('/t/') || url.includes('vt.tiktok') || url.includes('vm.tiktok')) {
-            const resolved = await resolveTikTokUrl(url);
-            if (resolved) url = resolved;
-          }
-          const embed = await getEmbedUrl(url);
+          // Robust getEmbedUrl handles short links and proxies internally
+          const embed = await getEmbedUrl(product.video_url);
           if (embed) setEmbedSrc(embed);
         };
         loadVideo();
