@@ -27,24 +27,32 @@ export const extractTikTokId = (url) => {
 };
 
 // New function to fetch robust data using TikWM public API (handles short links & CORS usually)
+// New function to fetch robust data using TikWM public API (handles short links & CORS via proxy)
 export const fetchTikTokData = async (url) => {
     if (!url) return null;
 
     try {
-        console.log("Fetching TikTok data via TikWM:", url);
-        const res = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`);
-        const data = await res.json();
+        console.log("Fetching TikTok data via TikWM (proxied):", url);
+        // Use allorigins to proxy the request to tikwm to avoid CORS
+        const targetUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
 
-        if (data && data.code === 0 && data.data) {
-            return {
-                id: data.data.id,
-                thumbnail: data.data.cover,
-                title: data.data.title,
-                video: data.data.play
-            };
+        const res = await fetch(proxyUrl);
+        const proxyData = await res.json();
+
+        if (proxyData.contents) {
+            const data = JSON.parse(proxyData.contents);
+            if (data && data.code === 0 && data.data) {
+                return {
+                    id: data.data.id,
+                    thumbnail: data.data.cover,
+                    title: data.data.title,
+                    video: data.data.play
+                };
+            }
         }
     } catch (e) {
-        console.warn("TikWM fetch failed:", e);
+        console.warn("TikWM proxied fetch failed:", e);
     }
     return null;
 };
