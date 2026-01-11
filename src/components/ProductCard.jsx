@@ -1,9 +1,36 @@
 import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
+import { useState, useEffect } from 'react';
 
 const ProductCard = ({ product, flashSale, onClick }) => {
   const { price, originalPrice, discountPercent, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
+  const [thumbnail, setThumbnail] = useState(null);
+
+  useEffect(() => {
+    if ((!product.image && !product.image_url && (!product.images || product.images.length === 0)) && product.video_url) {
+      // Attempt to fetch TikTok thumbnail
+      const fetchThumbnail = async () => {
+        try {
+          // Resolve standard URL first if needed (basic check)
+          let videoUrl = product.video_url;
+
+          // Use oembed to get thumbnail
+          const res = await fetch(`https://www.tiktok.com/oembed?url=${videoUrl}`);
+          const data = await res.json();
+          if (data.thumbnail_url) {
+            setThumbnail(data.thumbnail_url);
+          }
+        } catch (e) {
+          console.warn("Could not fetch TikTok thumbnail", e);
+        }
+      };
+
+      fetchThumbnail();
+    }
+  }, [product]);
+
+  const displayImage = product.image || product.image_url || (product.images && product.images[0]) || thumbnail;
 
   return (
     <motion.div
@@ -14,9 +41,9 @@ const ProductCard = ({ product, flashSale, onClick }) => {
       className="relative w-full aspect-[9/16] mb-4 break-inside-avoid cursor-pointer group overflow-hidden rounded-xl bg-neutral-900"
     >
       {/* Thumbnail Image */}
-      {(product.image || product.image_url || (product.images && product.images[0])) ? (
+      {displayImage ? (
         <img
-          src={product.image || product.image_url || (product.images && product.images[0])}
+          src={displayImage}
           alt={product.title || product.name || 'Product'}
           className="object-cover w-full h-full opacity-90 group-hover:opacity-100 transition-opacity duration-300"
           loading="lazy"
