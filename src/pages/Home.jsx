@@ -14,9 +14,15 @@ export default function Home({ selectedCategory }) {
   const [heroBanner, setHeroBanner] = useState(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const { productId } = useParams();
   const navigate = useNavigate();
+
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      setPage(prev => prev + 1);
+    }
+  };
 
   // Fetch Site Settings (Flash Sale & Hero Banner) with Real-time Subscription
   useEffect(() => {
@@ -202,6 +208,7 @@ export default function Home({ selectedCategory }) {
               <ProductCard
                 key={product.id}
                 product={product}
+                index={index}
                 flashSale={flashSale}
                 onClick={handleProductClick}
                 priority={index < 6}

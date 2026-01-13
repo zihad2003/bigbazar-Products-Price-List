@@ -24,9 +24,8 @@ function App() {
   console.log("App component rendering");
 
   useEffect(() => {
-    console.log("App useEffect running");
     const lenis = new Lenis({
-      duration: 2.2,
+      duration: 1.5,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
@@ -35,33 +34,28 @@ function App() {
       touchMultiplier: 2,
     });
 
+    let rafId;
     function raf(time) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     return () => {
       lenis.destroy();
+      cancelAnimationFrame(rafId);
     };
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'black', color: 'white', padding: '20px' }}>
-      {/* Debug message - remove after fixing */}
-      <div style={{ position: 'fixed', top: '10px', right: '10px', background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>
-        App Loaded
-      </div>
-
-      <Router>
+    <Router>
       <Routes>
         <Route path="/" element={<PublicLayout />} />
         <Route path="/product/:productId" element={<PublicLayout />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
-    </div>
   );
 }
 
