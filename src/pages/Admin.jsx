@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Plus, Trash2, LogOut, Package, Image as ImageIcon, Search, LayoutDashboard, ShoppingBag, Upload, Edit, X, Play, Menu } from 'lucide-react';
+import { Plus, Trash2, LogOut, Package, Image as ImageIcon, Search, LayoutDashboard, ShoppingBag, Upload, Edit, X, Play, Menu, Check } from 'lucide-react';
 import { resolveTikTokUrl } from '../utils/tiktok';
 import ConfirmationModal from '../components/ConfirmationModal';
 import UndoToast from '../components/UndoToast';
@@ -495,15 +495,25 @@ export default function Admin() {
                     <p className="text-[10px] text-neutral-600 mt-2">Try pasting a TikTok short link! We'll auto-resolve it.</p>
                   </div>
 
-                  <div className="flex gap-4 pt-2 flex-wrap">
+                  <div className="grid grid-cols-2 gap-3 pt-2">
                     {['is_sale', 'is_new', 'is_hot', 'is_sold_out'].map(key => (
-                      <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                        <div className={`w-5 h-5 rounded border border-white/20 flex items-center justify-center transition-colors ${form[key] ? 'bg-[#ce112d] border-[#ce112d]' : 'bg-black/40'}`}>
-                          {form[key] && <Plus size={14} className="text-white rotate-45" />}
+                      <div
+                        key={key}
+                        onClick={() => setForm({ ...form, [key]: !form[key] })}
+                        className={`
+                          cursor-pointer p-4 rounded-xl border transition-all flex items-center justify-between group select-none
+                          ${form[key]
+                            ? 'bg-[#ce112d]/10 border-[#ce112d] shadow-[0_0_15px_rgba(206,17,45,0.1)]'
+                            : 'bg-black/40 border-white/10 hover:border-white/20 hover:bg-white/5'}
+                        `}
+                      >
+                        <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${form[key] ? 'text-[#ce112d]' : 'text-neutral-500 group-hover:text-neutral-300'}`}>
+                          {key.replace('is_', '').replace('_', ' ')}
+                        </span>
+                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${form[key] ? 'bg-[#ce112d] border-[#ce112d]' : 'border-white/20 group-hover:border-white/40'}`}>
+                          {form[key] && <Check size={12} className="text-white" />}
                         </div>
-                        <input type="checkbox" checked={form[key]} onChange={e => setForm({ ...form, [key]: e.target.checked })} className="hidden" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 group-hover:text-white transition-colors">{key.replace('is_', '').replace('_', ' ')}</span>
-                      </label>
+                      </div>
                     ))}
                   </div>
 

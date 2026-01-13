@@ -18,7 +18,6 @@ export const extractTikTokId = (url) => {
 };
 
 // HELPER: Resolve short links (vt.tiktok.com) to long canonical URLs
-// This is critical because OEmbed often fails on short links
 const expandShortLink = async (url) => {
     // If it already looks like a long link, return it
     if (url.includes('tiktok.com/@') && url.includes('/video/')) return url;
@@ -43,8 +42,33 @@ export const fetchTikTokData = async (url) => {
     if (!url) return null;
 
     // 1. Expand the URL first (Crucial step)
-    const longUrl = await expandShortLink(url);
-    console.log("Using Long URL:", longUrl);
+    let longUrl = await expandShortLink(url);
+    console.log("Initial Long URL attempt:", longUrl);
+
+    // If still short or invalid, try TikWM direct resolution
+    const id = extractTikTokId(longUrl);
+    if (!id) {
+        // Fallback: Use TikWM to resolve ID from short link directly
+        try {
+            const targetUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+            const res = await fetch(proxyUrl);
+            const proxyData = await res.json();
+
+            if (proxyData.contents) {
+                const data = JSON.parse(proxyData.contents);
+                if (data && data.code === 0 && data.data) {
+                    return {
+                        id: data.data.id,
+                        thumbnail: data.data.cover,
+                        title: data.data.title,
+                        video: data.data.play,
+                        canonical_url: `https://www.tiktok.com/@${data.data.author.unique_id}/video/${data.data.id}`
+                    };
+                }
+            }
+        } catch (e) { console.warn("TikWM Direct resolution failed", e); }
+    }
 
     // 2. Try OEmbed with Long URL (Primary Official Method)
     try {
@@ -60,7 +84,8 @@ export const fetchTikTokData = async (url) => {
                     id: extractTikTokId(longUrl),
                     thumbnail: oembed.thumbnail_url,
                     title: oembed.title,
-                    video: null
+                    video: null,
+                    canonical_url: longUrl
                 };
             }
         }
@@ -68,7 +93,7 @@ export const fetchTikTokData = async (url) => {
         console.warn("OEmbed failed:", e);
     }
 
-    // 3. Try TikWM (Backup Method)
+    // 3. Try TikWM (Backup Method for Long URL)
     try {
         const targetUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(longUrl)}`;
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
@@ -82,7 +107,8 @@ export const fetchTikTokData = async (url) => {
                     id: data.data.id,
                     thumbnail: data.data.cover,
                     title: data.data.title,
-                    video: data.data.play
+                    video: data.data.play,
+                    canonical_url: `https://www.tiktok.com/@${data.data.author.unique_id}/video/${data.data.id}`
                 };
             }
         }
@@ -94,15 +120,19 @@ export const fetchTikTokData = async (url) => {
 };
 
 export const resolveTikTokUrl = async (url) => {
-    return expandShortLink(url);
+    const data = await fetchTikTokData(url);
+    if (data && data.canonical_url) {
+        return data.canonical_url;
+    }
+    return await expandShortLink(url);
 };
 
 export const getEmbedUrl = async (url, isAutoPlay = true) => {
     if (!url) return null;
     const auto = isAutoPlay ? "1" : "0";
 
-    // Expand link first
-    const longUrl = await expandShortLink(url);
+    // Try to resolve first
+    let longUrl = await resolveTikTokUrl(url);
     const tiktokId = extractTikTokId(longUrl);
 
     if (tiktokId) {
