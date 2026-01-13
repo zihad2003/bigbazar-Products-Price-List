@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Plus, Trash2, LogOut, Package, Image as ImageIcon, Search, LayoutDashboard, ShoppingBag, Upload, Edit, X, Play, Menu, Check } from 'lucide-react';
-import { resolveTikTokUrl } from '../utils/tiktok';
+import { resolveTikTokUrl, fetchTikTokData } from '../utils/tiktok';
 import ConfirmationModal from '../components/ConfirmationModal';
 import UndoToast from '../components/UndoToast';
 
@@ -13,6 +13,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_new: false, is_sold_out: false, category: 'Women' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // ... (inside Admin component)
 

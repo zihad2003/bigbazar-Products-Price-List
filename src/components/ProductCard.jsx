@@ -35,6 +35,7 @@ const ProductCard = ({ product, flashSale, onClick, priority = false }) => {
           }
         } catch (e) {
           console.warn("Could not fetch TikTok thumbnail", e);
+          // Don't set any fallback, just leave it as no preview
         }
       };
 

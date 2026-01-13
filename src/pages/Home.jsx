@@ -91,11 +91,7 @@ export default function Home({ selectedCategory }) {
   useEffect(() => {
     setPage(0);
     setHasMore(true);
-    // Products will be set by the fetch effect above dependent on [page, selectedCategory]
-    // However, when category changes, page becomes 0, triggering fetch for page 0 filtered by new category.
-    // We need to ensure we don't append to old category products if the fetch hasn't completed or race condition.
-    // Setting products to [] here helps visual reset.
-    setProducts([]);
+    setProducts([]); // Clear products immediately when category changes
   }, [selectedCategory]);
 
   // Handle URL Product ID
@@ -178,7 +174,7 @@ export default function Home({ selectedCategory }) {
             <div className="h-px flex-grow bg-gradient-to-r from-white/20 to-transparent"></div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
             {products.map((product, index) => (
               <ProductCard
                 key={product.id}
