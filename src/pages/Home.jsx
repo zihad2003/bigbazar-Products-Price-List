@@ -179,12 +179,13 @@ export default function Home({ selectedCategory }) {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
                 flashSale={flashSale}
                 onClick={handleProductClick}
+                priority={index < 6}
               />
             ))}
           </div>

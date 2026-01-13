@@ -125,9 +125,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] bg-[#e6fffa] text-green-900 px-8 py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] border-2 border-green-500 flex items-center gap-3 font-black text-sm uppercase tracking-widest pointer-events-none sticky mt-8"
+                className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] bg-green-700 text-white px-8 py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] border-2 border-green-900 flex items-center gap-3 font-black text-sm uppercase tracking-widest pointer-events-none sticky mt-8"
               >
-                <div className="bg-green-500 p-1 rounded-full"><Check size={16} className="text-white" strokeWidth={4} /></div>
+                <div className="bg-white p-1 rounded-full"><Check size={16} className="text-green-700" strokeWidth={4} /></div>
                 <span>Order Copied!</span>
               </motion.div>
             )}

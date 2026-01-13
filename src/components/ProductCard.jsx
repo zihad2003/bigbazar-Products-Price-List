@@ -4,10 +4,12 @@ import { calculatePrice } from '../utils/pricing';
 import { useState, useEffect } from 'react';
 import { resolveTikTokUrl, fetchTikTokData } from '../utils/tiktok';
 
-const ProductCard = ({ product, flashSale, onClick }) => {
+const ProductCard = ({ product, flashSale, onClick, priority = false }) => {
   const { price, originalPrice, discountPercent, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
   const [thumbnail, setThumbnail] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  // ... useEffect ...
 
   useEffect(() => {
     if ((!product.image && !product.image_url && (!product.images || product.images.length === 0)) && product.video_url) {
