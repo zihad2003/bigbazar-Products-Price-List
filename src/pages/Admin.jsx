@@ -164,9 +164,25 @@ export default function Admin() {
     setLoading(true);
 
     let finalVideoUrl = form.video_url;
+    let autoThumbnail = null;
+
     if (finalVideoUrl) {
-      const resolved = await resolveTikTokUrl(finalVideoUrl);
-      if (resolved) finalVideoUrl = resolved;
+      // Resolve short links & get thumbnail in one go
+      const tiktokData = await fetchTikTokData(finalVideoUrl);
+      if (tiktokData) {
+        if (tiktokData.canonical_url) finalVideoUrl = tiktokData.canonical_url;
+        if (tiktokData.thumbnail) autoThumbnail = tiktokData.thumbnail;
+      } else {
+        // Fallback if fetchTikTokData fails (just resolve URL)
+        const resolved = await resolveTikTokUrl(finalVideoUrl);
+        if (resolved) finalVideoUrl = resolved;
+      }
+    }
+
+    // Prepare images array - if no user upload, use TikTok thumbnail
+    let finalImages = [...form.images];
+    if (finalImages.length === 0 && autoThumbnail) {
+      finalImages.push(autoThumbnail);
     }
 
     // Prepare data for Supabase
@@ -181,8 +197,8 @@ export default function Admin() {
       is_new: form.is_new,
       is_sold_out: form.is_sold_out,
       video_url: finalVideoUrl,
-      images: form.images, // Now saving the full array of images
-      image_url: (form.images && form.images.length > 0) ? form.images[0] : null // Keep for backward compatibility
+      images: finalImages, // Now saving the full array of images
+      image_url: (finalImages && finalImages.length > 0) ? finalImages[0] : null // Keep for backward compatibility
     };
 
     let error;
