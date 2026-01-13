@@ -599,11 +599,16 @@ export default function Admin() {
                   .filter(p => !(undoState.isActive && p.id === undoState.productId))
                   .filter(p => {
                     if (!searchTerm) return true;
+                    // Safely handle potential null values
                     const lowerTerm = searchTerm.toLowerCase();
+                    const name = p.name ? p.name.toLowerCase() : '';
+                    const category = p.category ? p.category.toLowerCase() : '';
+                    const price = p.price ? p.price.toString() : '';
+
                     return (
-                      p.name.toLowerCase().includes(lowerTerm) ||
-                      p.category?.toLowerCase().includes(lowerTerm) ||
-                      p.price?.toString().includes(lowerTerm)
+                      name.includes(lowerTerm) ||
+                      category.includes(lowerTerm) ||
+                      price.includes(lowerTerm)
                     );
                   })
                   .map(p => (
