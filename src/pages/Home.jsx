@@ -14,7 +14,7 @@ export default function Home({ selectedCategory }) {
   const [heroBanner, setHeroBanner] = useState(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const { productId } = useParams();
   const navigate = useNavigate();
 
@@ -49,37 +49,44 @@ export default function Home({ selectedCategory }) {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
+      setError(null);
 
-      // Start query
-      let query = supabase.from('products').select('*', { count: 'exact' }).order('created_at', { ascending: false });
+      try {
+        // Start query
+        let query = supabase.from('products').select('*', { count: 'exact' }).order('created_at', { ascending: false });
 
-      // Apply category filter if not 'All'
-      if (selectedCategory !== 'All') {
-        query = query.eq('category', selectedCategory);
-      }
-
-      // Apply pagination
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-      query = query.range(from, to);
-
-      const { data, count, error } = await query;
-
-      if (error) {
-        console.error('Error fetching products:', error);
-      } else {
-        if (page === 0) {
-          setProducts(data);
-        } else {
-          setProducts(prev => [...prev, ...data]);
+        // Apply category filter if not 'All'
+        if (selectedCategory !== 'All') {
+          query = query.eq('category', selectedCategory);
         }
 
-        // Check if we have loaded all available products
-        if (data.length < PAGE_SIZE || (page + 1) * PAGE_SIZE >= count) {
-          setHasMore(false);
+        // Apply pagination
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+
+        const { data, count, error } = await query;
+
+        if (error) {
+          console.error('Error fetching products:', error);
+          setError('Failed to load products. Please try again later.');
         } else {
-          setHasMore(true);
+          if (page === 0) {
+            setProducts(data || []);
+          } else {
+            setProducts(prev => [...prev, ...(data || [])]);
+          }
+
+          // Check if we have loaded all available products
+          if ((data || []).length < PAGE_SIZE || (page + 1) * PAGE_SIZE >= count) {
+            setHasMore(false);
+          } else {
+            setHasMore(true);
+          }
         }
+      } catch (err) {
+        console.error('Network error:', err);
+        setError('Network error. Please check your connection.');
       }
       setLoading(false);
     };
@@ -136,7 +143,13 @@ export default function Home({ selectedCategory }) {
   }, [products]);
 
   return (
-    <div className="min-h-screen px-4 pb-20 bg-black">
+    <div className="min-h-screen px-4 pb-20 bg-black text-white">
+      {/* Emergency fallback content - always visible */}
+      <div className="text-center py-10">
+        <h1 className="text-4xl font-bold text-white mb-4">Big Bazar</h1>
+        <p className="text-neutral-400">Loading your favorite products...</p>
+      </div>
+
       {/* Hero Header */}
       <header className="pt-4 md:pt-10 pb-8 md:pb-16 text-center">
         {heroBanner?.active ? (
@@ -196,15 +209,30 @@ export default function Home({ selectedCategory }) {
             ))}
           </div>
 
-          {products.length === 0 && !loading && (
+          {products.length === 0 && !loading && !error && (
             <div className="text-center py-20">
               <p className="text-neutral-500 text-lg">No products found in this category.</p>
             </div>
           )}
 
-          {loading && products.length === 0 && (
+          {error && (
             <div className="text-center py-20">
-              <p className="text-neutral-500 animate-pulse">Loading products...</p>
+              <p className="text-red-400 text-lg mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-6 py-3 bg-[#ce112d] hover:bg-red-700 text-white font-bold uppercase tracking-widest rounded-xl transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {loading && products.length === 0 && !error && (
+            <div className="text-center py-20">
+              <p className="text-neutral-300 animate-pulse text-lg">Loading products...</p>
+              <div className="mt-4 flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ce112d]"></div>
+              </div>
             </div>
           )}
 
