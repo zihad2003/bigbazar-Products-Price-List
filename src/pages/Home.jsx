@@ -121,9 +121,19 @@ export default function Home({ selectedCategory }) {
     navigate('/');
   };
 
-  const loadMore = () => {
-    setPage(prev => prev + 1);
-  };
+  // Preload priority images
+  useEffect(() => {
+    if (products.length > 0) {
+      // Preload first 6 images
+      products.slice(0, 6).forEach(product => {
+        const displayImage = product.image || product.image_url || (product.images && product.images[0]);
+        if (displayImage) {
+          const img = new Image();
+          img.src = displayImage;
+        }
+      });
+    }
+  }, [products]);
 
   return (
     <div className="min-h-screen px-4 pb-20 bg-black">
@@ -135,7 +145,7 @@ export default function Home({ selectedCategory }) {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-gradient-to-r from-[#ce112d] to-purple-800 p-6 md:p-12 rounded-3xl relative overflow-hidden shadow-2xl shadow-red-900/20"
           >
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
             <div className="relative z-10">
               <h2 className="text-4xl md:text-7xl font-black italic tracking-tighter text-white mb-2 uppercase drop-shadow-md">{heroBanner.text}</h2>
               <p className="text-lg md:text-2xl font-bold text-white/90 tracking-widest uppercase">{heroBanner.subtext}</p>
