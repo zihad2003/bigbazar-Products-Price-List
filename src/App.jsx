@@ -21,7 +21,10 @@ function PublicLayout() {
 }
 
 function App() {
+  console.log("App component rendering");
+
   useEffect(() => {
+    console.log("App useEffect running");
     const lenis = new Lenis({
       duration: 2.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -45,13 +48,20 @@ function App() {
   }, []);
 
   return (
-    <Router>
+    <div style={{ minHeight: '100vh', backgroundColor: 'black', color: 'white', padding: '20px' }}>
+      {/* Debug message - remove after fixing */}
+      <div style={{ position: 'fixed', top: '10px', right: '10px', background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>
+        App Loaded
+      </div>
+
+      <Router>
       <Routes>
         <Route path="/" element={<PublicLayout />} />
         <Route path="/product/:productId" element={<PublicLayout />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
+    </div>
   );
 }
 
