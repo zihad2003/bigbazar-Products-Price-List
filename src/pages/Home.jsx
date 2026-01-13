@@ -25,14 +25,25 @@ export default function Home({ selectedCategory }) {
     }
   };
 
-  // Fetch Site Settings (Flash Sale & Hero Banner) with Real-time Subscription
+  // Dynamic Page Title for SEO
+  useEffect(() => {
+    document.title = selectedCategory === 'All'
+      ? 'Big Bazar | Exclusive Collection'
+      : `${selectedCategory} | Big Bazar`;
+  }, [selectedCategory]);
+
+  // Fetch Site Settings (Flash Sale & Hero Banner)
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data: flashData } = await supabase.from('site_settings').select('value').eq('key', 'flash_sale').single();
-      if (flashData?.value) setFlashSale(flashData.value);
+      try {
+        const { data: flashData } = await supabase.from('site_settings').select('value').eq('key', 'flash_sale').single();
+        if (flashData?.value) setFlashSale(flashData.value);
 
-      const { data: bannerData } = await supabase.from('site_settings').select('value').eq('key', 'hero_banner').single();
-      if (bannerData?.value) setHeroBanner(bannerData.value);
+        const { data: bannerData } = await supabase.from('site_settings').select('value').eq('key', 'hero_banner').single();
+        if (bannerData?.value) setHeroBanner(bannerData.value);
+      } catch (err) {
+        console.warn("Settings fetch error:", err);
+      }
     };
 
     fetchSettings();
@@ -55,57 +66,63 @@ export default function Home({ selectedCategory }) {
   // Fetch Products with DB Filtering & Pagination
   useEffect(() => {
     const fetchProducts = async () => {
-      setLoading(true);
+      // Don't show skeleton if we already have products (unless it's a category change)
+      if (page === 0) {
+        setLoading(true);
+        setProducts([]);
+      } else {
+        setLoading(true);
+      }
+
       setError(null);
 
       try {
-        // Start query
         let query = supabase.from('products').select('*', { count: 'exact' }).order('created_at', { ascending: false });
 
-        // Apply category filter if not 'All'
         if (selectedCategory !== 'All') {
           query = query.eq('category', selectedCategory);
         }
 
-        // Apply pagination
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
         query = query.range(from, to);
 
-        const { data, count, error } = await query;
+        const { data, count, error: fetchError } = await query;
 
-        if (error) {
-          console.error('Error fetching products:', error);
-          setError('Failed to load products. Please try again later.');
+        if (fetchError) {
+          throw fetchError;
         } else {
           if (page === 0) {
             setProducts(data || []);
           } else {
-            setProducts(prev => [...prev, ...(data || [])]);
+            setProducts(prev => {
+              const existingIds = new Set(prev.map(p => p.id));
+              const uniqueNew = (data || []).filter(p => !existingIds.has(p.id));
+              return [...prev, ...uniqueNew];
+            });
           }
 
-          // Check if we have loaded all available products
-          if ((data || []).length < PAGE_SIZE || (page + 1) * PAGE_SIZE >= count) {
+          if ((data || []).length < PAGE_SIZE || (page + 1) * PAGE_SIZE >= (count || 0)) {
             setHasMore(false);
           } else {
             setHasMore(true);
           }
         }
       } catch (err) {
-        console.error('Network error:', err);
-        setError('Network error. Please check your connection.');
+        console.error('Fetch error:', err);
+        setError('Unable to load products. Check your connection.');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchProducts();
   }, [selectedCategory, page]);
 
-  // Reset page when category changes
+  // Handle Category Reset
   useEffect(() => {
     setPage(0);
     setHasMore(true);
-    setProducts([]); // Clear products immediately when category changes
   }, [selectedCategory]);
 
   // Handle URL Product ID
