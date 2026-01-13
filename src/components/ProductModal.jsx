@@ -12,6 +12,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
   const [showToast, setShowToast] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showMessengerPopup, setShowMessengerPopup] = useState(false);
+  const [countdown, setCountdown] = useState(3);
 
   // Force Autoplay logic
   // If video exists, we want to play it immediately.
@@ -71,12 +73,20 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const handleMessengerOrder = () => {
     const message = generateOrderMessage({ ...product, price });
     navigator.clipboard.writeText(message).then(() => {
-      setShowToast(true);
-      setTimeout(() => {
-        setShowToast(false);
-        const pageId = contactInfo?.facebook || "109056644140792"; // Fallback only if fetching fails
-        window.open(generateMessengerLink(pageId), '_blank');
-      }, 1500);
+      setCountdown(3);
+      setShowMessengerPopup(true);
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setShowMessengerPopup(false);
+            const pageId = contactInfo?.facebook || "109056644140792";
+            window.open(generateMessengerLink(pageId), '_blank');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     });
   };
 
@@ -118,17 +128,52 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             <X size={20} />
           </button>
 
-          {/* Toast Notification */}
+          {/* Messenger Order Popup */}
           <AnimatePresence>
-            {showToast && (
+            {showMessengerPopup && (
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] bg-green-700 text-white px-8 py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] border-2 border-green-900 flex items-center gap-3 font-black text-sm uppercase tracking-widest pointer-events-none sticky mt-8"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="absolute inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
               >
-                <div className="bg-white p-1 rounded-full"><Check size={16} className="text-green-700" strokeWidth={4} /></div>
-                <span>Order Copied!</span>
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: -20 }}
+                  className="bg-white rounded-3xl p-8 max-w-sm mx-4 shadow-2xl border-4 border-blue-500"
+                >
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
+                        <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.595 8.719v3.94l4.191-2.286c1.025.281 2.115.438 3.214.438 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.219 14.409l-3.047-3.235-5.944 3.235 6.545-6.936 3.097 3.235 5.901-3.235-6.552 6.936z"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Order Copied!</h3>
+                    <p className="text-gray-600 mb-6">Opening Messenger in...</p>
+                    <div className="relative">
+                      <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl font-bold text-white">{countdown}</span>
+                      </div>
+                      <svg className="absolute inset-0 w-20 h-20 mx-auto" viewBox="0 0 36 36">
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#e5e7eb"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="2"
+                          strokeDasharray={`${(countdown / 3) * 100}, 100`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>

@@ -56,13 +56,14 @@ const ProductCard = ({ product, flashSale, onClick, priority = false }) => {
       {/* Thumbnail Image */}
       {displayImage ? (
         <>
-          <div className={`absolute inset-0 bg-neutral-800 animate-pulse transition-opacity duration-300 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`} />
+          <div className={`absolute inset-0 bg-neutral-800 transition-opacity duration-300 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`} />
           <img
             src={displayImage}
             alt={product.title || product.name || 'Product'}
-            className={`object-cover w-full h-full transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            loading="lazy"
+            className={`object-cover w-full h-full transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            loading={priority ? "eager" : "lazy"}
             onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)} // Hide loading state even on error
           />
         </>
       ) : (
