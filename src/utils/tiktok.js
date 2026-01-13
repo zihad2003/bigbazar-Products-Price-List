@@ -131,12 +131,22 @@ export const getEmbedUrl = async (url, isAutoPlay = true) => {
     if (!url) return null;
     const auto = isAutoPlay ? "1" : "0";
 
-    // Try to resolve first
-    let longUrl = await resolveTikTokUrl(url);
-    const tiktokId = extractTikTokId(longUrl);
+    // Fast Check: If URL is already canonical or simple, try ID extraction immediately
+    const existingId = extractTikTokId(url);
+    if (existingId) {
+        return `https://www.tiktok.com/embed/v2/${existingId}?autoplay=${auto}&mute=0&controls=1&playsinline=1&music_info_bar_enabled=1`;
+    }
 
-    if (tiktokId) {
-        return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=${auto}&mute=0&controls=1&playsinline=1&music_info_bar_enabled=1`;
+    try {
+        // Only try async resolution if simple extraction failed (e.g. short link)
+        let longUrl = await resolveTikTokUrl(url);
+        const tiktokId = extractTikTokId(longUrl);
+
+        if (tiktokId) {
+            return `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=${auto}&mute=0&controls=1&playsinline=1&music_info_bar_enabled=1`;
+        }
+    } catch (e) {
+        console.warn("Embed URL generation failed:", e);
     }
     return null;
 };
