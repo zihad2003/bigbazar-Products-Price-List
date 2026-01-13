@@ -13,6 +13,12 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [showToast, setShowToast] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Force Autoplay logic
+  // If video exists, we want to play it immediately.
+  // The user interaction IS opening the modal, so we can likely autoplay with sound (if supported) or muted.
+  // We will default to autoplay=1 and mute=0. If browser blocks it, it blocks it.
+  // But standard TikTok embeds usually handle this well.
+
   useEffect(() => {
     // Fetch contact info
     const fetchContact = async () => {
@@ -119,9 +125,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] bg-white text-black px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold text-xs uppercase tracking-widest pointer-events-none sticky mt-4"
+                className="absolute top-20 left-1/2 -translate-x-1/2 z-[100] bg-white text-black px-8 py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-4 border-black flex items-center gap-3 font-black text-sm uppercase tracking-widest pointer-events-none sticky mt-8"
               >
-                <Check size={16} className="text-green-600" />
+                <div className="bg-green-600 p-1 rounded-full"><Check size={16} className="text-white" strokeWidth={4} /></div>
                 <span>Order Copied!</span>
               </motion.div>
             )}

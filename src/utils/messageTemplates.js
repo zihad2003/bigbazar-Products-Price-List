@@ -18,9 +18,19 @@ export const generateMessengerLink = (pageId) => {
 export const generateOrderMessage = (product) => {
   let message = `🛍️ *I want to order this product:*\n\n📌 *Name:* ${product.name}\n💰 *Price:* ${product.price} BDT\n🏷️ *Category:* ${product.category || 'General'}`;
 
-  // Prefer image_url, then first of images array
+  // Prioritize video link if available (requested by user)
+  if (product.video_url) {
+    message += `\n\n🎥 *Video Review:* ${product.video_url}`;
+  }
+
+  // Fallback to image if no video, or maybe just include both? 
+  // User said "instade of supabase link", so if video exists, we might skip the image link which is usually the supabase one.
+  // However, images are useful. I'll add the image only if no video is present, OR I'll add the image as a separate line if really needed.
+  // For safety and "richness", providing the video link is key.
+  // Let's stick to the user request: Video link IS the priority.
+
   const imageUrl = product.image_url || (product.images && product.images[0]) || product.image;
-  if (imageUrl) {
+  if (!product.video_url && imageUrl) {
     message += `\n\n🖼️ *Image:* ${imageUrl}`;
   }
 

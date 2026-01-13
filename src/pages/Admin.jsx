@@ -12,7 +12,38 @@ export default function Admin() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', price: '', original_price: '', description: '', images: [], video_url: '', is_sale: false, is_hot: false, is_new: false, is_sold_out: false, category: 'Women' });
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // ... (inside Admin component)
+
+  const handleVideoBlur = async () => {
+    if (!form.video_url) return;
+
+    // Don't re-fetch if we already have images and look like we resolved it
+    if (form.images.length > 0 && form.video_url.includes('tiktok.com')) return;
+
+    try {
+      const data = await fetchTikTokData(form.video_url);
+      if (data) {
+        setForm(prev => ({
+          ...prev,
+          video_url: data.canonical_url || prev.video_url,
+          images: data.thumbnail ? [...prev.images, data.thumbnail] : prev.images
+        }));
+      }
+    } catch (e) {
+      console.log("Preview fetch failed", e);
+    }
+  };
+
+  // ... (inside the form)
+
+  // Update the Video URL input:
+  // <input ... onBlur={handleVideoBlur} ... /> needs to be found in the larger update below or replaced specifically.
+  // Since I am replacing the block, I will just insert the logic helper for now and then do a multi-replace for the input and search bar.
+
+  // Actually, I can do this cleaner with multi_replace.
+  // I will Cancel this tool call and use multi_replace for Admin.jsx.
   const [activeTab, setActiveTab] = useState('products');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [flashSale, setFlashSale] = useState({ active: false, percentage: 0, end_time: null, duration: 24 });
@@ -512,8 +543,8 @@ export default function Admin() {
 
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2 block">Video URL</label>
-                    <input value={form.video_url} placeholder="TikTok / Facebook Link" className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, video_url: e.target.value })} />
-                    <p className="text-[10px] text-neutral-600 mt-2">Try pasting a TikTok short link! We'll auto-resolve it.</p>
+                    <input value={form.video_url} onBlur={handleVideoBlur} placeholder="TikTok / Facebook Link" className="w-full bg-black/40 p-3 rounded-xl border border-white/10 focus:border-[#ce112d] focus:outline-none text-sm transition-colors" onChange={e => setForm({ ...form, video_url: e.target.value })} />
+                    <p className="text-[10px] text-neutral-600 mt-2">Paste a TikTok short link & click away to auto-generate thumbnail!</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
@@ -554,52 +585,68 @@ export default function Admin() {
                 </h3>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
-                  <input placeholder="Search products..." className="pl-10 pr-4 py-2 bg-neutral-900 rounded-full border border-white/5 text-sm focus:border-white/20 focus:outline-none hover:bg-neutral-800 transition-colors" />
+                  <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search products..."
+                    className="pl-10 pr-4 py-2 bg-neutral-900 rounded-full border border-white/5 text-sm focus:border-white/20 focus:outline-none hover:bg-neutral-800 transition-colors"
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {products.filter(p => !(undoState.isActive && p.id === undoState.productId)).map(p => (
-                  <div key={p.id} className="group bg-neutral-900/30 hover:bg-neutral-900 border border-white/5 hover:border-white/10 p-3 rounded-2xl flex items-center gap-4 transition-all hover:scale-[1.01] hover:shadow-xl">
-                    <div className="w-20 h-20 rounded-xl bg-black border border-white/5 overflow-hidden relative">
-                      {p.images?.[0] || p.image_url ? (
-                        <img src={p.images?.[0] || p.image_url} className="w-full h-full object-cover" alt={p.name} />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-                          <ImageIcon size={20} className="text-neutral-600" />
-                        </div>
-                      )}
-                      {p.video_url && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur border border-white/20 flex items-center justify-center shadow-lg">
-                            <Play size={14} fill="white" className="text-white ml-0.5" />
+                {products
+                  .filter(p => !(undoState.isActive && p.id === undoState.productId))
+                  .filter(p => {
+                    if (!searchTerm) return true;
+                    const lowerTerm = searchTerm.toLowerCase();
+                    return (
+                      p.name.toLowerCase().includes(lowerTerm) ||
+                      p.category?.toLowerCase().includes(lowerTerm) ||
+                      p.price?.toString().includes(lowerTerm)
+                    );
+                  })
+                  .map(p => (
+                    <div key={p.id} className="group bg-neutral-900/30 hover:bg-neutral-900 border border-white/5 hover:border-white/10 p-3 rounded-2xl flex items-center gap-4 transition-all hover:scale-[1.01] hover:shadow-xl">
+                      <div className="w-20 h-20 rounded-xl bg-black border border-white/5 overflow-hidden relative">
+                        {p.images?.[0] || p.image_url ? (
+                          <img src={p.images?.[0] || p.image_url} className="w-full h-full object-cover" alt={p.name} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-neutral-800">
+                            <ImageIcon size={20} className="text-neutral-600" />
                           </div>
+                        )}
+                        {p.video_url && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                            <div className="w-8 h-8 rounded-full bg-black/50 backdrop-blur border border-white/20 flex items-center justify-center shadow-lg">
+                              <Play size={14} fill="white" className="text-white ml-0.5" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 py-1">
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="font-bold text-white truncate pr-2">{p.name}</h4>
+                          <span className="text-[#ce112d] font-black text-xs">{p.price} ৳</span>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0 py-1">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-bold text-white truncate pr-2">{p.name}</h4>
-                        <span className="text-[#ce112d] font-black text-xs">{p.price} ৳</span>
+                        <p className="text-neutral-500 text-xs line-clamp-2 mb-2">{p.description}</p>
+                        <div className="flex gap-2">
+                          {p.is_sale && <span className="text-[10px] font-bold uppercase bg-red-500/10 text-red-500 px-2 rounded-full">Sale</span>}
+                          {p.category && <span className="text-[10px] font-bold uppercase bg-white/5 text-neutral-400 px-2 rounded-full">{p.category}</span>}
+                        </div>
                       </div>
-                      <p className="text-neutral-500 text-xs line-clamp-2 mb-2">{p.description}</p>
-                      <div className="flex gap-2">
-                        {p.is_sale && <span className="text-[10px] font-bold uppercase bg-red-500/10 text-red-500 px-2 rounded-full">Sale</span>}
-                        {p.category && <span className="text-[10px] font-bold uppercase bg-white/5 text-neutral-400 px-2 rounded-full">{p.category}</span>}
+
+                      <div className="flex flex-col gap-2 self-center">
+                        <button onClick={() => startEdit(p)} className="p-2 rounded-lg hover:bg-blue-500/10 text-neutral-600 hover:text-blue-500 transition-colors">
+                          <Edit size={18} />
+                        </button>
+                        <button onClick={(e) => requestDelete(p.id, e)} className="p-2 rounded-lg hover:bg-red-500/10 text-neutral-600 hover:text-red-500 transition-colors">
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex flex-col gap-2 self-center">
-                      <button onClick={() => startEdit(p)} className="p-2 rounded-lg hover:bg-blue-500/10 text-neutral-600 hover:text-blue-500 transition-colors">
-                        <Edit size={18} />
-                      </button>
-                      <button onClick={(e) => requestDelete(p.id, e)} className="p-2 rounded-lg hover:bg-red-500/10 text-neutral-600 hover:text-red-500 transition-colors">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
