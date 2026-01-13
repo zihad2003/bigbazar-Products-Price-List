@@ -40,9 +40,16 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       if (product?.video_url) {
         setEmbedSrc(null);
         const loadVideo = async () => {
-          // Robust getEmbedUrl handles short links and proxies internally
           const embed = await getEmbedUrl(product.video_url);
-          if (embed) setEmbedSrc(embed);
+          if (embed) {
+            // Force strict embed URL for higher performance
+            const videoId = embed.split('/v2/')[1]?.split('?')[0];
+            if (videoId) {
+              setEmbedSrc(`https://www.tiktok.com/player/v1/${videoId}?autoplay=1&mute=0&loop=1&arrows=1&progress_bar=1&music_info=1&description=1`);
+            } else {
+              setEmbedSrc(embed);
+            }
+          }
         };
         loadVideo();
       }
@@ -146,7 +153,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   <div className="text-center">
                     <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg viewBox="0 0 24 24" width="32" height="32" fill="white">
-                        <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.595 8.719v3.94l4.191-2.286c1.025.281 2.115.438 3.214.438 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.219 14.409l-3.047-3.235-5.944 3.235 6.545-6.936 3.097 3.235 5.901-3.235-6.552 6.936z"/>
+                        <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.595 8.719v3.94l4.191-2.286c1.025.281 2.115.438 3.214.438 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.219 14.409l-3.047-3.235-5.944 3.235 6.545-6.936 3.097 3.235 5.901-3.235-6.552 6.936z" />
                       </svg>
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">Order Copied!</h3>
@@ -179,7 +186,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </AnimatePresence>
 
           {/* LEFT SIDE: Media (100% on mobile, 50-60% on desktop) */}
-          <div className="w-full md:w-[55%] h-[85vh] md:h-full bg-black relative flex-shrink-0">
+          <div className="w-full md:w-[55%] h-[75vh] md:h-full bg-black relative flex-shrink-0 flex items-center justify-center overflow-hidden">
             {hasVideo && embedSrc ? (
               <iframe
                 src={embedSrc}
@@ -189,28 +196,38 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 allowFullScreen
               />
             ) : (
-              <div className="relative w-full h-full flex items-center justify-center">
-                <motion.img
-                  key={currentImageIndex}
-                  src={images[currentImageIndex]}
-                  alt={product.name}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full h-full object-contain md:object-cover"
-                />
+              <div className="relative w-full h-full flex items-center justify-center bg-neutral-950">
+                {/* Fixed 1:1 Aspect Ratio Container for Images */}
+                <div className="relative w-full aspect-square max-h-full">
+                  <motion.img
+                    key={currentImageIndex}
+                    src={images[currentImageIndex]}
+                    alt={product.name}
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="w-full h-full object-contain md:object-cover shadow-2xl"
+                  />
+
+                  {/* Subtle glass overlay for premium feel */}
+                  <div className="absolute inset-0 pointer-events-none border border-white/5 bg-gradient-to-br from-white/5 to-transparent"></div>
+                </div>
 
                 {hasMultipleImages && (
                   <>
-                    <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/50 text-white rounded-full transition-colors z-10 backdrop-blur-sm">
-                      <span className="text-2xl">‹</span>
+                    <button onClick={prevImage} className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-black/40 hover:bg-[#ce112d]/80 text-white rounded-full transition-all z-20 backdrop-blur-md border border-white/10">
+                      <span className="text-2xl mb-1">‹</span>
                     </button>
-                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/30 hover:bg-black/50 text-white rounded-full transition-colors z-10 backdrop-blur-sm">
-                      <span className="text-2xl">›</span>
+                    <button onClick={nextImage} className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-black/40 hover:bg-[#ce112d]/80 text-white rounded-full transition-all z-20 backdrop-blur-md border border-white/10">
+                      <span className="text-2xl mb-1">›</span>
                     </button>
-                    <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-10">
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-20">
                       {images.map((_, idx) => (
-                        <div key={idx} className={`w-2 h-2 rounded-full shadow-sm ${idx === currentImageIndex ? 'bg-white' : 'bg-white/30'}`} />
+                        <button
+                          key={idx}
+                          onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
+                          className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'bg-[#ce112d] w-6' : 'bg-white/20 hover:bg-white/40'}`}
+                        />
                       ))}
                     </div>
                   </>

@@ -15,6 +15,7 @@ export default function Home({ selectedCategory }) {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const { productId } = useParams();
   const navigate = useNavigate();
 
@@ -150,12 +151,6 @@ export default function Home({ selectedCategory }) {
 
   return (
     <div className="min-h-screen px-4 pb-20 bg-black text-white">
-      {/* Emergency fallback content - always visible */}
-      <div className="text-center py-10">
-        <h1 className="text-4xl font-bold text-white mb-4">Big Bazar</h1>
-        <p className="text-neutral-400">Loading your favorite products...</p>
-      </div>
-
       {/* Hero Header */}
       <header className="pt-4 md:pt-10 pb-8 md:pb-16 text-center">
         {heroBanner?.active ? (
