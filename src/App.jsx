@@ -5,6 +5,16 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
+import ErrorBoundary from './components/ErrorBoundary';
+import { useLocation } from 'react-router-dom';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function PublicLayout() {
   const [category, setCategory] = useState('All');
@@ -49,13 +59,16 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<PublicLayout />} />
-        <Route path="/product/:productId" element={<PublicLayout />} />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <ScrollToTop />
+        <Routes>
+          <Route path="/" element={<PublicLayout />} />
+          <Route path="/product/:productId" element={<PublicLayout />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
