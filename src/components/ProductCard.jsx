@@ -7,6 +7,7 @@ import { resolveTikTokUrl, fetchTikTokData } from '../utils/tiktok';
 const ProductCard = ({ product, flashSale, onClick }) => {
   const { price, originalPrice, discountPercent, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
   const [thumbnail, setThumbnail] = useState(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     if ((!product.image && !product.image_url && (!product.images || product.images.length === 0)) && product.video_url) {
@@ -51,12 +52,16 @@ const ProductCard = ({ product, flashSale, onClick }) => {
     >
       {/* Thumbnail Image */}
       {displayImage ? (
-        <img
-          src={displayImage}
-          alt={product.title || product.name || 'Product'}
-          className="object-cover w-full h-full opacity-90 group-hover:opacity-100 transition-opacity duration-300"
-          loading="lazy"
-        />
+        <>
+          <div className={`absolute inset-0 bg-neutral-800 animate-pulse transition-opacity duration-300 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`} />
+          <img
+            src={displayImage}
+            alt={product.title || product.name || 'Product'}
+            className={`object-cover w-full h-full transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            loading="lazy"
+            onLoad={() => setImageLoaded(true)}
+          />
+        </>
       ) : (
         <div className="flex items-center justify-center w-full h-full bg-neutral-800">
           <span className="text-sm text-neutral-500">No Preview</span>
