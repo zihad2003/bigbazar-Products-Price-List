@@ -141,6 +141,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 title={product.name}
                 className="w-full h-full border-0 object-contain md:object-cover bg-black"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
               />
             ) : (
               <div className="relative w-full h-full flex items-center justify-center">
