@@ -167,15 +167,20 @@ export default function Admin() {
     let autoThumbnail = null;
 
     if (finalVideoUrl) {
-      // Resolve short links & get thumbnail in one go
-      const tiktokData = await fetchTikTokData(finalVideoUrl);
-      if (tiktokData) {
-        if (tiktokData.canonical_url) finalVideoUrl = tiktokData.canonical_url;
-        if (tiktokData.thumbnail) autoThumbnail = tiktokData.thumbnail;
-      } else {
-        // Fallback if fetchTikTokData fails (just resolve URL)
-        const resolved = await resolveTikTokUrl(finalVideoUrl);
-        if (resolved) finalVideoUrl = resolved;
+      try {
+        // Resolve short links & get thumbnail in one go
+        const tiktokData = await fetchTikTokData(finalVideoUrl);
+        if (tiktokData) {
+          if (tiktokData.canonical_url) finalVideoUrl = tiktokData.canonical_url;
+          if (tiktokData.thumbnail) autoThumbnail = tiktokData.thumbnail;
+        } else {
+          // Fallback if fetchTikTokData fails (just resolve URL)
+          const resolved = await resolveTikTokUrl(finalVideoUrl);
+          if (resolved) finalVideoUrl = resolved;
+        }
+      } catch (err) {
+        console.error("TikTok Fetch Error (Non-blocking):", err);
+        // On error, just use what we have, don't crash the publish flow
       }
     }
 
