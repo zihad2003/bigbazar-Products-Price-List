@@ -143,6 +143,15 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               >
                 <ShoppingBag /> Order on Messenger
               </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Link copied to clipboard!');
+                }}
+                className="col-span-1 md:col-auto flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
+              >
+                <Share2 size={16} /> <span className="hidden md:inline">Copy Link</span><span className="md:hidden">Link</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/5">
