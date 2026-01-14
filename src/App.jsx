@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Lenis from '@studio-freight/lenis';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
 import ErrorBoundary from './components/ErrorBoundary';
-import { useLocation } from 'react-router-dom';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -22,7 +20,7 @@ function PublicLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       <Navbar selectedCategory={category} onSelectCategory={setCategory} />
-      <main className="flex-grow pt-48 md:pt-52">
+      <main className="flex-grow pt-48 md:pt-56">
         <Home selectedCategory={category} />
       </main>
       <Footer />
@@ -31,33 +29,6 @@ function PublicLayout() {
 }
 
 function App() {
-  console.log("App component rendering");
-
-  useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.5,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      gestureOrientation: 'vertical',
-      smoothWheel: true,
-      wheelMultiplier: 1.2,
-      touchMultiplier: 2,
-    });
-
-    let rafId;
-    function raf(time) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      lenis.destroy();
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
-
   return (
     <ErrorBoundary>
       <Router>

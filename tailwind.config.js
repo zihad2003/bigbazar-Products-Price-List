@@ -5,16 +5,18 @@ export default {
     "./src/**/*.{js,jsx}",
   ],
   theme: {
-    colors: {
-      primary: {
-        DEFAULT: '#B91C1C', // Red from BAZAR
-        dark: '#991B1B',
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#B91C1C', // Red from BAZAR
+          dark: '#991B1B',
+        },
+        neutral: {
+          900: '#171717', // Dark gray
+          950: '#0a0a0a',
+          800: '#262626',
+        }
       },
-      neutral: {
-        900: '#171717', // Dark gray
-        950: '#0a0a0a',
-        800: '#262626',
-      }
     },
   },
   plugins: [],
