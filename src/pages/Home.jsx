@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import { ShoppingBag, ChevronDown, Instagram } from 'lucide-react';
@@ -20,6 +21,9 @@ export default function Home({ selectedCategory }) {
     }
   });
 
+  const { productId } = useParams();
+  const navigate = useNavigate();
+
   useEffect(() => {
     // Fetch Banner Settings
     supabase.from('site_settings').select('value').eq('key', 'hero_banner').single()
@@ -32,6 +36,24 @@ export default function Home({ selectedCategory }) {
         }
       });
   }, []);
+
+  // Handle direct product link
+  useEffect(() => {
+    if (productId) {
+      const fetchProduct = async () => {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', productId)
+          .single();
+
+        if (data && !error) {
+          setSelectedProduct(data);
+        }
+      };
+      fetchProduct();
+    }
+  }, [productId]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -138,7 +160,7 @@ export default function Home({ selectedCategory }) {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: (index % 12) * 0.05 }}
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => navigate(`/product/${product.id}`)}
                   className="break-inside-avoid group cursor-pointer"
                 >
                   <div className="relative aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 group-hover:border-[#ce112d]/50 transition-all duration-500">
@@ -186,7 +208,7 @@ export default function Home({ selectedCategory }) {
       <ProductModal
         product={selectedProduct}
         isOpen={!!selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        onClose={() => navigate('/')}
       />
     </div>
   );
