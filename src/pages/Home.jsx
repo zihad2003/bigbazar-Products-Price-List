@@ -52,6 +52,8 @@ export default function Home({ selectedCategory }) {
         }
       };
       fetchProduct();
+    } else {
+      setSelectedProduct(null);
     }
   }, [productId]);
 
