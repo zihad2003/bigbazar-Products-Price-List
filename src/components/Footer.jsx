@@ -67,8 +67,8 @@ export default function Footer() {
                             rel="noopener noreferrer"
                             className="group flex flex-col items-center gap-6"
                         >
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-[30px] border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black group-hover:scale-110 transition-all duration-500">
-                                <social.icon size={24} strokeWidth={1.5} />
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-[20px] border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black group-hover:scale-110 transition-all duration-500">
+                                <social.icon size={20} strokeWidth={1.5} />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors">
                                 {social.label}
