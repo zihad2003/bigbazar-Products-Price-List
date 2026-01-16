@@ -1,6 +1,6 @@
 export const extractInstagramId = (url) => {
     if (!url) return null;
-    const match = url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
+    const match = url.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
     return match ? match[2] : null;
 };
 

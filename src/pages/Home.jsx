@@ -145,7 +145,7 @@ export default function Home({ selectedCategory }) {
               // Dynamic thumbnail generation if DB image is missing
               let displayImage = product.image_url || product.images?.[0];
               if (!displayImage && product.video_url) {
-                const match = product.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
+                const match = product.video_url.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
                 const id = match ? match[2] : null;
                 if (id) {
                   displayImage = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;

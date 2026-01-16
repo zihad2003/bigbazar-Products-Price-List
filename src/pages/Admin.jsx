@@ -44,7 +44,7 @@ export default function Admin() {
     const { data } = await supabase
       .from('products')
       .select('*')
-      .order('serial_no', { ascending: true });
+      .order('id', { ascending: false });
     setProducts(data || []);
     setLoading(false);
   };
@@ -66,7 +66,7 @@ export default function Admin() {
   };
 
   const handleVideoBlur = async () => {
-    if (!form.video_url || !form.video_url.includes('instagram.com')) return;
+    if (!form.video_url || (!form.video_url.includes('instagram.com') && !form.video_url.includes('instagr.am'))) return;
     setLoading(true);
     const data = await fetchInstagramData(form.video_url);
     if (data) {
@@ -76,6 +76,8 @@ export default function Admin() {
         images: data.thumbnail ? [data.thumbnail] : prev.images,
         description: prev.description || data.caption
       }));
+    } else {
+      alert("Could not extract Instagram ID. Please check the URL format.");
     }
     setLoading(false);
   };
