@@ -66,8 +66,8 @@ async function logToSupabase(env, type, message, details) {
     await fetch(`${env.SUPABASE_URL}/rest/v1/system_logs`, {
         method: 'POST',
         headers: {
-            'apikey': env.SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
+            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
         },
@@ -76,28 +76,51 @@ async function logToSupabase(env, type, message, details) {
 }
 
 async function importReelToSupabase(env, mediaId) {
-    // 1. Fetch from IG Graph API (Pseudocode - requires user access token)
-    // const igData = await fetch(`https://graph.facebook.com/v18.0/${mediaId}?fields=media_url,thumbnail_url,caption&access_token=${env.IG_ACCESS_TOKEN}`);
+    // 1. Fetch from IG Graph API
+    // We need the permalink to store as video_url so our frontend can embed it
+    const token = env.IG_ACCESS_TOKEN;
+    if (!token) {
+        throw new Error('Missing IG_ACCESS_TOKEN');
+    }
+
+    const fields = 'permalink,thumbnail_url,media_url,caption,media_type';
+    const graphUrl = `https://graph.facebook.com/v18.0/${mediaId}?fields=${fields}&access_token=${token}`;
+
+    const igResp = await fetch(graphUrl);
+    if (!igResp.ok) {
+        const errText = await igResp.text();
+        throw new Error(`IG API Error: ${errText}`);
+    }
+
+    const igData = await igResp.json();
 
     // 2. Upsert to Supabase
     // We use mediaId as platform_id for uniqueness
+    // Use permalink for video_url so the frontend works with it
     const payload = {
         platform_id: mediaId,
         status: 'pending',
-        // video_url: igData.media_url, 
-        // image_url: igData.thumbnail_url,
-        // description: igData.caption,
-        name: `New Reel ${mediaId}`
+        video_url: igData.permalink,
+        images: [igData.thumbnail_url || igData.media_url], // thumbnail_url is only for video; media_url is fallback
+        description: igData.caption || '',
+        name: `New Drop ${mediaId.substring(0, 6)}`,
+        price: 0, // Default price, admin needs to set it
+        is_new: true
     };
 
-    await fetch(`${env.SUPABASE_URL}/rest/v1/products`, {
+    const supabaseResp = await fetch(`${env.SUPABASE_URL}/rest/v1/products`, {
         method: 'POST',
         headers: {
-            'apikey': env.SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
+            'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'resolution=ignore-duplicates'
         },
         body: JSON.stringify(payload)
     });
+
+    if (!supabaseResp.ok) {
+        const sbErr = await supabaseResp.text();
+        throw new Error(`Supabase Error: ${sbErr}`);
+    }
 }

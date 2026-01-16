@@ -32,7 +32,7 @@ async function fixThumbnails() {
         let newImage = p.image_url;
 
         const extractId = (url) => {
-            const match = url?.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
+            const match = url?.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
             return match ? match[2] : null;
         };
 
