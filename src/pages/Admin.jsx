@@ -85,11 +85,19 @@ export default function Admin() {
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // Auto-increment Serial Number Calculation
+    let finalSerialNo = form.serial_no;
+    if (!editingProduct) {
+      const maxSerial = products.reduce((max, p) => (p.serial_no > max ? p.serial_no : max), 0);
+      finalSerialNo = maxSerial + 1;
+    }
+
     const productData = {
       ...form,
       price: parseFloat(form.price),
       original_price: form.original_price ? parseFloat(form.original_price) : null,
-      serial_no: parseInt(form.serial_no) || products.length + 1
+      serial_no: parseInt(finalSerialNo)
     };
 
     let error;
@@ -101,8 +109,22 @@ export default function Admin() {
       error = err;
     }
 
-    if (error) alert(error.message);
-    else {
+    if (error) {
+      // User-friendly Error Handling
+      console.error("Detailed Error:", error);
+      let message = "Oops! Something went wrong while saving the product.";
+
+      if (error.message?.includes("duplicate key") || error.code === '23505') {
+        message = "It looks like this product (or serial number) already exists in the system.";
+      } else if (error.message?.includes("null value") || error.code === '23502') {
+        message = "Please make sure all required fields are filled in.";
+      } else if (error.message?.includes("network")) {
+        message = "Network error. Please check your internet connection and try again.";
+      }
+
+      alert(message);
+    } else {
+      alert(editingProduct ? "Product updated successfully!" : "New product added successfully!");
       cancelEdit();
       fetchProducts();
     }
@@ -255,15 +277,9 @@ export default function Admin() {
               </div>
             </div>
             <div className="space-y-6 pt-12">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Price</label>
-                  <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Serial #</label>
-                  <input value={form.serial_no} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder={products.length + 1} onChange={e => setForm({ ...form, serial_no: e.target.value })} />
-                </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Price</label>
+                <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Name</label>
