@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import ConfirmationModal from '../components/ConfirmationModal';
+import AlertModal from '../components/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Admin() {
@@ -19,6 +20,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -110,21 +112,29 @@ export default function Admin() {
     }
 
     if (error) {
-      // User-friendly Error Handling
       console.error("Detailed Error:", error);
       let message = "Oops! Something went wrong while saving the product.";
+      let title = "Error!";
 
       if (error.message?.includes("duplicate key") || error.code === '23505') {
+        title = "Duplicate Entry";
         message = "It looks like this product (or serial number) already exists in the system.";
       } else if (error.message?.includes("null value") || error.code === '23502') {
+        title = "Missing Details";
         message = "Please make sure all required fields are filled in.";
       } else if (error.message?.includes("network")) {
+        title = "Connection Error";
         message = "Network error. Please check your internet connection and try again.";
       }
 
-      alert(message);
+      setAlertModal({ isOpen: true, title, message, type: 'error' });
     } else {
-      alert(editingProduct ? "Product updated successfully!" : "New product added successfully!");
+      setAlertModal({
+        isOpen: true,
+        title: "Success!",
+        message: editingProduct ? "Product updated successfully!" : "New product added successfully!",
+        type: 'success'
+      });
       cancelEdit();
       fetchProducts();
     }
@@ -390,6 +400,14 @@ export default function Admin() {
           </div>
         </div>
       )}
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }
