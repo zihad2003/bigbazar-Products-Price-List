@@ -202,7 +202,14 @@ export default function Admin() {
       <form onSubmit={async (e) => {
         e.preventDefault();
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) alert(error.message);
+        if (error) {
+          setAlertModal({
+            isOpen: true,
+            title: "Login Failed",
+            message: error.message || "Invalid login credentials. Please try again.",
+            type: "error"
+          });
+        }
       }} className="w-full max-w-md space-y-8 bg-neutral-950 p-10 rounded-3xl border border-white/5">
         <h2 className="text-3xl font-black italic text-center">ADMIN <span className="text-[#ce112d]">LOGIN</span></h2>
         <div className="space-y-4">
@@ -211,6 +218,15 @@ export default function Admin() {
           <button className="w-full bg-[#ce112d] py-4 rounded-xl font-black uppercase tracking-widest">Enter Dashboard</button>
         </div>
       </form>
+
+      {/* Alert Modal for Login failures */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 
