@@ -5,11 +5,13 @@ import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage, gene
 import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
 import VideoPlayer from './VideoPlayer';
+import AlertModal from './AlertModal';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showMessengerPopup, setShowMessengerPopup] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
@@ -147,7 +149,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 onClick={() => {
                   const shareText = generateShareMessage({ ...product, price });
                   navigator.clipboard.writeText(shareText);
-                  alert('Product details copied to clipboard!');
+                  setShowAlert(true);
                 }}
                 className="col-span-1 md:col-auto flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
                 title="Copy Product Details"
@@ -192,6 +194,15 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Custom Success Alert */}
+        <AlertModal
+          isOpen={showAlert}
+          onClose={() => setShowAlert(false)}
+          title="Success!"
+          message="Product details copied to clipboard! You can now paste and share it on social media."
+          type="success"
+        />
       </motion.div>
     </AnimatePresence>
   );
