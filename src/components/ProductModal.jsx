@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MessageCircle, ShoppingBag, Truck, ShieldCheck, Clock, Share2 } from 'lucide-react';
-import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage } from '../utils/messageTemplates';
+import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage, generateShareMessage } from '../utils/messageTemplates';
 import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
 import VideoPlayer from './VideoPlayer';
@@ -145,12 +145,14 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               </button>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert('Link copied to clipboard!');
+                  const shareText = generateShareMessage({ ...product, price });
+                  navigator.clipboard.writeText(shareText);
+                  alert('Product details copied to clipboard!');
                 }}
                 className="col-span-1 md:col-auto flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
+                title="Copy Product Details"
               >
-                <Share2 size={16} /> <span className="hidden md:inline">Copy Link</span><span className="md:hidden">Link</span>
+                <Share2 size={16} /> <span className="hidden md:inline">Share Product</span><span className="md:hidden">Share</span>
               </button>
             </div>
 

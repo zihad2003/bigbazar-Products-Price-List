@@ -38,3 +38,11 @@ export const generateOrderMessage = (product) => {
   message += `\n\n_Please confirm stock and delivery charge._`;
   return message;
 };
+
+export const generateShareMessage = (product) => {
+  // Use the current window URL which should be the product permalink if opened via route, 
+  // or construct it if we are on home. Reliability: window.location.href is safest if we ensure routing is consistent.
+  // Given Home.jsx sets /product/:id, this is safe.
+  const productLink = window.location.href;
+  return `🔥 Check out this ${product.name} on BigBazar!\n\n💰 Price: ৳${product.price}\n👉 Link: ${productLink}`;
+};
