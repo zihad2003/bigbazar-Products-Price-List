@@ -46,7 +46,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
     setProducts(data || []);
     setLoading(false);
   };
