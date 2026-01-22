@@ -65,7 +65,7 @@ export default function Home({ selectedCategory }) {
           .from('products')
           .select('*', { count: 'exact' })
           .eq('status', 'published')
-          .order('serial_no', { ascending: true });
+          .order('created_at', { ascending: false });
 
         if (selectedCategory && selectedCategory !== 'All') {
           query = query.eq('category', selectedCategory);
