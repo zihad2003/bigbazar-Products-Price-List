@@ -44,5 +44,5 @@ export const generateShareMessage = (product) => {
   // or construct it if we are on home. Reliability: window.location.href is safest if we ensure routing is consistent.
   // Given Home.jsx sets /product/:id, this is safe.
   const productLink = window.location.href;
-  return `🔥 Check out this ${product.name} on BigBazar!\n\n💰 Price: ৳${product.price}\n👉 Link: ${productLink}`;
+  return `🔥 Check out this ${product.name} on BigBazar!\n\n“পণ্যের দাম জানতে আমাদের ওয়েবসাইট ভিজিট করুন”\n👉 Link: ${productLink}`;
 };
