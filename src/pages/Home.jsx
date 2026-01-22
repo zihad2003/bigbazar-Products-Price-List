@@ -57,15 +57,27 @@ export default function Home({ selectedCategory }) {
     }
   }, [productId]);
 
+  // Reset page when category changes
+  useEffect(() => {
+    setPage(0);
+    setProducts([]);
+    setHasMore(true);
+  }, [selectedCategory]);
+
   useEffect(() => {
     const fetchProducts = async () => {
+      // Prevent fetching if we are in an inconsistent state (page hasn't reset to 0 after category change)
+      // but if page is 0, we should fetch anyway.
+      if (page !== 0 && products.length === 0) return;
+
       setLoading(true);
       try {
         let query = supabase
           .from('products')
           .select('*', { count: 'exact' })
           .eq('status', 'published')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false }); // Stable secondary sort
 
         if (selectedCategory && selectedCategory !== 'All') {
           query = query.eq('category', selectedCategory);
@@ -75,7 +87,7 @@ export default function Home({ selectedCategory }) {
         const to = from + PAGE_SIZE - 1;
         query = query.range(from, to);
 
-        const { data, count, error } = await query;
+        const { data, error } = await query;
         if (error) throw error;
 
         if (page === 0) setProducts(data || []);
