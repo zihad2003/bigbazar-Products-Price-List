@@ -12,8 +12,8 @@ export const generateMessengerLink = (pageId) => {
     console.warn("Page ID missing for Messenger link");
     return "#";
   }
-  // m.me links are much better for mobile app deep-linking
-  return `https://m.me/${pageId}`;
+  // Using the specific format requested for better reliability
+  return `https://www.messenger.com/t/${pageId}/?messaging_source=source%3Apages%3Amessage_shortlink&source_id=1441792&recurring_notification=0`;
 };
 
 export const generateOrderMessage = (product) => {
