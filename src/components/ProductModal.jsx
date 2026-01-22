@@ -47,7 +47,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           if (prev <= 1) {
             clearInterval(timer);
             setShowMessengerPopup(false);
-            window.open(generateMessengerLink(contactInfo?.facebook || "109056644140792"), '_blank');
+            window.open(generateMessengerLink(contactInfo?.facebook || "100063541603515"), '_blank');
             return 0;
           }
           return prev - 1;
