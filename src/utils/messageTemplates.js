@@ -12,8 +12,8 @@ export const generateMessengerLink = (pageId) => {
     console.warn("Page ID missing for Messenger link");
     return "#";
   }
-  // User specifically requested this format:
-  return `https://www.facebook.com/messages/t/${pageId}`;
+  // m.me links are much better for mobile app deep-linking
+  return `https://m.me/${pageId}`;
 };
 
 export const generateOrderMessage = (product) => {
