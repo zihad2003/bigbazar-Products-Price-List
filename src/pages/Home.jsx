@@ -66,7 +66,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     }
   }, [productId]);
 
-  // Reset page when category or search changes
+  // Reset page and products when filters change
   useEffect(() => {
     setPage(0);
     setProducts([]);
@@ -74,8 +74,10 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   }, [selectedCategory, debouncedSearchQuery]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchProducts = async () => {
-      // Prevent fetching if we are in an inconsistent state (page hasn't reset to 0 after filter change)
+      // Only fetch if page is 0 OR there are already products (prevents stale page fetch)
       if (page !== 0 && products.length === 0) return;
 
       setLoading(true);
@@ -84,8 +86,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           .from('products')
           .select('*', { count: 'exact' })
           .eq('status', 'published')
-          .order('created_at', { ascending: false })
-          .order('id', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (selectedCategory && selectedCategory !== 'All') {
           query = query.eq('category', selectedCategory);
@@ -99,21 +100,37 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         const to = from + PAGE_SIZE - 1;
         query = query.range(from, to);
 
-        const { data, error } = await query;
+        const { data, error, count } = await query;
         if (error) throw error;
 
-        if (page === 0) setProducts(data || []);
-        else setProducts(prev => [...prev, ...(data || [])]);
+        if (!isMounted) return;
 
-        setHasMore((data || []).length === PAGE_SIZE);
+        if (page === 0) {
+          setProducts(data || []);
+        } else {
+          setProducts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newItems = (data || []).filter(p => !existingIds.has(p.id));
+            return [...prev, ...newItems];
+          });
+        }
+
+        if (count !== null) {
+          // If we are on page 0, use data.length, otherwise products.length + data.length
+          const currentCount = (page === 0 ? 0 : products.length) + (data?.length || 0);
+          setHasMore(currentCount < count);
+        } else {
+          setHasMore((data || []).length === PAGE_SIZE);
+        }
       } catch (err) {
         console.error("List fetch error:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchProducts();
+    return () => { isMounted = false; };
   }, [selectedCategory, debouncedSearchQuery, page]);
 
   return (
