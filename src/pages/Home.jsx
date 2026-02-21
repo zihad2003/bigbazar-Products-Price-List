@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
-import { ShoppingBag, ChevronDown, Instagram } from 'lucide-react';
+import { ShoppingBag, ChevronDown, Instagram, Search, X } from 'lucide-react';
 
 const PAGE_SIZE = 12;
 
-export default function Home({ selectedCategory, searchQuery }) {
+export default function Home({ selectedCategory, searchQuery, onSearchChange }) {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -158,10 +158,32 @@ export default function Home({ selectedCategory, searchQuery }) {
 
         {/* Product Grid Section - Masonry/Columns style */}
         <section className="space-y-10">
-          <div className="border-b border-white/5 pb-8">
-            <h3 className="text-3xl font-black italic uppercase tracking-tighter">
+          <div className="border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0">
               <span className="text-white">LATEST</span> <span className="text-[#ce112d]">DROPS</span>
             </h3>
+
+            {/* Premium Search Bar */}
+            <div className="relative w-full max-w-md group">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <Search size={18} className="text-neutral-500 group-focus-within:text-[#ce112d] transition-colors" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search for clothes, styles..."
+                className="w-full bg-neutral-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-[#ce112d]/50 focus:bg-neutral-900 transition-all font-bold backdrop-blur-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => onSearchChange('')}
+                  className="absolute inset-y-0 right-4 flex items-center text-neutral-500 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
