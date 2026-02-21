@@ -16,12 +16,18 @@ function ScrollToTop() {
 
 function PublicLayout() {
   const [category, setCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
-      <Navbar selectedCategory={category} onSelectCategory={setCategory} />
+      <Navbar
+        selectedCategory={category}
+        onSelectCategory={setCategory}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
       <main className="flex-grow pt-48 md:pt-56">
-        <Home selectedCategory={category} />
+        <Home selectedCategory={category} searchQuery={searchQuery} />
       </main>
       <Footer />
     </div>
