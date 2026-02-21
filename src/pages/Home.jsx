@@ -116,9 +116,8 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         }
 
         if (count !== null) {
-          // If we are on page 0, use data.length, otherwise products.length + data.length
-          const currentCount = (page === 0 ? 0 : products.length) + (data?.length || 0);
-          setHasMore(currentCount < count);
+          const loadedCount = (page === 0 ? 0 : products.length) + (data?.length || 0);
+          setHasMore(loadedCount < count);
         } else {
           setHasMore((data || []).length === PAGE_SIZE);
         }
@@ -173,7 +172,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           )}
         </section>
 
-        {/* Product Grid Section - Masonry/Columns style */}
+        {/* Product Grid Section - Stable Grid style */}
         <section className="space-y-10">
           <div className="border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <h3 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0">
@@ -203,7 +202,8 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
             </div>
           </div>
 
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          {/* Using Grid instead of Columns to prevent items from jumping/displacing */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map((product, index) => {
               // Dynamic thumbnail generation if DB image is missing
               let displayImage = product.image_url || product.images?.[0];
@@ -222,14 +222,14 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
               return (
                 <motion.div
                   key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (index % 12) * 0.05 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4 }}
                   onClick={() => navigate(`/product/${product.id}`)}
-                  className="break-inside-avoid group cursor-pointer"
+                  className="group cursor-pointer"
                 >
-                  <div className="relative aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 group-hover:border-[#ce112d]/50 transition-all duration-500">
-
+                  <div className="relative aspect-[9/14] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 group-hover:border-[#ce112d]/50 transition-all duration-500">
                     <img
                       src={displayImage}
                       className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
@@ -238,10 +238,10 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                     />
 
                     {/* Info Overlay at Bottom */}
-                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black via-black/40 to-transparent">
-                      <div className="flex justify-between items-end gap-2">
-                        <p className="text-[10px] font-black italic uppercase text-white/90 truncate flex-1">{product.name}</p>
-                        <p className="text-[#ce112d] font-black text-sm whitespace-nowrap">৳ {product.price}</p>
+                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black via-black/60 to-transparent">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[10px] font-black italic uppercase text-white/90 truncate">{product.name}</p>
+                        <p className="text-[#ce112d] font-black text-sm">৳ {product.price}</p>
                       </div>
                     </div>
                   </div>
