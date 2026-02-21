@@ -7,12 +7,13 @@ import { ShoppingBag, ChevronDown, Instagram } from 'lucide-react';
 
 const PAGE_SIZE = 12;
 
-export default function Home({ selectedCategory }) {
+export default function Home({ selectedCategory, searchQuery }) {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [siteSettings, setSiteSettings] = useState({
     banner: {
       title: '5% FLAT DISCOUNT',
@@ -23,6 +24,14 @@ export default function Home({ selectedCategory }) {
 
   const { productId } = useParams();
   const navigate = useNavigate();
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     // Fetch Banner Settings
@@ -57,17 +66,16 @@ export default function Home({ selectedCategory }) {
     }
   }, [productId]);
 
-  // Reset page when category changes
+  // Reset page when category or search changes
   useEffect(() => {
     setPage(0);
     setProducts([]);
     setHasMore(true);
-  }, [selectedCategory]);
+  }, [selectedCategory, debouncedSearchQuery]);
 
   useEffect(() => {
     const fetchProducts = async () => {
-      // Prevent fetching if we are in an inconsistent state (page hasn't reset to 0 after category change)
-      // but if page is 0, we should fetch anyway.
+      // Prevent fetching if we are in an inconsistent state (page hasn't reset to 0 after filter change)
       if (page !== 0 && products.length === 0) return;
 
       setLoading(true);
@@ -77,10 +85,14 @@ export default function Home({ selectedCategory }) {
           .select('*', { count: 'exact' })
           .eq('status', 'published')
           .order('created_at', { ascending: false })
-          .order('id', { ascending: false }); // Stable secondary sort
+          .order('id', { ascending: false });
 
         if (selectedCategory && selectedCategory !== 'All') {
           query = query.eq('category', selectedCategory);
+        }
+
+        if (debouncedSearchQuery) {
+          query = query.or(`name.ilike.%${debouncedSearchQuery}%,description.ilike.%${debouncedSearchQuery}%`);
         }
 
         const from = page * PAGE_SIZE;
@@ -102,7 +114,7 @@ export default function Home({ selectedCategory }) {
     };
 
     fetchProducts();
-  }, [selectedCategory, page]);
+  }, [selectedCategory, debouncedSearchQuery, page]);
 
   return (
     <div className="min-h-screen bg-black px-4 md:px-8 pb-32">
