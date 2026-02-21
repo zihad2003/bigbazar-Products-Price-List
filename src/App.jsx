@@ -23,11 +23,13 @@ function PublicLayout() {
       <Navbar
         selectedCategory={category}
         onSelectCategory={setCategory}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
       />
       <main className="flex-grow pt-48 md:pt-56">
-        <Home selectedCategory={category} searchQuery={searchQuery} />
+        <Home
+          selectedCategory={category}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
       </main>
       <Footer />
     </div>
