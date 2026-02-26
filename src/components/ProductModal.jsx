@@ -6,12 +6,14 @@ import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
 import VideoPlayer from './VideoPlayer';
 import AlertModal from './AlertModal';
+import DeliveryModal from './DeliveryModal';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showMessengerPopup, setShowMessengerPopup] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
@@ -132,19 +134,27 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              <a
-                href={generateWhatsAppLink({ ...product, price }, contactInfo?.whatsapp || "8801335945351")}
-                target="_blank"
-                className="flex items-center justify-center gap-4 py-5 bg-[#25D366] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] transition-transform active:scale-95"
-              >
-                <MessageCircle /> Order on WhatsApp
-              </a>
               <button
-                onClick={handleMessengerOrder}
-                className="flex items-center justify-center gap-4 py-5 bg-[#0084FF] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] transition-transform active:scale-95"
+                onClick={() => setShowDeliveryModal(true)}
+                className="flex items-center justify-center gap-4 py-6 bg-[#ce112d] text-white rounded-3xl font-black uppercase tracking-widest text-lg hover:scale-[1.02] transition-all active:scale-95 shadow-[0_10px_50px_rgba(206,17,45,0.3)]"
               >
-                <ShoppingBag /> Order on Messenger
+                <ShoppingBag size={24} /> Order Now
               </button>
+              <div className="grid grid-cols-2 gap-4">
+                <a
+                  href={generateWhatsAppLink({ ...product, price }, contactInfo?.whatsapp || "8801335945351")}
+                  target="_blank"
+                  className="flex items-center justify-center gap-3 py-5 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-[#25D366] hover:text-white transition-all active:scale-95"
+                >
+                  <MessageCircle size={18} /> WhatsApp
+                </a>
+                <button
+                  onClick={handleMessengerOrder}
+                  className="flex items-center justify-center gap-3 py-5 bg-[#0084FF]/10 text-[#0084FF] border border-[#0084FF]/20 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-[#0084FF] hover:text-white transition-all active:scale-95"
+                >
+                  <ShoppingBag size={18} /> Messenger
+                </button>
+              </div>
               <button
                 onClick={() => {
                   const shareText = generateShareMessage({ ...product, price });
@@ -194,6 +204,15 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Delivery Info Modal */}
+        <DeliveryModal
+          isOpen={showDeliveryModal}
+          onClose={() => setShowDeliveryModal(false)}
+          product={product}
+          contactInfo={contactInfo}
+          onMessengerOrder={handleMessengerOrder}
+        />
 
         {/* Custom Success Alert */}
         <AlertModal
