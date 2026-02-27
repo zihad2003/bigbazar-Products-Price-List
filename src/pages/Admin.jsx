@@ -16,11 +16,12 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('orders');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
+  const [orders, setOrders] = useState([]);
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -38,6 +39,7 @@ export default function Admin() {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     supabase.auth.onAuthStateChange((_event, session) => setSession(session));
     fetchProducts();
+    fetchOrders();
     fetchSiteSettings();
   }, []);
 
@@ -46,10 +48,32 @@ export default function Admin() {
     const { data } = await supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
+      .order('created_at', { ascending: false });
     setProducts(data || []);
     setLoading(false);
+  };
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setOrders(data || []);
+    setLoading(false);
+  };
+
+  const updateOrderStatus = async (id, status) => {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+    if (error) alert(error.message);
+    else fetchOrders();
+  };
+
+  const deleteOrder = async (id) => {
+    if (!confirm("Are you sure you want to delete this order?")) return;
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) alert(error.message);
+    else fetchOrders();
   };
 
   const fetchSiteSettings = async () => {
@@ -240,9 +264,9 @@ export default function Admin() {
           <h1 className="text-xl font-black italic">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
         </div>
         <nav className="space-y-2">
-          {['pending', 'published', 'add', 'settings'].map(tab => (
+          {['orders', 'pending', 'published', 'add', 'settings'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 p-4 rounded-xl uppercase text-[10px] font-black tracking-widest transition-all ${activeTab === tab ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
-              {tab === 'add' ? <Plus size={16} /> : tab === 'settings' ? <Settings size={16} /> : tab === 'pending' ? <Clock size={16} /> : <CheckCircle2 size={16} />}
+              {tab === 'add' ? <Plus size={16} /> : tab === 'settings' ? <Settings size={16} /> : tab === 'pending' ? <Clock size={16} /> : tab === 'orders' ? <ShoppingBag size={16} /> : <CheckCircle2 size={16} />}
               {tab}
             </button>
           ))}
@@ -331,6 +355,86 @@ export default function Admin() {
               </div>
             </div>
           </form>
+        ) : activeTab === 'orders' ? (
+          <div className="space-y-12">
+            <div>
+              <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
+              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.length} Total Orders</p>
+            </div>
+
+            <div className="overflow-x-auto no-scrollbar pb-10">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
+                <thead>
+                  <tr className="border-b border-white/5 text-[10px] font-black uppercase text-neutral-500 tracking-widest">
+                    <th className="pb-4 pr-4">Date</th>
+                    <th className="pb-4 pr-4">Product</th>
+                    <th className="pb-4 pr-4">Customer</th>
+                    <th className="pb-4 pr-4">Phone</th>
+                    <th className="pb-4 pr-4">Area</th>
+                    <th className="pb-4 pr-4">Price</th>
+                    <th className="pb-4 pr-4">Total</th>
+                    <th className="pb-4 pr-4">L4D</th>
+                    <th className="pb-4 pr-4">Status</th>
+                    <th className="pb-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {orders.map(o => (
+                    <tr key={o.id} className="group hover:bg-white/[0.02] transition-colors">
+                      <td className="py-6 pr-4 text-xs font-bold text-neutral-400">
+                        {new Date(o.created_at).toLocaleDateString()}<br />
+                        <span className="text-[10px] opacity-50">{new Date(o.created_at).toLocaleTimeString()}</span>
+                      </td>
+                      <td className="py-6 pr-4">
+                        <p className="text-xs font-black text-white">{o.product_name}</p>
+                        <p className="text-[10px] text-neutral-500 font-bold">৳{o.product_price}</p>
+                      </td>
+                      <td className="py-6 pr-4">
+                        <p className="text-xs font-black text-white">{o.customer_name}</p>
+                        <p className="text-[10px] text-neutral-500 max-w-[150px] truncate" title={o.customer_address}>{o.customer_address}</p>
+                      </td>
+                      <td className="py-6 pr-4 text-xs font-black text-[#ce112d]">{o.customer_phone}</td>
+                      <td className="py-6 pr-4 text-[10px] font-black uppercase text-neutral-500 tracking-tighter">{o.delivery_area}</td>
+                      <td className="py-6 pr-4 text-xs font-bold text-neutral-400">৳{o.delivery_charge}</td>
+                      <td className="py-6 pr-4 text-xs font-black text-white">৳{o.total_amount}</td>
+                      <td className="py-6 pr-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-black ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'}`}>
+                          {o.last_four_digits}
+                        </span>
+                      </td>
+                      <td className="py-6 pr-4">
+                        <select
+                          value={o.status}
+                          onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                          className={`bg-neutral-900 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-black uppercase outline-none focus:border-[#ce112d] ${o.status === 'Pending' ? 'text-yellow-500' :
+                            o.status === 'Shipped' ? 'text-blue-500' :
+                              o.status === 'Delivered' ? 'text-green-500' :
+                                'text-red-500'
+                            }`}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Canceled">Canceled</option>
+                        </select>
+                      </td>
+                      <td className="py-6">
+                        <button onClick={() => deleteOrder(o.id)} className="p-2 text-neutral-600 hover:text-red-500 transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {orders.length === 0 && !loading && (
+                <div className="py-20 text-center space-y-4">
+                  <ShoppingBag className="mx-auto text-neutral-800" size={48} />
+                  <p className="text-neutral-500 text-sm font-bold">No orders found.</p>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="space-y-12">
             <div className="flex justify-between items-end">
