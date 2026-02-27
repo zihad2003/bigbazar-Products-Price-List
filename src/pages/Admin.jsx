@@ -27,7 +27,7 @@ export default function Admin() {
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
-    images: [], video_url: '', image_url: '', is_sale: false, is_hot: false,
+    images: [], video_url: '', is_sale: false, is_hot: false,
     is_new: false, is_sold_out: false, category: 'Women',
     status: 'pending', platform_id: '', serial_no: '',
     available_sizes: [], available_colors: []
@@ -209,6 +209,7 @@ export default function Admin() {
         setSiteSettings({ ...siteSettings, main_slides: [...(siteSettings.main_slides || []), { id: Date.now(), image: data.publicUrl }] });
       } else {
         setForm({ ...form, images: [...(form.images || []), data.publicUrl] });
+        setPreviewImage(data.publicUrl);
       }
     }
     setLoading(false);
@@ -274,7 +275,7 @@ export default function Admin() {
     setEditingProduct(null);
     setForm({
       name: '', price: '', original_price: '', description: '',
-      images: [], video_url: '', image_url: '', is_sale: false, is_hot: false,
+      images: [], video_url: '', is_sale: false, is_hot: false,
       is_new: false, is_sold_out: false, category: 'Women',
       status: 'pending', platform_id: '', serial_no: '',
       available_sizes: [], available_colors: []
@@ -433,26 +434,33 @@ export default function Admin() {
           <form onSubmit={handleProductSubmit} className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="space-y-8">
               <h2 className="text-3xl font-black italic uppercase">{editingProduct ? 'Edit' : 'New'} <span className="text-[#ce112d]">Product</span></h2>
-              <div>
-                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
-                <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Image URL (Direct Link)</label>
-                <input value={form.image_url} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, image_url: e.target.value })} />
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
+                  <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Main Product Photo (ফটো আপলোড করুন)</label>
+                  <label className="flex items-center gap-3 w-full bg-neutral-950 border border-white/5 p-4 rounded-xl cursor-pointer hover:bg-white/5 transition-all text-neutral-500">
+                    <div className="w-10 h-10 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d]">
+                      <Plus size={18} />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest">Click to Upload Photo</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                  </label>
+                </div>
               </div>
               <div className="aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-                {previewImage || form.image_url ? (
+                {previewImage ? (
                   <div className="relative w-full h-full">
-                    <img src={previewImage || form.image_url} className="w-full h-full object-cover" />
-                    {previewImage && (
-                      <button
-                        onClick={() => setPreviewImage(null)}
-                        className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
+                    <img src={previewImage} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(null)}
+                      className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 ) : (
                   <VideoPlayer src={form.video_url} priority={true} />
