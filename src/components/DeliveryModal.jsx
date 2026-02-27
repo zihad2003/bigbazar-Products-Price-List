@@ -340,7 +340,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         {[
                                             { id: 'mirsarai', label: 'মীরসরাই', price: 'Free' },
                                             { id: 'chattogram', label: 'চট্টগ্রাম', price: '100৳' },
-                                            { id: 'outside', label: 'অন্যান্য', price: '150৳+' }
+                                            { id: 'outside', label: 'চট্টগ্রামের বাইরে', price: '150৳+' }
                                         ].map((area) => (
                                             <button
                                                 key={area.id}
