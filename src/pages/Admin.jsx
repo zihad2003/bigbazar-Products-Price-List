@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
@@ -617,81 +617,125 @@ export default function Admin() {
             </div>
 
             <div className="overflow-x-auto no-scrollbar pb-10">
-              <table className="w-full text-left border-collapse min-w-[1000px]">
+              <table className="w-full text-left border-collapse min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-white/5 text-[10px] font-black uppercase text-neutral-500 tracking-widest">
                     <th className="pb-4 pr-4">Date</th>
-                    <th className="pb-4 pr-4">Product</th>
+                    <th className="pb-4 pr-4">Product / Item</th>
                     <th className="pb-4 pr-4">Customer</th>
                     <th className="pb-4 pr-4">Phone</th>
-                    <th className="pb-4 pr-4">Area</th>
-                    <th className="pb-4 pr-4">Price</th>
+                    <th className="pb-4 pr-4">Address</th>
+                    <th className="pb-4 pr-4">Char.</th>
                     <th className="pb-4 pr-4">Total</th>
                     <th className="pb-4 pr-4">Variants</th>
-                    <th className="pb-4 pr-4">L4D</th>
+                    <th className="pb-4 pr-4">Pmt</th>
                     <th className="pb-4 pr-4">Note</th>
                     <th className="pb-4 pr-4">Status</th>
                     <th className="pb-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {orders.map(o => (
-                    <tr key={o.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-6 pr-4 text-xs font-bold text-neutral-400">
-                        {new Date(o.created_at).toLocaleDateString()}<br />
-                        <span className="text-[10px] opacity-50">{new Date(o.created_at).toLocaleTimeString()}</span>
-                      </td>
-                      <td className="py-6 pr-4">
-                        <p className="text-xs font-black text-white">{o.product_name}</p>
-                        <p className="text-[10px] text-neutral-500 font-bold">৳{o.product_price}</p>
-                      </td>
-                      <td className="py-6 pr-4">
-                        <p className="text-xs font-black text-white">{o.customer_name}</p>
-                        <p className="text-[10px] text-neutral-500 max-w-[150px] truncate" title={o.customer_address}>{o.customer_address}</p>
-                      </td>
-                      <td className="py-6 pr-4 text-xs font-black text-[#ce112d]">{o.customer_phone}</td>
-                      <td className="py-6 pr-4 text-[10px] font-black uppercase text-neutral-500 tracking-tighter">{o.delivery_area}</td>
-                      <td className="py-6 pr-4 text-xs font-bold text-neutral-400">৳{o.delivery_charge}</td>
-                      <td className="py-6 pr-4 text-xs font-black text-white">৳{o.total_amount}</td>
-                      <td className="py-6 pr-4">
-                        <div className="flex flex-col gap-1">
-                          {o.size && <span className="text-[9px] font-black bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400">SIZE: {o.size}</span>}
-                          {o.color && <span className="text-[9px] font-black bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400">COLOR: {o.color}</span>}
-                        </div>
-                      </td>
-                      <td className="py-6 pr-4">
-                        <span className={`px-2 py-1 rounded-md text-[10px] font-black ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'}`}>
-                          {o.last_four_digits}
-                        </span>
-                      </td>
-                      <td className="py-6 pr-4">
-                        <p className="text-[10px] text-neutral-500 font-bold max-w-[120px] truncate" title={o.customer_note}>
-                          {o.customer_note || "—"}
-                        </p>
-                      </td>
-                      <td className="py-6 pr-4">
-                        <select
-                          value={o.status}
-                          onChange={(e) => updateOrderStatus(o.id, e.target.value)}
-                          className={`bg-neutral-900 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-black uppercase outline-none focus:border-[#ce112d] ${o.status === 'Pending' ? 'text-yellow-500' :
-                            o.status === 'Shipped' ? 'text-blue-500' :
-                              o.status === 'Delivered' ? 'text-green-500' :
-                                'text-red-500'
-                            }`}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Shipped">Shipped</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Canceled">Canceled</option>
-                        </select>
-                      </td>
-                      <td className="py-6">
-                        <button onClick={() => deleteOrder(o.id)} className="p-2 text-neutral-600 hover:text-red-500 transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const productMap = {};
+                    products.forEach(p => productMap[p.id] = p);
+
+                    return orders.map(o => {
+                      const product = productMap[o.product_id];
+                      let productThumb = product?.image_url || product?.images?.[0];
+
+                      // Instagram Thumbnail Logic fallback
+                      if (!productThumb && product?.video_url) {
+                        const match = product.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
+                        const id = match ? match[2] : null;
+                        if (id) productThumb = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
+                      }
+
+                      return (
+                        <tr key={o.id} className="group hover:bg-white/[0.02] transition-colors">
+                          <td className="py-6 pr-4 text-xs font-bold text-neutral-400">
+                            {new Date(o.created_at).toLocaleDateString()}<br />
+                            <span className="text-[10px] opacity-50">{new Date(o.created_at).toLocaleTimeString()}</span>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-16 bg-neutral-900 rounded-xl overflow-hidden flex-shrink-0 border border-white/5 relative group-hover:border-[#ce112d]/30 transition-all">
+                                {productThumb ? (
+                                  <img src={productThumb} className="w-full h-full object-cover" alt="" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-neutral-800">
+                                    <ImageIcon size={20} />
+                                  </div>
+                                )}
+                                {product?.serial_no && (
+                                  <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[7px] font-black px-1 rounded-bl">#{product.serial_no}</div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-black text-white truncate max-w-[140px] leading-tight">{o.product_name}</p>
+                                <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase italic">৳{o.product_price}</p>
+                                {product?.serial_no && (
+                                  <p className="text-[8px] text-[#ce112d] font-black mt-0.5 tracking-widest uppercase">SL NO: {product.serial_no}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <p className="text-xs font-black text-white">{o.customer_name}</p>
+                            <p className="text-[10px] text-neutral-400 opacity-60 font-medium">Customer</p>
+                          </td>
+                          <td className="py-6 pr-4 text-xs font-black text-[#ce112d]">{o.customer_phone}</td>
+                          <td className="py-6 pr-4">
+                            <p className="text-[10px] text-neutral-400 font-black uppercase mb-1">{o.delivery_area}</p>
+                            <p className="text-[10px] text-neutral-500 max-w-[150px] font-medium leading-relaxed" title={o.customer_address}>{o.customer_address}</p>
+                          </td>
+                          <td className="py-6 pr-4 text-xs font-bold text-neutral-400">৳{o.delivery_charge}</td>
+                          <td className="py-6 pr-4">
+                            <p className="text-xs font-black text-white">৳{o.total_amount}</p>
+                            <p className="text-[8px] text-neutral-600 font-black uppercase tracking-tighter mt-1">Total Paid/Due</p>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <div className="flex flex-col gap-1.5">
+                              {o.size && <span className="text-[8px] font-black bg-[#ce112d]/10 text-[#ce112d] px-2 py-1 rounded tracking-widest border border-[#ce112d]/10 uppercase self-start">SIZE: {o.size}</span>}
+                              {o.color && <span className="text-[8px] font-black bg-white/5 border border-white/10 px-2 py-1 rounded text-white tracking-widest uppercase self-start">COLOR: {o.color}</span>}
+                            </div>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <span className={`px-2 py-1 rounded-md text-[10px] font-black ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500 border border-green-500/10' : 'bg-blue-500/20 text-blue-500 border border-blue-500/10'}`}>
+                              {o.last_four_digits}
+                            </span>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <div className="max-w-[120px]">
+                              <p className="text-[10px] text-neutral-500 font-bold leading-relaxed line-clamp-2 italic" title={o.customer_note}>
+                                {o.customer_note || "—"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-6 pr-4">
+                            <select
+                              value={o.status}
+                              onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                              className={`bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none focus:border-[#ce112d] cursor-pointer transition-all ${o.status === 'Pending' ? 'text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]' :
+                                o.status === 'Shipped' ? 'text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' :
+                                  o.status === 'Delivered' ? 'text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.1)]' :
+                                    'text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                                }`}
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Shipped">Shipped</option>
+                              <option value="Delivered">Delivered</option>
+                              <option value="Canceled">Canceled</option>
+                            </select>
+                          </td>
+                          <td className="py-6">
+                            <button onClick={() => deleteOrder(o.id)} className="p-3 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
               {orders.length === 0 && !loading && (
