@@ -1,9 +1,9 @@
-export const generateWhatsAppLink = (product, phone) => {
+export const generateWhatsAppLink = (product, phone, checkoutData = null) => {
   if (!phone) {
     console.warn("Phone number missing for WhatsApp link");
     return "#";
   }
-  const message = generateOrderMessage(product);
+  const message = generateOrderMessage(product, checkoutData);
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
@@ -16,26 +16,34 @@ export const generateMessengerLink = (pageId) => {
   return `https://www.messenger.com/t/${pageId}/?messaging_source=source%3Apages%3Amessage_shortlink&source_id=1441792&recurring_notification=0`;
 };
 
-export const generateOrderMessage = (product) => {
-  let message = `🛍️ *I want to order this product:*\n\n📌 *Name:* ${product.name}\n💰 *Price:* ${product.price} BDT\n🏷️ *Category:* ${product.category || 'General'}`;
+export const generateOrderMessage = (product, checkoutData = null) => {
+  let message = `🛍️ *NEW ORDER REQUEST*\n\n`;
+  message += `📌 *Product:* ${product.name}\n`;
+  message += `💰 *Price:* ${product.price} BDT\n`;
 
-  // Prioritize video link if available (requested by user)
-  if (product.video_url) {
-    message += `\n\n🎥 *Video Review:* ${product.video_url}`;
+  if (checkoutData) {
+    const deliveryCharge = checkoutData.deliveryArea === 'mirsarai' ? 0 : (checkoutData.deliveryArea === 'chattogram' ? 100 : 150);
+    message += `🚚 *Delivery Charge:* ${deliveryCharge} BDT\n`;
+    message += `💵 *Total Amount:* ${Number(product.price) + deliveryCharge} BDT\n\n`;
+    message += `👤 *CUSTOMER DETAILS*\n`;
+    message += `📝 *Name:* ${checkoutData.name}\n`;
+    message += `📞 *Phone:* ${checkoutData.phone}\n`;
+    message += `📍 *Address:* ${checkoutData.address}\n`;
+    message += `🗺️ *Area:* ${checkoutData.deliveryArea === 'mirsarai' ? 'মীরসরাই (Free)' : (checkoutData.deliveryArea === 'chattogram' ? 'চট্টগ্রাম (100৳)' : 'অন্যান্য (150৳+)')}\n`;
+  } else {
+    message += `🏷️ *Category:* ${product.category || 'General'}\n`;
   }
 
-  // Fallback to image if no video, or maybe just include both? 
-  // User said "instade of supabase link", so if video exists, we might skip the image link which is usually the supabase one.
-  // However, images are useful. I'll add the image only if no video is present, OR I'll add the image as a separate line if really needed.
-  // For safety and "richness", providing the video link is key.
-  // Let's stick to the user request: Video link IS the priority.
+  if (product.video_url) {
+    message += `\n🎥 *Video Review:* ${product.video_url}`;
+  }
 
   const imageUrl = product.image_url || (product.images && product.images[0]) || product.image;
   if (!product.video_url && imageUrl) {
-    message += `\n\n🖼️ *Image:* ${imageUrl}`;
+    message += `\n🖼️ *Image:* ${imageUrl}`;
   }
 
-  message += `\n\n_Please confirm stock and delivery charge._`;
+  message += `\n\n_Sent via BigBazar Online Store_`;
   return message;
 };
 
