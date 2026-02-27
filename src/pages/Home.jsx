@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
+import BannerSlider from '../components/BannerSlider';
 import { ShoppingBag, ChevronDown, Instagram, Search, X } from 'lucide-react';
 
 const PAGE_SIZE = 12;
@@ -19,7 +20,8 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
       title: '5% FLAT DISCOUNT',
       subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE',
       image_url: null
-    }
+    },
+    main_slides: []
   });
 
   const { productId } = useParams();
@@ -34,13 +36,16 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   }, [searchQuery]);
 
   useEffect(() => {
-    // Fetch Banner Settings
-    supabase.from('site_settings').select('value').eq('key', 'hero_banner').single()
+    // Fetch Banner & Slider Settings
+    supabase.from('site_settings').select('*')
       .then(({ data }) => {
-        if (data?.value) {
+        if (data) {
+          const banner = data.find(s => s.key === 'hero_banner')?.value;
+          const slides = data.find(s => s.key === 'main_slides')?.value;
           setSiteSettings(prev => ({
             ...prev,
-            banner: data.value
+            banner: banner || prev.banner,
+            main_slides: Array.isArray(slides) ? slides : []
           }));
         }
       });
@@ -136,9 +141,11 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     <div className="min-h-screen bg-black px-4 md:px-8 pb-32">
       <div className="max-w-7xl mx-auto space-y-16">
 
-        {/* Banner Section - Logic: Show Image ONLY if present, otherwise show Text Banner */}
+        {/* Banner Section - Logic: Show Slider if slides exist, otherwise show Image/Text Banner */}
         <section className="relative">
-          {siteSettings.banner.image_url ? (
+          {siteSettings.main_slides?.length > 0 ? (
+            <BannerSlider banners={siteSettings.main_slides} />
+          ) : siteSettings.banner.image_url ? (
             // IMAGE BANNER MODE
             <div className="relative w-full aspect-[21/9] md:aspect-[32/9] min-h-[200px] rounded-[30px] overflow-hidden border border-white/5 bg-neutral-900">
               <img
@@ -156,7 +163,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-8xl font-black italic uppercase italic tracking-tighter leading-none text-white drop-shadow-2xl"
+                className="text-4xl md:text-8xl font-black italic uppercase tracking-tighter leading-none text-white drop-shadow-2xl"
               >
                 {siteSettings.banner.title}
               </motion.h2>

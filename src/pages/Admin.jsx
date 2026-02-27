@@ -35,7 +35,8 @@ export default function Admin() {
 
   const [siteSettings, setSiteSettings] = useState({
     hero_banner: { title: '', subtitle: '', image_url: '' },
-    contact_info: { whatsapp: '', facebook: '', instagram: '' }
+    contact_info: { whatsapp: '', facebook: '', instagram: '' },
+    main_slides: []
   });
 
   useEffect(() => {
@@ -88,14 +89,17 @@ export default function Admin() {
     const { data } = await supabase.from('site_settings').select('*');
     const settings = {
       hero_banner: { title: '5% FLAT DISCOUNT', subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE', image_url: null },
-      contact_info: { whatsapp: '', facebook: '', instagram: '' }
+      contact_info: { whatsapp: '', facebook: '', instagram: '' },
+      main_slides: []
     };
 
     if (data) {
       const banner = data.find(s => s.key === 'hero_banner')?.value;
       const contact = data.find(s => s.key === 'contact_info')?.value;
+      const slides = data.find(s => s.key === 'main_slides')?.value;
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
+      if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
     }
     setSiteSettings(settings);
   };
@@ -201,6 +205,8 @@ export default function Admin() {
       const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
       if (target === 'banner') {
         setSiteSettings({ ...siteSettings, hero_banner: { ...siteSettings.hero_banner, image_url: data.publicUrl } });
+      } else if (target === 'slider') {
+        setSiteSettings({ ...siteSettings, main_slides: [...(siteSettings.main_slides || []), { id: Date.now(), image: data.publicUrl }] });
       } else {
         setForm({ ...form, images: [...(form.images || []), data.publicUrl] });
       }
@@ -373,6 +379,53 @@ export default function Admin() {
                 <Save size={18} /> Update Banner
               </button>
             </form>
+
+            {/* Slider Management Section */}
+            <div className="space-y-8 pt-12 border-t border-white/5">
+              <div>
+                <h3 className="text-xl font-black italic uppercase">Home Slider <span className="text-[#ce112d]">Images</span></h3>
+                <p className="text-neutral-500 text-[10px] mt-1 uppercase font-bold tracking-widest">Add images for the main page carousel (স্লাইডার ইমেজ যোগ করুন)</p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {siteSettings.main_slides?.map((slide, i) => (
+                  <div key={slide.id || i} className="relative aspect-video bg-neutral-900 rounded-2xl overflow-hidden border border-white/5 group">
+                    <img src={slide.image} className="w-full h-full object-cover" alt="" />
+                    <button
+                      type="button"
+                      onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
+                      className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <label className="aspect-video rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all text-neutral-500">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                    <Plus size={16} />
+                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-widest">Add Slide</span>
+                  <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'slider')} />
+                </label>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await supabase.from('site_settings').upsert({ key: 'main_slides', value: siteSettings.main_slides }, { onConflict: 'key' });
+                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                    else setAlertModal({ isOpen: true, title: 'Success', message: "Slider Updated Successfully!", type: 'success' });
+                    setLoading(false);
+                  }}
+                  className="flex items-center gap-2 bg-[#ce112d] px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-red-900/20 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  <Save size={18} /> {loading ? 'Saving...' : 'Save Slider'}
+                </button>
+              </div>
+            </div>
           </div>
         ) : activeTab === 'add' ? (
           <form onSubmit={handleProductSubmit} className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
