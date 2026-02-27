@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { ThemeProvider } from './ThemeContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -19,7 +20,7 @@ function PublicLayout() {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white">
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <Navbar
         selectedCategory={category}
         onSelectCategory={setCategory}
@@ -39,14 +40,16 @@ function PublicLayout() {
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <ScrollToTop />
-        <Routes>
-          <Route path="/" element={<PublicLayout />} />
-          <Route path="/product/:productId" element={<PublicLayout />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <ScrollToTop />
+          <Routes>
+            <Route path="/" element={<PublicLayout />} />
+            <Route path="/product/:productId" element={<PublicLayout />} />
+            <Route path="/admin" element={<Admin />} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

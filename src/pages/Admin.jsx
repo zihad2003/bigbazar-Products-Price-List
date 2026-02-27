@@ -3,7 +3,8 @@ import { supabase } from '../supabaseClient';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
-  AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download
+  AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
+  Sun, Moon
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -24,6 +25,7 @@ export default function Admin() {
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [siteTheme, setSiteTheme] = useState('dark');
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -100,6 +102,8 @@ export default function Admin() {
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
       if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
+      const themeData = data.find(s => s.key === 'site_theme')?.value;
+      if (themeData?.mode) setSiteTheme(themeData.mode);
     }
     setSiteSettings(settings);
   };
@@ -429,6 +433,41 @@ export default function Admin() {
                 </button>
               </div>
             </div>
+
+            {/* Theme Mode Section */}
+            <div className="space-y-8 pt-12 border-t border-white/5">
+              <div>
+                <h3 className="text-xl font-black italic uppercase">Site <span className="text-[#ce112d]">Theme</span></h3>
+                <p className="text-neutral-500 text-[10px] mt-1 uppercase font-bold tracking-widest">Choose Light or Dark mode for customers</p>
+              </div>
+              <div className="flex gap-4">
+                <button type="button" onClick={() => setSiteTheme('dark')}
+                  className={`flex-1 flex flex-col items-center gap-4 p-6 rounded-2xl border-2 transition-all ${siteTheme === 'dark' ? 'border-[#ce112d] bg-[#ce112d]/5' : 'border-white/10 hover:border-white/20'}`}
+                >
+                  <Moon size={28} className={siteTheme === 'dark' ? 'text-[#ce112d]' : 'text-neutral-600'} />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${siteTheme === 'dark' ? 'text-white' : 'text-neutral-500'}`}>Dark Mode</span>
+                </button>
+                <button type="button" onClick={() => setSiteTheme('light')}
+                  className={`flex-1 flex flex-col items-center gap-4 p-6 rounded-2xl border-2 transition-all ${siteTheme === 'light' ? 'border-[#ce112d] bg-[#ce112d]/5' : 'border-white/10 hover:border-white/20'}`}
+                >
+                  <Sun size={28} className={siteTheme === 'light' ? 'text-[#ce112d]' : 'text-neutral-600'} />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${siteTheme === 'light' ? 'text-white' : 'text-neutral-500'}`}>Light Mode</span>
+                </button>
+              </div>
+              <button type="button" disabled={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  const { error } = await supabase.from('site_settings').upsert({ key: 'site_theme', value: { mode: siteTheme } }, { onConflict: 'key' });
+                  if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                  else setAlertModal({ isOpen: true, title: 'Success', message: `Theme set to ${siteTheme === 'dark' ? 'Dark' : 'Light'} Mode!`, type: 'success' });
+                  setLoading(false);
+                }}
+                className="flex items-center gap-2 bg-[#ce112d] px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-red-900/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Save size={18} /> {loading ? 'Saving...' : 'Save Theme'}
+              </button>
+            </div>
+
           </div>
         ) : activeTab === 'add' ? (
           <form onSubmit={handleProductSubmit} className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
