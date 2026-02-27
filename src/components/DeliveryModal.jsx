@@ -15,7 +15,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         address: '',
         deliveryArea: 'mirsarai',
         lastFourDigits: '',
-        note: ''
+        note: '',
+        paymentMethod: 'cod' // Added payment method
     });
 
     if (!isOpen) return null;
@@ -86,8 +87,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
     };
 
     const handleConfirmOrder = async () => {
-        if (formData.deliveryArea !== 'mirsarai' && !formData.lastFourDigits) {
-            setError("অনুগ্রহ করে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন।");
+        if (formData.paymentMethod === 'bkash' && !formData.lastFourDigits) {
+            setError("অর্ডার কনফার্ম করতে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন।");
             return;
         }
 
@@ -107,7 +108,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     delivery_area: formData.deliveryArea,
                     delivery_charge: deliveryCharges[formData.deliveryArea],
                     total_amount: calculateTotal(),
-                    last_four_digits: formData.lastFourDigits || 'COD',
+                    last_four_digits: formData.lastFourDigits || (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
                     size: selectedSize || null,
                     color: selectedColor || null,
@@ -376,22 +377,47 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                     </div>
                                 </div>
 
-                                {formData.deliveryArea === 'mirsarai' ? (
-                                    <div className="bg-green-500/5 border border-green-500/20 rounded-[32px] p-8 space-y-6">
+                                {/* Payment Method Selection */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest opacity-50 ml-2">পেমেন্ট পদ্ধতি নির্বাচন করুন (Select Payment Method)</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setFormData(p => ({ ...p, paymentMethod: 'cod' }))}
+                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'cod' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : 'border-white/5 bg-white/5'}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'cod' ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500'}`}>
+                                                <Truck size={20} />
+                                            </div>
+                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'cod' ? 'text-white' : 'text-neutral-500'}`}>Cash on Delivery</p>
+                                        </button>
+                                        <button
+                                            onClick={() => setFormData(p => ({ ...p, paymentMethod: 'bkash' }))}
+                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'bkash' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : 'border-white/5 bg-white/5'}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'bkash' ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500'}`}>
+                                                <CreditCard size={20} />
+                                            </div>
+                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'bkash' ? 'text-white' : 'text-neutral-500'}`}>bKash Payment</p>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {formData.paymentMethod === 'cod' ? (
+                                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 space-y-6">
                                         <div className="flex flex-col items-center text-center gap-4">
-                                            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center text-green-500">
-                                                <Truck size={32} />
+                                            <div className="w-16 h-16 bg-[#ce112d]/10 rounded-full flex items-center justify-center text-[#ce112d]">
+                                                <CheckCircle2 size={32} />
                                             </div>
                                             <div>
-                                                <h4 className="text-xl font-black text-white uppercase italic">ক্যাশ অন ডেলিভারি (COD)</h4>
-                                                <p className="text-neutral-400 text-sm mt-2">মীরসরাইয়ের মধ্যে ডেলিভারি ফ্রি! কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। সরাসরি অর্ডার কনফার্ম করুন।</p>
+                                                <h4 className="text-xl font-black text-white uppercase italic">অর্ডার কনফার্ম করুন</h4>
+                                                <p className="text-neutral-400 text-sm mt-2 leading-relaxed">পণ্য হাতে পেয়ে পেমেন্ট করতে পারবেন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। আমাদের প্রতিনিধি শীঘ্রই আপনাকে ফোন করবেন।</p>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-[32px] p-8 space-y-8">
                                         <div className="text-center space-y-4">
-                                            <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে অগ্রিম চার্জ দিন:</span>
+                                            <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে সেন্ড মানি করুন:</span>
                                             <div className="flex items-center justify-center gap-4">
                                                 <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
                                                 <button
@@ -404,7 +430,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         </div>
 
                                         <div className="space-y-4 pt-4 border-t border-white/5">
-                                            <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট:</label>
+                                            <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন:</label>
                                             <input
                                                 type="text"
                                                 name="lastFourDigits"
@@ -412,13 +438,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                 placeholder="e.g. 1234"
                                                 value={formData.lastFourDigits}
                                                 onChange={handleInputChange}
-                                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-700"
+                                                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
                                             />
                                         </div>
 
                                         <div className="flex gap-4 items-center p-5 bg-[#ce112d]/10 rounded-2xl">
                                             <AlertCircle className="text-[#ce112d]" size={20} />
-                                            <p className="text-xs text-neutral-300 font-medium leading-relaxed italic">ডেলিভারি চার্জ পরিশোধ করার পর আপনার পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে লিখে অর্ডারটি কনফার্ম করুন।</p>
+                                            <p className="text-[11px] text-neutral-300 font-medium leading-relaxed italic">বিকাশ সেন্ড মানি করার পর আপনার ট্রানজ্যাকশন নিশ্চিত করতে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে দিন এবং নিচের বাটনে ক্লিক করুন।</p>
                                         </div>
                                     </div>
                                 )}
