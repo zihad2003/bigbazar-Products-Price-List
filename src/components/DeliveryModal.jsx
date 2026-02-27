@@ -137,7 +137,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             icon: <MapPin className="text-[#ce112d]" />,
             title: "মীরসরাইয়ের মধ্যে",
             desc: "🎁 ফ্রি ডেলিভারি",
-            bg: "bg-green-500/10"
+            bg: ""
         },
         {
             icon: <MapPin className="text-[#ce112d]" />,
