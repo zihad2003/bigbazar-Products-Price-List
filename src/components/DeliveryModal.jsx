@@ -143,13 +143,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             icon: <MapPin className="text-[#ce112d]" />,
             title: "চট্টগ্রাম জেলার মধ্যে",
             desc: "💰 ডেলিভারি চার্জ: ১০০ টাকা",
-            bg: "bg-white/5"
+            bg: ""
         },
         {
             icon: <MapPin className="text-[#ce112d]" />,
             title: "চট্টগ্রামের বাইরে",
             desc: "💰 ডেলিভারি চার্জ: ১৫০ টাকা (শুরু)",
-            bg: "bg-white/5"
+            bg: ""
         }
     ];
 
@@ -160,18 +160,20 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[250] backdrop-blur-2xl flex items-center justify-center p-4"
+                    style={{ backgroundColor: 'var(--bg-overlay)' }}
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="bg-neutral-900 border border-white/10 rounded-[40px] p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_100px_rgba(37,211,102,0.1)]"
+                        className="border rounded-[40px] p-10 max-w-md w-full text-center space-y-6"
+                        style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
                     >
                         <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                             <CheckCircle2 className="text-green-500" size={40} />
                         </div>
-                        <h2 className="text-3xl font-black italic uppercase text-white">Order Confirmed!</h2>
-                        <p className="text-neutral-400 font-medium">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। আমরা শীঘ্রই আপনার সাথে যোগাযোগ করবো।</p>
+                        <h2 className="text-3xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Confirmed!</h2>
+                        <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। আমরা শীঘ্রই আপনার সাথে যোগাযোগ করবো।</p>
                         <button
                             onClick={onClose}
                             className="w-full py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95"
@@ -190,7 +192,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-6"
+                className="fixed inset-0 z-[250] backdrop-blur-2xl flex items-center justify-center p-4 md:p-6"
+                style={{ backgroundColor: 'var(--bg-overlay)' }}
                 onClick={onClose}
             >
                 <motion.div
@@ -198,17 +201,18 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.9, opacity: 0, y: 40 }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className="relative w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-[40px] overflow-hidden shadow-[0_0_150px_rgba(0,0,0,0.9)]"
+                    className="relative w-full max-w-2xl border rounded-[40px] overflow-hidden"
+                    style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.2)' }}
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="p-5 md:p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent">
+                    <div className="p-5 md:p-8 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent" style={{ borderColor: 'var(--border-color)' }}>
                         <div className="flex items-center gap-5">
                             <div className="w-12 h-12 bg-[#ce112d] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(206,17,45,0.4)]">
                                 {step === 1 ? <Truck className="text-white" size={24} /> : (step === 2 ? <User className="text-white" size={24} /> : <CreditCard className="text-white" size={24} />)}
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black italic uppercase text-white leading-none">
+                                <h2 className="text-2xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>
                                     {step === 1 ? "ডেলিভারি তথ্য" : (step === 2 ? "অর্ডার ফর্ম" : "কনফার্মেশন")}
                                 </h2>
                                 <p className="text-[#ce112d] text-[10px] font-black uppercase tracking-[0.3em] mt-2">
@@ -218,7 +222,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-3 rounded-full hover:bg-white/5 text-neutral-500 hover:text-white transition-all"
+                            className="p-3 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}
                         >
                             <X size={24} />
                         </button>
@@ -230,10 +234,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 {/* Delivery Locations */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
                                     {infoBlocks.map((block, i) => (
-                                        <div key={i} className={`${block.bg} p-6 rounded-3xl border border-white/5`}>
+                                        <div key={i} className={`${block.bg} p-6 rounded-3xl border`} style={{ borderColor: 'var(--border-color)', backgroundColor: block.bg ? undefined : 'var(--bg-card)' }}>
                                             <div className="mb-4">{block.icon}</div>
-                                            <h3 className="text-sm font-black text-white mb-2 uppercase tracking-tight">{block.title}</h3>
-                                            <p className="text-xs font-bold text-neutral-400 leading-relaxed">{block.desc}</p>
+                                            <h3 className="text-sm font-black mb-2 uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>{block.title}</h3>
+                                            <p className="text-xs font-bold leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{block.desc}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -241,17 +245,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 {/* Time and Address */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                                     <div className="flex gap-4 items-start">
-                                        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center flex-shrink-0 text-[#ce112d]"><Clock size={20} /></div>
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Clock size={20} /></div>
                                         <div>
-                                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-1 opacity-50">ডেলিভারি সময়</h4>
-                                            <p className="text-neutral-300 text-sm font-bold">৩–৪ দিন</p>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-50" style={{ color: 'var(--text-primary)' }}>ডেলিভারি সময়</h4>
+                                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>৩–৪ দিন</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 items-start">
-                                        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center flex-shrink-0 text-[#ce112d]"><MapPin size={20} /></div>
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><MapPin size={20} /></div>
                                         <div>
-                                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-1 opacity-50">শপ ঠিকানা</h4>
-                                            <p className="text-neutral-300 text-sm font-bold">বারইয়াহাট, মীরসরাই</p>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-50" style={{ color: 'var(--text-primary)' }}>শপ ঠিকানা</h4>
+                                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>বারইয়াহাট, মীরসরাই</p>
                                         </div>
                                     </div>
                                 </div>
@@ -259,9 +263,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-3xl p-6 mb-8">
                                     <div className="flex items-center gap-3 mb-4">
                                         <AlertCircle className="text-[#ce112d]" size={18} />
-                                        <h4 className="text-sm font-black text-white uppercase italic">গুরুত্বপূর্ণ নোট</h4>
+                                        <h4 className="text-sm font-black uppercase italic" style={{ color: 'var(--text-primary)' }}>গুরুত্বপূর্ণ নোট</h4>
                                     </div>
-                                    <p className="text-xs text-neutral-400 leading-relaxed italic">ডেলিভারি চার্জ অর্ডার কনফার্ম করার সময় অ্যাডভান্সে পরিশোধ করতে হবে। পণ্যের ওজন অনুযায়ী চার্জ বাড়তে পারে।</p>
+                                    <p className="text-xs leading-relaxed italic" style={{ color: 'var(--text-secondary)' }}>ডেলিভারি চার্জ অর্ডার কনফার্ম করার সময় অ্যাডভান্সে পরিশোধ করতে হবে। পণ্যের ওজন অনুযায়ী চার্জ বাড়তে পারে।</p>
                                 </div>
                             </motion.div>
                         )}
@@ -287,7 +291,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             placeholder="আপনার নাম (Your Name)"
                                             value={formData.name}
                                             onChange={handleInputChange}
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600"
+                                            className="w-full border rounded-2xl py-4 pl-12 pr-6 focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                         />
                                     </div>
                                     <div className="relative">
@@ -298,7 +303,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             placeholder="মোবাইল নাম্বার (Phone Number)"
                                             value={formData.phone}
                                             onChange={handleInputChange}
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600"
+                                            className="w-full border rounded-2xl py-4 pl-12 pr-6 focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                         />
                                     </div>
                                     <div className="relative">
@@ -309,7 +315,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             value={formData.address}
                                             onChange={handleInputChange}
                                             rows="2"
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600 resize-none"
+                                            className="w-full border rounded-2xl py-4 pl-12 pr-6 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                         />
                                     </div>
 
@@ -321,13 +328,14 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             value={formData.note}
                                             onChange={handleInputChange}
                                             rows="3"
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600 resize-none"
+                                            className="w-full border rounded-2xl py-4 pl-12 pr-6 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest opacity-50 ml-2">ডেলিভারি এরিয়া (Delivery Area)</h4>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-50 ml-2" style={{ color: 'var(--text-primary)' }}>ডেলিভারি এরিয়া (Delivery Area)</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         {[
                                             { id: 'mirsarai', label: 'মীরসরাই', price: 'Free' },
@@ -337,10 +345,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             <button
                                                 key={area.id}
                                                 onClick={() => setFormData(prev => ({ ...prev, deliveryArea: area.id }))}
-                                                className={`p-4 rounded-2xl border transition-all text-left ${formData.deliveryArea === area.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'border-white/5 bg-white/5'}`}
+                                                className={`p-4 rounded-2xl border transition-all text-left ${formData.deliveryArea === area.id ? 'border-[#ce112d] bg-[#ce112d]/10' : ''}`}
+                                                style={formData.deliveryArea !== area.id ? { borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-card)' } : {}}
                                             >
-                                                <p className={`text-xs font-black ${formData.deliveryArea === area.id ? 'text-[#ce112d]' : 'text-white'}`}>{area.label}</p>
-                                                <p className="text-[10px] text-neutral-500 font-bold mt-1">{area.price}</p>
+                                                <p className={`text-xs font-black ${formData.deliveryArea === area.id ? 'text-[#ce112d]' : ''}`} style={formData.deliveryArea !== area.id ? { color: 'var(--text-primary)' } : {}}>{area.label}</p>
+                                                <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--text-muted)' }}>{area.price}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -361,63 +370,65 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                     </motion.div>
                                 )}
 
-                                <div className="p-8 bg-white/5 rounded-[32px] border border-white/10 space-y-6">
-                                    <div className="flex justify-between items-center pb-4 border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-[#ce112d]">
+                                <div className="p-8 rounded-[32px] border space-y-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+                                    <div className="flex justify-between items-center pb-4 border-b text-[10px] font-black uppercase tracking-widest text-[#ce112d]" style={{ borderColor: 'var(--border-color)' }}>
                                         <span>Selected Variations</span>
                                         <div className="flex gap-2">
                                             {selectedSize && <span className="px-2 py-1 bg-[#ce112d]/10 rounded-md">Size: {selectedSize}</span>}
-                                            {selectedColor && <span className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-white">Color: {selectedColor}</span>}
+                                            {selectedColor && <span className="px-2 py-1 border rounded-md" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>Color: {selectedColor}</span>}
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                        <span className="text-neutral-400 font-bold">পণ্যের দাম (Product Price)</span>
-                                        <span className="text-white font-black">৳{product.price}</span>
+                                    <div className="flex justify-between items-center pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                                        <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>পণ্যের দাম (Product Price)</span>
+                                        <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{product.price}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                        <span className="text-neutral-400 font-bold">ডেলিভারি চার্জ (Delivery Charge)</span>
-                                        <span className="text-white font-black">৳{deliveryCharges[formData.deliveryArea]}</span>
+                                    <div className="flex justify-between items-center pb-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                                        <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>ডেলিভারি চার্জ (Delivery Charge)</span>
+                                        <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{deliveryCharges[formData.deliveryArea]}</span>
                                     </div>
                                     <div className="flex justify-between items-center pt-2">
                                         <span className="text-xl font-black text-[#ce112d] italic">সর্বমোট (Total)</span>
-                                        <span className="text-3xl font-black text-[#ce112d] shadow-[0_0_30px_rgba(206,17,45,0.2)]">৳{calculateTotal()}</span>
+                                        <span className="text-3xl font-black text-[#ce112d]">৳{calculateTotal()}</span>
                                     </div>
                                 </div>
 
                                 {/* Payment Method Selection */}
                                 <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black text-white uppercase tracking-widest opacity-50 ml-2">পেমেন্ট পদ্ধতি নির্বাচন করুন (Select Payment Method)</h4>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest opacity-50 ml-2" style={{ color: 'var(--text-primary)' }}>পেমেন্ট পদ্ধতি নির্বাচন করুন (Select Payment Method)</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <button
                                             onClick={() => setFormData(p => ({ ...p, paymentMethod: 'cod' }))}
-                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'cod' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : 'border-white/5 bg-white/5'}`}
+                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'cod' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : ''}`}
+                                            style={formData.paymentMethod !== 'cod' ? { borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-card)' } : {}}
                                         >
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'cod' ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500'}`}>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'cod' ? 'bg-[#ce112d] text-white' : ''}`} style={formData.paymentMethod !== 'cod' ? { backgroundColor: 'var(--bg-badge)', color: 'var(--text-muted)' } : {}}>
                                                 <Truck size={20} />
                                             </div>
-                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'cod' ? 'text-white' : 'text-neutral-500'}`}>Cash on Delivery</p>
+                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'cod' ? 'text-[#ce112d]' : ''}`} style={formData.paymentMethod !== 'cod' ? { color: 'var(--text-muted)' } : {}}>Cash on Delivery</p>
                                         </button>
                                         <button
                                             onClick={() => setFormData(p => ({ ...p, paymentMethod: 'bkash' }))}
-                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'bkash' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : 'border-white/5 bg-white/5'}`}
+                                            className={`p-6 rounded-[24px] border transition-all text-center flex flex-col items-center gap-3 ${formData.paymentMethod === 'bkash' ? 'border-[#ce112d] bg-[#ce112d]/10 ring-1 ring-[#ce112d]/50' : ''}`}
+                                            style={formData.paymentMethod !== 'bkash' ? { borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-card)' } : {}}
                                         >
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'bkash' ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500'}`}>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'bkash' ? 'bg-[#ce112d] text-white' : ''}`} style={formData.paymentMethod !== 'bkash' ? { backgroundColor: 'var(--bg-badge)', color: 'var(--text-muted)' } : {}}>
                                                 <CreditCard size={20} />
                                             </div>
-                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'bkash' ? 'text-white' : 'text-neutral-500'}`}>bKash Payment</p>
+                                            <p className={`text-xs font-black uppercase ${formData.paymentMethod === 'bkash' ? 'text-[#ce112d]' : ''}`} style={formData.paymentMethod !== 'bkash' ? { color: 'var(--text-muted)' } : {}}>bKash Payment</p>
                                         </button>
                                     </div>
                                 </div>
 
                                 {formData.paymentMethod === 'cod' ? (
                                     deliveryCharges[formData.deliveryArea] === 0 ? (
-                                        <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 space-y-6">
+                                        <div className="border rounded-[32px] p-8 space-y-6" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                             <div className="flex flex-col items-center text-center gap-4">
                                                 <div className="w-16 h-16 bg-[#ce112d]/10 rounded-full flex items-center justify-center text-[#ce112d]">
                                                     <CheckCircle2 size={32} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-xl font-black text-white uppercase italic">অর্ডার কনফার্ম করুন</h4>
-                                                    <p className="text-neutral-400 text-sm mt-2 leading-relaxed">পণ্য হাতে পেয়ে পেমেন্ট করতে পারবেন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। আমাদের প্রতিনিধি শীঘ্রই আপনাকে ফোন করবেন।</p>
+                                                    <h4 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-primary)' }}>অর্ডার কনফার্ম করুন</h4>
+                                                    <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>পণ্য হাতে পেয়ে পেমেন্ট করতে পারবেন। কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। আমাদের প্রতিনিধি শীঘ্রই আপনাকে ফোন করবেন।</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -428,15 +439,15 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                     <Wallet size={32} />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <h4 className="text-xl font-black text-white uppercase italic">ডেলিভারি চার্জ অগ্রিম দিন</h4>
-                                                    <p className="text-neutral-400 text-[11px] leading-relaxed italic">অর্ডার নিশ্চিত করতে শুধুমাত্র ডেলিভারি চার্জ (৳{deliveryCharges[formData.deliveryArea]}) অগ্রিম দিতে হবে। পণ্যের টাকা পণ্য হাতে পেয়ে দিবেন।</p>
+                                                    <h4 className="text-xl font-black uppercase italic" style={{ color: 'var(--text-primary)' }}>ডেলিভারি চার্জ অগ্রিম দিন</h4>
+                                                    <p className="text-[11px] leading-relaxed italic" style={{ color: 'var(--text-secondary)' }}>অর্ডার নিশ্চিত করতে শুধুমাত্র ডেলিভারি চার্জ (৳{deliveryCharges[formData.deliveryArea]}) অগ্রিম দিতে হবে। পণ্যের টাকা পণ্য হাতে পেয়ে দিবেন।</p>
                                                 </div>
                                             </div>
 
-                                            <div className="text-center space-y-4 pt-4 border-t border-white/5">
-                                                <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest text-[#ce112d]">বিকাশ (পার্সোনাল) নাম্বার:</span>
+                                            <div className="text-center space-y-4 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                                                <span className="font-black uppercase text-[10px] tracking-widest text-[#ce112d]">বিকাশ (পার্সোনাল) নাম্বার:</span>
                                                 <div className="flex items-center justify-center gap-4">
-                                                    <span className="text-2xl md:text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                                    <span className="text-2xl md:text-3xl font-black tracking-[0.2em]" style={{ color: 'var(--text-primary)' }}>{bKashNumber}</span>
                                                     <button
                                                         onClick={handleCopyNumber}
                                                         className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
@@ -455,7 +466,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                     placeholder="e.g. 1234"
                                                     value={formData.lastFourDigits}
                                                     onChange={handleInputChange}
-                                                    className="w-full bg-black/40 border border-white/10 rounded-2xl py-3.5 px-6 text-center text-xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
+                                                    className="w-full border rounded-2xl py-3.5 px-6 text-center text-xl font-black focus:border-[#ce112d] outline-none transition-all"
+                                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                                 />
                                             </div>
                                         </div>
@@ -463,9 +475,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 ) : (
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-[32px] p-8 space-y-8">
                                         <div className="text-center space-y-4">
-                                            <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে সেন্ড মানি করুন:</span>
+                                            <span className="font-black uppercase text-[10px] tracking-widest text-[#ce112d]">বিকাশ (পার্সোনাল) নাম্বারে সেন্ড মানি করুন:</span>
                                             <div className="flex items-center justify-center gap-4">
-                                                <span className="text-2xl md:text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                                <span className="text-2xl md:text-3xl font-black tracking-[0.2em]" style={{ color: 'var(--text-primary)' }}>{bKashNumber}</span>
                                                 <button
                                                     onClick={handleCopyNumber}
                                                     className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
@@ -475,7 +487,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4 pt-4 border-t border-white/5">
+                                        <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                             <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন:</label>
                                             <input
                                                 type="text"
@@ -484,13 +496,14 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                 placeholder="e.g. 1234"
                                                 value={formData.lastFourDigits}
                                                 onChange={handleInputChange}
-                                                className="w-full bg-black/40 border border-white/10 rounded-2xl py-3.5 px-6 text-center text-xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
+                                                className="w-full border rounded-2xl py-3.5 px-6 text-center text-xl font-black focus:border-[#ce112d] outline-none transition-all"
+                                                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                             />
                                         </div>
 
                                         <div className="flex gap-4 items-center p-5 bg-[#ce112d]/10 rounded-2xl">
                                             <AlertCircle className="text-[#ce112d]" size={20} />
-                                            <p className="text-[11px] text-neutral-300 font-medium leading-relaxed italic">বিকাশ সেন্ড মানি করার পর আপনার ট্রানজ্যাকশন নিশ্চিত করতে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে দিন এবং নিচের বাটনে ক্লিক করুন।</p>
+                                            <p className="text-[11px] font-medium leading-relaxed italic" style={{ color: 'var(--text-secondary)' }}>বিকাশ সেন্ড মানি করার পর আপনার ট্রানজ্যাকশন নিশ্চিত করতে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে দিন এবং নিচের বাটনে ক্লিক করুন।</p>
                                         </div>
                                     </div>
                                 )}
@@ -499,13 +512,14 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-6 md:p-10 bg-black/40 border-t border-white/5">
+                    <div className="p-6 md:p-10 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                         <div className="flex gap-4">
                             {step > 1 && (
                                 <button
                                     onClick={handleBack}
                                     disabled={isSubmitting}
-                                    className="px-6 py-5 bg-white/5 text-white rounded-2xl font-black uppercase hover:bg-white/10 transition-all disabled:opacity-50"
+                                    className="px-6 py-5 rounded-2xl font-black uppercase transition-all disabled:opacity-50"
+                                    style={{ backgroundColor: 'var(--bg-badge)', color: 'var(--text-primary)' }}
                                 >
                                     <ChevronLeft size={24} />
                                 </button>
@@ -537,7 +551,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         </div>
                         <button
                             onClick={onClose}
-                            className="w-full mt-6 text-neutral-500 font-black uppercase tracking-[0.3em] text-[10px] hover:text-white transition-colors"
+                            className="w-full mt-6 font-black uppercase tracking-[0.3em] text-[10px] transition-colors"
+                            style={{ color: 'var(--text-muted)' }}
                         >
                             Close
                         </button>
