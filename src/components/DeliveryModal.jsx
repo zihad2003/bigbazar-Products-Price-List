@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, MapPin, Clock, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
     const [step, setStep] = useState(1); // 1: Info, 2: Form, 3: Payment/Final
@@ -19,7 +20,6 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
     if (!isOpen) return null;
 
     const bKashNumber = "01857045449";
-    const googleSheetAppUrl = "https://script.google.com/macros/s/AKfycbz_vU_TqM_3v-C1BwKqN4Q3E8b69_oR_f-q8-q8-q8/exec"; // Placeholder
 
     const deliveryCharges = {
         mirsarai: 0,
@@ -82,49 +82,28 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                 lastFourDigits: formData.lastFourDigits
             };
 
-            // The most reliable way to send data from a browser to a Google Apps Script 
-            // without CORS issues is to use a hidden form and target it to an iframe.
+            const { error: insertError } = await supabase
+                .from('orders')
+                .insert([{
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_price: parseFloat(product.price),
+                    customer_name: formData.name,
+                    customer_phone: formData.phone,
+                    customer_address: formData.address,
+                    delivery_area: formData.deliveryArea,
+                    delivery_charge: deliveryCharges[formData.deliveryArea],
+                    total_amount: calculateTotal(),
+                    last_four_digits: formData.lastFourDigits || 'COD',
+                    status: 'Pending'
+                }]);
 
-            // Create a temporary hidden form
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = googleSheetAppUrl;
-            form.target = 'hidden_iframe';
-            form.style.display = 'none';
+            if (insertError) throw insertError;
 
-            // Add all order data as hidden inputs
-            Object.keys(orderData).forEach(key => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = orderData[key];
-                form.appendChild(input);
-            });
-
-            // Create and add a hidden iframe if it doesn't exist
-            let iframe = document.getElementById('hidden_iframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'hidden_iframe';
-                iframe.name = 'hidden_iframe';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-            }
-
-            // Submit the form
-            document.body.appendChild(form);
-            form.submit();
-
-            // Clean up
-            setTimeout(() => {
-                document.body.removeChild(form);
-            }, 500);
-
-            // Since we can't detect 'no-cors' success easily, we trigger success UI after submit
             setIsSuccess(true);
         } catch (err) {
             setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
-            console.error(err);
+            console.error("Supabase Error:", err);
         } finally {
             setIsSubmitting(false);
         }
