@@ -22,12 +22,14 @@ export default function Admin() {
   const [previewVideo, setPreviewVideo] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
+  const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
     images: [], video_url: '', is_sale: false, is_hot: false,
     is_new: false, is_sold_out: false, category: 'Women',
-    status: 'pending', platform_id: '', serial_no: ''
+    status: 'pending', platform_id: '', serial_no: '',
+    available_sizes: [], available_colors: []
   });
 
   const [siteSettings, setSiteSettings] = useState({
@@ -65,15 +67,20 @@ export default function Admin() {
 
   const updateOrderStatus = async (id, status) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-    if (error) alert(error.message);
+    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
     else fetchOrders();
   };
-
   const deleteOrder = async (id) => {
-    if (!confirm("Are you sure you want to delete this order?")) return;
-    const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) alert(error.message);
-    else fetchOrders();
+    setConfirmation({
+      isOpen: true,
+      title: 'Delete Order',
+      message: 'Are you sure you want to delete this order? This action cannot be undone.',
+      onConfirm: async () => {
+        const { error } = await supabase.from('orders').delete().eq('id', id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else fetchOrders();
+      }
+    });
   };
 
   const fetchSiteSettings = async () => {
@@ -104,7 +111,7 @@ export default function Admin() {
         description: prev.description || data.caption
       }));
     } else {
-      alert("Could not extract Instagram ID. Please check the URL format.");
+      setAlertModal({ isOpen: true, title: 'Instagram Error', message: "Could not extract Instagram ID. Please check the URL format.", type: 'error' });
     }
     setLoading(false);
   };
@@ -170,8 +177,8 @@ export default function Admin() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.from('site_settings').upsert({ key: 'hero_banner', value: siteSettings.hero_banner }, { onConflict: 'key' });
-    if (error) alert(error.message);
-    else alert("Hero Banner Updated!");
+    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+    else setAlertModal({ isOpen: true, title: 'Success', message: "Hero Banner Updated!", type: 'success' });
     setLoading(false);
   };
 
@@ -188,22 +195,29 @@ export default function Admin() {
 
     if (uploadError) {
       console.error(uploadError);
-      alert("Upload failed. Make sure 'assets' bucket exists and is public.");
+      setAlertModal({ isOpen: true, title: 'Upload Failed', message: "Upload failed. Make sure 'assets' bucket exists and is public.", type: 'error' });
     } else {
       const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
       if (target === 'banner') {
         setSiteSettings({ ...siteSettings, hero_banner: { ...siteSettings.hero_banner, image_url: data.publicUrl } });
       } else {
-        setForm({ ...form, images: [data.publicUrl] });
+        setForm({ ...form, images: [...(form.images || []), data.publicUrl] });
       }
     }
     setLoading(false);
   };
 
   const deleteProduct = async (id) => {
-    const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) alert(error.message);
-    else fetchProducts();
+    setConfirmation({
+      isOpen: true,
+      title: 'Delete Product',
+      message: 'Are you sure you want to permanently delete this product from the inventory?',
+      onConfirm: async () => {
+        const { error } = await supabase.from('products').delete().eq('id', id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else fetchProducts();
+      }
+    });
   };
 
   const cancelEdit = () => {
@@ -212,7 +226,8 @@ export default function Admin() {
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
       is_new: false, is_sold_out: false, category: 'Women',
-      status: 'pending', platform_id: '', serial_no: ''
+      status: 'pending', platform_id: '', serial_no: '',
+      available_sizes: [], available_colors: []
     });
   };
 
@@ -349,6 +364,150 @@ export default function Admin() {
                   <option>Kids (Girls)</option>
                 </select>
               </div>
+
+              {/* Variants Section */}
+              <div className="space-y-6 pt-4 border-t border-white/5">
+                <h3 className="text-sm font-black italic uppercase text-[#ce112d]">Variants & Availability</h3>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Sizes (Press Enter, click to toggle Stock)</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {form.available_sizes?.map((size, idx) => {
+                      const name = typeof size === 'object' ? size.name : size;
+                      const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+
+                      return (
+                        <div key={idx} className="group relative">
+                          <span
+                            onClick={() => {
+                              const newSizes = [...form.available_sizes];
+                              newSizes[idx] = { name, is_available: !isAvailable };
+                              setForm({ ...form, available_sizes: newSizes });
+                            }}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer transition-all border ${isAvailable ? 'bg-[#ce112d]/10 text-[#ce112d] border-transparent' : 'bg-neutral-800 text-neutral-500 border-white/10 opacity-60'}`}
+                          >
+                            {name}
+                            {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
+                            <X
+                              size={12}
+                              className="hover:scale-125 hover:text-white transition-transform"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setForm({ ...form, available_sizes: form.available_sizes.filter((_, i) => i !== idx) });
+                              }}
+                            />
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. XL, 42, M"
+                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.target.value.trim().toUpperCase();
+                        if (val && !form.available_sizes?.some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                          setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
+                          e.target.value = '';
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Colors (Click tag to toggle Stock)</label>
+                  <div className="flex flex-wrap gap-4 mb-3">
+                    {form.available_colors?.map((rawColor, idx) => {
+                      // Normalize color to object
+                      const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null };
+                      const isAvailable = color.is_available ?? true;
+
+                      return (
+                        <div key={idx} className="flex flex-col gap-3">
+                          <div
+                            onClick={() => {
+                              const updatedColors = [...form.available_colors];
+                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null };
+                              updatedColors[idx] = { ...normalized, is_available: !isAvailable };
+                              setForm({ ...form, available_colors: updatedColors });
+                            }}
+                            className={`relative px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border cursor-pointer transition-all ${isAvailable ? (color.image ? 'bg-[#ce112d]/20 text-white border-[#ce112d]' : 'bg-white/10 text-white border-white/20') : 'bg-neutral-900 text-neutral-600 border-white/5 opacity-40'}`}
+                          >
+                            {color.name}
+                            <X
+                              size={12}
+                              className="ml-1 hover:text-[#ce112d] transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) });
+                              }}
+                            />
+                          </div>
+
+                          {form.images?.length > 0 && (
+                            <div className="flex flex-wrap gap-2 p-3 bg-neutral-950 rounded-2xl border border-white/5">
+                              {form.images.map((img, i) => (
+                                <div
+                                  key={i}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const updatedColors = [...form.available_colors];
+                                    const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null };
+
+                                    // Toggle: if same image clicked, clear it; else set it
+                                    const newImage = normalized.image === img ? null : img;
+                                    updatedColors[idx] = { ...normalized, image: newImage };
+                                    setForm({ ...form, available_colors: updatedColors });
+                                  }}
+                                  className={`relative w-14 h-14 rounded-xl overflow-hidden transition-all border-2 cursor-pointer flex-shrink-0 ${color.image === img ? 'border-[#ce112d] scale-110 shadow-[0_0_20px_rgba(206,17,45,0.4)]' : 'border-white/5 opacity-40 hover:opacity-100'}`}
+                                >
+                                  <img src={img} className="w-full h-full object-cover" />
+                                  {color.image === img && (
+                                    <div className="absolute inset-0 bg-[#ce112d]/10 flex items-center justify-center">
+                                      <Check size={16} className="text-white drop-shadow-lg" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Red, Black, White"
+                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.target.value.trim();
+                        if (val && !form.available_colors?.some(c => c.name === val)) {
+                          const formatted = val.charAt(0).toUpperCase() + val.slice(1);
+                          setForm({ ...form, available_colors: [...(form.available_colors || []), { name: formatted, image: null, is_available: true }] });
+                          e.target.value = '';
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <input
+                    type="checkbox"
+                    checked={form.is_sold_out}
+                    onChange={e => setForm({ ...form, is_sold_out: e.target.checked })}
+                    className="w-5 h-5 rounded bg-neutral-900 border-white/10 text-[#ce112d] focus:ring-[#ce112d]"
+                  />
+                  <label className="text-xs font-black uppercase text-white tracking-widest cursor-pointer">Sold Out (অর্ডার বন্ধ করুন)</label>
+                </div>
+              </div>
               <div className="flex gap-4">
                 <button className="flex-1 bg-[#ce112d] py-4 rounded-2xl font-black uppercase tracking-widest">Save {editingProduct ? 'Changes' : 'Product'}</button>
                 <button type="button" onClick={cancelEdit} className="px-6 border border-white/5 rounded-2xl hover:bg-white/5 transition-all">Cancel</button>
@@ -373,7 +532,9 @@ export default function Admin() {
                     <th className="pb-4 pr-4">Area</th>
                     <th className="pb-4 pr-4">Price</th>
                     <th className="pb-4 pr-4">Total</th>
+                    <th className="pb-4 pr-4">Variants</th>
                     <th className="pb-4 pr-4">L4D</th>
+                    <th className="pb-4 pr-4">Note</th>
                     <th className="pb-4 pr-4">Status</th>
                     <th className="pb-4">Actions</th>
                   </tr>
@@ -398,9 +559,20 @@ export default function Admin() {
                       <td className="py-6 pr-4 text-xs font-bold text-neutral-400">৳{o.delivery_charge}</td>
                       <td className="py-6 pr-4 text-xs font-black text-white">৳{o.total_amount}</td>
                       <td className="py-6 pr-4">
+                        <div className="flex flex-col gap-1">
+                          {o.size && <span className="text-[9px] font-black bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400">SIZE: {o.size}</span>}
+                          {o.color && <span className="text-[9px] font-black bg-neutral-800 px-1.5 py-0.5 rounded text-neutral-400">COLOR: {o.color}</span>}
+                        </div>
+                      </td>
+                      <td className="py-6 pr-4">
                         <span className={`px-2 py-1 rounded-md text-[10px] font-black ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'}`}>
                           {o.last_four_digits}
                         </span>
+                      </td>
+                      <td className="py-6 pr-4">
+                        <p className="text-[10px] text-neutral-500 font-bold max-w-[120px] truncate" title={o.customer_note}>
+                          {o.customer_note || "—"}
+                        </p>
                       </td>
                       <td className="py-6 pr-4">
                         <select
@@ -477,6 +649,9 @@ export default function Admin() {
                         <button onClick={() => startEdit(p)} className="bg-[#ce112d] p-4 rounded-full shadow-2xl hover:scale-110 transition-transform"><Edit size={20} /></button>
                       </div>
                       <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-[10px] font-black text-[#ce112d]">#{p.serial_no}</div>
+                      {p.is_sold_out && (
+                        <div className="absolute top-4 left-4 bg-[#ce112d] px-3 py-1 rounded-full text-[10px] font-black text-white uppercase italic">Sold Out</div>
+                      )}
                     </div>
                     <div className="p-6 space-y-4">
                       <div className="flex justify-between items-start">
@@ -494,6 +669,13 @@ export default function Admin() {
                             Unpublish
                           </button>
                         )}
+                        <button
+                          onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
+                          className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-400 hover:text-[#ce112d]'}`}
+                          title={p.is_sold_out ? "Mark as Available" : "Mark as Sold Out"}
+                        >
+                          {p.is_sold_out ? "STOCK" : "SO"}
+                        </button>
                         <button onClick={() => deleteProduct(p.id)} className="p-3 border border-white/5 rounded-xl hover:bg-red-900/20 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </div>
@@ -528,6 +710,14 @@ export default function Admin() {
         title={alertModal.title}
         message={alertModal.message}
         type={alertModal.type}
+      />
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={() => setConfirmation({ ...confirmation, isOpen: false })}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.title}
+        message={confirmation.message}
       />
     </div>
   );

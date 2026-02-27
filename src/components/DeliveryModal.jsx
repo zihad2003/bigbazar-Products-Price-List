@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, MapPin, Clock, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
+const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, selectedColor }) => {
     const [step, setStep] = useState(1); // 1: Info, 2: Form, 3: Payment/Final
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,7 +14,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
         phone: '',
         address: '',
         deliveryArea: 'mirsarai',
-        lastFourDigits: ''
+        lastFourDigits: '',
+        note: ''
     });
 
     if (!isOpen) return null;
@@ -33,6 +34,20 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+
+        // Validation for specific fields
+        if (name === 'lastFourDigits') {
+            const onlyNums = value.replace(/[^0-9]/g, '').slice(0, 4);
+            setFormData(prev => ({ ...prev, [name]: onlyNums }));
+            return;
+        }
+
+        if (name === 'phone') {
+            const onlyNums = value.replace(/[^0-9+]/g, ''); // Allow digits and + for international
+            setFormData(prev => ({ ...prev, [name]: onlyNums }));
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
         if (error) setError('');
     };
@@ -43,10 +58,21 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const validateBDNumber = (number) => {
+        const cleanNumber = number.replace(/[+]/g, '');
+        // Regex: Optional 88, then 01, then 3-9, then 8 digits
+        const bdRegex = /^(?:88)?01[3-9]\d{8}$/;
+        return bdRegex.test(cleanNumber);
+    };
+
     const handleNext = () => {
         if (step === 2) {
             if (!formData.name || !formData.phone || !formData.address) {
                 setError("অনুগ্রহ করে সব তথ্য পূরণ করুন।");
+                return;
+            }
+            if (!validateBDNumber(formData.phone)) {
+                setError("সঠিক বাংলাদেশি মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX) ।");
                 return;
             }
         }
@@ -69,19 +95,6 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
         setError('');
 
         try {
-            const orderData = {
-                date: new Date().toLocaleString(),
-                productName: product.name,
-                productPrice: product.price,
-                customerName: formData.name,
-                customerPhone: formData.phone,
-                customerAddress: formData.address,
-                deliveryArea: formData.deliveryArea,
-                deliveryCharge: deliveryCharges[formData.deliveryArea],
-                totalAmount: calculateTotal(),
-                lastFourDigits: formData.lastFourDigits
-            };
-
             const { error: insertError } = await supabase
                 .from('orders')
                 .insert([{
@@ -95,7 +108,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                     delivery_charge: deliveryCharges[formData.deliveryArea],
                     total_amount: calculateTotal(),
                     last_four_digits: formData.lastFourDigits || 'COD',
-                    status: 'Pending'
+                    status: 'Pending',
+                    size: selectedSize || null,
+                    color: selectedColor || null,
+                    customer_note: formData.note || null
                 }]);
 
             if (insertError) throw insertError;
@@ -282,11 +298,23 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                                         <Home className="absolute left-4 top-4 text-neutral-500" size={18} />
                                         <textarea
                                             name="address"
-                                            placeholder="পূর্ণ ঠিকানা: গ্রাম, পোস্ট, থানা, জেলা (Full Address)"
+                                            placeholder="আপনার পূর্ণ ঠিকানা: গ্রাম, পোস্ট, থানা, জেলা (Full Address)"
                                             value={formData.address}
                                             onChange={handleInputChange}
+                                            rows="2"
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600 resize-none"
+                                        />
+                                    </div>
+
+                                    <div className="relative">
+                                        <Clock className="absolute left-4 top-4 text-neutral-500" size={18} />
+                                        <textarea
+                                            name="note"
+                                            placeholder="অর্ডার সম্পর্কে কোনো বিশেষ তথ্য বা চাহিদা আছে? e.g. কালার, সাইজ রিপিট বা গিফট নোট (Special Demands/Note)"
+                                            value={formData.note}
+                                            onChange={handleInputChange}
                                             rows="3"
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600 resize-none"
+                                            className="w-full bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-500 resize-none"
                                         />
                                     </div>
                                 </div>
@@ -327,6 +355,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                                 )}
 
                                 <div className="p-8 bg-white/5 rounded-[32px] border border-white/10 space-y-6">
+                                    <div className="flex justify-between items-center pb-4 border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-[#ce112d]">
+                                        <span>Selected Variations</span>
+                                        <div className="flex gap-2">
+                                            {selectedSize && <span className="px-2 py-1 bg-[#ce112d]/10 rounded-md">Size: {selectedSize}</span>}
+                                            {selectedColor && <span className="px-2 py-1 bg-white/5 border border-white/10 rounded-md text-white">Color: {selectedColor}</span>}
+                                        </div>
+                                    </div>
                                     <div className="flex justify-between items-center pb-4 border-b border-white/5">
                                         <span className="text-neutral-400 font-bold">পণ্যের দাম (Product Price)</span>
                                         <span className="text-white font-black">৳{product.price}</span>
