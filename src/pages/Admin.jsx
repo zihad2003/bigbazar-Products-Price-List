@@ -27,7 +27,7 @@ export default function Admin() {
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
-    images: [], video_url: '', is_sale: false, is_hot: false,
+    images: [], video_url: '', image_url: '', is_sale: false, is_hot: false,
     is_new: false, is_sold_out: false, category: 'Women',
     status: 'pending', platform_id: '', serial_no: '',
     available_sizes: [], available_colors: []
@@ -274,7 +274,7 @@ export default function Admin() {
     setEditingProduct(null);
     setForm({
       name: '', price: '', original_price: '', description: '',
-      images: [], video_url: '', is_sale: false, is_hot: false,
+      images: [], video_url: '', image_url: '', is_sale: false, is_hot: false,
       is_new: false, is_sold_out: false, category: 'Women',
       status: 'pending', platform_id: '', serial_no: '',
       available_sizes: [], available_colors: []
@@ -437,16 +437,22 @@ export default function Admin() {
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
                 <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
               </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Image URL (Direct Link)</label>
+                <input value={form.image_url} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, image_url: e.target.value })} />
+              </div>
               <div className="aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-                {previewImage ? (
+                {previewImage || form.image_url ? (
                   <div className="relative w-full h-full">
-                    <img src={previewImage} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => setPreviewImage(null)}
-                      className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
+                    <img src={previewImage || form.image_url} className="w-full h-full object-cover" />
+                    {previewImage && (
+                      <button
+                        onClick={() => setPreviewImage(null)}
+                        className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <VideoPlayer src={form.video_url} priority={true} />
