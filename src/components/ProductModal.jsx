@@ -15,17 +15,49 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [showAlert, setShowAlert] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [validationError, setValidationError] = useState('');
+
+  // 1. All hooks must be at the top level
+  useEffect(() => {
+    if (!product) return;
+    if (product.available_sizes?.length > 0) {
+      const available = product.available_sizes.filter(s => typeof s === 'object' ? (s.is_available !== false) : true);
+      if (available.length === 1 && !selectedSize) {
+        setSelectedSize(typeof available[0] === 'object' ? available[0].name : available[0]);
+      }
+    }
+  }, [product, selectedSize]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!product) return;
+    const currentImages = (product.images && Array.isArray(product.images) && product.images.length > 0)
+      ? product.images
+      : [product.image || product.image_url].filter(Boolean);
 
-    // Lock body scroll
-    const scrollY = window.scrollY;
+    if (product.available_colors?.length > 0) {
+      const available = product.available_colors.filter(c => typeof c === 'object' ? (c.is_available !== false) : true);
+      if (available.length === 1 && !selectedColor) {
+        const color = available[0];
+        const name = typeof color === 'object' ? color.name : color;
+        setSelectedColor(name);
+        if (typeof color === 'object' && color.image) {
+          const imgIdx = currentImages.indexOf(color.image);
+          if (imgIdx !== -1) setCurrentImageIndex(imgIdx);
+        }
+      }
+    }
+  }, [product, selectedColor]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.style.overflow = '';
+      return;
+    }
     document.body.style.overflow = 'hidden';
-
     supabase.from('site_settings').select('value').eq('key', 'contact_info').single()
       .then(({ data }) => data?.value && setContactInfo(data.value));
-
     return () => {
       document.body.style.overflow = '';
     };
@@ -34,7 +66,6 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   if (!isOpen || !product) return null;
 
   const { price, originalPrice, hasDiscount, isFlashSale } = calculatePrice(product, flashSale);
-
   const images = (product.images && Array.isArray(product.images) && product.images.length > 0)
     ? product.images
     : [product.image || product.image_url].filter(Boolean);
@@ -70,16 +101,21 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="relative w-full h-full md:max-w-6xl md:h-[90vh] bg-neutral-900 md:rounded-[40px] flex flex-col md:flex-row overflow-hidden border border-white/5 shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+          transition={{ type: "spring", damping: 30, stiffness: 250 }}
+          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] bg-neutral-900 rounded-t-[40px] md:rounded-[40px] flex flex-col md:flex-row overflow-hidden border-t md:border border-white/5 shadow-[0_-10px_100px_rgba(0,0,0,0.8)]"
         >
+          {/* Mobile Handle */}
+          <div className="w-full flex justify-center pt-4 pb-2 md:hidden shrink-0">
+            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+          </div>
+
           {/* Close Trigger */}
-          <button onClick={onClose} className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-black/50 text-white backdrop-blur-xl hover:scale-110 transition-transform">
-            <X size={24} />
+          <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 z-[110] p-2.5 md:p-3 rounded-full bg-black/50 text-white backdrop-blur-xl hover:scale-110 transition-transform">
+            <X size={20} className="md:w-6 md:h-6" />
           </button>
 
           {/* Media Section */}
-          <div className="w-full md:w-[60%] h-[50vh] md:h-full bg-black relative group">
+          <div className="w-full md:w-[50%] h-[40vh] md:h-full bg-black relative group shrink-0">
             {product.video_url ? (
               <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
             ) : (
@@ -88,42 +124,49 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   key={currentImageIndex}
                   src={images[currentImageIndex]}
                   className="w-full h-full object-cover"
-                  initial={{ opacity: 0, scale: 1.1 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
                 />
                 {images.length > 1 && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                    {images.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentImageIndex(i)}
-                        className={`h-1.5 rounded-full transition-all ${i === currentImageIndex ? 'bg-[#ce112d] w-6' : 'bg-white/40 w-1.5'}`}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="absolute inset-y-0 left-0 w-12 z-10 md:hidden" onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1))} />
+                    <div className="absolute inset-y-0 right-0 w-12 z-10 md:hidden" onClick={() => setCurrentImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0))} />
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full">
+                      {images.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentImageIndex(i)}
+                          className={`h-1 rounded-full transition-all ${i === currentImageIndex ? 'bg-[#ce112d] w-4' : 'bg-white/40 w-1'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
           </div>
 
           {/* Details Section */}
-          <div className="flex-1 p-8 md:p-12 overflow-y-auto no-scrollbar flex flex-col gap-10">
+          <div className="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar flex flex-col gap-8 md:gap-10">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">BIGBAZAR Exclusive</span>
+              <div className="flex items-center gap-2 mb-3 md:mb-4">
+                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#ce112d]">BIGBAZAR Exclusive</span>
+                {product.is_sold_out && (
+                  <span className="px-2 py-0.5 bg-[#ce112d] text-white text-[8px] font-black uppercase rounded-md animate-pulse">Sold Out</span>
+                )}
                 <div className="h-px flex-1 bg-white/5"></div>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black italic uppercase leading-none text-white tracking-tighter mb-4">{product.name}</h1>
-              <div className="flex items-baseline gap-4">
-                <span className="text-4xl font-black text-[#ce112d]">৳{price}</span>
+              <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight text-white tracking-tighter mb-3 md:mb-4">{product.name}</h1>
+              <div className="flex items-center gap-4">
+                <span className="text-3xl md:text-4xl font-black text-[#ce112d]">৳{price}</span>
                 {hasDiscount && (
-                  <span className="text-xl text-neutral-600 line-through">৳{originalPrice}</span>
+                  <span className="text-lg md:text-xl text-neutral-600 line-through font-bold">৳{originalPrice}</span>
                 )}
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <p className="text-neutral-400 leading-relaxed font-medium text-lg">
                 {product.description}
               </p>
@@ -131,55 +174,165 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-neutral-500">{product.category}</span>
                 {product.is_hot && <span className="px-3 py-1 bg-[#ce112d]/10 rounded-full text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Hot Item</span>}
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              <button
-                onClick={() => setShowDeliveryModal(true)}
-                className="flex items-center justify-center gap-4 py-6 bg-[#ce112d] text-white rounded-3xl font-black uppercase tracking-widest text-lg hover:scale-[1.02] transition-all active:scale-95 shadow-[0_10px_50px_rgba(206,17,45,0.3)]"
-              >
-                <ShoppingBag size={24} /> Order Now
-              </button>
-              <div className="grid grid-cols-2 gap-4">
-                <a
-                  href={generateWhatsAppLink({ ...product, price }, contactInfo?.whatsapp || "8801335945351")}
-                  target="_blank"
-                  className="flex items-center justify-center gap-3 py-5 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-[#25D366] hover:text-white transition-all active:scale-95"
-                >
-                  <MessageCircle size={18} /> WhatsApp
-                </a>
+              {/* Variant Selectors */}
+              <div id="variant-selectors" className="space-y-8 py-6 border-y border-white/5">
+                {product.available_sizes?.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Pick Your Size</label>
+                      {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">Size: {selectedSize}</span>}
+                    </div>
+                    {validationError === 'size' && (
+                      <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
+                        অনুগ্রহ করে একটি সাইজ সিলেক্ট করুন
+                      </motion.p>
+                    )}
+                    <div className="grid grid-cols-4 md:grid-cols-4 gap-2 md:gap-3">
+                      {product.available_sizes.map((size, idx) => {
+                        const name = typeof size === 'object' ? size.name : size;
+                        const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              isAvailable && setSelectedSize(name);
+                              setValidationError('');
+                            }}
+                            disabled={!isAvailable}
+                            className={`relative aspect-square sm:aspect-auto sm:py-3 flex items-center justify-center rounded-xl text-xs font-black uppercase transition-all border-2 ${!isAvailable ? 'bg-neutral-900/50 border-white/5 text-neutral-600 cursor-not-allowed overflow-hidden' : (selectedSize === name ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-[0_5px_15px_rgba(206,17,45,0.3)] scale-105' : 'bg-transparent border-white/5 text-neutral-400 hover:border-white/20')}`}
+                          >
+                            {name}
+                            {!isAvailable && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-[120%] h-[1px] bg-neutral-600/50 rotate-45 transform"></div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {product.available_colors?.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Available Colors</label>
+                      {selectedColor && <span className="text-[11px] font-black uppercase text-[#ce112d]">{selectedColor} Selected</span>}
+                    </div>
+                    {validationError === 'color' && (
+                      <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
+                        অনুগ্রহ করে একটি কালার সিলেক্ট করুন
+                      </motion.p>
+                    )}
+                    <div className="flex flex-wrap gap-3 md:gap-4">
+                      {product.available_colors.map((rawColor, idx) => {
+                        const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null };
+                        const colorName = color.name;
+                        const colorImage = color.image;
+                        const isAvailable = color.is_available ?? true;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              if (!isAvailable) return;
+                              setSelectedColor(colorName);
+                              setValidationError('');
+                              if (colorImage) {
+                                const imgIdx = images.indexOf(colorImage);
+                                if (imgIdx !== -1) setCurrentImageIndex(imgIdx);
+                              }
+                            }}
+                            disabled={!isAvailable}
+                            className={`group flex flex-col items-center gap-1.5 md:gap-2 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
+                          >
+                            <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-[20px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] scale-110 shadow-lg shadow-red-900/20 opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
+                              {colorImage ? (
+                                <img src={colorImage} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] font-black uppercase text-neutral-600">{colorName.charAt(0)}</div>
+                              )}
+                              {!isAvailable && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                  <div className="w-[120%] h-[1.5px] bg-neutral-500 rotate-45 transform"></div>
+                                </div>
+                              )}
+                            </div>
+                            <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-tighter truncate max-w-[60px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400 font-bold')}`}>
+                              {colorName}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 <button
-                  onClick={handleMessengerOrder}
-                  className="flex items-center justify-center gap-3 py-5 bg-[#0084FF]/10 text-[#0084FF] border border-[#0084FF]/20 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-[#0084FF] hover:text-white transition-all active:scale-95"
+                  onClick={() => {
+                    if (product.is_sold_out) return;
+                    const hasAvailableSizes = product.available_sizes?.some(s => typeof s === 'object' ? (s.is_available ?? true) : true);
+                    const hasAvailableColors = product.available_colors?.some(c => typeof c === 'object' ? (c.is_available ?? true) : true);
+                    if (hasAvailableSizes && !selectedSize) {
+                      setValidationError('size');
+                      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      return;
+                    }
+                    if (hasAvailableColors && !selectedColor) {
+                      setValidationError('color');
+                      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      return;
+                    }
+                    setShowDeliveryModal(true);
+                  }}
+                  disabled={product.is_sold_out}
+                  className={`w-full flex items-center justify-center gap-4 py-5 md:py-6 rounded-2xl md:rounded-3xl font-black uppercase tracking-widest text-base md:text-lg transition-all active:scale-95 shadow-[0_10px_50px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
                 >
-                  <ShoppingBag size={18} /> Messenger
+                  {product.is_sold_out ? "Out of Stock" : <><ShoppingBag size={20} className="md:w-6 md:h-6" /> অর্ডার করুন</>}
+                </button>
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                  <a
+                    href={generateWhatsAppLink({ ...product, price }, contactInfo?.whatsapp || "8801335945351")}
+                    target="_blank"
+                    className="flex items-center justify-center gap-2 py-4 md:py-5 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[9px] md:text-[10px] hover:bg-[#25D366] hover:text-white transition-all active:scale-95"
+                  >
+                    <MessageCircle size={16} className="md:w-[18px] md:h-[18px]" /> WhatsApp
+                  </a>
+                  <button
+                    onClick={handleMessengerOrder}
+                    className="flex items-center justify-center gap-2 py-4 md:py-5 bg-[#0084FF]/10 text-[#0084FF] border border-[#0084FF]/20 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[9px] md:text-[10px] hover:bg-[#0084FF] hover:text-white transition-all active:scale-95"
+                  >
+                    <ShoppingBag size={16} className="md:w-[18px] md:h-[18px]" /> Messenger
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    const shareText = generateShareMessage({ ...product, price });
+                    navigator.clipboard.writeText(shareText);
+                    setShowAlert(true);
+                  }}
+                  className="flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
+                >
+                  <Share2 size={16} /> Share Product
                 </button>
               </div>
-              <button
-                onClick={() => {
-                  const shareText = generateShareMessage({ ...product, price });
-                  navigator.clipboard.writeText(shareText);
-                  setShowAlert(true);
-                }}
-                className="col-span-1 md:col-auto flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
-                title="Copy Product Details"
-              >
-                <Share2 size={16} /> <span className="hidden md:inline">Share Product</span><span className="md:hidden">Share</span>
-              </button>
-            </div>
 
-            <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/5">
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Truck size={20} /></div>
-                <span className="text-[10px] font-bold uppercase text-neutral-500">Fast Delivery</span>
-              </div>
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><ShieldCheck size={20} /></div>
-                <span className="text-[10px] font-bold uppercase text-neutral-500">Safe Checkout</span>
-              </div>
-              <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Clock size={20} /></div>
-                <span className="text-[10px] font-bold uppercase text-neutral-500">24/7 Support</span>
+              <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/5 pb-10">
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Truck size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase text-neutral-500">Fast Delivery</span>
+                </div>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><ShieldCheck size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase text-neutral-500">Safe Checkout</span>
+                </div>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Clock size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase text-neutral-500">24/7 Support</span>
+                </div>
               </div>
             </div>
           </div>
@@ -205,21 +358,21 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           )}
         </AnimatePresence>
 
-        {/* Delivery Info Modal */}
         <DeliveryModal
           isOpen={showDeliveryModal}
           onClose={() => setShowDeliveryModal(false)}
           product={product}
           contactInfo={contactInfo}
           onMessengerOrder={handleMessengerOrder}
+          selectedSize={selectedSize}
+          selectedColor={selectedColor}
         />
 
-        {/* Custom Success Alert */}
         <AlertModal
           isOpen={showAlert}
           onClose={() => setShowAlert(false)}
           title="Success!"
-          message="Product details copied to clipboard! You can now paste and share it on social media."
+          message="Product details copied to clipboard!"
           type="success"
         />
       </motion.div>
