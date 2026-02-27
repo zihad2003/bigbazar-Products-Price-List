@@ -524,7 +524,7 @@ export default function Admin() {
                 <h3 className="text-sm font-black italic uppercase text-[#ce112d]">Variants & Availability</h3>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Sizes (Press Enter, click to toggle Stock)</label>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Sizes (Select from dropdown, click to toggle Stock)</label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {form.available_sizes?.map((size, idx) => {
                       const name = typeof size === 'object' ? size.name : size;
@@ -555,43 +555,63 @@ export default function Admin() {
                       );
                     })}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. XL, 42, M"
-                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = e.target.value.trim().toUpperCase();
-                        if (val && !form.available_sizes?.some(s => (typeof s === 'object' ? s.name : s) === val)) {
-                          setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
-                          e.target.value = '';
+                  <select
+                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs text-white font-bold"
+                    value=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') {
+                        const custom = prompt('Enter custom size name:');
+                        if (custom) {
+                          const formatted = custom.trim().toUpperCase();
+                          if (formatted && !form.available_sizes?.some(s => (typeof s === 'object' ? s.name : s) === formatted)) {
+                            setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: formatted, is_available: true }] });
+                          }
                         }
+                      } else if (val && !form.available_sizes?.some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                        setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
                       }
                     }}
-                  />
+                  >
+                    <option value="" disabled>-- Select Size --</option>
+                    <optgroup label="Standard">
+                      {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'].map(s => (
+                        <option key={s} value={s} disabled={form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s)}>{s}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Numeric">
+                      {['28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'].map(s => (
+                        <option key={s} value={s} disabled={form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s)}>{s}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Custom">
+                      <option value="__custom__">✏️ Type Custom Size...</option>
+                    </optgroup>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Colors (Click tag to toggle Stock)</label>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Colors (Click swatch to toggle Stock)</label>
                   <div className="flex flex-wrap gap-4 mb-3">
                     {form.available_colors?.map((rawColor, idx) => {
-                      // Normalize color to object
-                      const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null };
+                      const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null };
                       const isAvailable = color.is_available ?? true;
 
                       return (
-                        <div key={idx} className="flex flex-col gap-3">
+                        <div key={idx} className="flex flex-col gap-3 max-w-[200px]">
+                          {/* Color Tag with round swatch */}
                           <div
                             onClick={() => {
                               const updatedColors = [...form.available_colors];
-                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null };
+                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
                               updatedColors[idx] = { ...normalized, is_available: !isAvailable };
                               setForm({ ...form, available_colors: updatedColors });
                             }}
                             className={`relative px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border cursor-pointer transition-all ${isAvailable ? (color.image ? 'bg-[#ce112d]/20 text-white border-[#ce112d]' : 'bg-white/10 text-white border-white/20') : 'bg-neutral-900 text-neutral-600 border-white/5 opacity-40'}`}
                           >
+                            <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0" style={{ backgroundColor: color.hex || '#888' }} />
                             {color.name}
+                            {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
                             <X
                               size={12}
                               className="ml-1 hover:text-[#ce112d] transition-colors"
@@ -602,6 +622,23 @@ export default function Admin() {
                             />
                           </div>
 
+                          {/* Hex color picker */}
+                          <div className="flex items-center gap-2 px-1">
+                            <input
+                              type="color"
+                              value={color.hex || '#888888'}
+                              onChange={(e) => {
+                                const updatedColors = [...form.available_colors];
+                                const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                updatedColors[idx] = { ...normalized, hex: e.target.value };
+                                setForm({ ...form, available_colors: updatedColors });
+                              }}
+                              className="w-8 h-8 rounded-full cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
+                            />
+                            <span className="text-[9px] font-mono text-neutral-500 uppercase">{color.hex || '#888'}</span>
+                          </div>
+
+                          {/* Image Association */}
                           {form.images?.length > 0 && (
                             <div className="flex flex-wrap gap-2 p-3 bg-neutral-950 rounded-2xl border border-white/5">
                               {form.images.map((img, i) => (
@@ -611,9 +648,7 @@ export default function Admin() {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     const updatedColors = [...form.available_colors];
-                                    const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null };
-
-                                    // Toggle: if same image clicked, clear it; else set it
+                                    const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
                                     const newImage = normalized.image === img ? null : img;
                                     updatedColors[idx] = { ...normalized, image: newImage };
                                     setForm({ ...form, available_colors: updatedColors });
@@ -631,9 +666,11 @@ export default function Admin() {
                               ))}
                             </div>
                           )}
+
+                          {/* Size stock for this color */}
                           {form.available_sizes?.length > 0 && (
                             <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest ml-1">Stock for this color (সাইজ সিলেক্ট করুন):</label>
+                              <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest ml-1">Sizes in stock:</label>
                               <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-950 rounded-2xl border border-white/5">
                                 {form.available_sizes.map((s, sIdx) => {
                                   const sName = typeof s === 'object' ? s.name : s;
@@ -645,7 +682,7 @@ export default function Admin() {
                                       onClick={(e) => {
                                         e.preventDefault();
                                         const updatedColors = [...form.available_colors];
-                                        const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, sizes: [] };
+                                        const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null, sizes: [] };
                                         const currentSizes = normalized.sizes || [];
                                         const newSizes = currentSizes.includes(sName)
                                           ? currentSizes.filter(name => name !== sName)
@@ -666,22 +703,36 @@ export default function Admin() {
                       );
                     })}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. Red, Black, White"
-                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = e.target.value.trim();
-                        if (val && !form.available_colors?.some(c => c.name === val)) {
-                          const formatted = val.charAt(0).toUpperCase() + val.slice(1);
-                          setForm({ ...form, available_colors: [...(form.available_colors || []), { name: formatted, image: null, is_available: true }] });
-                          e.target.value = '';
+                  {/* Add New Color */}
+                  <div className="flex gap-2">
+                    <input
+                      id="newColorName"
+                      type="text"
+                      placeholder="Color Name (e.g. Red)"
+                      className="flex-1 bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = e.target.value.trim();
+                          const hexInput = document.getElementById('newColorHex');
+                          const hex = hexInput?.value || '#888888';
+                          if (val && !form.available_colors?.some(c => (typeof c === 'object' ? c.name : c) === val)) {
+                            const formatted = val.charAt(0).toUpperCase() + val.slice(1);
+                            setForm({ ...form, available_colors: [...(form.available_colors || []), { name: formatted, image: null, is_available: true, hex, sizes: [] }] });
+                            e.target.value = '';
+                            if (hexInput) hexInput.value = '#888888';
+                          }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                    <input
+                      id="newColorHex"
+                      type="color"
+                      defaultValue="#888888"
+                      className="w-14 h-14 rounded-2xl cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-1 [&::-webkit-color-swatch]:rounded-xl [&::-webkit-color-swatch]:border-0"
+                    />
+                  </div>
+                  <p className="text-[9px] text-neutral-600 font-bold mt-2 ml-1">Type name + pick color, then press Enter</p>
                 </div>
 
                 <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
