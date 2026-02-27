@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageCircle, ShoppingBag, Truck, ShieldCheck, Clock, Share2 } from 'lucide-react';
+import { X, MessageCircle, ShoppingBag, Truck, ShieldCheck, Clock, Share2, Check } from 'lucide-react';
 import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage, generateShareMessage } from '../utils/messageTemplates';
 import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
