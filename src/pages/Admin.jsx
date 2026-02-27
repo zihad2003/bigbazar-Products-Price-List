@@ -357,36 +357,6 @@ export default function Admin() {
               <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">Manage Banner & Announcements</p>
             </div>
 
-            <form onSubmit={handleBannerUpdate} className="space-y-8">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Hero Banner Background (.png / .jpg)</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-32 h-20 bg-neutral-900 rounded-xl overflow-hidden border border-white/5">
-                    {siteSettings.hero_banner.image_url && <img src={siteSettings.hero_banner.image_url} className="w-full h-full object-cover" />}
-                  </div>
-                  <label className="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-[10px] font-black uppercase border border-white/10 flex items-center gap-2">
-                    <Upload size={14} /> Change Image
-                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest mb-2 block">Banner Title</label>
-                  <input value={siteSettings.hero_banner.title} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setSiteSettings({ ...siteSettings, hero_banner: { ...siteSettings.hero_banner, title: e.target.value } })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest mb-2 block">Banner Subtitle</label>
-                  <input value={siteSettings.hero_banner.subtitle} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setSiteSettings({ ...siteSettings, hero_banner: { ...siteSettings.hero_banner, subtitle: e.target.value } })} />
-                </div>
-              </div>
-
-              <button className="flex items-center gap-2 bg-[#ce112d] px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-red-900/20 active:scale-95 transition-all">
-                <Save size={18} /> Update Banner
-              </button>
-            </form>
-
             {/* Slider Management Section */}
             <div className="space-y-8 pt-12 border-t border-white/5">
               <div>
