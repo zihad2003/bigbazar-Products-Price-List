@@ -60,7 +60,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
     };
 
     const handleConfirmOrder = async () => {
-        if (!formData.lastFourDigits) {
+        if (formData.deliveryArea !== 'mirsarai' && !formData.lastFourDigits) {
             setError("অনুগ্রহ করে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন।");
             return;
         }
@@ -335,38 +335,52 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                                     </div>
                                 </div>
 
-                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-[32px] p-8 space-y-8">
-                                    <div className="text-center space-y-4">
-                                        <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে অগ্রিম চার্জ দিন:</span>
-                                        <div className="flex items-center justify-center gap-4">
-                                            <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
-                                            <button
-                                                onClick={handleCopyNumber}
-                                                className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
-                                            >
-                                                {copied ? <Check size={20} /> : <Copy size={20} />}
-                                            </button>
+                                {formData.deliveryArea === 'mirsarai' ? (
+                                    <div className="bg-green-500/5 border border-green-500/20 rounded-[32px] p-8 space-y-6">
+                                        <div className="flex flex-col items-center text-center gap-4">
+                                            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center text-green-500">
+                                                <Truck size={32} />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xl font-black text-white uppercase italic">ক্যাশ অন ডেলিভারি (COD)</h4>
+                                                <p className="text-neutral-400 text-sm mt-2">মীরসরাইয়ের মধ্যে ডেলিভারি ফ্রি! কোনো অগ্রিম পেমেন্টের প্রয়োজন নেই। সরাসরি অর্ডার কনফার্ম করুন।</p>
+                                            </div>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-[32px] p-8 space-y-8">
+                                        <div className="text-center space-y-4">
+                                            <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে অগ্রিম চার্জ দিন:</span>
+                                            <div className="flex items-center justify-center gap-4">
+                                                <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                                <button
+                                                    onClick={handleCopyNumber}
+                                                    className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
+                                                >
+                                                    {copied ? <Check size={20} /> : <Copy size={20} />}
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                    <div className="space-y-4 pt-4 border-t border-white/5">
-                                        <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট:</label>
-                                        <input
-                                            type="text"
-                                            name="lastFourDigits"
-                                            maxLength="4"
-                                            placeholder="e.g. 1234"
-                                            value={formData.lastFourDigits}
-                                            onChange={handleInputChange}
-                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-700"
-                                        />
-                                    </div>
+                                        <div className="space-y-4 pt-4 border-t border-white/5">
+                                            <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট:</label>
+                                            <input
+                                                type="text"
+                                                name="lastFourDigits"
+                                                maxLength="4"
+                                                placeholder="e.g. 1234"
+                                                value={formData.lastFourDigits}
+                                                onChange={handleInputChange}
+                                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-700"
+                                            />
+                                        </div>
 
-                                    <div className="flex gap-4 items-center p-5 bg-[#ce112d]/10 rounded-2xl">
-                                        <AlertCircle className="text-[#ce112d]" size={20} />
-                                        <p className="text-xs text-neutral-300 font-medium leading-relaxed italic">ডেলিভারি চার্জ পরিশোধ করার পর আপনার পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে লিখে অর্ডারটি কনফার্ম করুন।</p>
+                                        <div className="flex gap-4 items-center p-5 bg-[#ce112d]/10 rounded-2xl">
+                                            <AlertCircle className="text-[#ce112d]" size={20} />
+                                            <p className="text-xs text-neutral-300 font-medium leading-relaxed italic">ডেলিভারি চার্জ পরিশোধ করার পর আপনার পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে লিখে অর্ডারটি কনফার্ম করুন।</p>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </motion.div>
                         )}
                     </div>
