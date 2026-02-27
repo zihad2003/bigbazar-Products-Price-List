@@ -22,9 +22,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   // 1. All hooks must be at the top level
   useEffect(() => {
     if (!product) return;
-    if (product.available_sizes?.length > 0) {
+    if (product.available_sizes?.length > 0 && !selectedSize) {
       const available = product.available_sizes.filter(s => typeof s === 'object' ? (s.is_available !== false) : true);
-      if (available.length === 1 && !selectedSize) {
+      if (available.length > 0) {
         setSelectedSize(typeof available[0] === 'object' ? available[0].name : available[0]);
       }
     }
@@ -36,9 +36,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       ? product.images
       : [product.image || product.image_url].filter(Boolean);
 
-    if (product.available_colors?.length > 0) {
+    if (product.available_colors?.length > 0 && !selectedColor) {
       const available = product.available_colors.filter(c => typeof c === 'object' ? (c.is_available !== false) : true);
-      if (available.length === 1 && !selectedColor) {
+      if (available.length > 0) {
         const color = available[0];
         const name = typeof color === 'object' ? color.name : color;
         setSelectedColor(name);
@@ -245,7 +245,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
                       <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Available Colors</label>
-                      {selectedColor && <span className="text-[11px] font-black uppercase text-[#ce112d]">{selectedColor} Selected</span>}
+                      {selectedColor && <span className="text-[10px] font-black uppercase text-neutral-400">Selected: <span className="text-[#ce112d]">{selectedColor}</span></span>}
                     </div>
                     {validationError === 'color' && (
                       <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
@@ -273,12 +273,19 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                             disabled={!isAvailable}
                             className={`group flex flex-col items-center gap-2 md:gap-3 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
                           >
-                            <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-[24px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] scale-110 shadow-lg shadow-red-900/20 opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
+                            <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-[24px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] shadow-[0_0_20px_rgba(206,17,45,0.3)] opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
                               {colorImage ? (
                                 <img src={colorImage} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] font-black uppercase text-neutral-600">{colorName.charAt(0)}</div>
                               )}
+
+                              {selectedColor === colorName && (
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-[#ce112d] rounded-full flex items-center justify-center shadow-lg">
+                                  <Check size={14} className="text-white" />
+                                </div>
+                              )}
+
                               {!isAvailable && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                                   <div className="w-[120%] h-[1.5px] bg-neutral-500 rotate-45 transform"></div>
