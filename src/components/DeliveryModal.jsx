@@ -202,7 +202,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent">
+                    <div className="p-5 md:p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent">
                         <div className="flex items-center gap-5">
                             <div className="w-12 h-12 bg-[#ce112d] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(206,17,45,0.4)]">
                                 {step === 1 ? <Truck className="text-white" size={24} /> : (step === 2 ? <User className="text-white" size={24} /> : <CreditCard className="text-white" size={24} />)}
@@ -224,7 +224,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         </button>
                     </div>
 
-                    <div className="p-6 md:p-10 overflow-y-auto max-h-[60vh] no-scrollbar">
+                    <div className="p-5 md:p-10 overflow-y-auto max-h-[70vh] md:max-h-[60vh] no-scrollbar">
                         {step === 1 && (
                             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                                 {/* Delivery Locations */}
@@ -436,7 +436,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             <div className="text-center space-y-4 pt-4 border-t border-white/5">
                                                 <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest text-[#ce112d]">বিকাশ (পার্সোনাল) নাম্বার:</span>
                                                 <div className="flex items-center justify-center gap-4">
-                                                    <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                                    <span className="text-2xl md:text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
                                                     <button
                                                         onClick={handleCopyNumber}
                                                         className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
@@ -455,7 +455,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                     placeholder="e.g. 1234"
                                                     value={formData.lastFourDigits}
                                                     onChange={handleInputChange}
-                                                    className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
+                                                    className="w-full bg-black/40 border border-white/10 rounded-2xl py-3.5 px-6 text-center text-xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
                                                 />
                                             </div>
                                         </div>
@@ -465,7 +465,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         <div className="text-center space-y-4">
                                             <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে সেন্ড মানি করুন:</span>
                                             <div className="flex items-center justify-center gap-4">
-                                                <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                                <span className="text-2xl md:text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
                                                 <button
                                                     onClick={handleCopyNumber}
                                                     className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
@@ -484,7 +484,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                                 placeholder="e.g. 1234"
                                                 value={formData.lastFourDigits}
                                                 onChange={handleInputChange}
-                                                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
+                                                className="w-full bg-black/40 border border-white/10 rounded-2xl py-3.5 px-6 text-center text-xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-800"
                                             />
                                         </div>
 
@@ -499,7 +499,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-8 md:p-10 bg-black/40 border-t border-white/5">
+                    <div className="p-6 md:p-10 bg-black/40 border-t border-white/5">
                         <div className="flex gap-4">
                             {step > 1 && (
                                 <button
