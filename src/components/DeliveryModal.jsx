@@ -82,18 +82,45 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
                 lastFourDigits: formData.lastFourDigits
             };
 
-            // Using a generic way to find the endpoint or use a default one the user will set up
-            const response = await fetch(googleSheetAppUrl, {
-                method: 'POST',
-                mode: 'no-cors', // Google Apps Script requires no-cors for simple POST or proper CORS setup
-                cache: 'no-cache',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(orderData)
+            // The most reliable way to send data from a browser to a Google Apps Script 
+            // without CORS issues is to use a hidden form and target it to an iframe.
+
+            // Create a temporary hidden form
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = googleSheetAppUrl;
+            form.target = 'hidden_iframe';
+            form.style.display = 'none';
+
+            // Add all order data as hidden inputs
+            Object.keys(orderData).forEach(key => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = orderData[key];
+                form.appendChild(input);
             });
 
-            // Since no-cors doesn't allow reading the response, we assume success if no error is thrown
+            // Create and add a hidden iframe if it doesn't exist
+            let iframe = document.getElementById('hidden_iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'hidden_iframe';
+                iframe.name = 'hidden_iframe';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(form);
+            }, 500);
+
+            // Since we can't detect 'no-cors' success easily, we trigger success UI after submit
             setIsSuccess(true);
         } catch (err) {
             setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
