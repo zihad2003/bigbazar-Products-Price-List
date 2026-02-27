@@ -1,19 +1,25 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, Clock, CreditCard, AlertCircle, CheckCircle2, MessageCircle, ShoppingBag, User, Phone, Home, ChevronRight, ChevronLeft } from 'lucide-react';
-import { generateWhatsAppLink, generateOrderMessage } from '../utils/messageTemplates';
+import { X, Truck, MapPin, Clock, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, ChevronRight, ChevronLeft, Copy, Check } from 'lucide-react';
 
-const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder }) => {
-    const [step, setStep] = useState(1); // 1: Info, 2: Form, 3: Confirmation
+const DeliveryModal = ({ isOpen, onClose, product, contactInfo }) => {
+    const [step, setStep] = useState(1); // 1: Info, 2: Form, 3: Payment/Final
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [copied, setCopied] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
         address: '',
-        deliveryArea: 'mirsarai' // Default
+        deliveryArea: 'mirsarai',
+        lastFourDigits: ''
     });
 
     if (!isOpen) return null;
+
+    const bKashNumber = "01857045449";
+    const googleSheetAppUrl = "https://script.google.com/macros/s/AKfycbz_vU_TqM_3v-C1BwKqN4Q3E8b69_oR_f-q8-q8-q8/exec"; // Placeholder
 
     const deliveryCharges = {
         mirsarai: 0,
@@ -31,6 +37,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
         if (error) setError('');
     };
 
+    const handleCopyNumber = () => {
+        navigator.clipboard.writeText(bKashNumber);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     const handleNext = () => {
         if (step === 2) {
             if (!formData.name || !formData.phone || !formData.address) {
@@ -42,19 +54,52 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
         setStep(prev => prev + 1);
     };
 
-    const handleBack = () => setStep(prev => prev - 1);
+    const handleBack = () => {
+        setError('');
+        setStep(prev => prev - 1);
+    };
 
-    const handleFinalOrder = (platform) => {
-        if (platform === 'whatsapp') {
-            const link = generateWhatsAppLink(product, contactInfo?.whatsapp || "8801335945351", formData);
-            window.open(link, '_blank');
-        } else {
-            // For Messenger, we copy the message and then open the link
-            const message = generateOrderMessage(product, formData);
-            navigator.clipboard.writeText(message).then(() => {
-                onMessengerOrder();
-                onClose();
+    const handleConfirmOrder = async () => {
+        if (!formData.lastFourDigits) {
+            setError("অনুগ্রহ করে পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন।");
+            return;
+        }
+
+        setIsSubmitting(true);
+        setError('');
+
+        try {
+            const orderData = {
+                date: new Date().toLocaleString(),
+                productName: product.name,
+                productPrice: product.price,
+                customerName: formData.name,
+                customerPhone: formData.phone,
+                customerAddress: formData.address,
+                deliveryArea: formData.deliveryArea,
+                deliveryCharge: deliveryCharges[formData.deliveryArea],
+                totalAmount: calculateTotal(),
+                lastFourDigits: formData.lastFourDigits
+            };
+
+            // Using a generic way to find the endpoint or use a default one the user will set up
+            const response = await fetch(googleSheetAppUrl, {
+                method: 'POST',
+                mode: 'no-cors', // Google Apps Script requires no-cors for simple POST or proper CORS setup
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
             });
+
+            // Since no-cors doesn't allow reading the response, we assume success if no error is thrown
+            setIsSuccess(true);
+        } catch (err) {
+            setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+            console.error(err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -79,6 +124,37 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
         }
     ];
 
+    if (isSuccess) {
+        return (
+            <AnimatePresence>
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[250] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4"
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-neutral-900 border border-white/10 rounded-[40px] p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_100px_rgba(37,211,102,0.1)]"
+                    >
+                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle2 className="text-green-500" size={40} />
+                        </div>
+                        <h2 className="text-3xl font-black italic uppercase text-white">Order Confirmed!</h2>
+                        <p className="text-neutral-400 font-medium">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। আমরা শীঘ্রই আপনার সাথে যোগাযোগ করবো।</p>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95"
+                        >
+                            Back To Shop
+                        </button>
+                    </motion.div>
+                </motion.div>
+            </AnimatePresence>
+        );
+    }
+
     return (
         <AnimatePresence>
             <motion.div
@@ -100,14 +176,14 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
                     <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent">
                         <div className="flex items-center gap-5">
                             <div className="w-12 h-12 bg-[#ce112d] rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(206,17,45,0.4)]">
-                                {step === 1 ? <Truck className="text-white" size={24} /> : (step === 2 ? <User className="text-white" size={24} /> : <CheckCircle2 className="text-white" size={24} />)}
+                                {step === 1 ? <Truck className="text-white" size={24} /> : (step === 2 ? <User className="text-white" size={24} /> : <CreditCard className="text-white" size={24} />)}
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black italic uppercase text-white leading-none">
                                     {step === 1 ? "ডেলিভারি তথ্য" : (step === 2 ? "অর্ডার ফর্ম" : "কনফার্মেশন")}
                                 </h2>
                                 <p className="text-[#ce112d] text-[10px] font-black uppercase tracking-[0.3em] mt-2">
-                                    {step === 1 ? "Step 1: Guidelines" : (step === 2 ? "Step 2: Checkout" : "Step 3: Finalize")}
+                                    {step === 1 ? "Step 1: Guidelines" : (step === 2 ? "Step 2: Checkout" : "Step 3: Payment")}
                                 </p>
                             </div>
                         </div>
@@ -233,6 +309,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
 
                         {step === 3 && (
                             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        className="p-4 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold"
+                                    >
+                                        <AlertCircle size={16} />
+                                        {error}
+                                    </motion.div>
+                                )}
+
                                 <div className="p-8 bg-white/5 rounded-[32px] border border-white/10 space-y-6">
                                     <div className="flex justify-between items-center pb-4 border-b border-white/5">
                                         <span className="text-neutral-400 font-bold">পণ্যের দাম (Product Price)</span>
@@ -248,14 +335,36 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
                                     </div>
                                 </div>
 
-                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-3xl p-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বার:</span>
-                                        <span className="text-2xl font-black text-white tracking-[0.2em] block">01877765535</span>
+                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-[32px] p-8 space-y-8">
+                                    <div className="text-center space-y-4">
+                                        <span className="text-neutral-400 font-black uppercase text-[10px] tracking-widest">বিকাশ (পার্সোনাল) নাম্বারে অগ্রিম চার্জ দিন:</span>
+                                        <div className="flex items-center justify-center gap-4">
+                                            <span className="text-3xl font-black text-white tracking-[0.2em]">{bKashNumber}</span>
+                                            <button
+                                                onClick={handleCopyNumber}
+                                                className={`p-3 rounded-xl transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'}`}
+                                            >
+                                                {copied ? <Check size={20} /> : <Copy size={20} />}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-4 items-center p-4 bg-[#ce112d]/10 rounded-2xl">
+
+                                    <div className="space-y-4 pt-4 border-t border-white/5">
+                                        <label className="text-xs font-black text-neutral-400 uppercase tracking-widest ml-2 block">পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট:</label>
+                                        <input
+                                            type="text"
+                                            name="lastFourDigits"
+                                            maxLength="4"
+                                            placeholder="e.g. 1234"
+                                            value={formData.lastFourDigits}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-center text-2xl font-black text-white focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-700"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-4 items-center p-5 bg-[#ce112d]/10 rounded-2xl">
                                         <AlertCircle className="text-[#ce112d]" size={20} />
-                                        <p className="text-xs text-neutral-300 font-medium">নিচের বাটনে ক্লিক করে অর্ডারটি কনফার্ম করুন।</p>
+                                        <p className="text-xs text-neutral-300 font-medium leading-relaxed italic">ডেলিভারি চার্জ পরিশোধ করার পর আপনার পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট এখানে লিখে অর্ডারটি কনফার্ম করুন।</p>
                                     </div>
                                 </div>
                             </motion.div>
@@ -268,7 +377,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
                             {step > 1 && (
                                 <button
                                     onClick={handleBack}
-                                    className="px-6 py-5 bg-white/5 text-white rounded-2xl font-black uppercase hover:bg-white/10 transition-all"
+                                    disabled={isSubmitting}
+                                    className="px-6 py-5 bg-white/5 text-white rounded-2xl font-black uppercase hover:bg-white/10 transition-all disabled:opacity-50"
                                 >
                                     <ChevronLeft size={24} />
                                 </button>
@@ -282,20 +392,20 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
                                     {step === 1 ? "অর্ডার করতে এগিয়ে যান" : "অর্ডার সামারি দেখুন"} <ChevronRight size={20} />
                                 </button>
                             ) : (
-                                <div className="flex-1 grid grid-cols-2 gap-4">
-                                    <button
-                                        onClick={() => handleFinalOrder('whatsapp')}
-                                        className="flex items-center justify-center gap-4 py-5 bg-[#25D366] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(37,211,102,0.3)] transition-all active:scale-95"
-                                    >
-                                        <MessageCircle size={24} /> WhatsApp
-                                    </button>
-                                    <button
-                                        onClick={() => handleFinalOrder('messenger')}
-                                        className="flex items-center justify-center gap-4 py-5 bg-[#0084FF] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(0,132,255,0.3)] transition-all active:scale-95"
-                                    >
-                                        <ShoppingBag size={24} /> Messenger
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={handleConfirmOrder}
+                                    disabled={isSubmitting}
+                                    className="flex-1 flex items-center justify-center gap-4 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+                                >
+                                    {isSubmitting ? (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            অর্ডার সাবমিট হচ্ছে...
+                                        </div>
+                                    ) : (
+                                        <>অর্ডারটি কনফার্ম করুন <ShoppingBag size={20} /></>
+                                    )}
+                                </button>
                             )}
                         </div>
                         <button
