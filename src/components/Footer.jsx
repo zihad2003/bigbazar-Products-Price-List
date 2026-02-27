@@ -42,35 +42,38 @@ export default function Footer() {
     ];
 
     return (
-        <footer className="bg-black py-24 px-6 border-t border-white/5">
-            <div className="max-w-7xl mx-auto flex flex-col items-center gap-16">
+        <footer className="py-16 md:py-24 px-4 md:px-6 border-t" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
+            <div className="max-w-7xl mx-auto flex flex-col items-center gap-10 md:gap-16">
 
                 {/* Brand Logo */}
                 <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-black italic text-white tracking-tighter">
+                    <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter" style={{ color: 'var(--text-primary)' }}>
                         BIG<span className="text-[#ce112d]">BAZAR</span>
                     </h1>
                 </div>
 
                 {/* Header */}
-                <h3 className="text-neutral-500 font-black italic uppercase tracking-[0.2em] text-sm">
+                <h3 className="font-black italic uppercase tracking-[0.2em] text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>
                     Connect With Us
                 </h3>
 
                 {/* Social Icons Grid */}
-                <div className="flex flex-wrap justify-center gap-10 md:gap-16">
+                <div className="flex flex-wrap justify-center gap-6 md:gap-16">
                     {socialLinks.map((social) => (
                         <a
                             key={social.label}
                             href={social.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="group flex flex-col items-center gap-6"
+                            className="group flex flex-col items-center gap-4 md:gap-6"
                         >
-                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-[20px] border border-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black group-hover:scale-110 transition-all duration-500">
-                                <social.icon size={20} strokeWidth={1.5} />
+                            <div
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-[16px] md:rounded-[20px] border flex items-center justify-center group-hover:bg-[#ce112d] group-hover:text-white group-hover:border-[#ce112d] group-hover:scale-110 transition-all duration-500"
+                                style={{ borderColor: 'var(--border-hover)', color: 'var(--text-primary)' }}
+                            >
+                                <social.icon size={18} strokeWidth={1.5} className="md:w-5 md:h-5" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 group-hover:text-white transition-colors">
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-muted)' }}>
                                 {social.label}
                             </span>
                         </a>
@@ -78,11 +81,11 @@ export default function Footer() {
                 </div>
 
                 {/* Footer Credit */}
-                <div className="mt-8 text-center space-y-4 opacity-60">
-                    <h2 className="text-xs font-black italic uppercase tracking-widest text-neutral-400">
+                <div className="mt-4 md:mt-8 text-center space-y-3 md:space-y-4 opacity-60">
+                    <h2 className="text-[10px] md:text-xs font-black italic uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
                         ENGINEERED BY <span className="text-[#ce112d]">ZIHAD</span> FOR <span className="text-[#ce112d]">BIG BAZAR</span>
                     </h2>
-                    <p className="text-[10px] font-bold text-neutral-700 uppercase tracking-[0.4em]">
+                    <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] md:tracking-[0.4em]" style={{ color: 'var(--text-faint)' }}>
                         BARIARHAT, CHATTOGRAM | 2026
                     </p>
                 </div>

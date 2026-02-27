@@ -18,7 +18,8 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-md bg-neutral-900 border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-md border rounded-3xl p-6 shadow-2xl overflow-hidden"
+                        style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
                     >
                         {/* Background Glow */}
                         <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[100px] opacity-20 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -29,19 +30,19 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
                                 {type === 'success' ? <CheckCircle2 size={32} /> : <AlertCircle size={32} />}
                             </div>
 
-                            <h3 className="text-xl font-black uppercase italic text-white tracking-wide">
+                            <h3 className="text-xl font-black uppercase italic tracking-wide" style={{ color: 'var(--text-primary)' }}>
                                 {title}
                             </h3>
 
-                            <p className="text-neutral-400 text-sm font-medium leading-relaxed">
+                            <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                                 {message}
                             </p>
 
                             <button
                                 onClick={onClose}
                                 className={`mt-4 w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-95 transition-all ${type === 'success'
-                                        ? 'bg-green-500 text-black hover:bg-green-400'
-                                        : 'bg-red-600 text-white hover:bg-red-500'
+                                    ? 'bg-green-500 text-black hover:bg-green-400'
+                                    : 'bg-red-600 text-white hover:bg-red-500'
                                     }`}
                             >
                                 {type === 'success' ? 'Continue' : 'Try Again'}

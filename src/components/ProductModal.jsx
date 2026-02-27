@@ -127,18 +127,19 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-0 md:p-6"
+        className="fixed inset-0 z-[100] backdrop-blur-2xl flex items-center justify-center p-0 md:p-6"
+        style={{ backgroundColor: 'var(--bg-overlay)' }}
       >
         <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
-          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] bg-neutral-900 rounded-t-[40px] md:rounded-[40px] flex flex-col md:flex-row overflow-hidden border-t md:border border-white/5 shadow-[0_-10px_100px_rgba(0,0,0,0.8)]"
+          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] rounded-t-[32px] md:rounded-[40px] flex flex-col md:flex-row overflow-hidden border-t md:border"
+          style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 -10px 100px rgba(0,0,0,0.3)' }}
         >
-          {/* Mobile Handle */}
           <div className="w-full flex justify-center pt-4 pb-2 md:hidden shrink-0">
-            <div className="w-12 h-1.5 bg-white/10 rounded-full" />
+            <div className="w-12 h-1.5 rounded-full" style={{ backgroundColor: 'var(--border-hover)' }} />
           </div>
 
           {/* Close Trigger */}
@@ -187,9 +188,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.is_sold_out && (
                   <span className="px-2 py-0.5 bg-[#ce112d] text-white text-[8px] font-black uppercase rounded-md animate-pulse">Sold Out</span>
                 )}
-                <div className="h-px flex-1 bg-white/5"></div>
+                <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-color)' }}></div>
               </div>
-              <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight text-white tracking-tighter mb-3 md:mb-4">{product.name}</h1>
+              <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight tracking-tighter mb-3 md:mb-4" style={{ color: 'var(--text-primary)' }}>{product.name}</h1>
               <div className="flex items-center gap-4 md:gap-6 mt-4">
                 <button
                   onClick={handleMainOrder}
@@ -208,16 +209,16 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             </div>
 
             <div className="space-y-6">
-              <p className="text-neutral-400 leading-relaxed font-medium text-lg">
+              <p className="leading-relaxed font-medium text-base md:text-lg" style={{ color: 'var(--text-secondary)' }}>
                 {product.description}
               </p>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-neutral-500">{product.category}</span>
+                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: 'var(--bg-badge)', color: 'var(--text-muted)' }}>{product.category}</span>
                 {product.is_hot && <span className="px-3 py-1 bg-[#ce112d]/10 rounded-full text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Hot Item</span>}
               </div>
 
               {/* Variant Selectors */}
-              <div id="variant-selectors" className="space-y-8 py-6 border-y border-white/5">
+              <div id="variant-selectors" className="space-y-6 md:space-y-8 py-5 md:py-6 border-y" style={{ borderColor: 'var(--border-color)' }}>
                 {product.available_sizes?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
@@ -346,24 +347,25 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                     navigator.clipboard.writeText(shareText);
                     setShowAlert(true);
                   }}
-                  className="flex items-center justify-center gap-2 py-4 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-400 hover:bg-white hover:text-black transition-colors"
+                  className="flex items-center justify-center gap-2 py-4 border rounded-2xl font-black uppercase tracking-widest text-[10px] transition-colors hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                 >
                   <Share2 size={16} /> Share Product
                 </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/5 pb-10">
-                <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Truck size={20} /></div>
-                  <span className="text-[10px] font-bold uppercase text-neutral-500">Fast Delivery</span>
+              <div className="grid grid-cols-3 gap-4 md:gap-6 pt-5 md:pt-6 border-t pb-8 md:pb-10" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Truck size={18} className="md:w-5 md:h-5" /></div>
+                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fast Delivery</span>
                 </div>
-                <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><ShieldCheck size={20} /></div>
-                  <span className="text-[10px] font-bold uppercase text-neutral-500">Safe Checkout</span>
+                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><ShieldCheck size={18} className="md:w-5 md:h-5" /></div>
+                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Safe Checkout</span>
                 </div>
-                <div className="flex flex-col items-center text-center gap-3">
-                  <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-[#ce112d]"><Clock size={20} /></div>
-                  <span className="text-[10px] font-bold uppercase text-neutral-500">24/7 Support</span>
+                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Clock size={18} className="md:w-5 md:h-5" /></div>
+                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>24/7 Support</span>
                 </div>
               </div>
             </div>
