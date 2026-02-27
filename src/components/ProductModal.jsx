@@ -271,9 +271,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                               }
                             }}
                             disabled={!isAvailable}
-                            className={`group flex flex-col items-center gap-1.5 md:gap-2 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
+                            className={`group flex flex-col items-center gap-2 md:gap-3 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
                           >
-                            <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-[20px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] scale-110 shadow-lg shadow-red-900/20 opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
+                            <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-[24px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] scale-110 shadow-lg shadow-red-900/20 opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
                               {colorImage ? (
                                 <img src={colorImage} className="w-full h-full object-cover" />
                               ) : (
@@ -285,7 +285,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                                 </div>
                               )}
                             </div>
-                            <span className={`text-[8px] md:text-[9px] font-black uppercase tracking-tighter truncate max-w-[60px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400 font-bold')}`}>
+                            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tighter truncate max-w-[80px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400 font-bold')}`}>
                               {colorName}
                             </span>
                           </button>
