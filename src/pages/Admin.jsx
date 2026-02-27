@@ -631,6 +631,37 @@ export default function Admin() {
                               ))}
                             </div>
                           )}
+                          {form.available_sizes?.length > 0 && (
+                            <div className="space-y-2">
+                              <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest ml-1">Stock for this color (সাইজ সিলেক্ট করুন):</label>
+                              <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-950 rounded-2xl border border-white/5">
+                                {form.available_sizes.map((s, sIdx) => {
+                                  const sName = typeof s === 'object' ? s.name : s;
+                                  const isSelected = color.sizes?.includes(sName);
+                                  return (
+                                    <button
+                                      key={sIdx}
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        const updatedColors = [...form.available_colors];
+                                        const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, sizes: [] };
+                                        const currentSizes = normalized.sizes || [];
+                                        const newSizes = currentSizes.includes(sName)
+                                          ? currentSizes.filter(name => name !== sName)
+                                          : [...currentSizes, sName];
+                                        updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                        setForm({ ...form, available_colors: updatedColors });
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all border ${isSelected ? 'bg-[#ce112d]/20 border-[#ce112d] text-white' : 'bg-black/40 border-white/5 text-neutral-700 hover:text-neutral-400'}`}
+                                    >
+                                      {sName}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

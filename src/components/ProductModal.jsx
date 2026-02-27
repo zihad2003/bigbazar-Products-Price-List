@@ -50,6 +50,21 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     }
   }, [product, selectedColor]);
 
+  // Effect to handle size availability based on selected color
+  useEffect(() => {
+    if (!product || !selectedColor || !product.available_sizes) return;
+
+    const colorObj = product.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
+
+    // If this color has specific sizes assigned, ensure current size is valid
+    if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
+      if (!colorObj.sizes.includes(selectedSize)) {
+        // If current size is invalid for this color, clear it so user can pick
+        setSelectedSize('');
+      }
+    }
+  }, [selectedColor, product]);
+
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = '';
@@ -217,7 +232,18 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                     <div className="grid grid-cols-4 md:grid-cols-4 gap-2 md:gap-3">
                       {product.available_sizes.map((size, idx) => {
                         const name = typeof size === 'object' ? size.name : size;
-                        const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+                        let isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+
+                        // Color-wise size logic: if a color is selected and has a specific sizes list,
+                        // mark sizes not in that list as unavailable.
+                        if (selectedColor && isAvailable) {
+                          const colorObj = product.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
+                          if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
+                            if (!colorObj.sizes.includes(name)) {
+                              isAvailable = false;
+                            }
+                          }
+                        }
                         return (
                           <button
                             key={idx}
