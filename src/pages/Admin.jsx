@@ -322,21 +322,23 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col lg:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full lg:w-64 border-r border-white/5 p-6 space-y-8">
-        <div className="flex items-center gap-3">
-          <ShoppingBag className="text-[#ce112d]" />
-          <h1 className="text-xl font-black italic">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
+      {/* Sidebar - Fixed Position */}
+      <aside className="w-full lg:w-64 lg:h-screen lg:sticky lg:top-0 border-r border-white/5 p-6 flex flex-col justify-between shrink-0 bg-black z-20">
+        <div className="space-y-8">
+          <div className="flex items-center gap-3">
+            <ShoppingBag className="text-[#ce112d]" />
+            <h1 className="text-xl font-black italic uppercase">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
+          </div>
+          <nav className="space-y-2">
+            {['orders', 'pending', 'published', 'add', 'settings'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 p-4 rounded-xl uppercase text-[10px] font-black tracking-widest transition-all ${activeTab === tab ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
+                {tab === 'add' ? <Plus size={16} /> : tab === 'settings' ? <Settings size={16} /> : tab === 'pending' ? <Clock size={16} /> : tab === 'orders' ? <ShoppingBag size={16} /> : <CheckCircle2 size={16} />}
+                {tab}
+              </button>
+            ))}
+          </nav>
         </div>
-        <nav className="space-y-2">
-          {['orders', 'pending', 'published', 'add', 'settings'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 p-4 rounded-xl uppercase text-[10px] font-black tracking-widest transition-all ${activeTab === tab ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
-              {tab === 'add' ? <Plus size={16} /> : tab === 'settings' ? <Settings size={16} /> : tab === 'pending' ? <Clock size={16} /> : tab === 'orders' ? <ShoppingBag size={16} /> : <CheckCircle2 size={16} />}
-              {tab}
-            </button>
-          ))}
-        </nav>
-        <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-white transition-all">
+        <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-white transition-all mt-auto border-t border-white/5 pt-6">
           <LogOut size={16} /> Logout
         </button>
       </aside>
