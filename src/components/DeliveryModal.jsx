@@ -5,6 +5,7 @@ import { generateWhatsAppLink, generateOrderMessage } from '../utils/messageTemp
 
 const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder }) => {
     const [step, setStep] = useState(1); // 1: Info, 2: Form, 3: Confirmation
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -27,15 +28,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (error) setError('');
     };
 
     const handleNext = () => {
         if (step === 2) {
             if (!formData.name || !formData.phone || !formData.address) {
-                alert("অনুগ্রহ করে সব তথ্য পূরণ করুন।");
+                setError("অনুগ্রহ করে সব তথ্য পূরণ করুন।");
                 return;
             }
         }
+        setError('');
         setStep(prev => prev + 1);
     };
 
@@ -160,6 +163,16 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, onMessengerOrder
 
                         {step === 2 && (
                             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                {error && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        className="p-4 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold"
+                                    >
+                                        <AlertCircle size={16} />
+                                        {error}
+                                    </motion.div>
+                                )}
                                 <div className="space-y-4">
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
