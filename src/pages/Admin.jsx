@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
-  AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save
+  AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -218,6 +218,49 @@ export default function Admin() {
         else fetchProducts();
       }
     });
+  };
+
+  const handleExportCSV = () => {
+    if (orders.length === 0) {
+      setAlertModal({ isOpen: true, title: 'Export Failed', message: 'No orders found to export.', type: 'error' });
+      return;
+    }
+
+    const headers = [
+      "Date", "Product", "Price", "Customer", "Phone", "Address",
+      "Area", "Charge", "Total", "Size", "Color", "Last 4 Digits", "Status", "Note"
+    ];
+
+    const rows = orders.map(o => [
+      new Date(o.created_at).toLocaleString(),
+      o.product_name,
+      o.product_price,
+      o.customer_name,
+      o.customer_phone,
+      `"${(o.customer_address || '').replace(/"/g, '""')}"`,
+      o.delivery_area,
+      o.delivery_charge,
+      o.total_amount,
+      o.size || '',
+      o.color || '',
+      o.last_four_digits,
+      o.status,
+      `"${(o.customer_note || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `BigBazar_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const cancelEdit = () => {
@@ -516,9 +559,18 @@ export default function Admin() {
           </form>
         ) : activeTab === 'orders' ? (
           <div className="space-y-12">
-            <div>
-              <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
-              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.length} Total Orders</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
+                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.length} Total Orders</p>
+              </div>
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group"
+              >
+                <Download size={16} className="text-[#ce112d] group-hover:text-white" />
+                Export to CSV
+              </button>
             </div>
 
             <div className="overflow-x-auto no-scrollbar pb-10">
