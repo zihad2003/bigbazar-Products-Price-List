@@ -280,9 +280,10 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                     )}
                     <div className="flex flex-wrap gap-3 md:gap-4">
                       {product.available_colors.map((rawColor, idx) => {
-                        const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null };
+                        const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null };
                         const colorName = color.name;
                         const colorImage = color.image;
+                        const colorHex = color.hex;
                         const isAvailable = color.is_available ?? true;
                         return (
                           <button
@@ -297,28 +298,30 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                               }
                             }}
                             disabled={!isAvailable}
-                            className={`group flex flex-col items-center gap-2 md:gap-3 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
+                            className={`group flex flex-col items-center gap-2 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
                           >
-                            <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-[24px] overflow-hidden transition-all border-2 ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] shadow-[0_0_20px_rgba(206,17,45,0.3)] opacity-100' : 'border-white/5 opacity-100 hover:scale-105')}`}>
+                            <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden transition-all border-[3px] ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] shadow-[0_0_20px_rgba(206,17,45,0.4)] scale-110' : 'border-white/10 opacity-100 hover:scale-105 hover:border-white/30')}`}>
                               {colorImage ? (
                                 <img src={colorImage} className="w-full h-full object-cover" />
+                              ) : colorHex ? (
+                                <div className="w-full h-full" style={{ backgroundColor: colorHex }} />
                               ) : (
-                                <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] font-black uppercase text-neutral-600">{colorName.charAt(0)}</div>
+                                <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[12px] font-black uppercase text-neutral-500">{colorName.charAt(0)}</div>
                               )}
 
                               {selectedColor === colorName && (
-                                <div className="absolute top-2 right-2 w-6 h-6 bg-[#ce112d] rounded-full flex items-center justify-center shadow-lg">
-                                  <Check size={14} className="text-white" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <Check size={18} className="text-white drop-shadow-lg" />
                                 </div>
                               )}
 
                               {!isAvailable && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                  <div className="w-[120%] h-[1.5px] bg-neutral-500 rotate-45 transform"></div>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                  <div className="w-[120%] h-[2px] bg-neutral-400 rotate-45 transform"></div>
                                 </div>
                               )}
                             </div>
-                            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tighter truncate max-w-[80px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400 font-bold')}`}>
+                            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tighter truncate max-w-[70px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400')}`}>
                               {colorName}
                             </span>
                           </button>
