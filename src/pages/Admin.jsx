@@ -20,6 +20,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -381,8 +382,20 @@ export default function Admin() {
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
                 <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
               </div>
-              <div className="aspect-[9/16] bg-neutral-950 rounded-3xl overflow-hidden border border-white/5 relative">
-                <VideoPlayer src={form.video_url} priority={true} />
+              <div className="aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
+                {previewImage ? (
+                  <div className="relative w-full h-full">
+                    <img src={previewImage} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setPreviewImage(null)}
+                      className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <VideoPlayer src={form.video_url} priority={true} />
+                )}
               </div>
             </div>
             <div className="space-y-6 pt-12">
@@ -399,8 +412,37 @@ export default function Admin() {
                 <textarea rows="4" value={form.description} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl resize-none" placeholder="Enter product details..." onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
               <div>
+                <label className="text-[10px] font-black uppercase text-neutral-500 mb-4 block tracking-widest">Product Photo Gallery (মেইন ফটো গ্যালারি)</label>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 mb-4">
+                  {form.images?.map((img, i) => (
+                    <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 group bg-neutral-900">
+                      <img
+                        src={img}
+                        className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform duration-500"
+                        onClick={() => setPreviewImage(img)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) })}
+                        className="absolute bottom-1.5 right-1.5 p-1.5 bg-black/80 text-white rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[#ce112d] transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="aspect-square rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all text-neutral-500 hover:text-white">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <Plus size={16} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase">Add Photo</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                  </label>
+                </div>
+              </div>
+
+              <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Category</label>
-                <select value={form.category} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, category: e.target.value })}>
+                <select value={form.category} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-white font-bold" onChange={e => setForm({ ...form, category: e.target.value })}>
                   <option>Men</option>
                   <option>Women</option>
                   <option>Kids (Boys)</option>
@@ -506,6 +548,7 @@ export default function Admin() {
                                     const newImage = normalized.image === img ? null : img;
                                     updatedColors[idx] = { ...normalized, image: newImage };
                                     setForm({ ...form, available_colors: updatedColors });
+                                    if (newImage) setPreviewImage(newImage);
                                   }}
                                   className={`relative w-14 h-14 rounded-xl overflow-hidden transition-all border-2 cursor-pointer flex-shrink-0 ${color.image === img ? 'border-[#ce112d] scale-110 shadow-[0_0_20px_rgba(206,17,45,0.4)]' : 'border-white/5 opacity-40 hover:opacity-100'}`}
                                 >
