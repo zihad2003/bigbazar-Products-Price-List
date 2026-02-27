@@ -222,7 +222,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.available_sizes?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Pick Your Size</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Pick Your Size</label>
                       {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">Size: {selectedSize}</span>}
                     </div>
                     {validationError === 'size' && (
@@ -253,7 +253,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                               setValidationError('');
                             }}
                             disabled={!isAvailable}
-                            className={`relative aspect-square sm:aspect-auto sm:py-3 flex items-center justify-center rounded-xl text-xs font-black uppercase transition-all border-2 ${!isAvailable ? 'bg-neutral-900/50 border-white/5 text-neutral-600 cursor-not-allowed overflow-hidden' : (selectedSize === name ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-[0_5px_15px_rgba(206,17,45,0.3)] scale-105' : 'bg-transparent border-white/5 text-neutral-400 hover:border-white/20')}`}
+                            className={`relative aspect-square sm:aspect-auto sm:py-3 flex items-center justify-center rounded-xl text-xs font-black uppercase transition-all border-2 ${!isAvailable ? 'border-transparent cursor-not-allowed overflow-hidden' : (selectedSize === name ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-[0_5px_15px_rgba(206,17,45,0.3)] scale-105' : 'bg-transparent hover:border-[#ce112d]/30')}`}
+                            style={!isAvailable ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-faint)' } : (selectedSize !== name ? { borderColor: 'var(--border-color)', color: 'var(--text-secondary)' } : {})}
                           >
                             {name}
                             {!isAvailable && (
@@ -271,8 +272,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.available_colors?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Available Colors</label>
-                      {selectedColor && <span className="text-[10px] font-black uppercase text-neutral-400">Selected: <span className="text-[#ce112d]">{selectedColor}</span></span>}
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Available Colors</label>
+                      {selectedColor && <span className="text-[10px] font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Selected: <span className="text-[#ce112d]">{selectedColor}</span></span>}
                     </div>
                     {validationError === 'color' && (
                       <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
