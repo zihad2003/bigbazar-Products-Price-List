@@ -70,6 +70,23 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     ? product.images
     : [product.image || product.image_url].filter(Boolean);
 
+  const handleMainOrder = () => {
+    if (product.is_sold_out) return;
+    const hasAvailableSizes = product.available_sizes?.some(s => typeof s === 'object' ? (s.is_available ?? true) : true);
+    const hasAvailableColors = product.available_colors?.some(c => typeof c === 'object' ? (c.is_available ?? true) : true);
+    if (hasAvailableSizes && !selectedSize) {
+      setValidationError('size');
+      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (hasAvailableColors && !selectedColor) {
+      setValidationError('color');
+      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setShowDeliveryModal(true);
+  };
+
   const handleMessengerOrder = () => {
     const message = generateOrderMessage({ ...product, price });
     navigator.clipboard.writeText(message).then(() => {
@@ -158,11 +175,20 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <div className="h-px flex-1 bg-white/5"></div>
               </div>
               <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight text-white tracking-tighter mb-3 md:mb-4">{product.name}</h1>
-              <div className="flex items-center gap-4">
-                <span className="text-3xl md:text-4xl font-black text-[#ce112d]">৳{price}</span>
-                {hasDiscount && (
-                  <span className="text-lg md:text-xl text-neutral-600 line-through font-bold">৳{originalPrice}</span>
-                )}
+              <div className="flex items-center gap-4 md:gap-6 mt-4">
+                <button
+                  onClick={handleMainOrder}
+                  disabled={product.is_sold_out}
+                  className={`flex-shrink-0 px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[11px] md:text-xs transition-all active:scale-95 shadow-[0_10px_30px_rgba(206,17,45,0.2)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.05]'}`}
+                >
+                  {product.is_sold_out ? "Sold Out" : "অর্ডার করুন"}
+                </button>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-5xl font-black text-[#ce112d] tracking-tighter">৳{price}</span>
+                  {hasDiscount && (
+                    <span className="text-base md:text-xl text-neutral-600 line-through font-bold">৳{originalPrice}</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -272,22 +298,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
               <div className="grid grid-cols-1 gap-4">
                 <button
-                  onClick={() => {
-                    if (product.is_sold_out) return;
-                    const hasAvailableSizes = product.available_sizes?.some(s => typeof s === 'object' ? (s.is_available ?? true) : true);
-                    const hasAvailableColors = product.available_colors?.some(c => typeof c === 'object' ? (c.is_available ?? true) : true);
-                    if (hasAvailableSizes && !selectedSize) {
-                      setValidationError('size');
-                      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      return;
-                    }
-                    if (hasAvailableColors && !selectedColor) {
-                      setValidationError('color');
-                      document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      return;
-                    }
-                    setShowDeliveryModal(true);
-                  }}
+                  onClick={handleMainOrder}
                   disabled={product.is_sold_out}
                   className={`w-full flex items-center justify-center gap-4 py-5 md:py-6 rounded-2xl md:rounded-3xl font-black uppercase tracking-widest text-base md:text-lg transition-all active:scale-95 shadow-[0_10px_50px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
                 >
