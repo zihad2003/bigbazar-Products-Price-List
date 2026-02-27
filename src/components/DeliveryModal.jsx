@@ -315,7 +315,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             value={formData.note}
                                             onChange={handleInputChange}
                                             rows="3"
-                                            className="w-full bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-500 resize-none"
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:border-[#ce112d] outline-none transition-all placeholder:text-neutral-600 resize-none"
                                         />
                                     </div>
                                 </div>
