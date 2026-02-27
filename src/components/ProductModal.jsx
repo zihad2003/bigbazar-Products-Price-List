@@ -304,21 +304,6 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 >
                   {product.is_sold_out ? "Out of Stock" : <><ShoppingBag size={20} className="md:w-6 md:h-6" /> অর্ডার করুন</>}
                 </button>
-                <div className="grid grid-cols-2 gap-3 md:gap-4">
-                  <a
-                    href={generateWhatsAppLink({ ...product, price }, contactInfo?.whatsapp || "8801335945351")}
-                    target="_blank"
-                    className="flex items-center justify-center gap-2 py-4 md:py-5 bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[9px] md:text-[10px] hover:bg-[#25D366] hover:text-white transition-all active:scale-95"
-                  >
-                    <MessageCircle size={16} className="md:w-[18px] md:h-[18px]" /> WhatsApp
-                  </a>
-                  <button
-                    onClick={handleMessengerOrder}
-                    className="flex items-center justify-center gap-2 py-4 md:py-5 bg-[#0084FF]/10 text-[#0084FF] border border-[#0084FF]/20 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[9px] md:text-[10px] hover:bg-[#0084FF] hover:text-white transition-all active:scale-95"
-                  >
-                    <ShoppingBag size={16} className="md:w-[18px] md:h-[18px]" /> Messenger
-                  </button>
-                </div>
                 <button
                   onClick={() => {
                     const shareText = generateShareMessage({ ...product, price });
