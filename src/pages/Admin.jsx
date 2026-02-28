@@ -191,32 +191,72 @@ export default function Admin() {
     setLoading(false);
   };
 
-  const handleFileUpload = async (e, target) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
-    setLoading(true);
+  const uploadSingleFile = async (file) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `assets/${fileName}`;
 
     const { error: uploadError } = await supabase.storage.from('assets').upload(filePath, file);
-
     if (uploadError) {
       console.error(uploadError);
-      setAlertModal({ isOpen: true, title: 'Upload Failed', message: "Upload failed. Make sure 'assets' bucket exists and is public.", type: 'error' });
-    } else {
-      const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-      if (target === 'banner') {
-        setSiteSettings({ ...siteSettings, hero_banner: { ...siteSettings.hero_banner, image_url: data.publicUrl } });
-      } else if (target === 'slider') {
-        setSiteSettings({ ...siteSettings, main_slides: [...(siteSettings.main_slides || []), { id: Date.now(), image: data.publicUrl }] });
+      return null;
+    }
+    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  const handleFileUpload = async (e, target) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setLoading(true);
+    setUploadProgress({ current: 0, total: files.length });
+
+    if (target === 'banner') {
+      // Banner only uses single file
+      const url = await uploadSingleFile(files[0]);
+      if (url) {
+        setSiteSettings(prev => ({ ...prev, hero_banner: { ...prev.hero_banner, image_url: url } }));
       } else {
-        setForm({ ...form, images: [...(form.images || []), data.publicUrl] });
-        setPreviewImage(data.publicUrl);
+        setAlertModal({ isOpen: true, title: 'Upload Failed', message: "Upload failed. Make sure 'assets' bucket exists and is public.", type: 'error' });
+      }
+    } else if (target === 'slider') {
+      // Slider supports multiple
+      const uploadedUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress({ current: i + 1, total: files.length });
+        const url = await uploadSingleFile(files[i]);
+        if (url) uploadedUrls.push({ id: Date.now() + i, image: url });
+      }
+      if (uploadedUrls.length > 0) {
+        setSiteSettings(prev => ({ ...prev, main_slides: [...(prev.main_slides || []), ...uploadedUrls] }));
+      }
+      if (uploadedUrls.length < files.length) {
+        setAlertModal({ isOpen: true, title: 'Partial Upload', message: `${files.length - uploadedUrls.length} of ${files.length} files failed to upload.`, type: 'error' });
+      }
+    } else {
+      // Product gallery supports multiple
+      const uploadedUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress({ current: i + 1, total: files.length });
+        const url = await uploadSingleFile(files[i]);
+        if (url) uploadedUrls.push(url);
+      }
+      if (uploadedUrls.length > 0) {
+        setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
+        setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
+      }
+      if (uploadedUrls.length < files.length) {
+        setAlertModal({ isOpen: true, title: 'Partial Upload', message: `${files.length - uploadedUrls.length} of ${files.length} files failed to upload.`, type: 'error' });
       }
     }
+
+    setUploadProgress({ current: 0, total: 0 });
     setLoading(false);
+    // Reset the input so the same files can be re-selected if needed
+    e.target.value = '';
   };
 
   const deleteProduct = async (id) => {
@@ -382,7 +422,7 @@ export default function Admin() {
                     <Plus size={16} />
                   </div>
                   <span className="text-[9px] font-black uppercase tracking-widest">Add Slide</span>
-                  <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'slider')} />
+                  <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'slider')} />
                 </label>
               </div>
 
@@ -512,8 +552,8 @@ export default function Admin() {
                     <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
                       <Plus size={16} />
                     </div>
-                    <span className="text-[9px] font-black uppercase">Add Photo</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                    <span className="text-[9px] font-black uppercase">{uploadProgress.total > 0 ? `Uploading ${uploadProgress.current}/${uploadProgress.total}...` : 'Add Photos'}</span>
+                    <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'product')} />
                   </label>
                 </div>
               </div>
