@@ -15,7 +15,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         address: '',
         district: '',
         upazila: '',
-        lastFourDigits: '',
+        senderNumber: '',
         note: '',
         paymentMethod: 'cod'
     });
@@ -42,8 +42,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        if (name === 'lastFourDigits') {
-            setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9]/g, '').slice(0, 4) }));
+        if (name === 'senderNumber') {
+            setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9+]/g, '') }));
             return;
         }
         if (name === 'phone') {
@@ -82,12 +82,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             setError("⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।");
             return;
         }
-        if (formData.paymentMethod === 'bkash' && !formData.lastFourDigits) {
-            setError("পেমেন্ট নাম্বারের শেষ ৪টি ডিজিট দিন।");
+        if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
+            setError("যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।");
             return;
         }
-        if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.lastFourDigits) {
-            setError(`ডেলিভারি চার্জ (৳${deliveryCharge}) অগ্রিম পরিশোধ করে শেষ ৪টি ডিজিট দিন।`);
+        if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.senderNumber) {
+            setError(`ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।`);
             return;
         }
 
@@ -111,7 +111,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     delivery_area: deliveryInfo.area,
                     delivery_charge: deliveryCharge,
                     total_amount: calculateTotal(),
-                    last_four_digits: formData.lastFourDigits || (formData.paymentMethod === 'cod' ? 'COD' : ''),
+                    last_four_digits: formData.senderNumber || (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
                     size: selectedSize || null,
                     color: selectedColor || null,
@@ -292,8 +292,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                     initial={{ opacity: 0, y: -5 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl ${deliveryInfo.charge === 0
-                                            ? 'bg-green-500/10 border border-green-500/20'
-                                            : 'bg-[#ce112d]/5 border border-[#ce112d]/10'
+                                        ? 'bg-green-500/10 border border-green-500/20'
+                                        : 'bg-[#ce112d]/5 border border-[#ce112d]/10'
                                         }`}
                                 >
                                     <MapPin size={14} className={deliveryInfo.charge === 0 ? 'text-green-500' : 'text-[#ce112d]'} />
@@ -364,29 +364,24 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         {/* ===== bKash / Advance Payment ===== */}
                         {needsAdvancePayment && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
-                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-4">
-                                    {formData.paymentMethod === 'cod' && deliveryCharge > 0 && (
-                                        <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                            ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> অগ্রিম দিন। পণ্যের টাকা হাতে পেয়ে দিবেন।
-                                        </p>
-                                    )}
-                                    {formData.paymentMethod === 'bkash' && (
-                                        <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                            সম্পূর্ণ টাকা <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> বিকাশে সেন্ড মানি করুন।
-                                        </p>
-                                    )}
-                                    <div className="flex items-center justify-center gap-3 py-2">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-[#ce112d]">বিকাশ:</span>
-                                        <span className="text-lg font-black tracking-[0.15em]" style={{ color: 'var(--text-primary)' }}>{bKashNumber}</span>
+                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-3 space-y-3">
+                                    <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                        {formData.paymentMethod === 'cod' && deliveryCharge > 0
+                                            ? <>ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> বিকাশে সেন্ড মানি করুন। পণ্যের টাকা হাতে পেয়ে দিবেন।</>
+                                            : <>সম্পূর্ণ টাকা <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> বিকাশে সেন্ড মানি করুন।</>}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-black text-[#ce112d] whitespace-nowrap">বিকাশ:</span>
+                                        <span className="text-sm font-black tracking-wider" style={{ color: 'var(--text-primary)' }}>{bKashNumber}</span>
                                         <button onClick={handleCopyNumber}
-                                            className={`p-2 rounded-lg transition-all ${copied ? 'bg-green-500/20 text-green-500' : 'text-neutral-400 hover:text-white'}`}
-                                            style={!copied ? { backgroundColor: 'var(--bg-badge)' } : {}}>
-                                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                                            className={`p-1.5 rounded-lg transition-all ${copied ? 'bg-green-500/20 text-green-500' : ''}`}
+                                            style={!copied ? { backgroundColor: 'var(--bg-badge)', color: 'var(--text-muted)' } : {}}>
+                                            {copied ? <Check size={14} /> : <Copy size={14} />}
                                         </button>
                                     </div>
-                                    <input type="text" name="lastFourDigits" maxLength="4" placeholder="শেষ ৪ ডিজিট (e.g. 1234)"
-                                        value={formData.lastFourDigits} onChange={handleInputChange}
-                                        className="w-full border rounded-xl py-3 px-4 text-center text-lg font-black focus:border-[#ce112d] outline-none transition-all"
+                                    <input type="tel" name="senderNumber" placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি লিখুন"
+                                        value={formData.senderNumber} onChange={handleInputChange}
+                                        className="w-full border rounded-xl py-2.5 px-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                 </div>
                             </motion.div>
