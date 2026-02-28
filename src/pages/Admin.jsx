@@ -4,7 +4,7 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -24,6 +24,7 @@ export default function Admin() {
   const [previewImage, setPreviewImage] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [siteTheme, setSiteTheme] = useState('dark');
 
@@ -46,6 +47,7 @@ export default function Admin() {
     supabase.auth.onAuthStateChange((_event, session) => setSession(session));
     fetchProducts();
     fetchOrders();
+    fetchReviews();
     fetchSiteSettings();
   }, []);
 
@@ -69,16 +71,50 @@ export default function Admin() {
     setLoading(false);
   };
 
+  const fetchReviews = async () => {
+    const { data } = await supabase
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setReviews(data || []);
+  };
+
   const updateOrderStatus = async (id, status) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', id);
     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
     else fetchOrders();
   };
+
+  // Soft delete — moves to 'Deleted' status instead of permanent delete
   const deleteOrder = async (id) => {
     setConfirmation({
       isOpen: true,
       title: 'Delete Order',
-      message: 'Are you sure you want to delete this order? This action cannot be undone.',
+      message: 'অর্ডারটি ডিলিটেড সেকশনে সরানো হবে। পরে Undo করা যাবে।',
+      onConfirm: async () => {
+        const { error } = await supabase.from('orders').update({ status: 'Deleted' }).eq('id', id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else fetchOrders();
+      }
+    });
+  };
+
+  // Undo — restore deleted order back to Pending
+  const restoreOrder = async (id) => {
+    const { error } = await supabase.from('orders').update({ status: 'Pending' }).eq('id', id);
+    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+    else {
+      fetchOrders();
+      setAlertModal({ isOpen: true, title: 'Restored!', message: 'অর্ডারটি সফলভাবে পুনরুদ্ধার করা হয়েছে।', type: 'success' });
+    }
+  };
+
+  // Permanent delete
+  const permanentDeleteOrder = async (id) => {
+    setConfirmation({
+      isOpen: true,
+      title: 'Permanent Delete',
+      message: 'এই অর্ডারটি চিরতরে মুছে ফেলা হবে। এটি আর ফেরানো যাবে না!',
       onConfirm: async () => {
         const { error } = await supabase.from('orders').delete().eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
@@ -375,11 +411,22 @@ export default function Admin() {
             <ShoppingBag className="text-[#ce112d]" />
             <h1 className="text-xl font-black italic uppercase">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
           </div>
-          <nav className="space-y-2">
-            {['orders', 'pending', 'published', 'add', 'settings'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 p-4 rounded-xl uppercase text-[10px] font-black tracking-widest transition-all ${activeTab === tab ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
-                {tab === 'add' ? <Plus size={16} /> : tab === 'settings' ? <Settings size={16} /> : tab === 'pending' ? <Clock size={16} /> : tab === 'orders' ? <ShoppingBag size={16} /> : <CheckCircle2 size={16} />}
-                {tab}
+          <nav className="space-y-1.5">
+            {[
+              { id: 'orders', icon: <ShoppingBag size={16} />, label: 'Orders', count: orders.filter(o => o.status !== 'Deleted').length },
+              { id: 'deleted', icon: <Archive size={16} />, label: 'Deleted', count: orders.filter(o => o.status === 'Deleted').length },
+              { id: 'reviews', icon: <Star size={16} />, label: 'Reviews', count: reviews.length },
+              { id: 'pending', icon: <Clock size={16} />, label: 'Pending' },
+              { id: 'published', icon: <CheckCircle2 size={16} />, label: 'Published' },
+              { id: 'add', icon: <Plus size={16} />, label: 'Add' },
+              { id: 'settings', icon: <Settings size={16} />, label: 'Settings' },
+            ].map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${activeTab === tab.id ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
+                {tab.icon}
+                <span className="uppercase">{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className={`ml-auto text-[9px] px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/5'}`}>{tab.count}</span>
+                )}
               </button>
             ))}
           </nav>
@@ -810,7 +857,7 @@ export default function Admin() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
-                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.length} Total Orders</p>
+                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status !== 'Deleted').length} Active Orders</p>
               </div>
               <button
                 onClick={handleExportCSV}
@@ -844,7 +891,7 @@ export default function Admin() {
                     const productMap = {};
                     products.forEach(p => productMap[p.id] = p);
 
-                    return orders.map(o => {
+                    return orders.filter(o => o.status !== 'Deleted').map(o => {
                       const product = productMap[o.product_id];
                       let productThumb = product?.image_url || product?.images?.[0];
 
@@ -950,6 +997,79 @@ export default function Admin() {
                 </div>
               )}
             </div>
+          </div>
+        ) : activeTab === 'deleted' ? (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-black italic uppercase">Deleted <span className="text-[#ce112d]">Orders</span></h2>
+              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status === 'Deleted').length} ডিলিটেড অর্ডার</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {orders.filter(o => o.status === 'Deleted').map(o => (
+                <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-white/10 transition-all">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-black text-white">{o.product_name}</p>
+                      <p className="text-[10px] text-neutral-500 font-bold mt-1">{new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-red-500/10 text-red-400 text-[9px] font-black uppercase rounded-lg">Deleted</span>
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <p className="text-neutral-400"><span className="text-neutral-600">গ্রাহক:</span> {o.customer_name}</p>
+                    <p className="text-neutral-400"><span className="text-neutral-600">ফোন:</span> {o.customer_phone}</p>
+                    <p className="text-neutral-400"><span className="text-neutral-600">মোট:</span> ৳{o.total_amount}</p>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => restoreOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500/10 text-green-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-500/20 transition-all">
+                      <RotateCcw size={14} /> Undo
+                    </button>
+                    <button onClick={() => permanentDeleteOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all">
+                      <Trash2 size={14} /> চিরতরে মুছুন
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {orders.filter(o => o.status === 'Deleted').length === 0 && (
+              <div className="py-20 text-center space-y-4">
+                <Archive className="mx-auto text-neutral-800" size={48} />
+                <p className="text-neutral-500 text-sm font-bold">কোনো ডিলিটেড অর্ডার নেই।</p>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'reviews' ? (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-black italic uppercase">Customer <span className="text-[#ce112d]">Reviews</span></h2>
+              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{reviews.length} রিভিউ • গড় রেটিং: {reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '—'} ⭐</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {reviews.map(r => (
+                <div key={r.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-white/10 transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} size={16} className={s <= r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-700'} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-neutral-600 font-bold">{new Date(r.created_at).toLocaleDateString()}</span>
+                  </div>
+                  {r.comment && (
+                    <p className="text-sm text-neutral-300 leading-relaxed italic">"{r.comment}"</p>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                    <p className="text-[10px] text-neutral-500 font-bold">👤 {r.customer_name || 'Anonymous'}</p>
+                    {r.product_name && <p className="text-[9px] text-neutral-600 font-bold uppercase truncate max-w-[120px]">{r.product_name}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {reviews.length === 0 && (
+              <div className="py-20 text-center space-y-4">
+                <Star className="mx-auto text-neutral-800" size={48} />
+                <p className="text-neutral-500 text-sm font-bold">এখনো কোনো রিভিউ আসেনি।</p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-12">
