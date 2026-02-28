@@ -194,8 +194,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             <Star
                                                 size={32}
                                                 className={`transition-colors ${star <= (hoverRating || rating)
-                                                        ? 'text-yellow-400 fill-yellow-400'
-                                                        : ''
+                                                    ? 'text-yellow-400 fill-yellow-400'
+                                                    : ''
                                                     }`}
                                                 style={star > (hoverRating || rating) ? { color: 'var(--border-color)' } : {}}
                                             />
@@ -407,11 +407,20 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
                         {/* ===== Order Summary ===== */}
                         <div className="rounded-2xl border p-4 space-y-2.5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-                            {(selectedSize || selectedColor) && (
-                                <div className="flex items-center gap-2 pb-2.5 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                                    {selectedSize && <span className="px-2 py-1 bg-[#ce112d]/10 rounded-md text-[9px] font-black text-[#ce112d] uppercase">Size: {selectedSize}</span>}
-                                    {selectedColor && <span className="px-2 py-1 border rounded-md text-[9px] font-black uppercase" style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>Color: {selectedColor}</span>}
+                            {selectedSize && (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>📏 সাইজ</span>
+                                    <span className="font-black text-[#ce112d] bg-[#ce112d]/10 px-3 py-1 rounded-lg text-xs uppercase">{selectedSize}</span>
                                 </div>
+                            )}
+                            {selectedColor && (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>🎨 কালার</span>
+                                    <span className="font-black px-3 py-1 rounded-lg text-xs uppercase border" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>{selectedColor}</span>
+                                </div>
+                            )}
+                            {(selectedSize || selectedColor) && (
+                                <div className="border-t my-1" style={{ borderColor: 'var(--border-color)' }} />
                             )}
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>পণ্যের দাম</span>
