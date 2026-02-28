@@ -49,21 +49,5 @@ export const generateOrderMessage = (product, checkoutData = null) => {
 
 export const generateShareMessage = (product) => {
   const productLink = window.location.href;
-  const price = product.price || '';
-  return [
-    `✨ *${product.name}* ✨`,
-    ``,
-    `💥 মূল্য মাত্র: ৳${price} 💥`,
-    ``,
-    `🚚 মীরসরাইতে ফ্রি ডেলিভারি`,
-    `📦 সারাদেশে ক্যাশ অন ডেলিভারি`,
-    ``,
-    `━━━━━━━━━━━━━━━`,
-    `🛒 অর্ডার করতে নিচের লিংকে ক্লিক করুন 👇`,
-    `${productLink}`,
-    `━━━━━━━━━━━━━━━`,
-    ``,
-    `🏪 *Big Bazar — Bariarhat*`,
-    `📞 Call/WhatsApp: 01857045449`,
-  ].join('\n');
+  return `${product.name} এখন Available Big Bazar-এ!\n\nপ্রোডাক্টের প্রাইস জানতে ও অনলাইনে অর্ডার করতে নিচের লিংকে ক্লিক করে ওয়েবসাইট ভিজিট করুন:\n👇 ${productLink}`;
 };
