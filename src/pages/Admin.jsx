@@ -32,7 +32,7 @@ export default function Admin() {
     images: [], video_url: '', is_sale: false, is_hot: false,
     is_new: false, is_sold_out: false, category: 'Women',
     status: 'pending', platform_id: '', serial_no: '',
-    available_sizes: [], available_colors: []
+    available_sizes: [], available_colors: [], stock_count: ''
   });
 
   const [siteSettings, setSiteSettings] = useState({
@@ -140,7 +140,8 @@ export default function Admin() {
       ...form,
       price: parseFloat(form.price),
       original_price: form.original_price ? parseFloat(form.original_price) : null,
-      serial_no: parseInt(finalSerialNo)
+      serial_no: parseInt(finalSerialNo),
+      stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null
     };
 
     let error;
@@ -510,6 +511,10 @@ export default function Admin() {
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Price</label>
                 <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Stock Count (খালি = unlimited)</label>
+                <input type="number" min="0" value={form.stock_count} placeholder="e.g. 10" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, stock_count: e.target.value })} />
               </div>
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Name</label>

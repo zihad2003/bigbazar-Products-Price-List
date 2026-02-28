@@ -97,6 +97,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             return;
         }
 
+        // Check stock
+        if (product.stock_count !== null && product.stock_count !== undefined && product.stock_count <= 0) {
+            setError("⚠️ দুঃখিত, এই পণ্যটি স্টকে নেই।");
+            return;
+        }
+
         setIsSubmitting(true);
         setError('');
 
@@ -124,6 +130,19 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     customer_note: formData.note || null
                 }]);
             if (insertError) throw insertError;
+
+            // Decrease stock count
+            if (product.stock_count !== null && product.stock_count !== undefined) {
+                const newStock = Math.max(0, product.stock_count - 1);
+                await supabase
+                    .from('products')
+                    .update({
+                        stock_count: newStock,
+                        is_sold_out: newStock <= 0
+                    })
+                    .eq('id', product.id);
+            }
+
             setIsSuccess(true);
         } catch (err) {
             setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
