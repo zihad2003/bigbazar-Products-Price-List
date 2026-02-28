@@ -215,6 +215,11 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: 'var(--bg-badge)', color: 'var(--text-muted)' }}>{product.category}</span>
                 {product.is_hot && <span className="px-3 py-1 bg-[#ce112d]/10 rounded-full text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Hot Item</span>}
+                {product.stock_count !== null && product.stock_count !== undefined && !product.is_sold_out && (
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${product.stock_count <= 5 ? 'bg-orange-500/10 text-orange-500 animate-pulse' : 'bg-green-500/10 text-green-500'}`}>
+                    📦 {product.stock_count} টি বাকি
+                  </span>
+                )}
               </div>
 
               {/* Variant Selectors */}
