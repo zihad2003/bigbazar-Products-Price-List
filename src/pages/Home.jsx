@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import BannerSlider from '../components/BannerSlider';
-import { ShoppingBag, ChevronDown, Instagram, Search, X } from 'lucide-react';
+import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe } from 'lucide-react';
 
 const PAGE_SIZE = 12;
 
@@ -15,6 +15,10 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const [showAnnouncement, setShowAnnouncement] = useState(() => {
+    const dismissed = sessionStorage.getItem('bb_announcement_dismissed');
+    return !dismissed;
+  });
   const [siteSettings, setSiteSettings] = useState({
     banner: {
       title: '5% FLAT DISCOUNT',
@@ -26,6 +30,11 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
 
   const { productId } = useParams();
   const navigate = useNavigate();
+
+  const dismissAnnouncement = () => {
+    setShowAnnouncement(false);
+    sessionStorage.setItem('bb_announcement_dismissed', 'true');
+  };
 
   // Debounce search query
   useEffect(() => {
@@ -139,6 +148,80 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   return (
     <div className="min-h-screen px-4 md:px-8 pb-32" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-7xl mx-auto space-y-10 md:space-y-16">
+
+        {/* Announcement Banner */}
+        <AnimatePresence>
+          {showAnnouncement && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div
+                className="relative rounded-2xl md:rounded-3xl overflow-hidden border"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                  boxShadow: 'var(--shadow-card)',
+                }}
+              >
+                {/* Accent gradient top bar */}
+                <div className="h-1" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
+
+                <div className="px-4 md:px-6 py-4 md:py-5 flex items-start gap-3 md:gap-4">
+                  {/* Icon */}
+                  <div
+                    className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center mt-0.5"
+                    style={{ backgroundColor: 'rgba(206, 17, 45, 0.1)' }}
+                  >
+                    <MessageSquare size={20} className="text-[#ce112d]" />
+                  </div>
+
+                  {/* Text Content */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <p
+                      className="text-[10px] md:text-[11px] font-black uppercase tracking-widest"
+                      style={{ color: '#ce112d' }}
+                    >
+                      📢 গুরুত্বপূর্ণ বিজ্ঞপ্তি
+                    </p>
+                    <p
+                      className="text-xs md:text-sm font-semibold leading-relaxed"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!
+                    </p>
+                    <p
+                      className="text-[11px] md:text-xs leading-relaxed"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong>
+                    </p>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Globe size={12} className="text-[#ce112d]" />
+                      <span
+                        className="text-[9px] md:text-[10px] font-black uppercase tracking-widest"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        Website থেকে অর্ডার করুন — দ্রুত ও সহজ!
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <button
+                    onClick={dismissAnnouncement}
+                    className="flex-shrink-0 p-2 rounded-xl transition-all hover:bg-[#ce112d]/10 group"
+                  >
+                    <X size={16} style={{ color: 'var(--text-muted)' }} className="group-hover:text-[#ce112d] transition-colors" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Slider Section - Only show if slides exist */}
         {siteSettings.main_slides?.length > 0 && (
