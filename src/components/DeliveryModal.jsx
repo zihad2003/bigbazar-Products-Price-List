@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 
@@ -9,6 +9,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [showReview, setShowReview] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [reviewText, setReviewText] = useState('');
+    const [reviewSubmitted, setReviewSubmitted] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -130,6 +135,22 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
     const needsAdvancePayment = formData.paymentMethod === 'bkash' ||
         (formData.paymentMethod === 'cod' && deliveryInfo && deliveryCharge > 0);
 
+    const handleSubmitReview = async () => {
+        if (rating === 0) return;
+        try {
+            await supabase.from('reviews').insert([{
+                rating,
+                comment: reviewText || null,
+                customer_name: formData.name || 'Anonymous',
+                product_id: product.id || null,
+                product_name: product.name || null
+            }]);
+        } catch (err) {
+            console.error('Review submit error:', err);
+        }
+        setReviewSubmitted(true);
+    };
+
     if (isSuccess) {
         return (
             <AnimatePresence>
@@ -140,17 +161,90 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        className="border rounded-[40px] p-10 max-w-md w-full text-center space-y-6"
+                        className="border rounded-[32px] p-8 max-w-sm w-full text-center space-y-5"
                         style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
                     >
-                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <CheckCircle2 className="text-green-500" size={40} />
+                        {/* Order confirmed header */}
+                        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                            <CheckCircle2 className="text-green-500" size={32} />
                         </div>
-                        <h2 className="text-3xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Confirmed!</h2>
-                        <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। আমরা শীঘ্রই আপনার সাথে যোগাযোগ করবো।</p>
-                        <button onClick={onClose} className="w-full py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95">
+                        <div>
+                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Confirmed!</h2>
+                            <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
+                        </div>
+
+                        {/* Review section */}
+                        {!reviewSubmitted ? (
+                            <div className="rounded-2xl border p-4 space-y-4 text-left" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+                                <p className="text-xs font-bold text-center" style={{ color: 'var(--text-secondary)' }}>
+                                    আপনার অভিজ্ঞতা কেমন ছিল? ⭐
+                                </p>
+
+                                {/* Star Rating */}
+                                <div className="flex justify-center gap-1.5">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setRating(star)}
+                                            onMouseEnter={() => setHoverRating(star)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            className="transition-transform hover:scale-110 active:scale-95"
+                                        >
+                                            <Star
+                                                size={32}
+                                                className={`transition-colors ${star <= (hoverRating || rating)
+                                                        ? 'text-yellow-400 fill-yellow-400'
+                                                        : ''
+                                                    }`}
+                                                style={star > (hoverRating || rating) ? { color: 'var(--border-color)' } : {}}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Comment */}
+                                {rating > 0 && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                        <textarea
+                                            value={reviewText}
+                                            onChange={(e) => setReviewText(e.target.value)}
+                                            placeholder="আপনার মতামত লিখুন (ঐচ্ছিক)"
+                                            rows="2"
+                                            className="w-full border rounded-xl py-2.5 px-3 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                        />
+                                    </motion.div>
+                                )}
+
+                                {/* Submit review */}
+                                {rating > 0 && (
+                                    <button
+                                        onClick={handleSubmitReview}
+                                        className="w-full py-2.5 bg-[#ce112d] text-white rounded-xl font-bold text-sm transition-all active:scale-95"
+                                    >
+                                        রিভিউ দিন ✨
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <motion.p
+                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+                                className="text-sm font-bold text-green-500"
+                            >
+                                ধন্যবাদ আপনার রিভিউয়ের জন্য! 💚
+                            </motion.p>
+                        )}
+
+                        <button onClick={onClose} className="w-full py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95">
                             Back To Shop
                         </button>
+
+                        {!reviewSubmitted && rating === 0 && (
+                            <button onClick={onClose} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                                এড়িয়ে যান
+                            </button>
+                        )}
                     </motion.div>
                 </motion.div>
             </AnimatePresence>
