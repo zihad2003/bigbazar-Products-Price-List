@@ -267,9 +267,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             </h4>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { id: 'mirsarai', label: 'মীরসরাই', price: 'ফ্রি', priceSub: '৳০' },
-                                    { id: 'chattogram', label: 'চট্টগ্রাম', price: '৳১০০', priceSub: '' },
-                                    { id: 'outside', label: 'বাইরে', price: '৳১৫০+', priceSub: '' }
+                                    { id: 'mirsarai', label: 'মীরসরাই', sub: '', price: 'ফ্রি' },
+                                    { id: 'chattogram', label: 'চট্টগ্রাম', sub: '', price: '৳১০০' },
+                                    { id: 'outside', label: 'চট্টগ্রামের বাইরে', sub: 'দেশের যে কোনো জেলায়', price: '৳১৫০+' }
                                 ].map((area) => (
                                     <button
                                         key={area.id}
@@ -279,10 +279,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             if (error) setError('');
                                         }}
                                         className={`p-3 rounded-xl border-2 transition-all text-center ${formData.deliveryArea === area.id
-                                                ? 'border-[#ce112d] bg-[#ce112d]/10 scale-[1.02]'
-                                                : !formData.deliveryArea
-                                                    ? 'border-[#ce112d]/30 animate-pulse'
-                                                    : ''
+                                            ? 'border-[#ce112d] bg-[#ce112d]/10 scale-[1.02]'
+                                            : !formData.deliveryArea
+                                                ? 'border-[#ce112d]/30 animate-pulse'
+                                                : ''
                                             }`}
                                         style={formData.deliveryArea !== area.id ? {
                                             borderColor: !formData.deliveryArea ? undefined : 'var(--border-color)',
@@ -290,11 +290,16 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             animation: !formData.deliveryArea ? undefined : 'none'
                                         } : {}}
                                     >
-                                        <p className={`text-xs font-black ${formData.deliveryArea === area.id ? 'text-[#ce112d]' : ''}`}
+                                        <p className={`text-[11px] font-black leading-tight ${formData.deliveryArea === area.id ? 'text-[#ce112d]' : ''}`}
                                             style={formData.deliveryArea !== area.id ? { color: 'var(--text-primary)' } : {}}>
                                             {area.label}
                                         </p>
-                                        <p className={`text-[10px] font-bold mt-0.5 ${formData.deliveryArea === area.id ? 'text-[#ce112d]/70' : ''}`}
+                                        {area.sub && (
+                                            <p className="text-[8px] font-bold mt-0.5 leading-tight" style={{ color: 'var(--text-muted)' }}>
+                                                {area.sub}
+                                            </p>
+                                        )}
+                                        <p className={`text-[10px] font-bold mt-1 ${formData.deliveryArea === area.id ? 'text-[#ce112d]/70' : ''}`}
                                             style={formData.deliveryArea !== area.id ? { color: 'var(--text-muted)' } : {}}>
                                             {area.price}
                                         </p>
