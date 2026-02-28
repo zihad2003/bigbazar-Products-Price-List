@@ -48,9 +48,13 @@ export const generateOrderMessage = (product, checkoutData = null) => {
 };
 
 export const generateShareMessage = (product) => {
-  // Use the current window URL which should be the product permalink if opened via route, 
-  // or construct it if we are on home. Reliability: window.location.href is safest if we ensure routing is consistent.
-  // Given Home.jsx sets /product/:id, this is safe.
   const productLink = window.location.href;
-  return `🔥 Check out this ${product.name} on BigBazar!\n\n“পণ্যের দাম জানতে আমাদের ওয়েবসাইট ভিজিট করুন”\n👉 Link: ${productLink}`;
+  const price = product.price ? `💰 মূল্য: ৳${product.price}` : '';
+  return [
+    `🛍️ *${product.name}* — Big Bazar`,
+    price,
+    ``,
+    `পণ্যটি দেখতে ও অর্ডার করতে নিচের লিংকে ক্লিক করুন 👇`,
+    productLink,
+  ].filter(Boolean).join('\n');
 };
