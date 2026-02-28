@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star } from 'lucide-react';
 import { supabase } from '../supabaseClient';
@@ -6,6 +6,7 @@ import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo 
 
 const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, selectedColor }) => {
     const [error, setError] = useState('');
+    const errorRef = useRef(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -295,9 +296,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         <AnimatePresence>
                             {error && (
                                 <motion.div
+                                    ref={errorRef}
                                     initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                    onAnimationComplete={() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                                     className="p-3.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold"
                                 >
                                     <AlertCircle size={16} className="flex-shrink-0" />
