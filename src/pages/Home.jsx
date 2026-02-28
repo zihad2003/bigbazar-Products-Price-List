@@ -324,7 +324,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 className="px-6 md:px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
                 style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
               >
-                Discover More
+                See More
               </button>
             </div>
           )}
