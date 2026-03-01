@@ -110,6 +110,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         style={{ backgroundColor: 'var(--bg-overlay)' }}
       >
         <motion.div
+          id="product-modal-scroll"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -230,7 +231,10 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                               setValidationError('');
                               if (colorImage) {
                                 const imgIdx = images.indexOf(colorImage);
-                                if (imgIdx !== -1) setCurrentImageIndex(imgIdx);
+                                if (imgIdx !== -1) {
+                                  setCurrentImageIndex(imgIdx);
+                                  document.getElementById('product-modal-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+                                }
                               }
                             }}
                             disabled={!isAvailable}
