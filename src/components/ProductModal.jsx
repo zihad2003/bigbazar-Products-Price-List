@@ -135,28 +135,28 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
-          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] rounded-t-[32px] md:rounded-[40px] flex flex-col md:flex-row overflow-hidden border-t md:border"
+          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] rounded-t-[32px] md:rounded-[40px] flex flex-col md:flex-row overflow-y-auto overflow-x-hidden md:overflow-hidden border-t md:border no-scrollbar"
           style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 -10px 100px rgba(0,0,0,0.3)' }}
         >
-          <div className="w-full flex justify-center pt-4 pb-2 md:hidden shrink-0">
+          <div className="w-full flex justify-center pt-4 pb-2 md:hidden shrink-0 sticky top-0 z-50 bg-inherit" style={{ backgroundColor: 'var(--modal-bg)' }}>
             <div className="w-12 h-1.5 rounded-full" style={{ backgroundColor: 'var(--border-hover)' }} />
           </div>
 
-          {/* Close Trigger */}
-          <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 z-[110] p-2.5 md:p-3 rounded-full bg-black/50 text-white backdrop-blur-xl hover:scale-110 transition-transform">
+          {/* Close Trigger - sticky on mobile so it doesn't get lost when scrolling */}
+          <button onClick={onClose} className="absolute sm:fixed md:absolute top-4 right-4 md:top-6 md:right-6 z-[110] p-2.5 md:p-3 rounded-full bg-black/50 text-white backdrop-blur-xl hover:scale-110 transition-transform">
             <X size={20} className="md:w-6 md:h-6" />
           </button>
 
           {/* Media Section */}
-          <div className="w-full md:w-[50%] aspect-[4/5] md:aspect-auto md:h-full bg-black relative group shrink-0">
+          <div className="w-full md:w-[50%] h-auto md:h-full bg-black relative group shrink-0 self-start md:self-auto">
             {product.video_url ? (
               <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
             ) : (
-              <div className="relative w-full h-full overflow-hidden">
+              <div className="relative w-full h-auto md:h-full overflow-hidden">
                 <motion.img
                   key={currentImageIndex}
                   src={images[currentImageIndex]}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-auto min-h-[50vh] max-h-[70vh] md:max-h-full md:h-full object-cover object-top"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}
@@ -181,7 +181,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </div>
 
           {/* Details Section */}
-          <div className="flex-1 p-6 md:p-12 overflow-y-auto no-scrollbar flex flex-col gap-8 md:gap-10">
+          <div className="flex-1 p-6 md:p-12 md:overflow-y-auto no-scrollbar flex flex-col gap-8 md:gap-10">
             <div>
               <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#ce112d]">BIGBAZAR Exclusive</span>
