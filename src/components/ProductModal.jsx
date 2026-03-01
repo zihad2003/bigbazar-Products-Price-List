@@ -148,7 +148,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </button>
 
           {/* Media Section */}
-          <div className="w-full md:w-[50%] h-[40vh] md:h-full bg-black relative group shrink-0">
+          <div className="w-full md:w-[50%] aspect-[4/5] md:aspect-auto md:h-full bg-black relative group shrink-0">
             {product.video_url ? (
               <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
             ) : (
@@ -156,7 +156,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <motion.img
                   key={currentImageIndex}
                   src={images[currentImageIndex]}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-top"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}
