@@ -875,12 +875,36 @@ export default function Admin() {
                         }
                       }}
                     />
-                    <input
-                      id="newColorHex"
-                      type="color"
-                      defaultValue="#888888"
-                      className="w-14 h-14 rounded-2xl cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-1 [&::-webkit-color-swatch]:rounded-xl [&::-webkit-color-swatch]:border-0"
-                    />
+
+                    <div className="relative group cursor-pointer w-14 h-14 shrink-0">
+                      <div
+                        id="newColorHexDisplay"
+                        className="absolute inset-0 rounded-2xl border-2 border-white/10 shadow-inner flex items-center justify-center transition-transform pointer-events-none"
+                        style={{ backgroundColor: '#888888' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" /></svg>
+                      </div>
+                      <input
+                        id="newColorHex"
+                        type="color"
+                        defaultValue="#888888"
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                        onChange={(e) => {
+                          document.getElementById('newColorHexDisplay').style.backgroundColor = e.target.value;
+                        }}
+                        onClick={async (e) => {
+                          if (window.EyeDropper) {
+                            e.preventDefault();
+                            try {
+                              const dropper = new window.EyeDropper();
+                              const { sRGBHex } = await dropper.open();
+                              e.target.value = sRGBHex;
+                              document.getElementById('newColorHexDisplay').style.backgroundColor = sRGBHex;
+                            } catch (err) { console.log(err); }
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                   <p className="text-[9px] text-neutral-600 font-bold mt-2 ml-1">Type name + pick color, then press Enter</p>
                 </div>
