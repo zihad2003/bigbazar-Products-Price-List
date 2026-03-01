@@ -181,7 +181,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </div>
 
           {/* Details Section */}
-          <div className="flex-1 p-6 md:p-12 md:overflow-y-auto no-scrollbar flex flex-col gap-8 md:gap-10">
+          <div className="flex-1 min-w-0 p-6 md:p-12 md:overflow-y-auto no-scrollbar flex flex-col gap-8 md:gap-10">
             <div>
               <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#ce112d]">BIGBAZAR Exclusive</span>
