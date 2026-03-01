@@ -56,7 +56,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     setProducts(data || []);
     setLoading(false);
   };
@@ -66,7 +67,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('orders')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(300);
     setOrders(data || []);
     setLoading(false);
   };
@@ -75,7 +77,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('reviews')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
     setReviews(data || []);
   };
 
