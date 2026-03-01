@@ -370,12 +370,14 @@ export default function Admin() {
 
   const cancelEdit = () => {
     setEditingProduct(null);
+    setPreviewImage(null);
+    setPreviewVideo(null);
     setForm({
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
       is_new: false, is_sold_out: false, category: 'Women',
       status: 'pending', platform_id: '', serial_no: '',
-      available_sizes: [], available_colors: []
+      available_sizes: [], available_colors: [], stock_count: ''
     });
   };
 
