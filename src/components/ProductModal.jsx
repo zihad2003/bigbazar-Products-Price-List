@@ -128,7 +128,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </button>
 
           {/* Media Section */}
-          <div className="w-full md:w-[50%] h-auto md:h-full bg-black relative group shrink-0 self-start md:self-auto">
+          <div className={`w-full md:w-[50%] bg-black relative group shrink-0 self-start md:self-auto ${product.video_url ? 'h-[65vh] md:h-full' : 'h-auto md:h-full'}`}>
             {product.video_url ? (
               <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
             ) : (
