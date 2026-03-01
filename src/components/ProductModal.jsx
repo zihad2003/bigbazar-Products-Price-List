@@ -19,36 +19,15 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [selectedColor, setSelectedColor] = useState('');
   const [validationError, setValidationError] = useState('');
 
-  // 1. All hooks must be at the top level
+  // Reset state when modal opens or product changes
   useEffect(() => {
-    if (!product) return;
-    if (product.available_sizes?.length > 0 && !selectedSize) {
-      const available = product.available_sizes.filter(s => typeof s === 'object' ? (s.is_available !== false) : true);
-      if (available.length > 0) {
-        setSelectedSize(typeof available[0] === 'object' ? available[0].name : available[0]);
-      }
+    if (isOpen) {
+      setSelectedSize('');
+      setSelectedColor('');
+      setValidationError('');
+      setCurrentImageIndex(0);
     }
-  }, [product, selectedSize]);
-
-  useEffect(() => {
-    if (!product) return;
-    const currentImages = (product.images && Array.isArray(product.images) && product.images.length > 0)
-      ? product.images
-      : [product.image || product.image_url].filter(Boolean);
-
-    if (product.available_colors?.length > 0 && !selectedColor) {
-      const available = product.available_colors.filter(c => typeof c === 'object' ? (c.is_available !== false) : true);
-      if (available.length > 0) {
-        const color = available[0];
-        const name = typeof color === 'object' ? color.name : color;
-        setSelectedColor(name);
-        if (typeof color === 'object' && color.image) {
-          const imgIdx = currentImages.indexOf(color.image);
-          if (imgIdx !== -1) setCurrentImageIndex(imgIdx);
-        }
-      }
-    }
-  }, [product, selectedColor]);
+  }, [product, isOpen]);
 
   // Effect to handle size availability based on selected color
   useEffect(() => {
