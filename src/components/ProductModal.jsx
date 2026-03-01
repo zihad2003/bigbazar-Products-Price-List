@@ -203,56 +203,6 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
               {/* Variant Selectors */}
               <div id="variant-selectors" className="space-y-6 md:space-y-8 py-5 md:py-6 border-y" style={{ borderColor: 'var(--border-color)' }}>
-                {product.available_sizes?.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Pick Your Size</label>
-                      {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">Size: {selectedSize}</span>}
-                    </div>
-                    {validationError === 'size' && (
-                      <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
-                        অনুগ্রহ করে একটি সাইজ সিলেক্ট করুন
-                      </motion.p>
-                    )}
-                    <div className="grid grid-cols-4 md:grid-cols-4 gap-2 md:gap-3">
-                      {product.available_sizes.map((size, idx) => {
-                        const name = typeof size === 'object' ? size.name : size;
-                        let isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
-
-                        // Color-wise size logic: if a color is selected and has a specific sizes list,
-                        // mark sizes not in that list as unavailable.
-                        if (selectedColor && isAvailable) {
-                          const colorObj = product.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
-                          if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
-                            if (!colorObj.sizes.includes(name)) {
-                              isAvailable = false;
-                            }
-                          }
-                        }
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => {
-                              isAvailable && setSelectedSize(name);
-                              setValidationError('');
-                            }}
-                            disabled={!isAvailable}
-                            className={`relative aspect-square sm:aspect-auto sm:py-3 flex items-center justify-center rounded-xl text-xs font-black uppercase transition-all border-2 ${!isAvailable ? 'border-transparent cursor-not-allowed overflow-hidden' : (selectedSize === name ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-[0_5px_15px_rgba(206,17,45,0.3)] scale-105' : 'bg-transparent hover:border-[#ce112d]/30')}`}
-                            style={!isAvailable ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-faint)' } : (selectedSize !== name ? { borderColor: 'var(--border-color)', color: 'var(--text-secondary)' } : {})}
-                          >
-                            {name}
-                            {!isAvailable && (
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-[120%] h-[1px] bg-neutral-600/50 rotate-45 transform"></div>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 {product.available_colors?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
@@ -310,6 +260,56 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                             <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-tighter truncate max-w-[70px] ${!isAvailable ? 'text-neutral-700' : (selectedColor === colorName ? 'text-[#ce112d]' : 'text-neutral-400')}`}>
                               {colorName}
                             </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {product.available_sizes?.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Pick Your Size</label>
+                      {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">Size: {selectedSize}</span>}
+                    </div>
+                    {validationError === 'size' && (
+                      <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
+                        অনুগ্রহ করে একটি সাইজ সিলেক্ট করুন
+                      </motion.p>
+                    )}
+                    <div className="grid grid-cols-4 md:grid-cols-4 gap-2 md:gap-3">
+                      {product.available_sizes.map((size, idx) => {
+                        const name = typeof size === 'object' ? size.name : size;
+                        let isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+
+                        // Color-wise size logic: if a color is selected and has a specific sizes list,
+                        // mark sizes not in that list as unavailable.
+                        if (selectedColor && isAvailable) {
+                          const colorObj = product.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
+                          if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
+                            if (!colorObj.sizes.includes(name)) {
+                              isAvailable = false;
+                            }
+                          }
+                        }
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              isAvailable && setSelectedSize(name);
+                              setValidationError('');
+                            }}
+                            disabled={!isAvailable}
+                            className={`relative aspect-square sm:aspect-auto sm:py-3 flex items-center justify-center rounded-xl text-xs font-black uppercase transition-all border-2 ${!isAvailable ? 'border-transparent cursor-not-allowed overflow-hidden' : (selectedSize === name ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-[0_5px_15px_rgba(206,17,45,0.3)] scale-105' : 'bg-transparent hover:border-[#ce112d]/30')}`}
+                            style={!isAvailable ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-faint)' } : (selectedSize !== name ? { borderColor: 'var(--border-color)', color: 'var(--text-secondary)' } : {})}
+                          >
+                            {name}
+                            {!isAvailable && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-[120%] h-[1px] bg-neutral-600/50 rotate-45 transform"></div>
+                              </div>
+                            )}
                           </button>
                         );
                       })}
