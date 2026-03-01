@@ -565,22 +565,27 @@ export default function Admin() {
                   </label>
                 </div>
               </div>
-              <div className="aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-                {previewImage ? (
-                  <div className="relative w-full h-full">
-                    <img src={previewImage} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImage(null)}
-                      className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <VideoPlayer src={form.video_url} priority={true} />
-                )}
-              </div>
+              {(previewImage || form.video_url) && (
+                <div className={`grid gap-4 ${previewImage && form.video_url ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-sm mx-auto w-full'}`}>
+                  {previewImage && (
+                    <div className="aspect-[4/5] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
+                      <img src={previewImage} className="w-full h-full object-cover object-top" />
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImage(null)}
+                        className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors z-[10]"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                  {form.video_url && (
+                    <div className="aspect-[4/5] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
+                      <VideoPlayer src={form.video_url} priority={true} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-6 pt-12">
               <div>
