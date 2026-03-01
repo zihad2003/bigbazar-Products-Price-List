@@ -743,19 +743,43 @@ export default function Admin() {
                             {/* Hex color picker */}
                             <div>
                               <label className="text-[9px] font-black uppercase text-neutral-500 tracking-widest block mb-2">Base Hex Color</label>
-                              <div className="flex items-center gap-2 px-1">
-                                <input
-                                  type="color"
-                                  value={color.hex || '#888888'}
-                                  onChange={(e) => {
-                                    const updatedColors = [...form.available_colors];
-                                    const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                                    updatedColors[idx] = { ...normalized, hex: e.target.value };
-                                    setForm({ ...form, available_colors: updatedColors });
-                                  }}
-                                  className="w-8 h-8 rounded-full cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
-                                />
-                                <span className="text-[10px] font-mono text-neutral-400 uppercase font-black">{color.hex || '#888'}</span>
+                              <div className="flex items-center gap-3 px-1">
+                                <div className="relative group cursor-pointer w-10 h-10">
+                                  <div
+                                    className="absolute inset-0 rounded-full border-2 border-white/10 shadow-inner flex items-center justify-center transition-transform hover:scale-105 pointer-events-none"
+                                    style={{ backgroundColor: color.hex || '#888888' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" /></svg>
+                                  </div>
+                                  <input
+                                    type="color"
+                                    value={color.hex || '#888888'}
+                                    onClick={async (e) => {
+                                      if (window.EyeDropper) {
+                                        e.preventDefault();
+                                        try {
+                                          const dropper = new window.EyeDropper();
+                                          const { sRGBHex } = await dropper.open();
+                                          const updatedColors = [...form.available_colors];
+                                          const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                          updatedColors[idx] = { ...normalized, hex: sRGBHex };
+                                          setForm({ ...form, available_colors: updatedColors });
+                                        } catch (err) { console.log(err); }
+                                      }
+                                    }}
+                                    onChange={(e) => {
+                                      const updatedColors = [...form.available_colors];
+                                      const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                      updatedColors[idx] = { ...normalized, hex: e.target.value };
+                                      setForm({ ...form, available_colors: updatedColors });
+                                    }}
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[12px] font-mono text-white uppercase font-black">{color.hex || '#888888'}</span>
+                                  <span className="text-[8px] text-neutral-500 font-bold uppercase tracking-widest leading-tight">Click to Sample</span>
+                                </div>
                               </div>
                             </div>
 
