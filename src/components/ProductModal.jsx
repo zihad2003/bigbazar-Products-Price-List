@@ -285,7 +285,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                         অনুগ্রহ করে একটি কালার সিলেক্ট করুন
                       </motion.p>
                     )}
-                    <div className="flex flex-wrap gap-3 md:gap-4">
+                    <div className="flex overflow-x-auto gap-3 md:gap-4 pb-2 -mx-1 px-1 no-scrollbar snap-x">
                       {product.available_colors.map((rawColor, idx) => {
                         const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null };
                         const colorName = color.name;
@@ -305,7 +305,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                               }
                             }}
                             disabled={!isAvailable}
-                            className={`group flex flex-col items-center gap-2 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
+                            className={`flex-shrink-0 snap-start group flex flex-col items-center gap-2 ${!isAvailable ? 'cursor-not-allowed' : ''}`}
                           >
                             <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden transition-all border-[3px] ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] shadow-[0_0_20px_rgba(206,17,45,0.4)] scale-110' : 'border-white/10 opacity-100 hover:scale-105 hover:border-white/30')}`}>
                               {colorImage ? (
