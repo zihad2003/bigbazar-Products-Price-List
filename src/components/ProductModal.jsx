@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageCircle, ShoppingBag, Truck, ShieldCheck, Clock, Share2, Check } from 'lucide-react';
+import { X, MessageCircle, ShoppingBag, Truck, ShieldCheck, Clock, Share2, Check, Play, Image as ImageIcon } from 'lucide-react';
 import { generateWhatsAppLink, generateMessengerLink, generateOrderMessage, generateShareMessage } from '../utils/messageTemplates';
 import { calculatePrice } from '../utils/pricing';
 import { supabase } from '../supabaseClient';
@@ -18,6 +18,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [showVideo, setShowVideo] = useState(false);
 
   // Reset state when modal opens or product changes
   useEffect(() => {
@@ -26,6 +27,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       setSelectedColor('');
       setValidationError('');
       setCurrentImageIndex(0);
+      setShowVideo(!!product?.video_url);
     }
   }, [product, isOpen]);
 
@@ -128,9 +130,16 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </button>
 
           {/* Media Section */}
-          <div className={`w-full md:w-[50%] bg-black relative group shrink-0 self-start md:self-auto ${product.video_url ? 'h-[65vh] md:h-full' : 'h-auto md:h-full'}`}>
-            {product.video_url ? (
-              <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
+          <div className={`w-full md:w-[50%] bg-black relative group shrink-0 self-start md:self-auto ${showVideo ? 'h-[65vh] md:h-full' : 'h-auto md:h-full'}`}>
+            {showVideo ? (
+              <div className="w-full h-full relative">
+                <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
+                {images.length > 0 && (
+                  <button onClick={() => setShowVideo(false)} className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] bg-black/60 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-black uppercase text-[10px] tracking-widest flex items-center gap-2 border border-white/10 hover:bg-[#ce112d] transition-all shadow-xl hover:scale-105">
+                    <ImageIcon size={14} /> View Photos
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="relative w-full h-auto md:h-full overflow-hidden">
                 <motion.img
@@ -141,6 +150,13 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}
                 />
+
+                {product.video_url && (
+                  <button onClick={() => setShowVideo(true)} className="absolute top-4 left-4 md:top-6 md:left-6 z-[110] bg-[#ce112d]/90 backdrop-blur-md text-white px-4 py-2 md:px-5 md:py-2.5 rounded-full font-black uppercase text-[9px] md:text-[10px] tracking-widest flex items-center gap-2 border border-[#ce112d] hover:bg-black transition-all shadow-lg hover:scale-105">
+                    <Play size={14} className="md:w-3 md:h-3" /> Watch Video
+                  </button>
+                )}
+
                 {images.length > 1 && (
                   <>
                     <div className="absolute inset-y-0 left-0 w-12 z-10 md:hidden" onClick={() => setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1))} />
