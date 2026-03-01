@@ -19,6 +19,15 @@ function PublicLayout() {
   const [category, setCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    // Increment visitor count only once per session so we don't spam the API on every click
+    if (!sessionStorage.getItem('visited')) {
+      fetch('https://api.counterapi.dev/v1/bigbazar_sheet/visits/up')
+        .then(() => sessionStorage.setItem('visited', 'true'))
+        .catch(err => console.log('Visitor tracking failed', err));
+    }
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <Navbar

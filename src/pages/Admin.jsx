@@ -4,7 +4,7 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -27,6 +27,7 @@ export default function Admin() {
   const [reviews, setReviews] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [siteTheme, setSiteTheme] = useState('dark');
+  const [visitorCount, setVisitorCount] = useState(0);
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -49,6 +50,12 @@ export default function Admin() {
     fetchOrders();
     fetchReviews();
     fetchSiteSettings();
+
+    // Fetch total site visitor count safely
+    fetch('https://api.counterapi.dev/v1/bigbazar_sheet/visits')
+      .then(r => r.json())
+      .then(d => setVisitorCount(d.count || 0))
+      .catch(() => 0);
   }, []);
 
   const fetchProducts = async () => {
@@ -937,14 +944,17 @@ export default function Admin() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-neutral-500 tracking-widest">
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-neutral-500 tracking-widest bg-white/5 py-1 px-3 rounded-full">
                     <ShoppingBag size={12} className="text-[#ce112d]" />
                     {orders.filter(o => o.status !== 'Deleted').length} Orders
                   </div>
-                  <div className="w-1 h-1 rounded-full bg-neutral-800" />
-                  <div className="text-[10px] font-black uppercase text-green-500 tracking-widest">
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest bg-green-500/10 text-green-500 py-1 px-3 rounded-full">
                     Total: ৳{orders.filter(o => o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-500 py-1 px-3 rounded-full">
+                    <Users size={12} />
+                    {visitorCount} Visitors
                   </div>
                 </div>
               </div>
