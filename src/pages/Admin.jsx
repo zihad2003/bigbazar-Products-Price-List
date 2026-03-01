@@ -123,6 +123,19 @@ export default function Admin() {
     });
   };
 
+  const emptyBin = async () => {
+    setConfirmation({
+      isOpen: true,
+      title: 'Empty Bin',
+      message: 'আপনি কি নিশ্চিত যে আপনি সবগুলি ডিলিটেড অর্ডার চিরতরে মুছে ফেলতে চান?',
+      onConfirm: async () => {
+        const { error } = await supabase.from('orders').delete().eq('status', 'Deleted');
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else fetchOrders();
+      }
+    });
+  };
+
   const fetchSiteSettings = async () => {
     const { data } = await supabase.from('site_settings').select('*');
     const settings = {
@@ -699,105 +712,114 @@ export default function Admin() {
                       const isAvailable = color.is_available ?? true;
 
                       return (
-                        <div key={idx} className="flex flex-col gap-3 max-w-[200px]">
-                          {/* Color Tag with round swatch */}
-                          <div
-                            onClick={() => {
-                              const updatedColors = [...form.available_colors];
-                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                              updatedColors[idx] = { ...normalized, is_available: !isAvailable };
-                              setForm({ ...form, available_colors: updatedColors });
-                            }}
-                            className={`relative px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border cursor-pointer transition-all ${isAvailable ? (color.image ? 'bg-[#ce112d]/20 text-white border-[#ce112d]' : 'bg-white/10 text-white border-white/20') : 'bg-neutral-900 text-neutral-600 border-white/5 opacity-40'}`}
-                          >
-                            <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0" style={{ backgroundColor: color.hex || '#888' }} />
-                            {color.name}
-                            {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
-                            <X
-                              size={12}
-                              className="ml-1 hover:text-[#ce112d] transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) });
-                              }}
-                            />
-                          </div>
-
-                          {/* Hex color picker */}
-                          <div className="flex items-center gap-2 px-1">
-                            <input
-                              type="color"
-                              value={color.hex || '#888888'}
-                              onChange={(e) => {
+                        <div key={idx} className="flex flex-col sm:flex-row gap-6 p-4 bg-white/5 border border-white/10 rounded-2xl w-full">
+                          <div className="flex-1 space-y-4">
+                            {/* Color Tag with round swatch */}
+                            <div
+                              onClick={() => {
                                 const updatedColors = [...form.available_colors];
                                 const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                                updatedColors[idx] = { ...normalized, hex: e.target.value };
+                                updatedColors[idx] = { ...normalized, is_available: !isAvailable };
                                 setForm({ ...form, available_colors: updatedColors });
                               }}
-                              className="w-8 h-8 rounded-full cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
-                            />
-                            <span className="text-[9px] font-mono text-neutral-500 uppercase">{color.hex || '#888'}</span>
-                          </div>
+                              className={`w-max relative px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border cursor-pointer transition-all ${isAvailable ? (color.image ? 'bg-[#ce112d]/20 text-white border-[#ce112d]' : 'bg-white/10 text-white border-white/20') : 'bg-neutral-900 text-neutral-600 border-white/5 opacity-40'}`}
+                            >
+                              <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0" style={{ backgroundColor: color.hex || '#888' }} />
+                              {color.name}
+                              {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
+                              <X
+                                size={12}
+                                className="ml-1 hover:text-[#ce112d] transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) });
+                                }}
+                              />
+                            </div>
 
-                          {/* Image Association */}
-                          {form.images?.length > 0 && (
-                            <div className="flex flex-wrap gap-2 p-3 bg-neutral-950 rounded-2xl border border-white/5">
-                              {form.images.map((img, i) => (
-                                <div
-                                  key={i}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                            {/* Hex color picker */}
+                            <div>
+                              <label className="text-[9px] font-black uppercase text-neutral-500 tracking-widest block mb-2">Base Hex Color</label>
+                              <div className="flex items-center gap-2 px-1">
+                                <input
+                                  type="color"
+                                  value={color.hex || '#888888'}
+                                  onChange={(e) => {
                                     const updatedColors = [...form.available_colors];
                                     const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                                    const newImage = normalized.image === img ? null : img;
-                                    updatedColors[idx] = { ...normalized, image: newImage };
+                                    updatedColors[idx] = { ...normalized, hex: e.target.value };
                                     setForm({ ...form, available_colors: updatedColors });
-                                    if (newImage) setPreviewImage(newImage);
                                   }}
-                                  className={`relative w-14 h-14 rounded-xl overflow-hidden transition-all border-2 cursor-pointer flex-shrink-0 ${color.image === img ? 'border-[#ce112d] scale-110 shadow-[0_0_20px_rgba(206,17,45,0.4)]' : 'border-white/5 opacity-40 hover:opacity-100'}`}
-                                >
-                                  <img src={img} className="w-full h-full object-cover" />
-                                  {color.image === img && (
-                                    <div className="absolute inset-0 bg-[#ce112d]/10 flex items-center justify-center">
-                                      <Check size={16} className="text-white drop-shadow-lg" />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Size stock for this color */}
-                          {form.available_sizes?.length > 0 && (
-                            <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest ml-1">Sizes in stock:</label>
-                              <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-950 rounded-2xl border border-white/5">
-                                {form.available_sizes.map((s, sIdx) => {
-                                  const sName = typeof s === 'object' ? s.name : s;
-                                  const isSelected = color.sizes?.includes(sName);
-                                  return (
-                                    <button
-                                      key={sIdx}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        const updatedColors = [...form.available_colors];
-                                        const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null, sizes: [] };
-                                        const currentSizes = normalized.sizes || [];
-                                        const newSizes = currentSizes.includes(sName)
-                                          ? currentSizes.filter(name => name !== sName)
-                                          : [...currentSizes, sName];
-                                        updatedColors[idx] = { ...normalized, sizes: newSizes };
-                                        setForm({ ...form, available_colors: updatedColors });
-                                      }}
-                                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all border ${isSelected ? 'bg-[#ce112d]/20 border-[#ce112d] text-white' : 'bg-black/40 border-white/5 text-neutral-700 hover:text-neutral-400'}`}
-                                    >
-                                      {sName}
-                                    </button>
-                                  );
-                                })}
+                                  className="w-8 h-8 rounded-full cursor-pointer border-2 border-white/10 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-full [&::-webkit-color-swatch]:border-0"
+                                />
+                                <span className="text-[10px] font-mono text-neutral-400 uppercase font-black">{color.hex || '#888'}</span>
                               </div>
+                            </div>
+
+                            {/* Size stock for this color */}
+                            {form.available_sizes?.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t border-white/5">
+                                <label className="text-[8px] font-black uppercase text-neutral-500 tracking-widest ml-1">Sizes in stock:</label>
+                                <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
+                                  {form.available_sizes.map((s, sIdx) => {
+                                    const sName = typeof s === 'object' ? s.name : s;
+                                    const isSelected = color.sizes?.includes(sName);
+                                    return (
+                                      <button
+                                        key={sIdx}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          const updatedColors = [...form.available_colors];
+                                          const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null, sizes: [] };
+                                          const currentSizes = normalized.sizes || [];
+                                          const newSizes = currentSizes.includes(sName)
+                                            ? currentSizes.filter(name => name !== sName)
+                                            : [...currentSizes, sName];
+                                          updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                          setForm({ ...form, available_colors: updatedColors });
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all border ${isSelected ? 'bg-[#ce112d]/20 border-[#ce112d] text-white' : 'bg-black/40 border-white/5 text-neutral-700 hover:text-neutral-400'}`}
+                                      >
+                                        {sName}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right Side: Image Association */}
+                          {form.images?.length > 0 && (
+                            <div className="sm:w-48 shrink-0 space-y-2 border-t sm:border-t-0 sm:border-l border-white/5 pt-4 sm:pt-0 sm:pl-6">
+                              <label className="text-[9px] font-black uppercase text-neutral-500 tracking-widest block mb-1">Variant Image</label>
+                              <div className="flex flex-wrap gap-2">
+                                {form.images.map((img, i) => (
+                                  <div
+                                    key={i}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const updatedColors = [...form.available_colors];
+                                      const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                      const newImage = normalized.image === img ? null : img;
+                                      updatedColors[idx] = { ...normalized, image: newImage };
+                                      setForm({ ...form, available_colors: updatedColors });
+                                      if (newImage) setPreviewImage(newImage);
+                                    }}
+                                    className={`relative w-12 h-12 rounded-xl overflow-hidden transition-all border-2 cursor-pointer flex-shrink-0 ${color.image === img ? 'border-[#ce112d] scale-110 shadow-[0_0_15px_rgba(206,17,45,0.4)]' : 'border-white/5 opacity-40 hover:opacity-100'}`}
+                                  >
+                                    <img src={img} className="w-full h-full object-cover" />
+                                    {color.image === img && (
+                                      <div className="absolute inset-0 bg-[#ce112d]/10 flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-lg"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[8px] text-neutral-600 font-bold mt-2">Use the color picker dropper to sample directly from these images.</p>
                             </div>
                           )}
                         </div>
@@ -857,15 +879,48 @@ export default function Admin() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h2>
-                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status !== 'Deleted').length} Active Orders</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex items-center gap-1 text-[10px] font-black uppercase text-neutral-500 tracking-widest">
+                    <ShoppingBag size={12} className="text-[#ce112d]" />
+                    {orders.filter(o => o.status !== 'Deleted').length} Orders
+                  </div>
+                  <div className="w-1 h-1 rounded-full bg-neutral-800" />
+                  <div className="text-[10px] font-black uppercase text-green-500 tracking-widest">
+                    Total: ৳{orders.filter(o => o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group"
-              >
-                <Download size={16} className="text-[#ce112d] group-hover:text-white" />
-                Export to CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group"
+                >
+                  <Download size={16} className="text-[#ce112d] group-hover:text-white" />
+                  Export to CSV
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
+                <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Total Active Revenue</p>
+                <p className="text-2xl font-black text-[#ce112d]">৳{orders.filter(o => o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}</p>
+              </div>
+              <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
+                <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Pending Orders</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-2xl font-black text-white">{orders.filter(o => o.status === 'Pending').length}</p>
+                  <Clock size={20} className="text-yellow-500 mb-1 opacity-50" />
+                </div>
+              </div>
+              <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
+                <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Completed Items</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-2xl font-black text-white">{orders.filter(o => o.status === 'Delivered').length}</p>
+                  <CheckCircle2 size={20} className="text-green-500 mb-1 opacity-50" />
+                </div>
+              </div>
             </div>
 
             <div className="overflow-x-auto no-scrollbar pb-10">
@@ -1000,9 +1055,19 @@ export default function Admin() {
           </div>
         ) : activeTab === 'deleted' ? (
           <div className="space-y-8">
-            <div>
-              <h2 className="text-3xl font-black italic uppercase">Deleted <span className="text-[#ce112d]">Orders</span></h2>
-              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status === 'Deleted').length} ডিলিটেড অর্ডার</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-black italic uppercase">Deleted <span className="text-[#ce112d]">Orders</span></h2>
+                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status === 'Deleted').length} ডিলিটেড অর্ডার</p>
+              </div>
+              {orders.filter(o => o.status === 'Deleted').length > 0 && (
+                <button
+                  onClick={emptyBin}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <Trash2 size={16} /> Empty Bin
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {orders.filter(o => o.status === 'Deleted').map(o => (
@@ -1038,38 +1103,70 @@ export default function Admin() {
             )}
           </div>
         ) : activeTab === 'reviews' ? (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-3xl font-black italic uppercase">Customer <span className="text-[#ce112d]">Reviews</span></h2>
-              <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{reviews.length} রিভিউ • গড় রেটিং: {reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '—'} ⭐</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {reviews.map(r => (
-                <div key={r.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-white/10 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} size={16} className={s <= r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-700'} />
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-neutral-600 font-bold">{new Date(r.created_at).toLocaleDateString()}</span>
-                  </div>
-                  {r.comment && (
-                    <p className="text-sm text-neutral-300 leading-relaxed italic">"{r.comment}"</p>
-                  )}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <p className="text-[10px] text-neutral-500 font-bold">👤 {r.customer_name || 'Anonymous'}</p>
-                    {r.product_name && <p className="text-[9px] text-neutral-600 font-bold uppercase truncate max-w-[120px]">{r.product_name}</p>}
-                  </div>
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="col-span-1 md:col-span-2 lg:col-span-1 bg-neutral-950 border border-white/5 p-8 rounded-[40px] flex flex-col items-center justify-center text-center space-y-4">
+                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-[0.3em]">Avg Rating</p>
+                <div className="flex items-end gap-1">
+                  <span className="text-6xl font-black italic">{reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '—'}</span>
+                  <span className="text-2xl font-black text-[#ce112d] mb-2">/5</span>
                 </div>
-              ))}
-            </div>
-            {reviews.length === 0 && (
-              <div className="py-20 text-center space-y-4">
-                <Star className="mx-auto text-neutral-800" size={48} />
-                <p className="text-neutral-500 text-sm font-bold">এখনো কোনো রিভিউ আসেনি।</p>
+                <div className="flex gap-1 text-[#ce112d]">
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <Star key={s} size={20} fill={s <= (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) ? 'currentColor' : 'none'} className={s <= (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) ? 'opacity-100' : 'opacity-20'} />
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-neutral-600 uppercase">Based on {reviews.length} reviews</p>
               </div>
-            )}
+
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-neutral-950 border border-white/5 p-8 rounded-[40px] space-y-4">
+                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-[0.3em] mb-6">Rating Distribution</p>
+                {[5, 4, 3, 2, 1].map(stars => {
+                  const count = reviews.filter(r => r.rating === stars).length;
+                  const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                  return (
+                    <div key={stars} className="flex items-center gap-4">
+                      <span className="text-xs font-black text-neutral-500 w-4">{stars}</span>
+                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#ce112d] transition-all duration-1000" style={{ width: `${percentage}%` }} />
+                      </div>
+                      <span className="text-[10px] font-black text-neutral-600 w-8">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              <h3 className="text-xl font-black italic uppercase tracking-widest text-neutral-500 border-b border-white/5 pb-4">Recent <span className="text-white">Feedback</span></h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {reviews.map(r => (
+                  <div key={r.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-white/10 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} size={16} className={s <= r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-700'} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-neutral-600 font-bold">{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {r.comment && (
+                      <p className="text-sm text-neutral-300 leading-relaxed italic">"{r.comment}"</p>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                      <p className="text-[10px] text-neutral-500 font-bold">👤 {r.customer_name || 'Anonymous'}</p>
+                      {r.product_name && <p className="text-[9px] text-neutral-600 font-bold uppercase truncate max-w-[120px]">{r.product_name}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {reviews.length === 0 && (
+                <div className="py-20 text-center space-y-4">
+                  <Star className="mx-auto text-neutral-800" size={48} />
+                  <p className="text-neutral-500 text-sm font-bold">এখনো কোনো রিভিউ আসেনি।</p>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="space-y-12">
@@ -1140,11 +1237,10 @@ export default function Admin() {
                         >
                           {p.is_sold_out ? "STOCK" : "SO"}
                         </button>
-                        <button onClick={() => deleteProduct(p.id)} className="p-3 border border-white/5 rounded-xl hover:bg-red-900/20 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
