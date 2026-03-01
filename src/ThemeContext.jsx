@@ -4,19 +4,27 @@ import { supabase } from './supabaseClient';
 const ThemeContext = createContext({ theme: 'dark' });
 
 export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState('dark');
+    const [theme, setTheme] = useState(() => {
+        try {
+            return localStorage.getItem('site_theme') || 'dark';
+        } catch (e) {
+            return 'dark';
+        }
+    });
 
     useEffect(() => {
         supabase.from('site_settings').select('value').eq('key', 'site_theme').single()
             .then(({ data }) => {
-                if (data?.value?.mode) {
+                if (data?.value?.mode && data.value.mode !== theme) {
                     setTheme(data.value.mode);
+                    localStorage.setItem('site_theme', data.value.mode);
                 }
             });
     }, []);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('site_theme', theme);
     }, [theme]);
 
     return (
