@@ -207,11 +207,10 @@ export default function Admin() {
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       serial_no: parseInt(finalSerialNo),
       stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null,
-      // Convert empty strings to null so DB NOT NULL constraints aren't violated
+      // platform_id can be null; video_url & description must stay as empty string (DB NOT NULL)
       platform_id: form.platform_id || null,
-      video_url: form.video_url || null,
-      description: form.description || null,
-      name: form.name || null,
+      video_url: form.video_url || '',
+      description: form.description || '',
       image_url: (form.images && form.images.length > 0) ? form.images[0] : (form.image_url || null),
     };
 
