@@ -203,12 +203,16 @@ export default function Admin() {
 
     const productData = {
       ...form,
-      price: parseFloat(form.price),
+      price: parseFloat(form.price) || 0,
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       serial_no: parseInt(finalSerialNo),
       stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null,
+      // Convert empty strings to null so DB NOT NULL constraints aren't violated
       platform_id: form.platform_id || null,
-      video_url: form.video_url || null
+      video_url: form.video_url || null,
+      description: form.description || null,
+      name: form.name || null,
+      image_url: (form.images && form.images.length > 0) ? form.images[0] : (form.image_url || null),
     };
 
     let error;
@@ -230,7 +234,12 @@ export default function Admin() {
         message = "It looks like this product (or serial number) already exists in the system.";
       } else if (error.message?.includes("null value") || error.code === '23502') {
         title = "Missing Details";
-        message = "Please make sure all required fields are filled in.";
+        // Extract the column name from the error message for a clearer message
+        const colMatch = error.message?.match(/column "(\w+)"/);
+        const colName = colMatch ? colMatch[1] : null;
+        message = colName
+          ? `The field "${colName}" is required. Please fill it in.`
+          : "Please make sure all required fields (name, price) are filled in.";
       } else if (error.message?.includes("network")) {
         title = "Connection Error";
         message = "Network error. Please check your internet connection and try again.";
