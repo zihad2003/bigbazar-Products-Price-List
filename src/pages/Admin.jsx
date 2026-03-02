@@ -7,6 +7,7 @@ import {
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
+import { formatColorName } from '../utils/colorNames';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AlertModal from '../components/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -775,12 +776,16 @@ export default function Admin() {
                             {/* Color Tag with round swatch */}
                             <div
                               onClick={() => {
-                                const updatedColors = [...form.available_colors];
-                                const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                                updatedColors[idx] = { ...normalized, is_available: !isAvailable };
-                                setForm({ ...form, available_colors: updatedColors });
+                                const newName = prompt('Enter new color name:', color.name);
+                                if (newName) {
+                                  const updatedColors = [...form.available_colors];
+                                  const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                  updatedColors[idx] = { ...normalized, name: newName };
+                                  setForm({ ...form, available_colors: updatedColors });
+                                }
                               }}
                               className={`w-max relative px-4 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2 border cursor-pointer transition-all ${isAvailable ? (color.image ? 'bg-[#ce112d]/20 text-white border-[#ce112d]' : 'bg-white/10 text-white border-white/20') : 'bg-neutral-900 text-neutral-600 border-white/5 opacity-40'}`}
+                              title="Click to rename"
                             >
                               <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0" style={{ backgroundColor: color.hex || '#888' }} />
                               {color.name}
@@ -794,6 +799,18 @@ export default function Admin() {
                                 }}
                               />
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedColors = [...form.available_colors];
+                                const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                updatedColors[idx] = { ...normalized, is_available: !isAvailable };
+                                setForm({ ...form, available_colors: updatedColors });
+                              }}
+                              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all ${isAvailable ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-neutral-900 text-neutral-600 border border-white/5'}`}
+                            >
+                              {isAvailable ? 'In Stock' : 'Out of Stock'}
+                            </button>
 
                             {/* Hex color picker */}
                             <div>
@@ -807,6 +824,7 @@ export default function Admin() {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" /></svg>
                                   </div>
                                   <input
+                                    id={`existingColorHex-${idx}`}
                                     type="color"
                                     value={color.hex || '#888888'}
                                     onClick={async (e) => {
@@ -817,7 +835,11 @@ export default function Admin() {
                                           const { sRGBHex } = await dropper.open();
                                           const updatedColors = [...form.available_colors];
                                           const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
-                                          updatedColors[idx] = { ...normalized, hex: sRGBHex };
+
+                                          const suggested = formatColorName(sRGBHex);
+                                          const newName = confirm(`Rename color to "${suggested}"?`) ? suggested : normalized.name;
+
+                                          updatedColors[idx] = { ...normalized, hex: sRGBHex, name: newName };
                                           setForm({ ...form, available_colors: updatedColors });
                                         } catch (err) { console.log(err); }
                                       }
@@ -832,7 +854,23 @@ export default function Admin() {
                                   />
                                 </div>
                                 <div className="flex flex-col gap-0.5">
-                                  <span className="text-[12px] font-mono text-white uppercase font-black">{color.hex || '#888888'}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[12px] font-mono text-white uppercase font-black">{color.hex || '#888888'}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const suggested = formatColorName(color.hex || '#888888');
+                                        const updatedColors = [...form.available_colors];
+                                        const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null };
+                                        updatedColors[idx] = { ...normalized, name: suggested };
+                                        setForm({ ...form, available_colors: updatedColors });
+                                      }}
+                                      className="p-1 text-neutral-500 hover:text-[#ce112d] transition-colors"
+                                      title="Suggest name from color"
+                                    >
+                                      <RotateCcw size={10} />
+                                    </button>
+                                  </div>
                                   <span className="text-[8px] text-neutral-500 font-bold uppercase tracking-widest leading-tight">Click to Sample</span>
                                 </div>
                               </div>
@@ -908,60 +946,81 @@ export default function Admin() {
                       );
                     })}
                   </div>
-                  {/* Add New Color */}
-                  <div className="flex gap-2">
-                    <input
-                      id="newColorName"
-                      type="text"
-                      placeholder="Color Name (e.g. Red)"
-                      className="flex-1 bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = e.target.value.trim();
+                  {/* Add New Color — Pick hex first, auto-suggest name */}
+                  <div className="p-4 bg-white/5 border border-dashed border-white/10 rounded-2xl space-y-4">
+                    <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">➕ Add New Color</p>
+                    <div className="flex items-center gap-4">
+                      {/* Step 1: Color Picker */}
+                      <div className="relative group cursor-pointer w-16 h-16 shrink-0">
+                        <div
+                          id="newColorHexDisplay"
+                          className="absolute inset-0 rounded-2xl border-2 border-white/10 shadow-inner flex items-center justify-center transition-transform hover:scale-105 pointer-events-none"
+                          style={{ backgroundColor: '#888888' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" /></svg>
+                        </div>
+                        <input
+                          id="newColorHex"
+                          type="color"
+                          defaultValue="#888888"
+                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          onChange={(e) => {
+                            const hex = e.target.value;
+                            document.getElementById('newColorHexDisplay').style.backgroundColor = hex;
+                            // Auto-suggest name
+                            const nameInput = document.getElementById('newColorName');
+                            if (nameInput) nameInput.value = formatColorName(hex);
+                          }}
+                          onClick={async (e) => {
+                            if (window.EyeDropper) {
+                              e.preventDefault();
+                              try {
+                                const dropper = new window.EyeDropper();
+                                const { sRGBHex } = await dropper.open();
+                                e.target.value = sRGBHex;
+                                document.getElementById('newColorHexDisplay').style.backgroundColor = sRGBHex;
+                                // Auto-suggest name
+                                const nameInput = document.getElementById('newColorName');
+                                if (nameInput) nameInput.value = formatColorName(sRGBHex);
+                              } catch (err) { console.log(err); }
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {/* Step 2: Auto-suggested name (editable) */}
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest">① Pick color above → ② Name auto-fills</label>
+                        <input
+                          id="newColorName"
+                          type="text"
+                          placeholder="কালার পিক করুন..."
+                          className="w-full bg-neutral-950 border border-white/5 p-3 rounded-xl text-sm font-bold"
+                        />
+                      </div>
+
+                      {/* Step 3: Add button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nameInput = document.getElementById('newColorName');
                           const hexInput = document.getElementById('newColorHex');
+                          const val = nameInput?.value?.trim();
                           const hex = hexInput?.value || '#888888';
                           if (val && !form.available_colors?.some(c => (typeof c === 'object' ? c.name : c) === val)) {
-                            const formatted = val.charAt(0).toUpperCase() + val.slice(1);
-                            setForm({ ...form, available_colors: [...(form.available_colors || []), { name: formatted, image: null, is_available: true, hex, sizes: [] }] });
-                            e.target.value = '';
-                            if (hexInput) hexInput.value = '#888888';
+                            setForm({ ...form, available_colors: [...(form.available_colors || []), { name: val, image: null, is_available: true, hex, sizes: [] }] });
+                            nameInput.value = '';
+                            hexInput.value = '#888888';
+                            document.getElementById('newColorHexDisplay').style.backgroundColor = '#888888';
                           }
-                        }
-                      }}
-                    />
-
-                    <div className="relative group cursor-pointer w-14 h-14 shrink-0">
-                      <div
-                        id="newColorHexDisplay"
-                        className="absolute inset-0 rounded-2xl border-2 border-white/10 shadow-inner flex items-center justify-center transition-transform pointer-events-none"
-                        style={{ backgroundColor: '#888888' }}
+                        }}
+                        className="shrink-0 px-5 py-3 bg-[#ce112d] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-red-900/20"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity"><path d="m2 22 1-1h3l9-9" /><path d="M3 21v-3l9-9" /><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" /></svg>
-                      </div>
-                      <input
-                        id="newColorHex"
-                        type="color"
-                        defaultValue="#888888"
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                        onChange={(e) => {
-                          document.getElementById('newColorHexDisplay').style.backgroundColor = e.target.value;
-                        }}
-                        onClick={async (e) => {
-                          if (window.EyeDropper) {
-                            e.preventDefault();
-                            try {
-                              const dropper = new window.EyeDropper();
-                              const { sRGBHex } = await dropper.open();
-                              e.target.value = sRGBHex;
-                              document.getElementById('newColorHexDisplay').style.backgroundColor = sRGBHex;
-                            } catch (err) { console.log(err); }
-                          }
-                        }}
-                      />
+                        Add
+                      </button>
                     </div>
+                    <p className="text-[8px] text-neutral-600 font-bold ml-1">কালার পিক করলে নাম অটো আসবে • নাম এডিট করতে পারবেন • তারপর Add চাপুন</p>
                   </div>
-                  <p className="text-[9px] text-neutral-600 font-bold mt-2 ml-1">Type name + pick color, then press Enter</p>
                 </div>
 
                 <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
