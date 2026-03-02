@@ -671,43 +671,57 @@ export default function Admin() {
                 <h3 className="text-sm font-black italic uppercase text-[#ce112d]">Variants & Availability</h3>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Available Sizes (Select from dropdown, click to toggle Stock)</label>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {form.available_sizes?.map((size, idx) => {
-                      const name = typeof size === 'object' ? size.name : size;
-                      const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-3 block tracking-widest">Available Sizes (Tap to add/remove, click tag to toggle stock)</label>
 
+                  {/* Standard Sizes */}
+                  <p className="text-[9px] font-bold uppercase text-neutral-600 mb-2 tracking-widest">Standard</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'].map(s => {
+                      const isSelected = form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
                       return (
-                        <div key={idx} className="group relative">
-                          <span
-                            onClick={() => {
-                              const newSizes = [...form.available_sizes];
-                              newSizes[idx] = { name, is_available: !isAvailable };
-                              setForm({ ...form, available_sizes: newSizes });
-                            }}
-                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-2 cursor-pointer transition-all border ${isAvailable ? 'bg-[#ce112d]/10 text-[#ce112d] border-transparent' : 'bg-neutral-800 text-neutral-500 border-white/10 opacity-60'}`}
-                          >
-                            {name}
-                            {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
-                            <X
-                              size={12}
-                              className="hover:scale-125 hover:text-white transition-transform"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setForm({ ...form, available_sizes: form.available_sizes.filter((_, i) => i !== idx) });
-                              }}
-                            />
-                          </span>
-                        </div>
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setForm({ ...form, available_sizes: form.available_sizes.filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
+                            } else {
+                              setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all border ${isSelected ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-lg shadow-red-900/20' : 'bg-neutral-900 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white'}`}
+                        >
+                          {s}
+                        </button>
                       );
                     })}
                   </div>
-                  <select
-                    className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-xs text-white font-bold"
-                    value=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '__custom__') {
+
+                  {/* Numeric Sizes */}
+                  <p className="text-[9px] font-bold uppercase text-neutral-600 mb-2 tracking-widest">Numeric</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {['28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'].map(s => {
+                      const isSelected = form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setForm({ ...form, available_sizes: form.available_sizes.filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
+                            } else {
+                              setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all border ${isSelected ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-lg shadow-red-900/20' : 'bg-neutral-900 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white'}`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
                         const custom = prompt('Enter custom size name:');
                         if (custom) {
                           const formatted = custom.trim().toUpperCase();
@@ -715,26 +729,37 @@ export default function Admin() {
                             setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: formatted, is_available: true }] });
                           }
                         }
-                      } else if (val && !form.available_sizes?.some(s => (typeof s === 'object' ? s.name : s) === val)) {
-                        setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
-                      }
-                    }}
-                  >
-                    <option value="" disabled>-- Select Size --</option>
-                    <optgroup label="Standard">
-                      {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'].map(s => (
-                        <option key={s} value={s} disabled={form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s)}>{s}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Numeric">
-                      {['28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'].map(s => (
-                        <option key={s} value={s} disabled={form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s)}>{s}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Custom">
-                      <option value="__custom__">✏️ Type Custom Size...</option>
-                    </optgroup>
-                  </select>
+                      }}
+                      className="px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all border border-dashed border-white/10 text-neutral-500 hover:border-[#ce112d]/50 hover:text-[#ce112d]"
+                    >
+                      ✏️ Custom
+                    </button>
+                  </div>
+
+                  {/* Selected sizes with stock toggle */}
+                  {form.available_sizes?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 pt-3 border-t border-white/5">
+                      <span className="text-[9px] font-bold uppercase text-neutral-600 tracking-widest self-center mr-1">Stock:</span>
+                      {form.available_sizes.map((size, idx) => {
+                        const name = typeof size === 'object' ? size.name : size;
+                        const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+                        return (
+                          <span
+                            key={idx}
+                            onClick={() => {
+                              const newSizes = [...form.available_sizes];
+                              newSizes[idx] = { name, is_available: !isAvailable };
+                              setForm({ ...form, available_sizes: newSizes });
+                            }}
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 cursor-pointer transition-all border ${isAvailable ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-neutral-800 text-neutral-500 border-white/10 opacity-60'}`}
+                          >
+                            {name}
+                            {!isAvailable && <span className="text-[8px] opacity-50">(OFF)</span>}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div>
