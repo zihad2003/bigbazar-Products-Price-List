@@ -948,7 +948,24 @@ export default function Admin() {
                   </div>
                   {/* Add New Color — Pick hex first, auto-suggest name */}
                   <div className="p-4 bg-white/5 border border-dashed border-white/10 rounded-2xl space-y-4">
-                    <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">➕ Add New Color</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">➕ Add New Color</p>
+                      {form.images?.length > 0 && (
+                        <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest">Sample from photos below 👇</p>
+                      )}
+                    </div>
+
+                    {/* Photo Quick-Select for Sampling */}
+                    {form.images?.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pb-2 border-b border-white/5">
+                        {form.images.map((img, i) => (
+                          <div key={i} className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 opacity-80 hover:opacity-100 transition-opacity">
+                            <img src={img} className="w-full h-full object-cover" alt="Gallery" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-4">
                       {/* Step 1: Color Picker */}
                       <div className="relative group cursor-pointer w-16 h-16 shrink-0">
@@ -990,7 +1007,7 @@ export default function Admin() {
 
                       {/* Step 2: Auto-suggested name (editable) */}
                       <div className="flex-1 space-y-1">
-                        <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest">① Pick color above → ② Name auto-fills</label>
+                        <label className="text-[8px] font-black uppercase text-neutral-600 tracking-widest">① Pick color (use picker on photos) → ② Name auto-fills</label>
                         <input
                           id="newColorName"
                           type="text"
