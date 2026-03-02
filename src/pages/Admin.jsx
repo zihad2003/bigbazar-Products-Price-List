@@ -191,7 +191,13 @@ export default function Admin() {
     // Auto-increment Serial Number Calculation
     let finalSerialNo = form.serial_no;
     if (!editingProduct) {
-      const maxSerial = products.reduce((max, p) => (p.serial_no > max ? p.serial_no : max), 0);
+      const { data: maxSerialData } = await supabase
+        .from('products')
+        .select('serial_no')
+        .order('serial_no', { ascending: false })
+        .limit(1);
+
+      const maxSerial = maxSerialData && maxSerialData.length > 0 ? maxSerialData[0].serial_no : 0;
       finalSerialNo = maxSerial + 1;
     }
 
@@ -200,7 +206,9 @@ export default function Admin() {
       price: parseFloat(form.price),
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       serial_no: parseInt(finalSerialNo),
-      stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null
+      stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null,
+      platform_id: form.platform_id || null,
+      video_url: form.video_url || null
     };
 
     let error;
