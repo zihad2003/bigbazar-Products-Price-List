@@ -4,8 +4,10 @@ import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, U
 import { supabase } from '../supabaseClient';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { useCart } from '../CartContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const MultiOrderModal = ({ isOpen, onClose }) => {
+    const { t, language } = useLanguage();
     const { cartItems, cartTotal, clearCart } = useCart();
     const [error, setError] = useState('');
     const errorRef = useRef(null);
@@ -59,27 +61,27 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
 
     const handleConfirmOrder = async () => {
         if (!formData.name || !formData.phone || !formData.address) {
-            setError("অনুগ্রহ করে সব তথ্য পূরণ করুন (নাম, ফোন, ঠিকানা)।");
+            setError(language === 'bn' ? "অনুগ্রহ করে সব তথ্য পূরণ করুন (নাম, ফোন, ঠিকানা)।" : "Please fill in all info (Name, Phone, Address).");
             return;
         }
         if (!validateBDNumber(formData.phone)) {
-            setError("সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।");
+            setError(language === 'bn' ? "সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
             return;
         }
         if (!formData.district) {
-            setError("⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।");
+            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "⚠️ Please select your district.");
             return;
         }
         if (needsUpazila && !formData.upazila) {
-            setError("⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।");
+            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "⚠️ Please select your upazila.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
-            setError("যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।");
+            setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
         if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.senderNumber) {
-            setError(`ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।`);
+            setError(language === 'bn' ? `ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${deliveryCharge} delivery charge and enter sender number.`);
             return;
         }
 
@@ -91,8 +93,6 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             : formData.district;
 
         try {
-            // For multi-item orders, we'll combine them into one row for simplicity in the current flat schema
-            // but we'll include details in the product name and note.
             const combinedName = cartItems.map(item => `${item.name} (${item.quantity}x ${item.size || ''} ${item.color || ''})`).join(' + ');
             const combinedSizes = cartItems.map(item => item.size).filter(Boolean).join(', ');
             const combinedColors = cartItems.map(item => item.color).filter(Boolean).join(', ');
@@ -100,8 +100,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             const { error: insertError } = await supabase
                 .from('orders')
                 .insert([{
-                    product_id: cartItems[0]?.id, // Use first product ID as reference
-                    product_name: combinedName.substring(0, 250), // Truncate if too long
+                    product_id: cartItems[0]?.id,
+                    product_name: combinedName.substring(0, 250),
                     product_price: cartTotal,
                     customer_name: formData.name,
                     customer_phone: formData.phone,
@@ -118,16 +118,12 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
 
             if (insertError) throw insertError;
 
-            // Optional: Decrease stock for all items
             for (const item of cartItems) {
                 if (item.stock_count !== null && item.stock_count !== undefined) {
                     const newStock = Math.max(0, item.stock_count - item.quantity);
                     await supabase
                         .from('products')
-                        .update({
-                            stock_count: newStock,
-                            is_sold_out: newStock <= 0
-                        })
+                        .update({ stock_count: newStock, is_sold_out: newStock <= 0 })
                         .eq('id', item.id);
                 }
             }
@@ -135,7 +131,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             clearCart();
             setIsSuccess(true);
         } catch (err) {
-            setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+            setError(language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
             console.error("Supabase Error:", err);
         } finally {
             setIsSubmitting(false);
@@ -194,8 +190,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     <Package className="text-white" size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>চেকআউট</h2>
-                                    <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">মাল্টি-আইটেম অর্ডার</p>
+                                    <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>{t('checkout')}</h2>
+                                    <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">{language === 'bn' ? 'মাল্টি-আইটেম অর্ডার' : 'Multi-Item Order'}</p>
                                 </div>
                             </div>
                             <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}>
@@ -208,7 +204,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-4 space-y-3">
                                 <div className="flex items-center gap-2 mb-2">
                                     <ShoppingBag size={14} className="text-[#ce112d]" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">অর্ডার সামারি ({cartItems.length} আইটেম)</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('order_summary')} ({cartItems.length} {t('items')})</span>
                                 </div>
                                 <div className="max-h-32 overflow-y-auto pr-2 space-y-2">
                                     {cartItems.map((item, idx) => (
@@ -219,7 +215,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     ))}
                                 </div>
                                 <div className="border-t pt-3 flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
-                                    <span className="text-xs font-black uppercase text-neutral-500">সাব-টোটাল</span>
+                                    <span className="text-xs font-black uppercase text-neutral-500">{t('subtotal')}</span>
                                     <span className="text-lg font-black text-[#ce112d]">৳{cartTotal}</span>
                                 </div>
                             </div>
@@ -236,19 +232,19 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                        <input type="text" name="name" placeholder="আপনার নাম" value={formData.name} onChange={handleInputChange}
+                                        <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
                                             className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                     </div>
                                     <div className="relative">
                                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                        <input type="tel" name="phone" placeholder="ফোন নাম্বার" value={formData.phone} onChange={handleInputChange}
+                                        <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
                                             className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                     </div>
                                     <div className="relative">
                                         <Home className="absolute left-4 top-4" size={16} style={{ color: 'var(--text-muted)' }} />
-                                        <textarea name="address" placeholder="বিস্তারিত ঠিকানা (বাড়ি/রাস্তা/গ্রাম)" value={formData.address} onChange={handleInputChange} rows="2"
+                                        <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
                                             className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                     </div>
@@ -310,8 +306,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
                                         <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                             {formData.paymentMethod === 'cod'
-                                                ? <>ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> সেন্ড মানি করুন।</>
-                                                : <>সর্বমোট <strong className="text-[#ce112d]">৳{finalTotal}</strong> সেন্ড মানি করুন।</>}
+                                                ? <>{language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'} <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>
+                                                : <>{language === 'bn' ? 'সর্বমোট' : 'Total'} <strong className="text-[#ce112d]">৳{finalTotal}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>}
                                         </p>
                                         <div className="flex items-center gap-3 bg-black/20 p-2 rounded-lg">
                                             <span className="text-sm font-black tracking-widest">{bKashNumber}</span>
@@ -319,7 +315,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                                 {copied ? <Check size={14} /> : <Copy size={14} />}
                                             </button>
                                         </div>
-                                        <input type="tel" name="senderNumber" placeholder="প্রেরকের বিকাশ নম্বর" value={formData.senderNumber} onChange={handleInputChange}
+                                        <input type="tel" name="senderNumber" placeholder={language === 'bn' ? "প্রেরকের বিকাশ নম্বর" : "Sender BKash Number"} value={formData.senderNumber} onChange={handleInputChange}
                                             className="w-full border rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none transition-all"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                     </div>
@@ -331,17 +327,17 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                         <div className="p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">পরিশোধযোগ্য মোট</p>
+                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">{language === 'bn' ? 'পরিশোধযোগ্য মোট' : 'Total Payable'}</p>
                                     <p className="text-3xl font-black text-[#ce112d]">৳{finalTotal}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">ডেলিভারি</p>
-                                    <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : 'ফ্রি'}</p>
+                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">{t('delivery_charge')}</p>
+                                    <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : (language === 'bn' ? 'ফ্রি' : 'Free')}</p>
                                 </div>
                             </div>
                             <button onClick={handleConfirmOrder} disabled={isSubmitting || cartItems.length === 0}
                                 className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.4)] transition-all active:scale-95 disabled:opacity-50">
-                                {isSubmitting ? "অর্ডার হচ্ছে..." : <>অর্ডার কনফার্ম করুন <ShoppingBag size={20} /></>}
+                                {isSubmitting ? (language === 'bn' ? "অর্ডার হচ্ছে..." : "Processing...") : <>{t('confirm_order')} <ShoppingBag size={20} /></>}
                             </button>
                         </div>
                     </motion.div>

@@ -9,8 +9,10 @@ import AlertModal from './AlertModal';
 import DeliveryModal from './DeliveryModal';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useCart } from '../CartContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
+  const { t, language } = useLanguage();
   const { addToCart } = useCart();
   const [showCartSuccess, setShowCartSuccess] = useState(false);
   const [contactInfo, setContactInfo] = useState(null);
@@ -155,7 +157,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <VideoPlayer src={product.video_url} poster={images[0]} isActive={true} priority={true} />
                 {images.length > 0 && (
                   <button onClick={() => setShowVideo(false)} className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] bg-black/60 backdrop-blur-md text-white px-5 py-2.5 rounded-full font-black uppercase text-[10px] tracking-widest flex items-center gap-2 border border-white/10 hover:bg-[#ce112d] transition-all shadow-xl hover:scale-105">
-                    <ImageIcon size={14} /> View Photos
+                    <ImageIcon size={14} /> {language === 'bn' ? 'ফটো দেখুন' : 'View Photos'}
                   </button>
                 )}
               </div>
@@ -172,7 +174,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
                 {product.video_url && (
                   <button onClick={() => setShowVideo(true)} className="absolute top-4 left-4 md:top-6 md:left-6 z-[110] bg-[#ce112d]/90 backdrop-blur-md text-white px-4 py-2 md:px-5 md:py-2.5 rounded-full font-black uppercase text-[9px] md:text-[10px] tracking-widest flex items-center gap-2 border border-[#ce112d] hover:bg-black transition-all shadow-lg hover:scale-105">
-                    <Play size={14} className="md:w-3 md:h-3" /> Watch Video
+                    <Play size={14} className="md:w-3 md:h-3" /> {language === 'bn' ? 'ভিডিও দেখুন' : 'Watch Video'}
                   </button>
                 )}
 
@@ -201,7 +203,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               <div className="flex items-center gap-2 mb-3 md:mb-4">
                 <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-[#ce112d]">BIGBAZAR Exclusive</span>
                 {product.is_sold_out && (
-                  <span className="px-2 py-0.5 bg-[#ce112d] text-white text-[8px] font-black uppercase rounded-md animate-pulse">Sold Out</span>
+                  <span className="px-2 py-0.5 bg-[#ce112d] text-white text-[8px] font-black uppercase rounded-md animate-pulse">{t('sold_out')}</span>
                 )}
                 <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-color)' }}></div>
               </div>
@@ -212,7 +214,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   disabled={product.is_sold_out}
                   className={`flex-shrink-0 px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[11px] md:text-xs transition-all active:scale-95 shadow-[0_10px_30px_rgba(206,17,45,0.2)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.05]'}`}
                 >
-                  {product.is_sold_out ? "Sold Out" : "অর্ডার করুন"}
+                  {product.is_sold_out ? t('sold_out') : t('buy_now')}
                 </button>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl md:text-5xl font-black text-[#ce112d] tracking-tighter">৳{price}</span>
@@ -232,7 +234,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.is_hot && <span className="px-3 py-1 bg-[#ce112d]/10 rounded-full text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Hot Item</span>}
                 {product.stock_count !== null && product.stock_count !== undefined && !product.is_sold_out && (
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${product.stock_count <= 5 ? 'bg-orange-500/10 text-orange-500 animate-pulse' : 'bg-green-500/10 text-green-500'}`}>
-                    📦 {product.stock_count} টি বাকি
+                    📦 {product.stock_count} {language === 'bn' ? 'টি বাকি' : 'left'}
                   </span>
                 )}
               </div>
@@ -242,12 +244,12 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.available_colors?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Available Colors</label>
-                      {selectedColor && <span className="text-[10px] font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Selected: <span className="text-[#ce112d]">{selectedColor}</span></span>}
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'উপলব্ধ কালার' : 'Available Colors'}</label>
+                      {selectedColor && <span className="text-[10px] font-black uppercase" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'সিলেক্টেড:' : 'Selected:'} <span className="text-[#ce112d]">{selectedColor}</span></span>}
                     </div>
                     {validationError === 'color' && (
                       <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
-                        অনুগ্রহ করে একটি কালার সিলেক্ট করুন
+                        {language === 'bn' ? 'অনুগ্রহ করে একটি কালার সিলেক্ট করুন' : 'Please select a color'}
                       </motion.p>
                     )}
                     <div className="flex overflow-x-auto gap-3 md:gap-4 pb-2 -mx-1 px-1 no-scrollbar snap-x">
@@ -309,12 +311,12 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 {product.available_sizes?.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>Pick Your Size</label>
-                      {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">Size: {selectedSize}</span>}
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সাইজ সিলেক্ট করুন' : 'Pick Your Size'}</label>
+                      {selectedSize && <span className="text-[11px] font-black uppercase text-[#ce112d]">{t('size')}: {selectedSize}</span>}
                     </div>
                     {validationError === 'size' && (
                       <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mx-1 text-[9px] md:text-[10px] text-[#ce112d] font-black uppercase tracking-widest bg-[#ce112d]/5 p-2.5 rounded-xl border border-[#ce112d]/10">
-                        অনুগ্রহ করে একটি সাইজ সিলেক্ট করুন
+                        {language === 'bn' ? 'অনুগ্রহ করে একটি সাইজ সিলেক্ট করুন' : 'Please select a size'}
                       </motion.p>
                     )}
                     <div className="grid grid-cols-4 md:grid-cols-4 gap-2 md:gap-3">
@@ -363,14 +365,14 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   disabled={product.is_sold_out}
                   className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
                 >
-                  {showCartSuccess ? <><Check size={18} /> যোগ করা হয়েছে!</> : <><ShoppingBag size={18} /> কার্টে যোগ করুন</>}
+                  {showCartSuccess ? <><Check size={18} /> {language === 'bn' ? 'যোগ করা হয়েছে!' : 'Added to cart!'}</> : <><ShoppingBag size={18} /> {t('add_to_cart')}</>}
                 </button>
                 <button
                   onClick={handleMainOrder}
                   disabled={product.is_sold_out}
                   className={`w-full flex items-center justify-center gap-4 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 shadow-[0_10px_40px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
                 >
-                  {product.is_sold_out ? "Out of Stock" : "অর্ডার করুন"}
+                  {product.is_sold_out ? t('sold_out') : t('buy_now')}
                 </button>
               </div>
               <button
@@ -382,22 +384,22 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 className="flex items-center justify-center gap-2 py-4 border rounded-2xl font-black uppercase tracking-widest text-[10px] transition-colors hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
                 style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               >
-                <Share2 size={16} /> Share Product
+                <Share2 size={16} /> {language === 'bn' ? 'শেয়ার করুন' : 'Share Product'}
               </button>
             </div>
 
             <div className="grid grid-cols-3 gap-4 md:gap-6 pt-5 md:pt-6 border-t pb-8 md:pb-10" style={{ borderColor: 'var(--border-color)' }}>
               <div className="flex flex-col items-center text-center gap-2 md:gap-3">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Truck size={18} className="md:w-5 md:h-5" /></div>
-                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fast Delivery</span>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'ফাস্ট ডেলিভারি' : 'Fast Delivery'}</span>
               </div>
               <div className="flex flex-col items-center text-center gap-2 md:gap-3">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><ShieldCheck size={18} className="md:w-5 md:h-5" /></div>
-                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Safe Checkout</span>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'নিরাপদ পেমেন্ট' : 'Safe Checkout'}</span>
               </div>
               <div className="flex flex-col items-center text-center gap-2 md:gap-3">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Clock size={18} className="md:w-5 md:h-5" /></div>
-                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>24/7 Support</span>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? '২৪/৭ সাপোর্ট' : '24/7 Support'}</span>
               </div>
             </div>
           </div>
@@ -416,8 +418,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <div className="w-24 h-24 bg-[#0084FF] rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(0,132,255,0.4)] animate-bounce">
                   <ShoppingBag size={48} className="text-white" />
                 </div>
-                <h2 className="text-3xl font-black italic uppercase">Order Info Copied!</h2>
-                <p className="text-neutral-500 font-bold uppercase tracking-widest">Redirecting to Messenger in {countdown}s...</p>
+                <h2 className="text-3xl font-black italic uppercase">{language === 'bn' ? 'তথ্য কপি হয়েছে!' : 'Order Info Copied!'}</h2>
+                <p className="text-neutral-500 font-bold uppercase tracking-widest">{language === 'bn' ? `${countdown} সেকেন্ডের মধ্যে মেসেঞ্জারে নিয়ে যাওয়া হচ্ছে...` : `Redirecting to Messenger in ${countdown}s...`}</p>
               </div>
             </motion.div>
           )}
@@ -436,8 +438,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         <AlertModal
           isOpen={showAlert}
           onClose={() => setShowAlert(false)}
-          title="Success!"
-          message="Product details copied to clipboard!"
+          title={language === 'bn' ? 'সফল হয়েছে!' : 'Success!'}
+          message={language === 'bn' ? 'প্রোডাক্টের লিঙ্ক কপি হয়েছে!' : 'Product details copied to clipboard!'}
           type="success"
         />
       </motion.div>

@@ -7,10 +7,12 @@ import BannerSlider from '../components/BannerSlider';
 import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe, Moon } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PAGE_SIZE = 12;
 
 export default function Home({ selectedCategory, searchQuery, onSearchChange }) {
+  const { t, language } = useLanguage();
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -170,7 +172,6 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 }}
               >
                 {/* Accent gradient top bar */}
-                {/* Accent gradient top bar */}
                 <div className="h-1" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
 
                 <div className="px-4 md:px-6 py-4 md:py-5 flex items-start gap-3 md:gap-4">
@@ -188,19 +189,19 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                       className="text-[10px] md:text-[11px] font-black uppercase tracking-widest"
                       style={{ color: '#ce112d' }}
                     >
-                      📢 গুরুত্বপূর্ণ বিজ্ঞপ্তি
+                      📢 {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
                     </p>
                     <p
                       className="text-xs md:text-sm font-semibold leading-relaxed"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!
+                      {language === 'bn' ? <>প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!</> : <>Dear customer, thanks for staying with <strong className="text-[#ce112d]">Big Bazar</strong>!</>}
                     </p>
                     <p
                       className="text-[11px] md:text-xs leading-relaxed"
                       style={{ color: 'var(--text-secondary)' }}
                     >
-                      বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong>
+                      {language === 'bn' ? <>বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong></> : <>Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please <strong style={{ color: 'var(--text-primary)' }}>order directly from the website.</strong></>}
                     </p>
                     <div className="flex items-center gap-2 pt-1">
                       <Globe size={12} className="text-[#ce112d]" />
@@ -208,7 +209,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                         className="text-[9px] md:text-[10px] font-black uppercase tracking-widest"
                         style={{ color: 'var(--text-muted)' }}
                       >
-                        Website থেকে অর্ডার করুন — দ্রুত ও সহজ!
+                        {language === 'bn' ? 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!' : 'Order from Website — Fast & Easy!'}
                       </span>
                     </div>
                   </div>
@@ -237,7 +238,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         <section className="space-y-8 md:space-y-10">
           <div className="pb-6 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
             <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
-              <span>LATEST</span> <span className="text-[#ce112d]">DROPS</span>
+              <span>{language === 'bn' ? 'লেটেস্ট' : 'LATEST'}</span> <span className="text-[#ce112d]">{language === 'bn' ? 'ড্রপস' : 'DROPS'}</span>
             </h3>
 
             {/* Search Bar */}
@@ -249,7 +250,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search for clothes, styles..."
+                placeholder={language === 'bn' ? 'পোশাক, স্টাইল খুঁজুন...' : 'Search for clothes, styles...'}
                 className="w-full rounded-2xl py-3 md:py-4 pl-12 pr-12 text-sm font-bold backdrop-blur-sm focus:outline-none transition-all"
                 style={{
                   backgroundColor: 'var(--bg-card)',
@@ -327,7 +328,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 className="px-6 md:px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
                 style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
               >
-                See More
+                {language === 'bn' ? 'আরো দেখুন' : 'See More'}
               </button>
             </div>
           )}
