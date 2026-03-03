@@ -16,8 +16,9 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
     const handleTrack = async (e) => {
         if (e) e.preventDefault();
-        if (!phone || phone.length < 10) {
-            setError('সঠিক মোবাইল নম্বর দিন।');
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        if (cleanPhone.length < 10) {
+            setError('সঠিক মোবাইল নম্বর দিন (১০-১১ ডিজিট)।');
             return;
         }
 
@@ -29,7 +30,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             const { data: orderData, error: fetchError } = await supabase
                 .from('orders')
                 .select('*')
-                .eq('customer_phone', phone)
+                .ilike('customer_phone', `%${cleanPhone.slice(-10)}%`)
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
