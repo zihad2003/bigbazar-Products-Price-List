@@ -113,11 +113,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             : formData.district;
 
         try {
+            const summaryParts = [product.name];
+            if (selectedColor) summaryParts.push(`${selectedColor} color`);
+            if (selectedSize) summaryParts.push(`${selectedSize} size`);
+            summaryParts.push('1 piece');
+            const productSummary = summaryParts.join(' ');
+
             const { data: insertedData, error: insertError } = await supabase
                 .from('orders')
                 .insert([{
                     product_id: product.id,
-                    product_name: product.name,
+                    product_name: productSummary.substring(0, 250),
                     product_price: parseFloat(product.price),
                     customer_name: formData.name,
                     customer_phone: formData.phone,
