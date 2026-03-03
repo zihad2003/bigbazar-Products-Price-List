@@ -11,6 +11,8 @@ import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useCart } from '../CartContext';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
+  const { addToCart } = useCart();
+  const [showCartSuccess, setShowCartSuccess] = useState(false);
   const [contactInfo, setContactInfo] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showMessengerPopup, setShowMessengerPopup] = useState(false);
@@ -67,9 +69,6 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const images = (product.images && Array.isArray(product.images) && product.images.length > 0)
     ? product.images
     : [product.image || product.image_url].filter(Boolean);
-
-  const { addToCart } = useCart();
-  const [showCartSuccess, setShowCartSuccess] = useState(false);
 
   const validateSelection = () => {
     const hasAvailableSizes = product.available_sizes?.some(s => typeof s === 'object' ? (s.is_available ?? true) : true);
