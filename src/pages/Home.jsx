@@ -84,19 +84,90 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     }
   }, [productId]);
 
-  // Reset page and products when filters change
-  useEffect(() => {
-    setPage(0);
-    setProducts([]);
-    setHasMore(true);
-  }, [selectedCategory, debouncedSearchQuery]);
-
+  // Combined effect for resetting and fetching
   useEffect(() => {
     let isMounted = true;
 
-    const fetchProducts = async () => {
-      if (page !== 0 && products.length === 0) return;
+    const fetchProducts = async (isFirstPage) => {
+      setLoading(true);
+      if (isFirstPage) {
+        setProducts([]);
+        setPage(0);
+        setHasMore(true);
+      }
 
+      try {
+        let query = supabase
+          .from('products')
+          .select('*', { count: 'exact' })
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+
+        // Mapping English IDs to DB values (some products have Bengali, some English)
+        if (selectedCategory && selectedCategory !== 'All') {
+          // Robust mapping to handle both English and Bengali stored values
+          const categoryMaps = {
+            'Men': ['Men', 'ছেলেদের'],
+            'Women': ['Women', 'মেয়েদের'],
+            'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+          };
+
+          const values = categoryMaps[selectedCategory] || [selectedCategory];
+          if (values.length > 1) {
+            query = query.in('category', values);
+          } else {
+            query = query.eq('category', selectedCategory);
+          }
+        }
+
+        if (debouncedSearchQuery) {
+          query = query.or(`name.ilike.%${debouncedSearchQuery}%,description.ilike.%${debouncedSearchQuery}%`);
+        }
+
+        const currentPage = isFirstPage ? 0 : page;
+        const from = currentPage * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        query = query.range(from, to);
+
+        const { data, error, count } = await query;
+        if (error) throw error;
+
+        if (!isMounted) return;
+
+        if (currentPage === 0) {
+          setProducts(data || []);
+        } else {
+          setProducts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newItems = (data || []).filter(p => !existingIds.has(p.id));
+            return [...prev, ...newItems];
+          });
+        }
+
+        if (count !== null) {
+          const loadedCount = (currentPage === 0 ? 0 : products.length) + (data?.length || 0);
+          setHasMore(loadedCount < count);
+        } else {
+          setHasMore((data || []).length === PAGE_SIZE);
+        }
+      } catch (err) {
+        console.error("List fetch error:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchProducts(true);
+    return () => { isMounted = false; };
+  }, [selectedCategory, debouncedSearchQuery]);
+
+  // Separate effect for pagination
+  useEffect(() => {
+    if (page === 0) return;
+
+    let isMounted = true;
+    const fetchMore = async () => {
       setLoading(true);
       try {
         let query = supabase
@@ -106,7 +177,15 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           .order('created_at', { ascending: false });
 
         if (selectedCategory && selectedCategory !== 'All') {
-          query = query.eq('category', selectedCategory);
+          const categoryMaps = {
+            'Men': ['Men', 'ছেলেদের'],
+            'Women': ['Women', 'মেয়েদের'],
+            'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+          };
+          const values = categoryMaps[selectedCategory] || [selectedCategory];
+          if (values.length > 1) query = query.in('category', values);
+          else query = query.eq('category', selectedCategory);
         }
 
         if (debouncedSearchQuery) {
@@ -119,35 +198,30 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
 
         const { data, error, count } = await query;
         if (error) throw error;
-
         if (!isMounted) return;
 
-        if (page === 0) {
-          setProducts(data || []);
-        } else {
-          setProducts(prev => {
-            const existingIds = new Set(prev.map(p => p.id));
-            const newItems = (data || []).filter(p => !existingIds.has(p.id));
-            return [...prev, ...newItems];
-          });
-        }
+        setProducts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newItems = (data || []).filter(p => !existingIds.has(p.id));
+          return [...prev, ...newItems];
+        });
 
         if (count !== null) {
-          const loadedCount = (page === 0 ? 0 : products.length) + (data?.length || 0);
+          const loadedCount = products.length + (data?.length || 0);
           setHasMore(loadedCount < count);
         } else {
           setHasMore((data || []).length === PAGE_SIZE);
         }
       } catch (err) {
-        console.error("List fetch error:", err);
+        console.error("See more fetch error:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchMore();
     return () => { isMounted = false; };
-  }, [selectedCategory, debouncedSearchQuery, page]);
+  }, [page]);
 
   return (
     <div className="min-h-screen px-4 md:px-8 pb-32" style={{ backgroundColor: 'var(--bg-primary)' }}>
