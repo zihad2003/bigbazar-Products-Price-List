@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import VideoPlayer from './VideoPlayer';
 import AlertModal from './AlertModal';
 import DeliveryModal from './DeliveryModal';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
@@ -144,7 +145,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               <div className="relative w-full h-auto md:h-full overflow-hidden">
                 <motion.img
                   key={currentImageIndex}
-                  src={images[currentImageIndex]}
+                  src={getOptimizedUrl(images[currentImageIndex], mediaSizes.gallery)}
                   className="w-full h-auto min-h-[50vh] max-h-[70vh] md:max-h-full md:h-full object-cover object-top"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -258,7 +259,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                           >
                             <div className={`relative w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden transition-all border-[3px] ${!isAvailable ? 'border-white/5 opacity-20' : (selectedColor === colorName ? 'border-[#ce112d] shadow-[0_0_20px_rgba(206,17,45,0.4)] scale-110' : 'border-white/10 opacity-100 hover:scale-105 hover:border-white/30')}`}>
                               {colorImage ? (
-                                <img src={colorImage} className="w-full h-full object-cover" />
+                                <img src={getOptimizedUrl(colorImage, { w: 100, h: 100 })} className="w-full h-full object-cover" />
                               ) : colorHex ? (
                                 <div className="w-full h-full" style={{ backgroundColor: colorHex }} />
                               ) : (

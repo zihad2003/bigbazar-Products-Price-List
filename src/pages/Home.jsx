@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import BannerSlider from '../components/BannerSlider';
 import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe } from 'lucide-react';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
 
 const PAGE_SIZE = 12;
 
@@ -297,7 +298,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                     style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', boxShadow: 'var(--shadow-card)' }}
                   >
                     <img
-                      src={displayImage}
+                      src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
                       className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
                       alt={product.name}
                       loading="lazy"
