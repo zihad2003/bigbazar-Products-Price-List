@@ -1189,7 +1189,7 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="overflow-x-auto no-scrollbar pb-10">
+            <div className="hidden lg:block overflow-x-auto no-scrollbar pb-10">
               <table className="w-full text-left border-collapse min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-white/5 text-[10px] font-black uppercase text-neutral-500 tracking-widest">
@@ -1216,7 +1216,6 @@ export default function Admin() {
                       const product = productMap[o.product_id];
                       let productThumb = product?.image_url || product?.images?.[0];
 
-                      // Instagram Thumbnail Logic fallback
                       if (!productThumb && product?.video_url) {
                         const match = product.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
                         const id = match ? match[2] : null;
@@ -1325,13 +1324,122 @@ export default function Admin() {
                   })()}
                 </tbody>
               </table>
-              {orders.length === 0 && !loading && (
-                <div className="py-20 text-center space-y-4">
-                  <ShoppingBag className="mx-auto text-neutral-800" size={48} />
-                  <p className="text-neutral-500 text-sm font-bold">No orders found.</p>
-                </div>
-              )}
             </div>
+
+            {/* Mobile Cards View */}
+            <div className="lg:hidden space-y-4 pb-20">
+              {(() => {
+                const productMap = {};
+                products.forEach(p => productMap[p.id] = p);
+
+                return orders.filter(o => o.status !== 'Deleted').map(o => {
+                  const product = productMap[o.product_id];
+                  let productThumb = product?.image_url || product?.images?.[0];
+
+                  return (
+                    <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-[24px] overflow-hidden p-5 space-y-4">
+                      {/* Header: Date & Status */}
+                      <div className="flex justify-between items-start">
+                        <div className="text-[10px] font-black uppercase text-neutral-500 tracking-wider">
+                          {new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}
+                        </div>
+                        <select
+                          value={o.status}
+                          onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                          className={`bg-neutral-900 border border-white/10 rounded-xl px-3 py-1.5 text-[9px] font-black uppercase outline-none transition-all ${o.status === 'Pending' ? 'text-yellow-500' :
+                            o.status === 'Shipped' ? 'text-blue-500' :
+                              o.status === 'Delivered' ? 'text-green-500' :
+                                'text-red-500'
+                            }`}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Canceled">Canceled</option>
+                        </select>
+                      </div>
+
+                      {/* Product Section */}
+                      <div className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl">
+                        <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden flex-shrink-0 relative">
+                          {productThumb ? (
+                            <img src={productThumb} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
+                              <ImageIcon size={20} />
+                            </div>
+                          )}
+                          {product?.serial_no && (
+                            <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[7px] font-black px-1 rounded-bl">#{product.serial_no}</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black text-white leading-tight mb-1">{o.product_name}</p>
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {o.size && <span className="text-[7px] font-black bg-[#ce112d]/10 text-[#ce112d] px-1.5 py-0.5 rounded border border-[#ce112d]/10 uppercase">SIZE: {o.size}</span>}
+                            {o.color && <span className="text-[7px] font-black bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white uppercase">COLOR: {o.color}</span>}
+                          </div>
+                          <p className="text-sm font-black text-[#ce112d] mt-2">৳{o.total_amount}</p>
+                        </div>
+                      </div>
+
+                      {/* Customer Info */}
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black uppercase text-neutral-600">গ্রাহক</p>
+                          <p className="font-black text-white">{o.customer_name}</p>
+                          <p className="text-[#ce112d] font-black">{o.customer_phone}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black uppercase text-neutral-600">পেমেন্ট & নোট</p>
+                          <div className="flex flex-col gap-1.5">
+                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black w-max ${o.last_four_digits === 'COD' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                              {o.last_four_digits}
+                            </span>
+                            <button
+                              onClick={() => updateOrderNote(o.id, o.customer_note)}
+                              className="text-[9px] font-bold text-neutral-400 italic truncate max-w-[100px]"
+                            >
+                              {o.customer_note || "➕ Add Note"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Address */}
+                      <div className="p-3 bg-neutral-900/50 rounded-xl space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[8px] font-black uppercase text-[#ce112d] tracking-widest">{o.delivery_area}</span>
+                          <span className="text-[8px] font-bold text-neutral-600 tracking-widest">CHARGE: ৳{o.delivery_charge}</span>
+                        </div>
+                        <p className="text-[10px] text-neutral-400 font-medium leading-relaxed">{o.customer_address}</p>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex gap-2 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => toggleAdvancePayment(o.id, o.is_advance_paid)}
+                          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${o.is_advance_paid ? 'bg-green-500 text-white' : 'bg-white/5 text-neutral-500 border border-white/5'}`}
+                        >
+                          {o.is_advance_paid ? <Check size={12} /> : null}
+                          {o.is_advance_paid ? 'ADV PAID' : 'MARK PAID'}
+                        </button>
+                        <button onClick={() => deleteOrder(o.id)} className="px-4 bg-red-500/10 text-red-500 rounded-xl transition-all border border-red-500/10">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {orders.length === 0 && !loading && (
+              <div className="py-20 text-center space-y-4">
+                <ShoppingBag className="mx-auto text-neutral-800" size={48} />
+                <p className="text-neutral-500 text-sm font-bold">No orders found.</p>
+              </div>
+            )}
           </div>
         ) : activeTab === 'deleted' ? (
           <div className="space-y-8">
@@ -1349,31 +1457,63 @@ export default function Admin() {
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {orders.filter(o => o.status === 'Deleted').map(o => (
-                <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-5 space-y-3 hover:border-white/10 transition-all">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm font-black text-white">{o.product_name}</p>
-                      <p className="text-[10px] text-neutral-500 font-bold mt-1">{new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(() => {
+                const productMap = {};
+                products.forEach(p => productMap[p.id] = p);
+
+                return orders.filter(o => o.status === 'Deleted').map(o => {
+                  const product = productMap[o.product_id];
+                  let productThumb = product?.image_url || product?.images?.[0];
+
+                  return (
+                    <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-[24px] overflow-hidden p-5 space-y-4 opacity-75 hover:opacity-100 transition-all border-dashed">
+                      <div className="flex justify-between items-start">
+                        <div className="text-[10px] font-black uppercase text-neutral-500 tracking-wider">
+                          {new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}
+                        </div>
+                        <span className="px-2 py-1 bg-red-500/10 text-red-500 text-[9px] font-black uppercase rounded-lg">Deleted</span>
+                      </div>
+
+                      <div className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl">
+                        <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden flex-shrink-0 relative">
+                          {productThumb ? (
+                            <img src={productThumb} className="w-full h-full object-cover grayscale" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
+                              <ImageIcon size={20} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black text-white leading-tight mb-1">{o.product_name}</p>
+                          <p className="text-sm font-black text-neutral-500 mt-2">৳{o.total_amount}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div className="space-y-1">
+                          <p className="font-black text-white">{o.customer_name}</p>
+                          <p className="text-neutral-500 font-bold">{o.customer_phone}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase text-neutral-600 mb-1">{o.delivery_area}</p>
+                          <p className="text-[9px] text-neutral-500 line-clamp-2">{o.customer_address}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-white/5">
+                        <button onClick={() => restoreOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-500/10 text-green-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-500/20 transition-all">
+                          <RotateCcw size={14} /> Undo
+                        </button>
+                        <button onClick={() => permanentDeleteOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-500/10 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all">
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
                     </div>
-                    <span className="px-2 py-1 bg-red-500/10 text-red-400 text-[9px] font-black uppercase rounded-lg">Deleted</span>
-                  </div>
-                  <div className="text-xs space-y-1">
-                    <p className="text-neutral-400"><span className="text-neutral-600">গ্রাহক:</span> {o.customer_name}</p>
-                    <p className="text-neutral-400"><span className="text-neutral-600">ফোন:</span> {o.customer_phone}</p>
-                    <p className="text-neutral-400"><span className="text-neutral-600">মোট:</span> ৳{o.total_amount}</p>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => restoreOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500/10 text-green-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-500/20 transition-all">
-                      <RotateCcw size={14} /> Undo
-                    </button>
-                    <button onClick={() => permanentDeleteOrder(o.id)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all">
-                      <Trash2 size={14} /> চিরতরে মুছুন
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
             {orders.filter(o => o.status === 'Deleted').length === 0 && (
               <div className="py-20 text-center space-y-4">
