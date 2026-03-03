@@ -3,15 +3,14 @@ import { useCart } from '../CartContext';
 
 const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }) => {
     const { cartCount } = useCart();
-    const categories = ['All', 'Men', 'Women', 'Kids (Boys)', 'Kids (Girls)'];
+    const categories = ['সব', 'ছেলেদের', 'মেয়েদের', 'বাচ্চাদের (ছেলে)', 'বাচ্চাদের (মেয়ে)'];
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 flex flex-col items-center justify-center py-4 md:py-6 backdrop-blur-xl transition-all duration-300 border-b" style={{ backgroundColor: 'var(--navbar-bg)', borderColor: 'var(--border-color)' }}>
             {/* Logo Section */}
             <div className="w-full max-w-7xl px-4 md:px-8 mb-4 md:mb-6 flex items-center justify-between">
-                <div className="w-10 md:w-24 shrink-0" /> {/* Spacer */}
-                <div className="flex flex-col items-center gap-2 flex-grow">
-                    <h1 className="text-2xl md:text-4xl font-black italic tracking-tighter select-none" style={{ color: 'var(--text-primary)' }}>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter select-none" style={{ color: 'var(--text-primary)' }}>
                         <span>BIG</span>
                         <span className="text-[#ce112d]">BAZAR</span>
                     </h1>
@@ -34,7 +33,7 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }
                     >
                         <Search size={14} className="text-[#ce112d] group-hover:text-black transition-colors" />
                         <span className="hidden sm:inline">ট্র্যাক করুন</span>
-                        <span className="sm:hidden">Tracking</span>
+                        <span className="sm:hidden">ট্র্যাকিং</span>
                     </button>
                 </div>
             </div>

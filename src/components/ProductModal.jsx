@@ -364,7 +364,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   disabled={product.is_sold_out}
                   className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
                 >
-                  {showCartSuccess ? <><Check size={18} /> Added!</> : <><ShoppingBag size={18} /> Add To Cart</>}
+                  {showCartSuccess ? <><Check size={18} /> যোগ করা হয়েছে!</> : <><ShoppingBag size={18} /> কার্টে যোগ করুন</>}
                 </button>
                 <button
                   onClick={handleMainOrder}
