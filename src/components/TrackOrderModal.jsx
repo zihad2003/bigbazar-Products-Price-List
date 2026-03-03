@@ -23,8 +23,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
         const input = bnToEn(searchInput).trim();
 
-        // cleanInput is for digits/alphanumeric search
+        // cleanInput: absolutely alphanumeric for safest DB search
         const cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
+        // safeInput: allows spaces but removes commas (commas break Supabase .or() syntax)
+        const safeInput = input.replace(/,/g, ' ').trim();
 
         if (cleanInput.length < 4) {
             setError(language === 'bn' ? 'কমপক্ষে ৪টি অক্ষর বা সংখ্যা দিন।' : 'Enter at least 4 characters.');
@@ -51,14 +53,16 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 `customer_note.ilike.${searchPattern}`
             ];
 
-            // If it's a phone number, search for variants (with spaces, last 10, etc.)
-            if (isDigitsOnly && cleanInput.length >= 10) {
-                const last10 = cleanInput.slice(-10);
-                conditions.push(`customer_phone.ilike.%${last10}%`);
-                // Handle cases where phone is stored like "017 11 22 33"
-                if (cleanInput.length === 11) {
-                    const flexible = cleanInput.split('').join('%');
-                    conditions.push(`customer_phone.ilike.%${flexible}%`);
+            // If it's a phone number or close to it, search for variants (with spaces, last 10, etc.)
+            if (isDigitsOnly || (cleanInput.length >= 6 && /^\d+$/.test(cleanInput))) {
+                // Handle case where phone is stored with spaces: 017 111 222 33
+                const flexible = cleanInput.split('').join('%');
+                conditions.push(`customer_phone.ilike.%${flexible}%`);
+
+                // Also search for the last 10 digits as that is common for BD numbers
+                if (cleanInput.length >= 10) {
+                    const last10 = cleanInput.slice(-10);
+                    conditions.push(`customer_phone.ilike.%${last10}%`);
                 }
             }
 
@@ -68,10 +72,14 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 conditions.push(`id.eq.${input}`);
             }
 
-            // Fallback: If cleanInput is 8 chars, it's likely the short ID user sees.
-            // Since we can't ILIKE UUIDs, we just hope they search by phone/name.
-            // But we'll add customer_phone search for the raw input as well.
-            conditions.push(`customer_phone.ilike.%${input.trim()}%`);
+            // Fallback: search by name/address using the safeInput (no commas)
+            if (safeInput.length >= 3) {
+                const pattern = `%${safeInput}%`;
+                conditions.push(`customer_name.ilike.${pattern}`);
+                conditions.push(`customer_address.ilike.${pattern}`);
+                // Don't duplicate customer_phone if we already handled digits
+                if (!isDigitsOnly) conditions.push(`customer_phone.ilike.${pattern}`);
+            }
 
             query = query.or(conditions.join(','));
 
