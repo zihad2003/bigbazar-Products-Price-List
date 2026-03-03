@@ -105,6 +105,16 @@ export default function Admin() {
     }
   };
 
+  const toggleAdvancePayment = async (id, currentStatus) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ is_advance_paid: !currentStatus })
+      .eq('id', id);
+
+    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+    else fetchOrders();
+  };
+
   // Soft delete — moves to 'Deleted' status instead of permanent delete
   const deleteOrder = async (id) => {
     setConfirmation({
@@ -1205,11 +1215,14 @@ export default function Admin() {
                               <span className={`px-2 py-1 rounded-md text-[10px] font-black w-max ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500 border border-green-500/10' : 'bg-blue-500/20 text-blue-500 border border-blue-500/10'}`}>
                                 {o.last_four_digits}
                               </span>
-                              {o.last_four_digits !== 'COD' && o.last_four_digits !== '' && (
-                                <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-green-500 text-white w-max uppercase tracking-tighter shadow-lg shadow-green-500/20 flex items-center gap-0.5">
-                                  <Check size={8} /> Adv Paid
-                                </span>
-                              )}
+                              <button
+                                onClick={() => toggleAdvancePayment(o.id, o.is_advance_paid)}
+                                className={`px-2 py-1 rounded-full text-[8px] font-black w-max uppercase tracking-tighter transition-all flex items-center gap-1 ${o.is_advance_paid ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-800 text-neutral-500 border border-white/5 opacity-50 hover:opacity-100'}`}
+                                title={o.is_advance_paid ? "Click to Unmark" : "Click to Mark as Paid"}
+                              >
+                                {o.is_advance_paid ? <Check size={8} /> : null}
+                                {o.is_advance_paid ? 'Adv Paid' : 'Mark Paid'}
+                              </button>
                             </div>
                           </td>
                           <td className="py-6 pr-4">
