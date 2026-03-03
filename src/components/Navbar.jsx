@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
 
-const Navbar = ({ selectedCategory, onSelectCategory }) => {
+const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder }) => {
     const categories = ['All', 'Men', 'Women', 'Kids (Boys)', 'Kids (Girls)'];
 
     return (

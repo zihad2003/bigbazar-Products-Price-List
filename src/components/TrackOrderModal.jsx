@@ -145,7 +145,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     <div className="flex items-center gap-2 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
                                                         <span>{new Date(order.created_at).toLocaleDateString('bn-BD')}</span>
                                                         <span className="opacity-30">•</span>
-                                                        <span>ID: #{order.id.slice(0, 8).toUpperCase()}</span>
+                                                        <span>ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
                                                     </div>
                                                 </div>
                                                 <div className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color}`} style={{ borderColor: 'currentColor' }}>
