@@ -24,7 +24,6 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
         paymentMethod: 'cod'
     });
 
-    if (!isOpen) return null;
 
     const bKashNumber = "01857045449";
     const needsUpazila = formData.district === CHATTOGRAM_DISTRICT;
@@ -146,12 +145,12 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
     const needsAdvancePayment = formData.paymentMethod === 'bkash' ||
         (formData.paymentMethod === 'cod' && deliveryInfo && deliveryCharge > 0);
 
-    if (isSuccess) {
-        return (
-            <AnimatePresence>
+    return (
+        <AnimatePresence>
+            {isSuccess && isOpen && (
                 <motion.div
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className="fixed inset-0 z-[300] backdrop-blur-2xl flex items-center justify-center p-4"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[310] backdrop-blur-2xl flex items-center justify-center p-4"
                     style={{ backgroundColor: 'var(--bg-overlay)' }}
                 >
                     <motion.div
@@ -171,185 +170,183 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                         </button>
                     </motion.div>
                 </motion.div>
-            </AnimatePresence>
-        );
-    }
+            )}
 
-    return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[300] backdrop-blur-2xl flex items-center justify-center p-3 md:p-6"
-                style={{ backgroundColor: 'var(--bg-overlay)' }}
-                onClick={onClose}
-            >
+            {!isSuccess && isOpen && (
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0, y: 40 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.9, opacity: 0, y: 40 }}
-                    className="relative w-full max-w-lg border rounded-[32px] md:rounded-[40px] overflow-hidden flex flex-col"
-                    style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.2)' }}
-                    onClick={e => e.stopPropagation()}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[300] backdrop-blur-2xl flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-overlay)' }}
+                    onClick={onClose}
                 >
-                    {/* Header */}
-                    <div className="px-6 py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent" style={{ borderColor: 'var(--border-color)' }}>
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center">
-                                <Package className="text-white" size={20} />
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0, y: 40 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 40 }}
+                        className="relative w-full max-w-lg max-h-[92vh] md:max-h-[90vh] border rounded-[32px] md:rounded-[40px] overflow-hidden flex flex-col"
+                        style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.2)' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="px-6 py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent" style={{ borderColor: 'var(--border-color)' }}>
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center">
+                                    <Package className="text-white" size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>চেকআউট</h2>
+                                    <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">মাল্টি-আইটেম অর্ডার</p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>চেকআউট</h2>
-                                <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">মাল্টি-আইটেম অর্ডার</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}>
-                            <X size={22} />
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6 min-h-0">
-                        {/* Summary of items */}
-                        <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                            <div className="flex items-center gap-2 mb-2">
-                                <ShoppingBag size={14} className="text-[#ce112d]" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">অর্ডার সামারি ({cartItems.length} আইটেম)</span>
-                            </div>
-                            <div className="max-h-32 overflow-y-auto pr-2 space-y-2 no-scrollbar">
-                                {cartItems.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-xs">
-                                        <span className="truncate max-w-[200px] font-medium" style={{ color: 'var(--text-secondary)' }}>{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
-                                        <span className="font-bold text-white">৳{item.price * item.quantity}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="border-t pt-3 flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
-                                <span className="text-xs font-black uppercase text-neutral-500">সাব-টোটাল</span>
-                                <span className="text-lg font-black text-[#ce112d]">৳{cartTotal}</span>
-                            </div>
+                            <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}>
+                                <X size={22} />
+                            </button>
                         </div>
 
-                        {/* Form */}
-                        {error && (
-                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-3.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold">
-                                <AlertCircle size={16} />
-                                {error}
-                            </motion.div>
-                        )}
-
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="relative">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                    <input type="text" name="name" placeholder="আপনার নাম" value={formData.name} onChange={handleInputChange}
-                                        className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+                            {/* Summary of items */}
+                            <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <ShoppingBag size={14} className="text-[#ce112d]" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">অর্ডার সামারি ({cartItems.length} আইটেম)</span>
                                 </div>
-                                <div className="relative">
-                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                    <input type="tel" name="phone" placeholder="ফোন নাম্বার" value={formData.phone} onChange={handleInputChange}
-                                        className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                <div className="max-h-32 overflow-y-auto pr-2 space-y-2">
+                                    {cartItems.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center text-xs">
+                                            <span className="truncate max-w-[200px] font-medium" style={{ color: 'var(--text-secondary)' }}>{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
+                                            <span className="font-bold text-white">৳{item.price * item.quantity}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="relative">
-                                    <Home className="absolute left-4 top-4" size={16} style={{ color: 'var(--text-muted)' }} />
-                                    <textarea name="address" placeholder="বিস্তারিত ঠিকানা (বাড়ি/রাস্তা/গ্রাম)" value={formData.address} onChange={handleInputChange} rows="2"
-                                        className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                <div className="border-t pt-3 flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
+                                    <span className="text-xs font-black uppercase text-neutral-500">সাব-টোটাল</span>
+                                    <span className="text-lg font-black text-[#ce112d]">৳{cartTotal}</span>
                                 </div>
                             </div>
 
-                            <div className={`grid gap-3 ${needsUpazila ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                                <div className="relative">
-                                    <select value={formData.district} onChange={(e) => setFormData(p => ({ ...p, district: e.target.value, upazila: '' }))}
-                                        className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
-                                        <option value="">জেলা নির্বাচন করুন</option>
-                                        {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                                </div>
-                                {needsUpazila && (
+                            {/* Form */}
+                            {error && (
+                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-3.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold">
+                                    <AlertCircle size={16} />
+                                    {error}
+                                </motion.div>
+                            )}
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     <div className="relative">
-                                        <select value={formData.upazila} onChange={(e) => setFormData(p => ({ ...p, upazila: e.target.value }))}
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                        <input type="text" name="name" placeholder="আপনার নাম" value={formData.name} onChange={handleInputChange}
+                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                    </div>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                        <input type="tel" name="phone" placeholder="ফোন নাম্বার" value={formData.phone} onChange={handleInputChange}
+                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                    </div>
+                                    <div className="relative">
+                                        <Home className="absolute left-4 top-4" size={16} style={{ color: 'var(--text-muted)' }} />
+                                        <textarea name="address" placeholder="বিস্তারিত ঠিকানা (বাড়ি/রাস্তা/গ্রাম)" value={formData.address} onChange={handleInputChange} rows="2"
+                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                    </div>
+                                </div>
+
+                                <div className={`grid gap-3 ${needsUpazila ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                                    <div className="relative">
+                                        <select value={formData.district} onChange={(e) => setFormData(p => ({ ...p, district: e.target.value, upazila: '' }))}
                                             className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
-                                            <option value="">উপজেলা নির্বাচন করুন</option>
-                                            {chattogramUpazilas.map(u => <option key={u} value={u}>{u}</option>)}
+                                            <option value="">জেলা নির্বাচন করুন</option>
+                                            {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                         <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                                     </div>
-                                )}
-                            </div>
-
-                            {deliveryInfo && (
-                                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#ce112d]/5 border border-[#ce112d]/10">
-                                    <MapPin size={14} className="text-[#ce112d]" />
-                                    <span className="text-xs font-black text-[#ce112d]">{deliveryInfo.label}</span>
+                                    {needsUpazila && (
+                                        <div className="relative">
+                                            <select value={formData.upazila} onChange={(e) => setFormData(p => ({ ...p, upazila: e.target.value }))}
+                                                className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
+                                                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+                                                <option value="">উপজেলা নির্বাচন করুন</option>
+                                                {chattogramUpazilas.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                                        </div>
+                                    )}
                                 </div>
-                            )}
 
-                            <div>
-                                <textarea name="note" placeholder="📝 বিশেষ অনুরোধ (Optional)" value={formData.note} onChange={handleInputChange} rows="1"
-                                    className="w-full border rounded-xl py-3 px-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
-                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
-                            </div>
-
-                            <div className="space-y-3">
-                                <h4 className="text-[10px] font-black uppercase text-neutral-500 tracking-widest ml-1">💳 পেমেন্ট করার মাধ্যম</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { id: 'cod', label: 'ক্যাশ অন ডেলিভারি', icon: <Truck size={16} /> },
-                                        { id: 'bkash', label: 'বিকাশ পেমেন্ট', icon: <CreditCard size={16} /> }
-                                    ].map(m => (
-                                        <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
-                                            className={`p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'bg-neutral-900/50 border-white/5 opacity-60'}`}>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formData.paymentMethod === m.id ? 'bg-[#ce112d] text-white' : 'bg-neutral-900 text-neutral-500'}`}>{m.icon}</div>
-                                            <p className={`text-[9px] font-black uppercase ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {needsAdvancePayment && (
-                                <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
-                                    <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                        {formData.paymentMethod === 'cod'
-                                            ? <>ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> সেন্ড মানি করুন।</>
-                                            : <>সর্বমোট <strong className="text-[#ce112d]">৳{finalTotal}</strong> সেন্ড মানি করুন।</>}
-                                    </p>
-                                    <div className="flex items-center gap-3 bg-black/20 p-2 rounded-lg">
-                                        <span className="text-sm font-black tracking-widest">{bKashNumber}</span>
-                                        <button onClick={handleCopyNumber} className={`p-2 rounded-md ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-neutral-400'}`}>
-                                            {copied ? <Check size={14} /> : <Copy size={14} />}
-                                        </button>
+                                {deliveryInfo && (
+                                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#ce112d]/5 border border-[#ce112d]/10">
+                                        <MapPin size={14} className="text-[#ce112d]" />
+                                        <span className="text-xs font-black text-[#ce112d]">{deliveryInfo.label}</span>
                                     </div>
-                                    <input type="tel" name="senderNumber" placeholder="প্রেরকের বিকাশ নম্বর" value={formData.senderNumber} onChange={handleInputChange}
-                                        className="w-full border rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none transition-all"
+                                )}
+
+                                <div>
+                                    <textarea name="note" placeholder="📝 বিশেষ অনুরোধ (Optional)" value={formData.note} onChange={handleInputChange} rows="1"
+                                        className="w-full border rounded-xl py-3 px-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                 </div>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Footer */}
-                    <div className="p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
-                        <div className="flex justify-between items-center mb-6 px-1">
-                            <div>
-                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">পরিশোধযোগ্য মোট</p>
-                                <p className="text-3xl font-black text-[#ce112d]">৳{finalTotal}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">ডেলিভারি</p>
-                                <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : 'ফ্রি'}</p>
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase text-neutral-500 tracking-widest ml-1">💳 পেমেন্ট করার মাধ্যম</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {[
+                                            { id: 'cod', label: 'ক্যাশ অন ডেলিভারি', icon: <Truck size={16} /> },
+                                            { id: 'bkash', label: 'বিকাশ পেমেন্ট', icon: <CreditCard size={16} /> }
+                                        ].map(m => (
+                                            <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
+                                                className={`p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'bg-neutral-900/50 border-white/5 opacity-60'}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formData.paymentMethod === m.id ? 'bg-[#ce112d] text-white' : 'bg-neutral-900 text-neutral-500'}`}>{m.icon}</div>
+                                                <p className={`text-[9px] font-black uppercase ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {needsAdvancePayment && (
+                                    <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
+                                        <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                            {formData.paymentMethod === 'cod'
+                                                ? <>ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> সেন্ড মানি করুন।</>
+                                                : <>সর্বমোট <strong className="text-[#ce112d]">৳{finalTotal}</strong> সেন্ড মানি করুন।</>}
+                                        </p>
+                                        <div className="flex items-center gap-3 bg-black/20 p-2 rounded-lg">
+                                            <span className="text-sm font-black tracking-widest">{bKashNumber}</span>
+                                            <button onClick={handleCopyNumber} className={`p-2 rounded-md ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-neutral-400'}`}>
+                                                {copied ? <Check size={14} /> : <Copy size={14} />}
+                                            </button>
+                                        </div>
+                                        <input type="tel" name="senderNumber" placeholder="প্রেরকের বিকাশ নম্বর" value={formData.senderNumber} onChange={handleInputChange}
+                                            className="w-full border rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        <button onClick={handleConfirmOrder} disabled={isSubmitting || cartItems.length === 0}
-                            className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.4)] transition-all active:scale-95 disabled:opacity-50">
-                            {isSubmitting ? "অর্ডার হচ্ছে..." : <>অর্ডার কনফার্ম করুন <ShoppingBag size={20} /></>}
-                        </button>
-                    </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                            <div className="flex justify-between items-center mb-6 px-1">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">পরিশোধযোগ্য মোট</p>
+                                    <p className="text-3xl font-black text-[#ce112d]">৳{finalTotal}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">ডেলিভারি</p>
+                                    <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : 'ফ্রি'}</p>
+                                </div>
+                            </div>
+                            <button onClick={handleConfirmOrder} disabled={isSubmitting || cartItems.length === 0}
+                                className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.4)] transition-all active:scale-95 disabled:opacity-50">
+                                {isSubmitting ? "অর্ডার হচ্ছে..." : <>অর্ডার কনফার্ম করুন <ShoppingBag size={20} /></>}
+                            </button>
+                        </div>
+                    </motion.div>
                 </motion.div>
-            </motion.div>
+            )}
         </AnimatePresence>
     );
 };
