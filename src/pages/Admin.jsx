@@ -96,6 +96,15 @@ export default function Admin() {
     else fetchOrders();
   };
 
+  const updateOrderNote = async (id, currentNote) => {
+    const newNote = prompt('অর্ডার নোট আপডেট করুন:', currentNote || '');
+    if (newNote !== null) {
+      const { error } = await supabase.from('orders').update({ customer_note: newNote }).eq('id', id);
+      if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+      else fetchOrders();
+    }
+  };
+
   // Soft delete — moves to 'Deleted' status instead of permanent delete
   const deleteOrder = async (id) => {
     setConfirmation({
@@ -1192,16 +1201,27 @@ export default function Admin() {
                             </div>
                           </td>
                           <td className="py-6 pr-4">
-                            <span className={`px-2 py-1 rounded-md text-[10px] font-black ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500 border border-green-500/10' : 'bg-blue-500/20 text-blue-500 border border-blue-500/10'}`}>
-                              {o.last_four_digits}
-                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-black w-max ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500 border border-green-500/10' : 'bg-blue-500/20 text-blue-500 border border-blue-500/10'}`}>
+                                {o.last_four_digits}
+                              </span>
+                              {o.last_four_digits !== 'COD' && o.last_four_digits !== '' && (
+                                <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-green-500 text-white w-max uppercase tracking-tighter shadow-lg shadow-green-500/20 flex items-center gap-0.5">
+                                  <Check size={8} /> Adv Paid
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-6 pr-4">
-                            <div className="max-w-[120px]">
-                              <p className="text-[10px] text-neutral-500 font-bold leading-relaxed line-clamp-2 italic" title={o.customer_note}>
-                                {o.customer_note || "—"}
+                            <button
+                              onClick={() => updateOrderNote(o.id, o.customer_note)}
+                              className="max-w-[120px] text-left transition-all hover:bg-white/5 p-2 rounded-xl border border-transparent hover:border-white/5 group"
+                              title="Click to add/edit note"
+                            >
+                              <p className={`text-[10px] font-bold leading-relaxed line-clamp-2 italic ${o.customer_note ? 'text-neutral-300' : 'text-neutral-700'}`} title={o.customer_note}>
+                                {o.customer_note || "➕ Add Note"}
                               </p>
-                            </div>
+                            </button>
                           </td>
                           <td className="py-6 pr-4">
                             <select
