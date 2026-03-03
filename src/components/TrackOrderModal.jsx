@@ -42,7 +42,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             let query = supabase.from('orders').select('*');
 
             // Construct safe OR conditions. 
-            // Avoid 'id.ilike' because 'id' is a UUID column and it will throw a 400 error.
+            // Avoid 'id.ilike' on UUID columns as it throws 400 error.
+            // But we can search name, phone, address, and note.
             const conditions = [
                 `customer_phone.ilike.${searchPattern}`,
                 `customer_name.ilike.${searchPattern}`,
@@ -50,15 +51,27 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 `customer_note.ilike.${searchPattern}`
             ];
 
+            // If it's a phone number, search for variants (with spaces, last 10, etc.)
             if (isDigitsOnly && cleanInput.length >= 10) {
                 const last10 = cleanInput.slice(-10);
                 conditions.push(`customer_phone.ilike.%${last10}%`);
+                // Handle cases where phone is stored like "017 11 22 33"
+                if (cleanInput.length === 11) {
+                    const flexible = cleanInput.split('').join('%');
+                    conditions.push(`customer_phone.ilike.%${flexible}%`);
+                }
             }
 
             // If it's a valid full UUID, search specifically by 'id'
-            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidRegex.test(input)) {
                 conditions.push(`id.eq.${input}`);
             }
+
+            // Fallback: If cleanInput is 8 chars, it's likely the short ID user sees.
+            // Since we can't ILIKE UUIDs, we just hope they search by phone/name.
+            // But we'll add customer_phone search for the raw input as well.
+            conditions.push(`customer_phone.ilike.%${input.trim()}%`);
 
             query = query.or(conditions.join(','));
 

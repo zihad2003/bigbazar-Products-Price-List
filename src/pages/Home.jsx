@@ -62,6 +62,14 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           }));
         }
       });
+
+    // Handle scroll to products from mobile menu
+    if (window.history.state?.usr?.scrollToProducts) {
+      setTimeout(() => {
+        const header = document.getElementById('products-header');
+        if (header) header.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
   }, []);
 
   // Handle direct product link
@@ -311,7 +319,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         {/* Product Grid Section */}
         <section className="space-y-8 md:space-y-10">
           <div className="pb-6 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
-            <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
+            <h3 id="products-header" className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
               <span>{language === 'bn' ? 'লেটেস্ট' : 'LATEST'}</span> <span className="text-[#ce112d]">{language === 'bn' ? 'ড্রপস' : 'DROPS'}</span>
             </h3>
 

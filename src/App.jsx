@@ -67,6 +67,7 @@ function PublicLayout() {
       <CustomerMenu
         onTrackOrder={() => setIsTrackOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
+        onSelectCategory={setCategory}
         onOpenCategories={() => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
