@@ -22,6 +22,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         // Convert Bengali digits to English digits
         const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
         const input = bnToEn(searchInput).trim();
+
+        // cleanInput is for digits/alphanumeric search
         const cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
 
         if (cleanInput.length < 4) {
@@ -34,19 +36,31 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         setSearched(true);
 
         try {
-            // Is it a phone number or an Order ID?
-            const isPhone = /^[0-9]+$/.test(cleanInput) && cleanInput.length >= 10;
+            const isDigitsOnly = /^[0-9]+$/.test(cleanInput);
+            const searchPattern = `%${cleanInput}%`;
 
             let query = supabase.from('orders').select('*');
 
-            if (isPhone) {
-                const searchPattern = `%${cleanInput.slice(-10)}%`;
-                query = query.or(`customer_phone.ilike.${searchPattern},customer_phone.eq.${cleanInput}`);
-            } else {
-                // Try searching by ID (exact or starting with)
-                // If it's alphanumeric, it might be the truncated ID shown to user
-                query = query.or(`id.ilike.%${cleanInput}%,customer_name.ilike.%${cleanInput}%`);
+            // Construct safe OR conditions. 
+            // Avoid 'id.ilike' because 'id' is a UUID column and it will throw a 400 error.
+            const conditions = [
+                `customer_phone.ilike.${searchPattern}`,
+                `customer_name.ilike.${searchPattern}`,
+                `customer_address.ilike.${searchPattern}`,
+                `customer_note.ilike.${searchPattern}`
+            ];
+
+            if (isDigitsOnly && cleanInput.length >= 10) {
+                const last10 = cleanInput.slice(-10);
+                conditions.push(`customer_phone.ilike.%${last10}%`);
             }
+
+            // If it's a valid full UUID, search specifically by 'id'
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
+                conditions.push(`id.eq.${input}`);
+            }
+
+            query = query.or(conditions.join(','));
 
             const { data: orderData, error: fetchError } = await query.order('created_at', { ascending: false });
 
