@@ -28,9 +28,27 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
   // Reset state when modal opens or product changes
   useEffect(() => {
-    if (isOpen) {
-      setSelectedSize('');
-      setSelectedColor('');
+    if (isOpen && product) {
+      // Auto-select if only one color exists
+      if (product.available_colors?.length === 1) {
+        const singleColor = product.available_colors[0];
+        const colorName = typeof singleColor === 'object' ? singleColor.name : singleColor;
+        const isAvailable = typeof singleColor === 'object' ? (singleColor.is_available ?? true) : true;
+        if (isAvailable) setSelectedColor(colorName);
+      } else {
+        setSelectedColor('');
+      }
+
+      // Auto-select if only one size exists
+      if (product.available_sizes?.length === 1) {
+        const singleSize = product.available_sizes[0];
+        const sizeName = typeof singleSize === 'object' ? singleSize.name : singleSize;
+        const isAvailable = typeof singleSize === 'object' ? (singleSize.is_available ?? true) : true;
+        if (isAvailable) setSelectedSize(sizeName);
+      } else {
+        setSelectedSize('');
+      }
+
       setValidationError('');
       setCurrentImageIndex(0);
       setShowVideo(!!product?.video_url);
@@ -98,7 +116,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const handleAddToCart = () => {
     if (product.is_sold_out) return;
     if (validateSelection()) {
-      addToCart(product, selectedColor, selectedSize);
+      // Pass the calculated effective price (handles flash sales/discounts)
+      addToCart({ ...product, price: price }, selectedColor, selectedSize);
       setShowCartSuccess(true);
       setTimeout(() => setShowCartSuccess(false), 2000);
     }

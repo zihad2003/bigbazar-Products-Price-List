@@ -93,9 +93,9 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             : formData.district;
 
         try {
-            const combinedName = cartItems.map(item => `${item.name} (${item.quantity}x ${item.size || ''} ${item.color || ''})`).join(' + ');
-            const combinedSizes = cartItems.map(item => item.size).filter(Boolean).join(', ');
-            const combinedColors = cartItems.map(item => item.color).filter(Boolean).join(', ');
+            const combinedName = cartItems.map(item => `${item.name} (${item.quantity}x ${item.selectedSize || ''} ${item.selectedColor || ''})`).join(' + ');
+            const combinedSizes = cartItems.map(item => item.selectedSize).filter(Boolean).join(', ');
+            const combinedColors = cartItems.map(item => item.selectedColor).filter(Boolean).join(', ');
 
             const { error: insertError } = await supabase
                 .from('orders')
