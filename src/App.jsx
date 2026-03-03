@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
 import ErrorBoundary from './components/ErrorBoundary';
+import TrackOrderModal from './components/TrackOrderModal';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -18,6 +19,7 @@ function ScrollToTop() {
 function PublicLayout() {
   const [category, setCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTrackOpen, setIsTrackOpen] = useState(false);
 
   useEffect(() => {
     // Increment visitor count only once per session so we don't spam the API on every click
@@ -30,9 +32,11 @@ function PublicLayout() {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <TrackOrderModal isOpen={isTrackOpen} onClose={() => setIsTrackOpen(false)} />
       <Navbar
         selectedCategory={category}
         onSelectCategory={setCategory}
+        onTrackOrder={() => setIsTrackOpen(true)}
       />
       <main className="flex-grow pt-48 md:pt-56">
         <Home
