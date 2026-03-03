@@ -4,7 +4,7 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu, Sparkles
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { formatColorName } from '../utils/colorNames';
@@ -610,13 +610,19 @@ export default function Admin() {
                   <Sun size={28} className={siteTheme === 'light' ? 'text-[#ce112d]' : 'text-neutral-600'} />
                   <span className={`text-[10px] font-black uppercase tracking-widest ${siteTheme === 'light' ? 'text-white' : 'text-neutral-500'}`}>Light Mode</span>
                 </button>
+                <button type="button" onClick={() => setSiteTheme('ramadan')}
+                  className={`flex-1 flex flex-col items-center gap-4 p-6 rounded-2xl border-2 transition-all ${siteTheme === 'ramadan' ? 'border-[#fbbf24] bg-[#fbbf24]/5' : 'border-white/10 hover:border-white/20'}`}
+                >
+                  <Sparkles size={28} className={siteTheme === 'ramadan' ? 'text-[#fbbf24]' : 'text-neutral-600'} />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${siteTheme === 'ramadan' ? 'text-white' : 'text-neutral-500'}`}>Ramadan Edition</span>
+                </button>
               </div>
               <button type="button" disabled={loading}
                 onClick={async () => {
                   setLoading(true);
                   const { error } = await supabase.from('site_settings').upsert({ key: 'site_theme', value: { mode: siteTheme } }, { onConflict: 'key' });
                   if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                  else setAlertModal({ isOpen: true, title: 'Success', message: `Theme set to ${siteTheme === 'dark' ? 'Dark' : 'Light'} Mode!`, type: 'success' });
+                  else setAlertModal({ isOpen: true, title: 'Success', message: `Theme set to ${siteTheme.charAt(0).toUpperCase() + siteTheme.slice(1)} Mode!`, type: 'success' });
                   setLoading(false);
                 }}
                 className="flex items-center gap-2 bg-[#ce112d] px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-red-900/20 active:scale-95 transition-all disabled:opacity-50"

@@ -4,12 +4,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import BannerSlider from '../components/BannerSlider';
-import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe } from 'lucide-react';
+import RamadanHero from '../components/RamadanHero';
+import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe, Moon } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { useTheme } from '../ThemeContext';
 
 const PAGE_SIZE = 12;
 
 export default function Home({ selectedCategory, searchQuery, onSearchChange }) {
+  const { theme } = useTheme();
+  const isRamadan = theme === 'ramadan';
+  const accentColor = isRamadan ? '#fbbf24' : '#ce112d';
+
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -169,22 +175,26 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 }}
               >
                 {/* Accent gradient top bar */}
-                <div className="h-1" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${accentColor}, #ff4d6d, ${accentColor})` }} />
 
                 <div className="px-4 md:px-6 py-4 md:py-5 flex items-start gap-3 md:gap-4">
                   {/* Icon */}
                   <div
                     className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center mt-0.5"
-                    style={{ backgroundColor: 'rgba(206, 17, 45, 0.1)' }}
+                    style={{ backgroundColor: `${accentColor}1A` }}
                   >
-                    <MessageSquare size={20} className="text-[#ce112d]" />
+                    {isRamadan ? (
+                      <Moon size={20} style={{ color: accentColor }} />
+                    ) : (
+                      <MessageSquare size={20} style={{ color: accentColor }} />
+                    )}
                   </div>
 
                   {/* Text Content */}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <p
                       className="text-[10px] md:text-[11px] font-black uppercase tracking-widest"
-                      style={{ color: '#ce112d' }}
+                      style={{ color: accentColor }}
                     >
                       📢 গুরুত্বপূর্ণ বিজ্ঞপ্তি
                     </p>
@@ -192,7 +202,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                       className="text-xs md:text-sm font-semibold leading-relaxed"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!
+                      প্রিয় গ্রাহক, <strong style={{ color: accentColor }}>Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!
                     </p>
                     <p
                       className="text-[11px] md:text-xs leading-relaxed"
@@ -201,7 +211,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                       বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong>
                     </p>
                     <div className="flex items-center gap-2 pt-1">
-                      <Globe size={12} className="text-[#ce112d]" />
+                      <Globe size={12} style={{ color: accentColor }} />
                       <span
                         className="text-[9px] md:text-[10px] font-black uppercase tracking-widest"
                         style={{ color: 'var(--text-muted)' }}
@@ -224,6 +234,9 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           )}
         </AnimatePresence>
 
+        {/* Ramadan Special Hero */}
+        <RamadanHero bannerUrl="https://images.unsplash.com/photo-1564761061036-6cbe17ae3447?q=80&w=2070&auto=format&fit=crop" />
+
         {/* Slider Section - Only show if slides exist */}
         {siteSettings.main_slides?.length > 0 && (
           <section className="relative">
@@ -235,13 +248,13 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         <section className="space-y-8 md:space-y-10">
           <div className="pb-6 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
             <h3 className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
-              <span>LATEST</span> <span className="text-[#ce112d]">DROPS</span>
+              <span>LATEST</span> <span style={{ color: accentColor }}>DROPS</span>
             </h3>
 
             {/* Search Bar */}
             <div className="relative w-full max-w-md group">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <Search size={18} style={{ color: 'var(--text-muted)' }} className="group-focus-within:text-[#ce112d] transition-colors" />
+                <Search size={18} style={{ color: 'var(--text-muted)' }} className="transition-colors group-focus-within:text-[var(--accent-color)]" />
               </div>
               <input
                 type="text"
