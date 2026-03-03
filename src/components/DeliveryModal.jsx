@@ -183,7 +183,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             <AnimatePresence>
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[250] backdrop-blur-2xl flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[1000] backdrop-blur-2xl flex items-center justify-center p-4"
                     style={{ backgroundColor: 'var(--bg-overlay)' }}
                 >
                     <motion.div
@@ -297,7 +297,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[250] backdrop-blur-2xl flex items-center justify-center p-3 md:p-6"
+                className="fixed inset-0 z-[1000] backdrop-blur-2xl flex items-center justify-center p-3 md:p-6"
                 style={{ backgroundColor: 'var(--bg-overlay)' }}
                 onClick={onClose}
             >
@@ -545,8 +545,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         )}
                     </div>
 
-                    {/* Footer */}
-                    <div className="px-5 py-4 md:px-8 md:py-5 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                    {/* Footer - padded for mobile bars */}
+                    <div className="px-5 pb-10 pt-4 md:px-8 md:py-5 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                         <button onClick={handleConfirmOrder} disabled={isSubmitting}
                             className="w-full flex items-center justify-center gap-3 py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100">
                             {isSubmitting ? (
