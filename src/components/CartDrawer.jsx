@@ -36,8 +36,8 @@ export default function CartDrawer({ isOpen, onClose }) {
                             <div className="flex items-center gap-3">
                                 <ShoppingBag className="text-[#ce112d]" size={24} />
                                 <div>
-                                    <h3 className="font-black italic uppercase tracking-widest text-lg">My <span className="text-[#ce112d]">Cart</span></h3>
-                                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{cartCount} items selected</p>
+                                    <h3 className="font-black italic uppercase tracking-widest text-lg">আমার <span className="text-[#ce112d]">কার্ট</span></h3>
+                                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">{cartCount} টি পণ্য সিলেক্ট করা হয়েছে</p>
                                 </div>
                             </div>
                             <button onClick={onClose} className="p-2 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-full transition-colors">
@@ -51,14 +51,14 @@ export default function CartDrawer({ isOpen, onClose }) {
                                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
                                     <ShoppingBag size={64} strokeWidth={1} />
                                     <div>
-                                        <p className="font-black uppercase tracking-widest text-sm">Your cart is empty</p>
-                                        <p className="text-xs font-bold mt-1">Add some products to continue</p>
+                                        <p className="font-black uppercase tracking-widest text-sm">আপনার কার্ট খালি</p>
+                                        <p className="text-xs font-bold mt-1">অর্ডার করতে কিছু পণ্য যোগ করুন</p>
                                     </div>
                                     <button
                                         onClick={onClose}
                                         className="mt-4 px-8 py-3 bg-[#ce112d] text-white rounded-full font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg"
                                     >
-                                        Start Shopping
+                                        শপিং শুরু করুন
                                     </button>
                                 </div>
                             ) : (
@@ -84,12 +84,12 @@ export default function CartDrawer({ isOpen, onClose }) {
                                             <div className="flex flex-wrap gap-2">
                                                 {item.selectedColor && (
                                                     <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest text-neutral-400">
-                                                        Col: <span className="text-white">{item.selectedColor}</span>
+                                                        কালার: <span className="text-white">{item.selectedColor}</span>
                                                     </span>
                                                 )}
                                                 {item.selectedSize && (
                                                     <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[8px] font-black uppercase tracking-widest text-neutral-400">
-                                                        Size: <span className="text-white">{item.selectedSize}</span>
+                                                        সাইজ: <span className="text-white">{item.selectedSize}</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -121,16 +121,16 @@ export default function CartDrawer({ isOpen, onClose }) {
                         {cartItems.length > 0 && (
                             <div className="p-6 border-t space-y-4" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                                 <div className="flex justify-between items-end mb-2">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Total Amount</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">সর্বমোট</span>
                                     <span className="text-2xl font-black text-[#ce112d]">৳{cartTotal}</span>
                                 </div>
                                 <button
                                     onClick={() => setIsCheckoutOpen(true)}
                                     className="w-full bg-[#ce112d] text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-[0_10px_40px_rgba(206,17,45,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
                                 >
-                                    Proceed to Order <ArrowRight size={18} />
+                                    অর্ডার কনফার্ম করুন <ArrowRight size={18} />
                                 </button>
-                                <p className="text-[8px] text-center text-neutral-500 font-bold uppercase tracking-widest">Delivery charge will be added at next step</p>
+                                <p className="text-[8px] text-center text-neutral-500 font-bold uppercase tracking-widest">ডেলিভারি চার্জ পরের ধাপে যোগ করা হবে</p>
                             </div>
                         )}
                     </motion.div>

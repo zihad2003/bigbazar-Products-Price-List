@@ -163,11 +163,11 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             <CheckCircle2 className="text-green-500" size={40} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Received!</h2>
+                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>অর্ডার সফল হয়েছে!</h2>
                             <p className="text-sm font-medium mt-2" style={{ color: 'var(--text-secondary)' }}>আপনার মাল্টি-আইটেম অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
                         </div>
                         <button onClick={onClose} className="w-full py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95">
-                            Back To Shop
+                            শপিং-এ ফিরে যান
                         </button>
                     </motion.div>
                 </motion.div>
@@ -199,7 +199,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             </div>
                             <div>
                                 <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>চেকআউট</h2>
-                                <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">Order Multiple Items</p>
+                                <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">মাল্টি-আইটেম অর্ডার</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}>
@@ -223,7 +223,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 ))}
                             </div>
                             <div className="border-t pt-3 flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
-                                <span className="text-xs font-black uppercase text-neutral-500">Subtotal</span>
+                                <span className="text-xs font-black uppercase text-neutral-500">সাব-টোটাল</span>
                                 <span className="text-lg font-black text-[#ce112d]">৳{cartTotal}</span>
                             </div>
                         </div>
@@ -298,8 +298,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 <h4 className="text-[10px] font-black uppercase text-neutral-500 tracking-widest ml-1">💳 পেমেন্ট করার মাধ্যম</h4>
                                 <div className="grid grid-cols-2 gap-3">
                                     {[
-                                        { id: 'cod', label: 'Cash on Delivery', icon: <Truck size={16} /> },
-                                        { id: 'bkash', label: 'bKash Payment', icon: <CreditCard size={16} /> }
+                                        { id: 'cod', label: 'ক্যাশ অন ডেলিভারি', icon: <Truck size={16} /> },
+                                        { id: 'bkash', label: 'বিকাশ পেমেন্ট', icon: <CreditCard size={16} /> }
                                     ].map(m => (
                                         <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
                                             className={`p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'bg-neutral-900/50 border-white/5 opacity-60'}`}>
@@ -335,17 +335,17 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     <div className="p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                         <div className="flex justify-between items-center mb-6 px-1">
                             <div>
-                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Total to Pay</p>
+                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">পরিশোধযোগ্য মোট</p>
                                 <p className="text-3xl font-black text-[#ce112d]">৳{finalTotal}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">Delivery</p>
-                                <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : 'Free'}</p>
+                                <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">ডেলিভারি</p>
+                                <p className="text-sm font-black text-white">{deliveryCharge > 0 ? `৳${deliveryCharge}` : 'ফ্রি'}</p>
                             </div>
                         </div>
                         <button onClick={handleConfirmOrder} disabled={isSubmitting || cartItems.length === 0}
                             className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.4)] transition-all active:scale-95 disabled:opacity-50">
-                            {isSubmitting ? "Processing..." : <>অর্ডার কনফার্ম করুন <ShoppingBag size={20} /></>}
+                            {isSubmitting ? "অর্ডার হচ্ছে..." : <>অর্ডার কনফার্ম করুন <ShoppingBag size={20} /></>}
                         </button>
                     </div>
                 </motion.div>
