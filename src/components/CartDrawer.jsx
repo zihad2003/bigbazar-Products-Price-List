@@ -21,7 +21,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm"
                     />
 
                     {/* Drawer */}
@@ -30,7 +30,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 bottom-0 w-full max-w-md z-[160] flex flex-col shadow-2xl"
+                        className="fixed right-0 top-0 bottom-0 w-full max-w-md z-[1010] flex flex-col shadow-2xl"
                         style={{ backgroundColor: 'var(--modal-bg)' }}
                     >
                         {/* Header */}

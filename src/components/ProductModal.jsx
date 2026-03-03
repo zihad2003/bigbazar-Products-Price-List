@@ -129,7 +129,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] backdrop-blur-2xl flex items-center justify-center p-0 md:p-6"
+        className="fixed inset-0 z-[900] backdrop-blur-2xl flex items-center justify-center p-0 md:p-6"
         style={{ backgroundColor: 'var(--bg-overlay)' }}
       >
         <motion.div
@@ -412,7 +412,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+              className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/90 backdrop-blur-sm"
             >
               <div className="text-center space-y-6">
                 <div className="w-24 h-24 bg-[#0084FF] rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(0,132,255,0.4)] animate-bounce">
