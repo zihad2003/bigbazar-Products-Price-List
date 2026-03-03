@@ -53,10 +53,9 @@ export default function Admin() {
     fetchReviews();
     fetchSiteSettings();
 
-    // Fetch total site visitor count safely
-    fetch('https://api.counterapi.dev/v1/bigbazar_sheet/visits')
-      .then(r => r.json())
-      .then(d => setVisitorCount(d.count || 0))
+    // Fetch total site visitor count from Supabase
+    supabase.from('site_settings').select('value').eq('key', 'visitor_count').single()
+      .then(({ data }) => setVisitorCount(data?.value || 0))
       .catch(() => 0);
   }, []);
 
