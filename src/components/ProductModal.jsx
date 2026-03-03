@@ -352,11 +352,14 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                         let isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
 
                         // Color-wise size logic: if a color is selected and has a specific sizes list,
-                        // mark sizes not in that list as unavailable.
+                        // mark sizes not in that list OR with 0 stock as unavailable.
                         if (selectedColor && isAvailable) {
                           const colorObj = product.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
                           if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
-                            if (!colorObj.sizes.includes(name)) {
+                            const sizeEntry = colorObj.sizes.find(sz => (typeof sz === 'object' ? sz.name : sz) === name);
+                            if (!sizeEntry) {
+                              isAvailable = false;
+                            } else if (typeof sizeEntry === 'object' && (sizeEntry.stock === 0 || sizeEntry.stock === '0')) {
                               isAvailable = false;
                             }
                           }

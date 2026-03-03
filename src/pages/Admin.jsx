@@ -961,29 +961,57 @@ export default function Admin() {
                             {form.available_sizes?.length > 0 && (
                               <div className="space-y-2 pt-2 border-t border-white/5">
                                 <label className="text-[8px] font-black uppercase text-neutral-500 tracking-widest ml-1">Sizes in stock:</label>
-                                <div className="flex flex-wrap gap-1.5 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
+                                <div className="flex flex-wrap gap-2 p-3 bg-neutral-950/50 rounded-xl border border-white/5">
                                   {form.available_sizes.map((s, sIdx) => {
                                     const sName = typeof s === 'object' ? s.name : s;
-                                    const isSelected = color.sizes?.includes(sName);
+                                    const sObj = color.sizes?.find(sz => (typeof sz === 'object' ? sz.name : sz) === sName);
+                                    const isSelected = !!sObj;
+                                    const variantStock = typeof sObj === 'object' ? (sObj.stock ?? 0) : 0;
+
                                     return (
-                                      <button
-                                        key={sIdx}
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          const updatedColors = [...form.available_colors];
-                                          const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null, sizes: [] };
-                                          const currentSizes = normalized.sizes || [];
-                                          const newSizes = currentSizes.includes(sName)
-                                            ? currentSizes.filter(name => name !== sName)
-                                            : [...currentSizes, sName];
-                                          updatedColors[idx] = { ...normalized, sizes: newSizes };
-                                          setForm({ ...form, available_colors: updatedColors });
-                                        }}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all border ${isSelected ? 'bg-[#ce112d]/20 border-[#ce112d] text-white' : 'bg-black/40 border-white/5 text-neutral-700 hover:text-neutral-400'}`}
-                                      >
-                                        {sName}
-                                      </button>
+                                      <div key={sIdx} className="flex flex-col gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            const updatedColors = [...form.available_colors];
+                                            const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { name: updatedColors[idx], is_available: true, image: null, hex: null, sizes: [] };
+                                            const currentSizes = normalized.sizes || [];
+                                            const isFound = currentSizes.some(sz => (typeof sz === 'object' ? sz.name : sz) === sName);
+
+                                            const newSizes = isFound
+                                              ? currentSizes.filter(sz => (typeof sz === 'object' ? sz.name : sz) !== sName)
+                                              : [...currentSizes, { name: sName, stock: 0 }];
+
+                                            updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                            setForm({ ...form, available_colors: updatedColors });
+                                          }}
+                                          className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all border ${isSelected ? 'bg-[#ce112d]/20 border-[#ce112d] text-white' : 'bg-black/40 border-white/5 text-neutral-700 hover:text-neutral-400'}`}
+                                        >
+                                          {sName}
+                                        </button>
+                                        {isSelected && (
+                                          <input
+                                            type="number"
+                                            placeholder="Stk"
+                                            value={variantStock}
+                                            onChange={(e) => {
+                                              const updatedColors = [...form.available_colors];
+                                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { ...color, sizes: [] };
+                                              const newSizes = (normalized.sizes || []).map(sz => {
+                                                const szName = typeof sz === 'object' ? sz.name : sz;
+                                                if (szName === sName) {
+                                                  return { name: szName, stock: parseInt(e.target.value) || 0 };
+                                                }
+                                                return sz;
+                                              });
+                                              updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                              setForm({ ...form, available_colors: updatedColors });
+                                            }}
+                                            className="w-12 bg-black/40 border border-white/10 rounded-md py-0.5 px-1 text-[8px] font-black text-white text-center outline-none focus:border-[#ce112d]"
+                                          />
+                                        )}
+                                      </div>
                                     );
                                   })}
                                 </div>
