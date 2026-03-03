@@ -4,7 +4,7 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { formatColorName } from '../utils/colorNames';
@@ -28,6 +28,7 @@ export default function Admin() {
   const [reviews, setReviews] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [siteTheme, setSiteTheme] = useState('dark');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
 
   const [form, setForm] = useState({
@@ -468,10 +469,32 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col lg:flex-row">
+      {/* Mobile Top Bar */}
+      <div className="lg:hidden flex items-center justify-between p-4 bg-black border-b border-white/5 sticky top-0 z-[60] backdrop-blur-xl">
+        <div className="flex items-center gap-2">
+          <ShoppingBag className="text-[#ce112d] w-5 h-5" />
+          <h1 className="text-lg font-black italic uppercase">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 hover:bg-white/5 rounded-xl transition-all"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay (Mobile) */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar - Fixed Position */}
-      <aside className="w-full lg:w-64 lg:h-screen lg:sticky lg:top-0 border-r border-white/5 p-6 flex flex-col justify-between shrink-0 bg-black z-20">
+      <aside className={`fixed lg:sticky top-0 left-0 w-64 h-screen border-r border-white/5 p-6 flex flex-col justify-between shrink-0 bg-black z-50 transition-transform duration-300 lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="space-y-8">
-          <div className="flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <ShoppingBag className="text-[#ce112d]" />
             <h1 className="text-xl font-black italic uppercase">BIG<span className="text-[#ce112d]">BAZAR</span></h1>
           </div>
@@ -485,7 +508,14 @@ export default function Admin() {
               { id: 'add', icon: <Plus size={16} />, label: 'Add' },
               { id: 'settings', icon: <Settings size={16} />, label: 'Settings' },
             ].map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${activeTab === tab.id ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}>
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${activeTab === tab.id ? 'bg-[#ce112d] shadow-lg shadow-red-900/20' : 'hover:bg-white/5 text-neutral-500'}`}
+              >
                 {tab.icon}
                 <span className="uppercase">{tab.label}</span>
                 {tab.count > 0 && (
@@ -495,7 +525,13 @@ export default function Admin() {
             ))}
           </nav>
         </div>
-        <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-white transition-all mt-auto border-t border-white/5 pt-6">
+        <button
+          onClick={() => {
+            supabase.auth.signOut();
+            setIsMobileMenuOpen(false);
+          }}
+          className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-white transition-all mt-auto border-t border-white/5 pt-6"
+        >
           <LogOut size={16} /> Logout
         </button>
       </aside>
