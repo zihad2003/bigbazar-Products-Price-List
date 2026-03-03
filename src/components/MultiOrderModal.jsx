@@ -146,8 +146,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             {isSuccess && isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1210] backdrop-blur-2xl flex items-center justify-center p-4"
-                    style={{ backgroundColor: 'var(--bg-overlay)' }}
+                    className="fixed inset-0 z-[1210] backdrop-blur-3xl flex items-center justify-center p-4"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -171,8 +171,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             {!isSuccess && isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1200] backdrop-blur-2xl flex items-center justify-center p-3 md:p-6 overflow-y-auto"
-                    style={{ backgroundColor: 'var(--bg-overlay)' }}
+                    className="fixed inset-0 z-[1200] backdrop-blur-3xl flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
                     onClick={onClose}
                 >
                     <motion.div
@@ -323,8 +323,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* Footer - lift for mobile menu */}
-                        <div className="p-6 pb-12 md:p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                        {/* Footer - lift for mobile menu (increased for safety) */}
+                        <div className="p-6 pb-20 md:p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <div>
                                     <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">{language === 'bn' ? 'পরিশোধযোগ্য মোট' : 'Total Payable'}</p>
