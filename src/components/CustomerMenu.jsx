@@ -21,25 +21,12 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
     };
 
     const handleMenuClick = () => {
-        if (onSelectCategory) onSelectCategory('All');
         if (location.pathname !== '/') {
             navigate('/');
             setTimeout(() => {
-                const header = document.getElementById('products-header');
-                if (header) {
-                    header.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                    window.scrollTo({ top: 800, behavior: 'smooth' });
-                }
                 if (onOpenCategories) onOpenCategories();
             }, 150);
         } else {
-            const header = document.getElementById('products-header');
-            if (header) {
-                header.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                window.scrollTo({ top: 800, behavior: 'smooth' });
-            }
             if (onOpenCategories) onOpenCategories();
         }
     };

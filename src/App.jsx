@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TrackOrderModal from './components/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
+import CategoryModal from './components/CategoryModal';
 import { supabase } from './supabaseClient';
 
 function ScrollToTop() {
@@ -26,6 +27,7 @@ function PublicLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isTrackOpen, setIsTrackOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   useEffect(() => {
     // Increment visitor count only once per session in Supabase
@@ -44,6 +46,12 @@ function PublicLayout() {
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <TrackOrderModal isOpen={isTrackOpen} onClose={() => setIsTrackOpen(false)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CategoryModal
+        isOpen={isCategoryOpen}
+        onClose={() => setIsCategoryOpen(false)}
+        selectedCategory={category}
+        onSelectCategory={setCategory}
+      />
 
       <Navbar
         selectedCategory={category}
@@ -68,9 +76,7 @@ function PublicLayout() {
         onTrackOrder={() => setIsTrackOpen(true)}
         onOpenCart={() => setIsCartOpen(true)}
         onSelectCategory={setCategory}
-        onOpenCategories={() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onOpenCategories={() => setIsCategoryOpen(true)}
       />
     </div>
   );
