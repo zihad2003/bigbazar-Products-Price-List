@@ -93,7 +93,13 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             : formData.district;
 
         try {
-            const combinedName = cartItems.map(item => `${item.name} (${item.quantity}x ${item.selectedSize || ''} ${item.selectedColor || ''})`).join(' + ');
+            const combinedName = cartItems.map(item => {
+                const parts = [item.name];
+                if (item.selectedColor) parts.push(`${item.selectedColor} color`);
+                if (item.selectedSize) parts.push(`${item.selectedSize} size`);
+                parts.push(`${item.quantity} piece`);
+                return parts.join(' ');
+            }).join(' + ');
             const combinedSizes = cartItems.map(item => item.selectedSize).filter(Boolean).join(', ');
             const combinedColors = cartItems.map(item => item.selectedColor).filter(Boolean).join(', ');
 
