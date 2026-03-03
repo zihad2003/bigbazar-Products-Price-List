@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
 
 const TrackOrderModal = ({ isOpen, onClose }) => {
     const [phone, setPhone] = useState('');
@@ -168,7 +169,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     {/* Product Thumbnail */}
                                                     <div className="w-12 h-16 bg-black/40 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
                                                         {productImages[order.product_id] ? (
-                                                            <img src={productImages[order.product_id]} className="w-full h-full object-cover" alt="" />
+                                                            <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-neutral-800">
                                                                 <ShoppingBag size={20} />
