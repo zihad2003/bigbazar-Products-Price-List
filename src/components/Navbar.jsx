@@ -1,7 +1,8 @@
-import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, ShoppingBag } from 'lucide-react';
+import { useCart } from '../CartContext';
 
-const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder }) => {
+const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }) => {
+    const { cartCount } = useCart();
     const categories = ['All', 'Men', 'Women', 'Kids (Boys)', 'Kids (Girls)'];
 
     return (
@@ -15,10 +16,21 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder }) => {
                         <span className="text-[#ce112d]">BAZAR</span>
                     </h1>
                 </div>
-                <div className="shrink-0 flex items-center">
+                <div className="shrink-0 flex items-center gap-2 md:gap-4">
+                    <button
+                        onClick={onOpenCart}
+                        className="relative p-2.5 md:p-3 bg-neutral-900 border border-white/10 rounded-xl text-white hover:bg-white hover:text-black transition-all shadow-lg group"
+                    >
+                        <ShoppingBag size={18} className="text-[#ce112d] group-hover:text-black transition-colors" />
+                        {cartCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#ce112d] text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-black group-hover:border-white shadow-xl">
+                                {cartCount}
+                            </span>
+                        )}
+                    </button>
                     <button
                         onClick={onTrackOrder}
-                        className="px-3 md:px-5 py-1.5 md:py-2.5 bg-neutral-900 border border-white/10 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all flex items-center gap-2 shadow-lg group"
+                        className="px-3 md:px-5 py-2 md:py-3 bg-neutral-900 border border-white/10 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all flex items-center gap-2 shadow-lg group"
                     >
                         <Search size={14} className="text-[#ce112d] group-hover:text-black transition-colors" />
                         <span className="hidden sm:inline">ট্র্যাক করুন</span>

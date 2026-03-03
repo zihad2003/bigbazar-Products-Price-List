@@ -8,6 +8,7 @@ import VideoPlayer from './VideoPlayer';
 import AlertModal from './AlertModal';
 import DeliveryModal from './DeliveryModal';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { useCart } from '../CartContext';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [contactInfo, setContactInfo] = useState(null);
@@ -67,21 +68,39 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     ? product.images
     : [product.image || product.image_url].filter(Boolean);
 
-  const handleMainOrder = () => {
-    if (product.is_sold_out) return;
+  const { addToCart } = useCart();
+  const [showCartSuccess, setShowCartSuccess] = useState(false);
+
+  const validateSelection = () => {
     const hasAvailableSizes = product.available_sizes?.some(s => typeof s === 'object' ? (s.is_available ?? true) : true);
     const hasAvailableColors = product.available_colors?.some(c => typeof c === 'object' ? (c.is_available ?? true) : true);
     if (hasAvailableSizes && !selectedSize) {
       setValidationError('size');
       document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
+      return false;
     }
     if (hasAvailableColors && !selectedColor) {
       setValidationError('color');
       document.getElementById('variant-selectors')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
+      return false;
     }
-    setShowDeliveryModal(true);
+    return true;
+  };
+
+  const handleMainOrder = () => {
+    if (product.is_sold_out) return;
+    if (validateSelection()) {
+      setShowDeliveryModal(true);
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (product.is_sold_out) return;
+    if (validateSelection()) {
+      addToCart(product, selectedColor, selectedSize);
+      setShowCartSuccess(true);
+      setTimeout(() => setShowCartSuccess(false), 2000);
+    }
   };
 
   const handleMessengerOrder = () => {
@@ -339,46 +358,53 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={product.is_sold_out}
+                  className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
+                >
+                  {showCartSuccess ? <><Check size={18} /> Added!</> : <><ShoppingBag size={18} /> Add To Cart</>}
+                </button>
                 <button
                   onClick={handleMainOrder}
                   disabled={product.is_sold_out}
-                  className={`w-full flex items-center justify-center gap-4 py-5 md:py-6 rounded-2xl md:rounded-3xl font-black uppercase tracking-widest text-base md:text-lg transition-all active:scale-95 shadow-[0_10px_50px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
+                  className={`w-full flex items-center justify-center gap-4 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 shadow-[0_10px_40px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
                 >
-                  {product.is_sold_out ? "Out of Stock" : <><ShoppingBag size={20} className="md:w-6 md:h-6" /> অর্ডার করুন</>}
-                </button>
-                <button
-                  onClick={() => {
-                    const shareText = generateShareMessage({ ...product, price });
-                    navigator.clipboard.writeText(shareText);
-                    setShowAlert(true);
-                  }}
-                  className="flex items-center justify-center gap-2 py-4 border rounded-2xl font-black uppercase tracking-widest text-[10px] transition-colors hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
-                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
-                >
-                  <Share2 size={16} /> Share Product
+                  {product.is_sold_out ? "Out of Stock" : "অর্ডার করুন"}
                 </button>
               </div>
+              <button
+                onClick={() => {
+                  const shareText = generateShareMessage({ ...product, price });
+                  navigator.clipboard.writeText(shareText);
+                  setShowAlert(true);
+                }}
+                className="flex items-center justify-center gap-2 py-4 border rounded-2xl font-black uppercase tracking-widest text-[10px] transition-colors hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+              >
+                <Share2 size={16} /> Share Product
+              </button>
+            </div>
 
-              <div className="grid grid-cols-3 gap-4 md:gap-6 pt-5 md:pt-6 border-t pb-8 md:pb-10" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Truck size={18} className="md:w-5 md:h-5" /></div>
-                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fast Delivery</span>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><ShieldCheck size={18} className="md:w-5 md:h-5" /></div>
-                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Safe Checkout</span>
-                </div>
-                <div className="flex flex-col items-center text-center gap-2 md:gap-3">
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Clock size={18} className="md:w-5 md:h-5" /></div>
-                  <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>24/7 Support</span>
-                </div>
+            <div className="grid grid-cols-3 gap-4 md:gap-6 pt-5 md:pt-6 border-t pb-8 md:pb-10" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Truck size={18} className="md:w-5 md:h-5" /></div>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fast Delivery</span>
+              </div>
+              <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><ShieldCheck size={18} className="md:w-5 md:h-5" /></div>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Safe Checkout</span>
+              </div>
+              <div className="flex flex-col items-center text-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-[#ce112d]" style={{ backgroundColor: 'var(--bg-badge)' }}><Clock size={18} className="md:w-5 md:h-5" /></div>
+                <span className="text-[9px] md:text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>24/7 Support</span>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Messenger Copy Transition */}
+        {/* messenger popup, delivery modal, etc. */}
         <AnimatePresence>
           {showMessengerPopup && (
             <motion.div
