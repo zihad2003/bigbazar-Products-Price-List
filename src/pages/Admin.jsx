@@ -294,7 +294,10 @@ export default function Admin() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `assets/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage.from('assets').upload(filePath, file);
+    const { error: uploadError } = await supabase.storage.from('assets').upload(filePath, file, {
+      cacheControl: '31536000',
+      upsert: false
+    });
     if (uploadError) {
       console.error(uploadError);
       return null;
@@ -754,6 +757,30 @@ export default function Admin() {
                     >
                       ✏️ Custom
                     </button>
+                  </div>
+
+                  {/* Numeric (1-15) */}
+                  <p className="text-[9px] font-bold uppercase text-neutral-600 mb-2 tracking-widest">Numeric (1-15)</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'].map(s => {
+                      const isSelected = form.available_sizes?.some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setForm({ ...form, available_sizes: form.available_sizes.filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
+                            } else {
+                              setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all border ${isSelected ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-lg shadow-red-900/20' : 'bg-neutral-900 text-neutral-400 border-white/5 hover:border-white/20 hover:text-white'}`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Selected sizes with stock toggle */}
