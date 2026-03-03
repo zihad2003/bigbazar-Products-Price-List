@@ -1,5 +1,5 @@
+import React from 'react';
 import { Facebook, Instagram, MessageCircle, Phone } from 'lucide-react';
-import { useTheme } from '../ThemeContext';
 
 const TikTokIcon = ({ size = 12, className }) => (
     <svg
@@ -18,10 +18,6 @@ const TikTokIcon = ({ size = 12, className }) => (
 );
 
 export default function Footer() {
-    const { theme } = useTheme();
-    const isRamadan = theme === 'ramadan';
-    const accentColor = isRamadan ? '#fbbf24' : '#ce112d';
-
     const socialLinks = [
         {
             label: 'FACEBOOK',
@@ -52,7 +48,7 @@ export default function Footer() {
                 {/* Brand Logo */}
                 <div className="flex items-center gap-2">
                     <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter" style={{ color: 'var(--text-primary)' }}>
-                        BIG<span style={{ color: accentColor }}>BAZAR</span>
+                        BIG<span className="text-[#ce112d]">BAZAR</span>
                     </h1>
                 </div>
 
@@ -72,17 +68,13 @@ export default function Footer() {
                             className="group flex flex-col items-center gap-4 md:gap-6"
                         >
                             <div
-                                className="w-12 h-12 md:w-16 md:h-16 rounded-[16px] md:rounded-[20px] border flex items-center justify-center transition-all duration-500 group-hover:text-white group-hover:scale-110 group-hover:bg-accent"
-                                style={{
-                                    borderColor: 'var(--border-hover)',
-                                    color: 'var(--text-primary)',
-                                    '--hover-bg': accentColor
-                                }}
+                                className="w-12 h-12 md:w-16 md:h-16 rounded-[16px] md:rounded-[20px] border flex items-center justify-center group-hover:bg-[#ce112d] group-hover:text-white group-hover:border-[#ce112d] group-hover:scale-110 transition-all duration-500"
+                                style={{ borderColor: 'var(--border-hover)', color: 'var(--text-primary)' }}
                             >
-                                <social.icon size={18} strokeWidth={1.5} className="md:w-5 md:h-5 transition-colors group-hover:text-white" />
+                                <social.icon size={18} strokeWidth={1.5} className="md:w-5 md:h-5" />
                             </div>
-                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] transition-colors" style={{ color: 'var(--text-muted)' }}>
-                                <span className="group-hover:text-[var(--accent-color)]">{social.label}</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-muted)' }}>
+                                {social.label}
                             </span>
                         </a>
                     ))}
@@ -91,7 +83,7 @@ export default function Footer() {
                 {/* Footer Credit */}
                 <div className="mt-4 md:mt-8 text-center space-y-3 md:space-y-4 opacity-60">
                     <h2 className="text-[10px] md:text-xs font-black italic uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
-                        ENGINEERED BY <span style={{ color: accentColor }}>ZIHAD</span> FOR <span style={{ color: accentColor }}>BIG BAZAR</span>
+                        ENGINEERED BY <span className="text-[#ce112d]">ZIHAD</span> FOR <span className="text-[#ce112d]">BIG BAZAR</span>
                     </h2>
                     <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] md:tracking-[0.4em]" style={{ color: 'var(--text-faint)' }}>
                         BARIARHAT, CHATTOGRAM | 2026
