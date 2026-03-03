@@ -191,6 +191,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         <div>
                             <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Confirmed!</h2>
                             <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-2 group">
+                                🔍 আপনি উপরের মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।
+                            </p>
                         </div>
 
                         {/* Review section */}
