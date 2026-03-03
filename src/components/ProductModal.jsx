@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const { t, language } = useLanguage();
-  const { addToCart } = useCart();
+  const { cartItems, addToCart } = useCart();
   const [showCartSuccess, setShowCartSuccess] = useState(false);
   const [contactInfo, setContactInfo] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -119,9 +119,17 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       // Pass the calculated effective price (handles flash sales/discounts)
       addToCart({ ...product, price: price }, selectedColor, selectedSize);
       setShowCartSuccess(true);
+      // We keep it true for a bit for the animation, 
+      // but isInCart will keep it green thereafter
       setTimeout(() => setShowCartSuccess(false), 2000);
     }
   };
+
+  const isInCart = cartItems.some(item =>
+    item.id === product.id &&
+    (item.selectedColor === selectedColor || (!item.selectedColor && !selectedColor)) &&
+    (item.selectedSize === selectedSize || (!item.selectedSize && !selectedSize))
+  );
 
   const handleMessengerOrder = () => {
     const message = generateOrderMessage({ ...product, price });
@@ -382,9 +390,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 <button
                   onClick={handleAddToCart}
                   disabled={product.is_sold_out}
-                  className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
+                  className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess || isInCart ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
                 >
-                  {showCartSuccess ? <><Check size={18} /> {language === 'bn' ? 'যোগ করা হয়েছে!' : 'Added to cart!'}</> : <><ShoppingBag size={18} /> {t('add_to_cart')}</>}
+                  {showCartSuccess || isInCart ? <><Check size={18} /> {language === 'bn' ? 'যোগ করা হয়েছে!' : 'Added to cart!'}</> : <><ShoppingBag size={18} /> {t('add_to_cart')}</>}
                 </button>
                 <button
                   onClick={handleMainOrder}

@@ -23,8 +23,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
         const input = bnToEn(searchInput).trim();
 
-        // cleanInput: absolutely alphanumeric for safest DB search
+        // cleanInput: alphanumeric for general matching
         const cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
+        // phoneInput: keeps digits and + for exact phone matching
+        const phoneInput = input.replace(/[^0-9+]/g, '');
         // safeInput: allows spaces but removes commas (commas break Supabase .or() syntax)
         const safeInput = input.replace(/,/g, ' ').trim();
 
@@ -72,13 +74,21 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 conditions.push(`id.eq.${input}`);
             }
 
+            // Literal search for the phone number as entered (most reliable for "track by full number")
+            if (phoneInput.length >= 8) {
+                conditions.push(`customer_phone.eq.${phoneInput}`);
+                // Also try without + if they entered it, or with it if they didn't
+                const altPhone = phoneInput.startsWith('+') ? phoneInput.slice(1) : `+${phoneInput}`;
+                conditions.push(`customer_phone.eq.${altPhone}`);
+            }
+
             // Fallback: search by name/address using the safeInput (no commas)
             if (safeInput.length >= 3) {
                 const pattern = `%${safeInput}%`;
                 conditions.push(`customer_name.ilike.${pattern}`);
                 conditions.push(`customer_address.ilike.${pattern}`);
-                // Don't duplicate customer_phone if we already handled digits
-                if (!isDigitsOnly) conditions.push(`customer_phone.ilike.${pattern}`);
+                // Also search for the literal safeInput in case there are specific characters saved
+                conditions.push(`customer_phone.ilike.%${safeInput}%`);
             }
 
             query = query.or(conditions.join(','));
