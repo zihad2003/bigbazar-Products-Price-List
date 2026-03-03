@@ -1,5 +1,6 @@
 import React from 'react';
 import { Facebook, Instagram, MessageCircle, Phone } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const TikTokIcon = ({ size = 12, className }) => (
     <svg
@@ -18,6 +19,7 @@ const TikTokIcon = ({ size = 12, className }) => (
 );
 
 export default function Footer() {
+    const { t, language } = useLanguage();
     const socialLinks = [
         {
             label: 'FACEBOOK',
@@ -54,7 +56,7 @@ export default function Footer() {
 
                 {/* Header */}
                 <h3 className="font-black italic uppercase tracking-[0.2em] text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Connect With Us
+                    {language === 'bn' ? 'আমাদের সাথে যুক্ত হোন' : 'Connect With Us'}
                 </h3>
 
                 {/* Social Icons Grid */}
@@ -83,10 +85,10 @@ export default function Footer() {
                 {/* Footer Credit */}
                 <div className="mt-4 md:mt-8 text-center space-y-3 md:space-y-4 opacity-60">
                     <h2 className="text-[10px] md:text-xs font-black italic uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
-                        ENGINEERED BY <span className="text-[#ce112d]">ZIHAD</span> FOR <span className="text-[#ce112d]">BIG BAZAR</span>
+                        {language === 'bn' ? 'ডেভেলপড বাই' : 'ENGINEERED BY'} <span className="text-[#ce112d]">ZIHAD</span> {language === 'bn' ? 'এর জন্য' : 'FOR'} <span className="text-[#ce112d]">BIG BAZAR</span>
                     </h2>
                     <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] md:tracking-[0.4em]" style={{ color: 'var(--text-faint)' }}>
-                        BARIARHAT, CHATTOGRAM | 2026
+                        {t('location')} | 2026
                     </p>
                 </div>
 

@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const TrackOrderModal = ({ isOpen, onClose }) => {
+    const { t, language } = useLanguage();
     const [phone, setPhone] = useState('');
     const [orders, setOrders] = useState([]);
     const [productImages, setProductImages] = useState({});
@@ -21,7 +23,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         const cleanPhone = bnToEn(phone).replace(/[^0-9]/g, '');
 
         if (cleanPhone.length < 10) {
-            setError('সঠিক মোবাইল নম্বর দিন (১০-১১ ডিজিট)।');
+            setError(language === 'bn' ? 'সঠিক মোবাইল নম্বর দিন (১০-১১ ডিজিট)।' : 'Please enter a valid phone number (10-11 digits).');
             return;
         }
 
@@ -65,23 +67,22 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             }
         } catch (err) {
             console.error('Tracking error:', err);
-            setError('তথ্য খুঁজে পেতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+            setError(language === 'bn' ? 'তথ্য খুঁজে পেতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' : 'Something went wrong. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const getStatusInfo = (status, isAdvPaid) => {
+    const getStatusInfo = (status) => {
         const statuses = {
-            'Pending': { label: 'অপেক্ষমাণ', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: <Clock size={14} /> },
-            'Shipped': { label: 'পাঠানো হয়েছে', color: 'text-blue-500', bg: 'bg-blue-500/10', icon: <Truck size={14} /> },
-            'Delivered': { label: 'হাতে পেয়েছেন', color: 'text-green-500', bg: 'bg-green-500/10', icon: <CheckCircle2 size={14} /> },
-            'Canceled': { label: 'বাতিল করা হয়েছে', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> },
-            'Deleted': { label: 'বাতিল', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> }
+            'Pending': { label: language === 'bn' ? 'অপেক্ষমাণ' : 'Pending', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: <Clock size={14} /> },
+            'Shipped': { label: language === 'bn' ? 'পাঠানো হয়েছে' : 'Shipped', color: 'text-blue-500', bg: 'bg-blue-500/10', icon: <Truck size={14} /> },
+            'Delivered': { label: language === 'bn' ? 'হাতে পেয়েছেন' : 'Delivered', color: 'text-green-500', bg: 'bg-green-500/10', icon: <CheckCircle2 size={14} /> },
+            'Canceled': { label: language === 'bn' ? 'বাতিল করা হয়েছে' : 'Canceled', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> },
+            'Deleted': { label: language === 'bn' ? 'বাতিল' : 'Deleted', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> }
         };
 
-        const info = statuses[status] || statuses['Pending'];
-        return info;
+        return statuses[status] || statuses['Pending'];
     };
 
     return (
@@ -107,8 +108,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                 <Search className="text-white" size={20} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>অর্ডার ট্র্যাক করুন</h2>
-                                <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-widest mt-1">Track Your Order Status</p>
+                                <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>{t('track_order')}</h2>
+                                <p className="text-[#ce112d] text-[10px] font-black uppercase tracking-widest mt-1">Track Your Order Status</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 transition-all" style={{ color: 'var(--text-muted)' }}>
@@ -122,7 +123,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                             <div className="relative flex-1">
                                 <input
                                     type="tel"
-                                    placeholder="আপনার মোবাইল নম্বর লিখুন..."
+                                    placeholder={t('track_placeholder')}
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     className="w-full bg-black/20 border rounded-2xl py-4 px-6 text-sm font-bold focus:border-[#ce112d] outline-none transition-all pl-12"
@@ -135,7 +136,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                 disabled={loading}
                                 className="bg-[#ce112d] text-white px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-900/20 disabled:opacity-50"
                             >
-                                {loading ? 'খোঁজা হচ্ছে...' : 'খুঁজুন'}
+                                {loading ? (language === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : t('search')}
                             </button>
                         </form>
                         {error && <p className="text-red-500 text-[10px] font-bold mt-2 ml-1 flex items-center gap-1"><AlertCircle size={12} /> {error}</p>}
@@ -146,22 +147,21 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                         {!searched ? (
                             <div className="py-20 text-center space-y-4 opacity-50">
                                 <ShoppingBag size={48} className="mx-auto text-neutral-500" />
-                                <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>আপনার অর্ডারের অবস্থা জানতে মোবাইল নম্বর দিন।</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{t('track_status')}</p>
                             </div>
                         ) : loading ? (
                             <div className="py-20 flex flex-col items-center gap-4">
                                 <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin" />
-                                <p className="text-xs font-black uppercase tracking-widest text-[#ce112d]">অর্ডার খোঁজা হচ্ছে...</p>
+                                <p className="text-xs font-black uppercase tracking-widest text-[#ce112d]">{t('track_loading')}</p>
                             </div>
                         ) : orders.length === 0 ? (
                             <div className="py-20 text-center space-y-4">
                                 <Package size={48} className="mx-auto text-neutral-400" />
-                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>দুঃখিত! এই নম্বরে কোনো অর্ডার পাওয়া যায়নি।</p>
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>অনুগ্রহ করে সঠিক নম্বরটি দিয়ে আবার চেষ্টা করুন।</p>
+                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('no_order_found')}</p>
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ce112d] px-1">আপনার সকল অর্ডার ({orders.length})</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ce112d] px-1">{t('all_orders')} ({orders.length})</p>
                                 {orders.map(order => {
                                     const statusInfo = getStatusInfo(order.status);
                                     return (

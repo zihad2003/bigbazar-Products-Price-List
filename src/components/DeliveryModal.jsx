@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, selectedColor }) => {
+    const { t, language } = useLanguage();
     const [error, setError] = useState('');
     const errorRef = useRef(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,33 +75,33 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
     const handleConfirmOrder = async () => {
         if (!formData.name || !formData.phone || !formData.address) {
-            setError("অনুগ্রহ করে সব তথ্য পূরণ করুন (নাম, ফোন, ঠিকানা)।");
+            setError(language === 'bn' ? "অনুগ্রহ করে সব তথ্য পূরণ করুন (নাম, ফোন, ঠিকানা)।" : "Please fill all info (Name, Phone, Address).");
             return;
         }
         if (!validateBDNumber(formData.phone)) {
-            setError("সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।");
+            setError(language === 'bn' ? "সঠিক মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)।" : "Enter correct mobile number (e.g., 017XXXXXXXX).");
             return;
         }
         if (!formData.district) {
-            setError("⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।");
+            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "⚠️ Please select your district.");
             return;
         }
         if (needsUpazila && !formData.upazila) {
-            setError("⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।");
+            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "⚠️ Please select your upazila.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
-            setError("যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।");
+            setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Provide the sender bKash number.");
             return;
         }
         if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.senderNumber) {
-            setError(`ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।`);
+            setError(language === 'bn' ? `ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Send delivery charge ৳${deliveryCharge} via bKash and provide sender number.`);
             return;
         }
 
         // Check stock
         if (product.stock_count !== null && product.stock_count !== undefined && product.stock_count <= 0) {
-            setError("⚠️ দুঃখিত, এই পণ্যটি স্টকে নেই।");
+            setError(language === 'bn' ? "⚠️ দুঃখিত, এই পণ্যটি স্টকে নেই।" : "⚠️ Sorry, this product is out of stock.");
             return;
         }
 
@@ -145,7 +147,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
             setIsSuccess(true);
         } catch (err) {
-            setError("অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+            setError(language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Failed to submit order. Try again.");
             console.error("Supabase Error:", err);
         } finally {
             setIsSubmitting(false);
@@ -189,10 +191,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             <CheckCircle2 className="text-green-500" size={32} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>Order Confirmed!</h2>
-                            <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
+                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>{language === 'bn' ? 'অর্ডার সফল হয়েছে!' : 'Order Confirmed!'}</h2>
+                            <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।' : 'Your order has been received successfully.'}</p>
                             <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-2 group">
-                                🔍 আপনি উপরের মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।
+                                🔍 {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track order updates from the "Track Order" button in the menu.'}
                             </p>
                         </div>
 
@@ -200,7 +202,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         {!reviewSubmitted ? (
                             <div className="rounded-2xl border p-4 space-y-4 text-left" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                 <p className="text-xs font-bold text-center" style={{ color: 'var(--text-secondary)' }}>
-                                    আপনার অভিজ্ঞতা কেমন ছিল? ⭐
+                                    {language === 'bn' ? 'আপনার অভিজ্ঞতা কেমন ছিল? ⭐' : 'How was your experience? ⭐'}
                                 </p>
 
                                 {/* Star Rating */}
@@ -232,7 +234,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         <textarea
                                             value={reviewText}
                                             onChange={(e) => setReviewText(e.target.value)}
-                                            placeholder="আপনার মতামত লিখুন (ঐচ্ছিক)"
+                                            placeholder={language === 'bn' ? "আপনার মতামত লিখুন (ঐচ্ছিক)" : "Write your feedback (optional)"}
                                             rows="2"
                                             className="w-full border rounded-xl py-2.5 px-3 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
@@ -246,7 +248,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         onClick={handleSubmitReview}
                                         className="w-full py-2.5 bg-[#ce112d] text-white rounded-xl font-bold text-sm transition-all active:scale-95"
                                     >
-                                        রিভিউ দিন ✨
+                                        {language === 'bn' ? 'রিভিউ দিন ✨' : 'Submit Review ✨'}
                                     </button>
                                 )}
                             </div>
@@ -255,17 +257,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
                                 className="text-sm font-bold text-green-500"
                             >
-                                ধন্যবাদ আপনার রিভিউয়ের জন্য! 💚
+                                {language === 'bn' ? 'ধন্যবাদ আপনার রিভিউয়ের জন্য! 💚' : 'Thanks for your feedback! 💚'}
                             </motion.p>
                         )}
 
                         <button onClick={onClose} className="w-full py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95">
-                            Back To Shop
+                            {language === 'bn' ? 'শপে ফিরে যান' : 'Back To Shop'}
                         </button>
 
                         {!reviewSubmitted && rating === 0 && (
                             <button onClick={onClose} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                                এড়িয়ে যান
+                                {language === 'bn' ? 'এড়িয়ে যান' : 'Skip'}
                             </button>
                         )}
                     </motion.div>
@@ -299,10 +301,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             </div>
                             <div>
                                 <h2 className="text-lg md:text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>
-                                    অর্ডার ফর্ম
+                                    {language === 'bn' ? 'অর্ডার ফর্ম' : 'Order Form'}
                                 </h2>
                                 <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">
-                                    Quick Checkout
+                                    {language === 'bn' ? 'দ্রুত চেকআউট' : 'Quick Checkout'}
                                 </p>
                             </div>
                         </div>
@@ -334,23 +336,23 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         {/* ===== Customer Info ===== */}
                         <div className="space-y-3">
                             <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                👤 আপনার তথ্য
+                                👤 {language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}
                             </h4>
                             <div className="relative">
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                <input type="text" name="name" placeholder="আপনার নাম" value={formData.name} onChange={handleInputChange}
+                                <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
                                     className="w-full border rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </div>
                             <div className="relative">
                                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                <input type="tel" name="phone" placeholder="মোবাইল নাম্বার (01XXXXXXXXX)" value={formData.phone} onChange={handleInputChange}
+                                <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
                                     className="w-full border rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </div>
                             <div className="relative">
                                 <Home className="absolute left-3.5 top-3" size={16} style={{ color: 'var(--text-muted)' }} />
-                                <textarea name="address" placeholder="বাড়ি/হোল্ডিং, রাস্তা, গ্রাম/এলাকা" value={formData.address} onChange={handleInputChange} rows="2"
+                                <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
                                     className="w-full border rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </div>
@@ -359,7 +361,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         {/* ===== Delivery Area Selection ===== */}
                         <div className="space-y-3">
                             <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                📍 ডেলিভারি এরিয়া <span className="text-[#ce112d]">*</span>
+                                📍 {language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span>
                             </h4>
 
                             {/* District + Upazila in a row */}
@@ -375,7 +377,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         className="w-full border rounded-xl py-3 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: formData.district ? 'var(--text-primary)' : 'var(--text-muted)' }}
                                     >
-                                        <option value="">জেলা নির্বাচন করুন</option>
+                                        <option value="">{language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}</option>
                                         {allDistricts.map(d => (
                                             <option key={d} value={d}>{d}</option>
                                         ))}
@@ -395,7 +397,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             className="w-full border rounded-xl py-3 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
                                             style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: formData.upazila ? 'var(--text-primary)' : 'var(--text-muted)' }}
                                         >
-                                            <option value="">উপজেলা নির্বাচন করুন</option>
+                                            <option value="">{language === 'bn' ? 'উপজেলা নির্বাচন করুন' : 'Select Upazila'}</option>
                                             {chattogramUpazilas.map(u => (
                                                 <option key={u} value={u}>{u}</option>
                                             ))}
@@ -425,7 +427,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
                         {/* ===== Note (Optional) ===== */}
                         <div>
-                            <input type="text" name="note" placeholder="📝 বিশেষ নোট (Optional)" value={formData.note} onChange={handleInputChange}
+                            <input type="text" name="note" placeholder={language === 'bn' ? "📝 বিশেষ নোট (ঐচ্ছিক)" : "📝 Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
                                 className="w-full border rounded-xl py-3 px-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                         </div>
@@ -434,13 +436,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         <div className="rounded-2xl border p-4 space-y-2.5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                             {selectedSize && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>📏 সাইজ</span>
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>📏 {t('size')}</span>
                                     <span className="font-black text-[#ce112d] bg-[#ce112d]/10 px-3 py-1 rounded-lg text-xs uppercase">{selectedSize}</span>
                                 </div>
                             )}
                             {selectedColor && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>🎨 কালার</span>
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>🎨 {t('color')}</span>
                                     <span className="font-black px-3 py-1 rounded-lg text-xs uppercase border" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>{selectedColor}</span>
                                 </div>
                             )}
@@ -448,17 +450,17 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 <div className="border-t my-1" style={{ borderColor: 'var(--border-color)' }} />
                             )}
                             <div className="flex justify-between items-center text-sm">
-                                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>পণ্যের দাম</span>
+                                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'পণ্যের দাম' : 'Product Price'}</span>
                                 <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{product.price}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>ডেলিভারি</span>
+                                <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{t('delivery_charge')}</span>
                                 <span className="font-black" style={{ color: deliveryInfo?.charge === 0 ? '#22c55e' : 'var(--text-primary)' }}>
-                                    {deliveryInfo ? (deliveryInfo.charge === 0 ? 'ফ্রি ✅' : `৳${deliveryInfo.charge}`) : '—'}
+                                    {deliveryInfo ? (deliveryInfo.charge === 0 ? (language === 'bn' ? 'ফ্রি ✅' : 'Free ✅') : `৳${deliveryInfo.charge}`) : '—'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center pt-2.5 border-t" style={{ borderColor: 'var(--border-color)' }}>
-                                <span className="text-sm font-black text-[#ce112d] italic">সর্বমোট</span>
+                                <span className="text-sm font-black text-[#ce112d] italic">{language === 'bn' ? 'সর্বমোট' : 'Grand Total'}</span>
                                 <span className="text-xl font-black text-[#ce112d]">৳{calculateTotal()}</span>
                             </div>
                         </div>
@@ -466,12 +468,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         {/* ===== Payment Method ===== */}
                         <div className="space-y-3">
                             <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                💳 পেমেন্ট
+                                💳 {language === 'bn' ? 'পেমেন্ট' : 'Payment'}
                             </h4>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
-                                    { id: 'cod', label: 'Cash on Delivery', icon: <Truck size={16} /> },
-                                    { id: 'bkash', label: 'bKash Payment', icon: <CreditCard size={16} /> }
+                                    { id: 'cod', label: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', icon: <Truck size={16} /> },
+                                    { id: 'bkash', label: language === 'bn' ? 'বিকাশ পেমেন্ট' : 'bKash Payment', icon: <CreditCard size={16} /> }
                                 ].map(m => (
                                     <button key={m.id} type="button"
                                         onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
@@ -495,11 +497,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-3 space-y-3">
                                     <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                         {formData.paymentMethod === 'cod' && deliveryCharge > 0
-                                            ? <>ডেলিভারি চার্জ <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> বিকাশে সেন্ড মানি করুন। পণ্যের টাকা হাতে পেয়ে দিবেন।</>
-                                            : <>সম্পূর্ণ টাকা <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> বিকাশে সেন্ড মানি করুন।</>}
+                                            ? <>{language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'} <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন। পণ্যের টাকা হাতে পেয়ে দিবেন।' : 'Send money via bKash. Pay product price on delivery.'}</>
+                                            : <>{language === 'bn' ? 'সম্পূর্ণ টাকা' : 'Total Amount'} <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন।' : 'Send money via bKash.'}</>}
                                     </p>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black text-[#ce112d] whitespace-nowrap">বিকাশ:</span>
+                                        <span className="text-[9px] font-black text-[#ce112d] whitespace-nowrap">{language === 'bn' ? 'বিকাশ:' : 'bKash:'}</span>
                                         <span className="text-sm font-black tracking-wider" style={{ color: 'var(--text-primary)' }}>{bKashNumber}</span>
                                         <button onClick={handleCopyNumber}
                                             className={`p-1.5 rounded-lg transition-all ${copied ? 'bg-green-500/20 text-green-500' : ''}`}
@@ -507,7 +509,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                             {copied ? <Check size={14} /> : <Copy size={14} />}
                                         </button>
                                     </div>
-                                    <input type="tel" name="senderNumber" placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি লিখুন"
+                                    <input type="tel" name="senderNumber" placeholder={language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি লিখুন" : "Sender bKash Number"}
                                         value={formData.senderNumber} onChange={handleInputChange}
                                         className="w-full border rounded-xl py-2.5 px-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
@@ -520,7 +522,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                 <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
                                 <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                    পণ্য হাতে পেয়ে পেমেন্ট করুন। কোনো অগ্রিম দরকার নেই! ✅
+                                    {language === 'bn' ? 'পণ্য হাতে পেয়ে পেমেন্ট করুন। কোনো অগ্রিম দরকার নেই! ✅' : 'Cash on Delivery. No advance needed! ✅'}
                                 </p>
                             </div>
                         )}
@@ -533,14 +535,14 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             {isSubmitting ? (
                                 <div className="flex items-center gap-3">
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    সাবমিট হচ্ছে...
+                                    {language === 'bn' ? 'সাবমিট হচ্ছে...' : 'Submitting...'}
                                 </div>
                             ) : (
-                                <>অর্ডার কনফার্ম করুন <ShoppingBag size={18} /></>
+                                <>{t('confirm_order')} <ShoppingBag size={18} /></>
                             )}
                         </button>
                         <button onClick={onClose} className="w-full mt-3 font-black uppercase tracking-[0.3em] text-[10px] py-2" style={{ color: 'var(--text-muted)' }}>
-                            Close
+                            {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
                         </button>
                     </div>
                 </motion.div>
