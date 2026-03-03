@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Admin from './pages/Admin';
 import ErrorBoundary from './components/ErrorBoundary';
 import TrackOrderModal from './components/TrackOrderModal';
+import { supabase } from './supabaseClient';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -22,9 +23,13 @@ function PublicLayout() {
   const [isTrackOpen, setIsTrackOpen] = useState(false);
 
   useEffect(() => {
-    // Increment visitor count only once per session so we don't spam the API on every click
+    // Increment visitor count only once per session in Supabase
     if (!sessionStorage.getItem('visited')) {
-      fetch('https://api.counterapi.dev/v1/bigbazar_sheet/visits/up')
+      supabase.from('site_settings').select('value').eq('key', 'visitor_count').single()
+        .then(({ data }) => {
+          const currentCount = data?.value || 0;
+          return supabase.from('site_settings').upsert({ key: 'visitor_count', value: currentCount + 1 });
+        })
         .then(() => sessionStorage.setItem('visited', 'true'))
         .catch(err => console.log('Visitor tracking failed', err));
     }
