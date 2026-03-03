@@ -85,7 +85,7 @@ export default function Footer() {
                 {/* Footer Credit */}
                 <div className="mt-4 md:mt-8 text-center space-y-3 md:space-y-4 opacity-60">
                     <h2 className="text-[10px] md:text-xs font-black italic uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>
-                        {language === 'bn' ? 'ডেভেলপড বাই' : 'ENGINEERED BY'} <span className="text-[#ce112d]">ZIHAD</span> {language === 'bn' ? 'এর জন্য' : 'FOR'} <span className="text-[#ce112d]">BIG BAZAR</span>
+                        {language === 'bn' ? 'তৈরি করেছেন' : 'ENGINEERED BY'} <span className="text-[#ce112d]">ZIHAD</span> {language === 'bn' ? 'এর জন্য' : 'FOR'} <span className="text-[#ce112d]">BIG BAZAR</span>
                     </h2>
                     <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] md:tracking-[0.4em]" style={{ color: 'var(--text-faint)' }}>
                         {t('location')} | 2026

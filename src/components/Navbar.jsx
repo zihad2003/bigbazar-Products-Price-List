@@ -7,11 +7,11 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }
     const { language, toggleLanguage, t } = useLanguage();
 
     const categories = [
-        { id: 'সব', label: t('all') },
-        { id: 'ছেলেদের', label: t('men') },
-        { id: 'মেয়েদের', label: t('women') },
-        { id: 'বাচ্চাদের (ছেলে)', label: t('boys') },
-        { id: 'বাচ্চাদের (মেয়ে)', label: t('girls') }
+        { id: 'All', label: t('all') },
+        { id: 'Men', label: t('men') },
+        { id: 'Women', label: t('women') },
+        { id: 'Kids (Boys)', label: t('boys') },
+        { id: 'Kids (Girls)', label: t('girls') }
     ];
 
     return (

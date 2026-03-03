@@ -113,7 +113,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             : formData.district;
 
         try {
-            const { error: insertError } = await supabase
+            const { data: insertedData, error: insertError } = await supabase
                 .from('orders')
                 .insert([{
                     product_id: product.id,
@@ -130,8 +130,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     size: selectedSize || null,
                     color: selectedColor || null,
                     customer_note: formData.note || null
-                }]);
+                }])
+                .select();
+
             if (insertError) throw insertError;
+
+            const newOrderId = insertedData?.[0]?.id;
+            setFormData(prev => ({ ...prev, orderId: newOrderId }));
 
             // Decrease stock count
             if (product.stock_count !== null && product.stock_count !== undefined) {
@@ -193,7 +198,15 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         <div>
                             <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>{language === 'bn' ? 'অর্ডার সফল হয়েছে!' : 'Order Confirmed!'}</h2>
                             <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।' : 'Your order has been received successfully.'}</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-2 group">
+
+                            {formData.orderId && (
+                                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-2xl inline-block mx-auto">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Order ID</p>
+                                    <p className="text-lg font-black text-white">#{String(formData.orderId).slice(0, 8).toUpperCase()}</p>
+                                </div>
+                            )}
+
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-4 group">
                                 🔍 {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track order updates from the "Track Order" button in the menu.'}
                             </p>
                         </div>

@@ -7,7 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const TrackOrderModal = ({ isOpen, onClose }) => {
     const { t, language } = useLanguage();
-    const [phone, setPhone] = useState('');
+    const [searchInput, setSearchInput] = useState('');
     const [orders, setOrders] = useState([]);
     const [productImages, setProductImages] = useState({});
     const [loading, setLoading] = useState(false);
@@ -18,12 +18,14 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
     const handleTrack = async (e) => {
         if (e) e.preventDefault();
+
         // Convert Bengali digits to English digits
         const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
-        const cleanPhone = bnToEn(phone).replace(/[^0-9]/g, '');
+        const input = bnToEn(searchInput).trim();
+        const cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
 
-        if (cleanPhone.length < 10) {
-            setError(language === 'bn' ? 'সঠিক মোবাইল নম্বর দিন (১০-১১ ডিজিট)।' : 'Please enter a valid phone number (10-11 digits).');
+        if (cleanInput.length < 4) {
+            setError(language === 'bn' ? 'কমপক্ষে ৪টি অক্ষর বা সংখ্যা দিন।' : 'Enter at least 4 characters.');
             return;
         }
 
@@ -32,13 +34,21 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         setSearched(true);
 
         try {
-            // Search for the last 10 digits to be very flexible with prefixes (+88, 0, etc)
-            const searchPattern = `%${cleanPhone.slice(-10)}%`;
-            const { data: orderData, error: fetchError } = await supabase
-                .from('orders')
-                .select('*')
-                .or(`customer_phone.ilike.${searchPattern},customer_phone.eq.${cleanPhone}`)
-                .order('created_at', { ascending: false });
+            // Is it a phone number or an Order ID?
+            const isPhone = /^[0-9]+$/.test(cleanInput) && cleanInput.length >= 10;
+
+            let query = supabase.from('orders').select('*');
+
+            if (isPhone) {
+                const searchPattern = `%${cleanInput.slice(-10)}%`;
+                query = query.or(`customer_phone.ilike.${searchPattern},customer_phone.eq.${cleanInput}`);
+            } else {
+                // Try searching by ID (exact or starting with)
+                // If it's alphanumeric, it might be the truncated ID shown to user
+                query = query.or(`id.ilike.%${cleanInput}%,customer_name.ilike.%${cleanInput}%`);
+            }
+
+            const { data: orderData, error: fetchError } = await query.order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
             setOrders(orderData || []);
@@ -89,7 +99,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[300] backdrop-blur-2xl flex items-center justify-center p-4"
+                className="fixed inset-0 z-[300] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
                 style={{ backgroundColor: 'var(--bg-overlay)' }}
                 onClick={onClose}
             >
@@ -97,44 +107,45 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                     initial={{ scale: 0.9, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-xl border rounded-[32px] md:rounded-[40px] overflow-hidden flex flex-col max-h-[90vh]"
+                    className="relative w-full max-w-xl border rounded-[28px] md:rounded-[40px] overflow-hidden flex flex-col max-h-[95vh] md:max-h-[90vh]"
                     style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.3)' }}
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="px-5 py-4 md:px-6 md:py-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
-                                <Search className="text-white" size={20} />
+                            <div className="w-9 h-9 md:w-10 md:h-10 bg-[#ce112d] rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
+                                <Search className="text-white" size={18} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>{t('track_order')}</h2>
-                                <p className="text-[#ce112d] text-[10px] font-black uppercase tracking-widest mt-1">Track Your Order Status</p>
+                                <h2 className="text-lg md:text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>{t('track_order')}</h2>
+                                <p className="text-[#ce112d] text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-1">Order Status Tracking</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 transition-all" style={{ color: 'var(--text-muted)' }}>
-                            <X size={22} />
+                        <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 transition-all text-neutral-400">
+                            <X size={20} />
                         </button>
                     </div>
 
                     {/* Inquiry Form */}
-                    <div className="p-6 border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-                        <form onSubmit={handleTrack} className="flex gap-3">
+                    <div className="p-4 md:p-6 border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                        <form onSubmit={handleTrack} className="flex flex-col md:flex-row gap-3">
                             <div className="relative flex-1">
                                 <input
-                                    type="tel"
-                                    placeholder={t('track_placeholder')}
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    className="w-full bg-black/20 border rounded-2xl py-4 px-6 text-sm font-bold focus:border-[#ce112d] outline-none transition-all pl-12"
+                                    type="text"
+                                    inputMode="text"
+                                    placeholder={language === 'bn' ? 'মোবাইল নম্বর বা অর্ডার আইডি দিন' : 'Enter Phone or Order ID'}
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    className="w-full bg-black/20 border rounded-2xl py-3.5 md:py-4 px-10 text-sm font-bold focus:border-[#ce112d] outline-none transition-all"
                                     style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                                 />
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
                             </div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-[#ce112d] text-white px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-900/20 disabled:opacity-50"
+                                className="bg-[#ce112d] text-white py-3.5 md:py-0 md:px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-900/20 disabled:opacity-50"
                             >
                                 {loading ? (language === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : t('search')}
                             </button>
@@ -143,11 +154,11 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Results Area */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 no-scrollbar">
                         {!searched ? (
-                            <div className="py-20 text-center space-y-4 opacity-50">
-                                <ShoppingBag size={48} className="mx-auto text-neutral-500" />
-                                <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{t('track_status')}</p>
+                            <div className="py-16 md:py-20 text-center space-y-4 opacity-50">
+                                <ShoppingBag size={40} className="mx-auto text-neutral-500" />
+                                <p className="text-xs md:text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{t('track_status')}</p>
                             </div>
                         ) : loading ? (
                             <div className="py-20 flex flex-col items-center gap-4">
@@ -155,99 +166,98 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                 <p className="text-xs font-black uppercase tracking-widest text-[#ce112d]">{t('track_loading')}</p>
                             </div>
                         ) : orders.length === 0 ? (
-                            <div className="py-20 text-center space-y-4">
-                                <Package size={48} className="mx-auto text-neutral-400" />
-                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('no_order_found')}</p>
+                            <div className="py-16 md:py-20 text-center space-y-4">
+                                <Package size={40} className="mx-auto text-neutral-400" />
+                                <p className="text-xs md:text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('no_order_found')}</p>
                             </div>
                         ) : (
-                            <div className="space-y-6">
+                            <div className="space-y-4 md:space-y-6">
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ce112d] px-1">{t('all_orders')} ({orders.length})</p>
                                 {orders.map(order => {
                                     const statusInfo = getStatusInfo(order.status);
                                     return (
                                         <div
                                             key={order.id}
-                                            className="border rounded-2xl p-5 space-y-4 transition-all hover:border-[#ce112d]/30 group"
+                                            className="border rounded-2xl p-4 md:p-5 space-y-3 md:space-y-4 transition-all hover:border-[#ce112d]/30 group"
                                             style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
                                         >
-                                            <div className="flex justify-between items-start gap-4">
-                                                <div className="flex items-center gap-4 min-w-0">
+                                            <div className="flex justify-between items-start gap-3">
+                                                <div className="flex items-center gap-3 md:gap-4 min-w-0">
                                                     {/* Product Thumbnail */}
-                                                    <div className="w-12 h-16 bg-black/40 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
+                                                    <div className="w-10 h-14 md:w-12 md:h-16 bg-black/40 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
                                                         {productImages[order.product_id] ? (
                                                             <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center text-neutral-800">
-                                                                <ShoppingBag size={20} />
+                                                                <ShoppingBag size={18} />
                                                             </div>
                                                         )}
                                                     </div>
 
-                                                    <div className="space-y-1 min-w-0">
-                                                        <h4 className="font-black text-sm truncate max-w-[150px] md:max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{order.product_name}</h4>
-                                                        <div className="flex items-center gap-2 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                                                            <span>{new Date(order.created_at).toLocaleDateString('bn-BD')}</span>
-                                                            <span className="opacity-30">•</span>
-                                                            <span>ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
+                                                    <div className="space-y-0.5 md:space-y-1 min-w-0">
+                                                        <h4 className="font-black text-xs md:text-sm truncate max-w-[120px] md:max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{order.product_name}</h4>
+                                                        <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                                                            <span>{new Date(order.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                                                            <span className="text-[#ce112d]">ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color}`} style={{ borderColor: 'currentColor' }}>
+                                                <div className={`shrink-0 flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-wider md:tracking-widest border ${statusInfo.bg} ${statusInfo.color}`} style={{ borderColor: 'currentColor' }}>
                                                     {statusInfo.icon}
                                                     {statusInfo.label}
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 py-4 border-y" style={{ borderColor: 'var(--border-color)' }}>
-                                                <div className="space-y-1">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>বিবরণ</p>
-                                                    <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                                                        {order.size ? `Size: ${order.size}` : ''}
+                                            <div className="grid grid-cols-2 gap-3 py-3 border-y" style={{ borderColor: 'var(--border-color)' }}>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'বিবরণ' : 'Details'}</p>
+                                                    <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                                                        {order.size ? `${language === 'bn' ? 'সাইজ' : 'Size'}: ${order.size}` : ''}
                                                         {order.size && order.color ? ' | ' : ''}
-                                                        {order.color ? `Color: ${order.color}` : ''}
-                                                        {!order.size && !order.color ? 'অর্ডার ডিটেইলস' : ''}
+                                                        {order.color ? `${language === 'bn' ? 'রঙ' : 'Color'}: ${order.color}` : ''}
+                                                        {!order.size && !order.color ? (language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details') : ''}
                                                     </p>
                                                 </div>
-                                                <div className="space-y-1 text-right">
-                                                    <p className="text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>মোট খরচ</p>
-                                                    <p className="text-xs font-black text-[#ce112d]">৳{order.total_amount}</p>
+                                                <div className="space-y-0.5 text-right">
+                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'মোট খরচ' : 'Total Amount'}</p>
+                                                    <p className="text-[10px] md:text-xs font-black text-[#ce112d]">৳{order.total_amount}</p>
                                                 </div>
                                             </div>
 
                                             {/* Advance Payment Status */}
                                             {order.is_advance_paid ? (
-                                                <div className="flex items-center gap-2.5 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
-                                                    <CheckCircle2 size={16} className="text-green-500" />
+                                                <div className="flex items-center gap-2 p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl">
+                                                    <CheckCircle2 size={14} className="text-green-500" />
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase text-green-500 tracking-widest">পেমেন্ট নিশ্চিত হয়েছে ✅</p>
-                                                        <p className="text-[9px] font-medium text-green-500/70">আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।</p>
+                                                        <p className="text-[9px] md:text-[10px] font-black uppercase text-green-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট নিশ্চিত হয়েছে ✅' : 'Payment Confirmed ✅'}</p>
+                                                        <p className="text-[8px] md:text-[9px] font-medium text-green-500/70">{language === 'bn' ? 'আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।' : 'We have received your advance payment.'}</p>
                                                     </div>
                                                 </div>
                                             ) : order.last_four_digits !== 'COD' && order.last_four_digits !== '' ? (
-                                                <div className="flex items-center gap-2.5 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                                                    <CreditCard size={16} className="text-blue-500" />
+                                                <div className="flex items-center gap-2 p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                                                    <CreditCard size={14} className="text-blue-500" />
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest">পেমেন্ট ভেরিফাই করা হচ্ছে...</p>
-                                                        <p className="text-[9px] font-medium text-blue-500/70">এডমিন আপনার পেমেন্ট নম্বরটি যাচাই করছেন।</p>
+                                                        <p className="text-[9px] md:text-[10px] font-black uppercase text-blue-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট ভেরিফাই করা হচ্ছে...' : 'Verifying Payment...'}</p>
+                                                        <p className="text-[8px] md:text-[9px] font-medium text-blue-500/70">{language === 'bn' ? 'এডমিন আপনার পেমেন্ট নম্বরটি যাচাই করছেন।' : 'Admin is verifying your payment reference.'}</p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center gap-2.5 p-3 bg-neutral-500/5 border border-white/5 rounded-xl opacity-60">
-                                                    <Truck size={16} style={{ color: 'var(--text-muted)' }} />
+                                                <div className="flex items-center gap-2 p-2.5 bg-neutral-500/5 border border-white/5 rounded-xl opacity-60">
+                                                    <Truck size={14} style={{ color: 'var(--text-muted)' }} />
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>Cash on Delivery (COD)</p>
-                                                        <p className="text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>পণ্য হাতে পেয়ে টাকা পরিশোধ করবেন।</p>
+                                                        <p className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter md:tracking-widest" style={{ color: 'var(--text-secondary)' }}>Cash on Delivery (COD)</p>
+                                                        <p className="text-[8px] md:text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'পণ্য হাতে পেয়ে টাকা পরিশোধ করবেন।' : 'Pay when you receive the product.'}</p>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {/* Note from Admin (optional if we ever add it, but can show status desc) */}
-                                            <div className="pt-2">
-                                                <p className="text-[10px] italic leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                                                    {order.status === 'Pending' && 'অর্ডারটি বর্তমানে প্রসেসিংয়ে আছে। খুব শীঘ্রই আপনাকে কল দেওয়া হবে।'}
-                                                    {order.status === 'Shipped' && 'আপনার পণ্যটি কুরিয়ারে পাঠানো হয়েছে। ১-৩ দিনের মধ্যে ইনশাআল্লাহ হাতে পাবেন।'}
-                                                    {order.status === 'Delivered' && 'পণ্যটি সফলভাবে পৌঁছে দেওয়া হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ!'}
-                                                    {order.status === 'Canceled' && 'দুঃখিত, কোনো বিশেষ কারণে অর্ডারটি বাতিল করা হয়েছে। বিস্তারিত জানতে যোগাযোগ করুন।'}
+                                            {/* Note from Admin */}
+                                            <div className="pt-1">
+                                                <p className="text-[9px] md:text-[10px] italic leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                                                    {order.status === 'Pending' && (language === 'bn' ? 'অর্ডারটি বর্তমানে প্রসেসিংয়ে আছে। খুব শীঘ্রই আপনাকে কল দেওয়া হবে।' : 'Your order is being processed. We will call you soon.')}
+                                                    {order.status === 'Shipped' && (language === 'bn' ? 'আপনার পণ্যটি কুরিয়ারে পাঠানো হয়েছে। ১-৩ দিনের মধ্যে ইনশাআল্লাহ হাতে পাবেন।' : 'Product shipped via courier. Expect delivery within 1-3 days.')}
+                                                    {order.status === 'Delivered' && (language === 'bn' ? 'পণ্যটি সফলভাবে পৌঁছে দেওয়া হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ!' : 'Product successfully delivered. Thanks for staying with us!')}
+                                                    {order.status === 'Canceled' && (language === 'bn' ? 'দুঃখিত, কোনো বিশেষ কারণে অর্ডারটি বাতিল করা হয়েছে। বিস্তারিত জানতে যোগাযোগ করুন।' : 'Sorry, your order was canceled. Please contact us for details.')}
                                                 </p>
                                             </div>
                                         </div>
@@ -258,13 +268,13 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-6 bg-gradient-to-t from-black/20 to-transparent border-t" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="p-4 md:p-6 bg-gradient-to-t from-black/20 to-transparent border-t" style={{ borderColor: 'var(--border-color)' }}>
                         <button
                             onClick={onClose}
-                            className="w-full py-4 text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
+                            className="w-full py-3 md:py-4 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] opacity-40 hover:opacity-100 transition-opacity"
                             style={{ color: 'var(--text-primary)' }}
                         >
-                            বন্ধ করুন
+                            {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
                         </button>
                     </div>
                 </motion.div>
