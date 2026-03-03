@@ -136,7 +136,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 250 }}
-          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] rounded-t-[32px] md:rounded-[40px] flex flex-col md:flex-row overflow-y-auto overflow-x-hidden md:overflow-hidden border-t md:border no-scrollbar"
+          className="relative w-full h-[92vh] md:max-w-6xl md:h-[90vh] rounded-t-[32px] md:rounded-[40px] flex flex-col md:flex-row overflow-y-auto overflow-x-hidden md:overflow-hidden border-t md:border"
           style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 -10px 100px rgba(0,0,0,0.3)' }}
         >
           <div className="w-full flex justify-center pt-4 pb-2 md:hidden shrink-0 sticky top-0 z-50 bg-inherit" style={{ backgroundColor: 'var(--modal-bg)' }}>
