@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 const TrackOrderModal = ({ isOpen, onClose }) => {
     const [phone, setPhone] = useState('');
     const [orders, setOrders] = useState([]);
+    const [productImages, setProductImages] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [searched, setSearched] = useState(false);
@@ -24,14 +25,37 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         setSearched(true);
 
         try {
-            const { data, error: fetchError } = await supabase
+            const { data: orderData, error: fetchError } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('customer_phone', phone)
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
-            setOrders(data || []);
+            setOrders(orderData || []);
+
+            // Fetch product images for these orders
+            if (orderData && orderData.length > 0) {
+                const productIds = [...new Set(orderData.map(o => o.product_id))];
+                const { data: pData } = await supabase
+                    .from('products')
+                    .select('id, image_url, images, video_url')
+                    .in('id', productIds);
+
+                if (pData) {
+                    const imgMap = {};
+                    pData.forEach(p => {
+                        let thumb = p.image_url || p.images?.[0];
+                        if (!thumb && p.video_url) {
+                            const match = p.video_url.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
+                            const id = match ? match[2] : null;
+                            if (id) thumb = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
+                        }
+                        imgMap[p.id] = thumb;
+                    });
+                    setProductImages(imgMap);
+                }
+            }
         } catch (err) {
             console.error('Tracking error:', err);
             setError('তথ্য খুঁজে পেতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
@@ -140,12 +164,25 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                             style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
                                         >
                                             <div className="flex justify-between items-start gap-4">
-                                                <div className="space-y-1 min-w-0">
-                                                    <h4 className="font-black text-sm truncate" style={{ color: 'var(--text-primary)' }}>{order.product_name}</h4>
-                                                    <div className="flex items-center gap-2 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                                                        <span>{new Date(order.created_at).toLocaleDateString('bn-BD')}</span>
-                                                        <span className="opacity-30">•</span>
-                                                        <span>ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    {/* Product Thumbnail */}
+                                                    <div className="w-12 h-16 bg-black/40 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
+                                                        {productImages[order.product_id] ? (
+                                                            <img src={productImages[order.product_id]} className="w-full h-full object-cover" alt="" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
+                                                                <ShoppingBag size={20} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="space-y-1 min-w-0">
+                                                        <h4 className="font-black text-sm truncate max-w-[150px] md:max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{order.product_name}</h4>
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                                                            <span>{new Date(order.created_at).toLocaleDateString('bn-BD')}</span>
+                                                            <span className="opacity-30">•</span>
+                                                            <span>ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusInfo.bg} ${statusInfo.color}`} style={{ borderColor: 'currentColor' }}>
