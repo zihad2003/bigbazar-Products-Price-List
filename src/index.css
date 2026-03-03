@@ -23,6 +23,7 @@
   --gradient-overlay: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.6), transparent);
   --navbar-bg: rgba(0, 0, 0, 0.95);
   --modal-bg: #171717;
+  --accent-color: #ce112d;
 }
 
 [data-theme="light"] {
@@ -43,6 +44,28 @@
   --gradient-overlay: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.6), transparent);
   --navbar-bg: rgba(245, 245, 240, 0.95);
   --modal-bg: #ffffff;
+  --accent-color: #ce112d;
+}
+
+[data-theme="ramadan"] {
+  --bg-primary: #022c22;
+  --bg-secondary: #064e3b;
+  --bg-card: #064e3b;
+  --bg-input: #022c22;
+  --bg-overlay: rgba(2, 44, 34, 0.98);
+  --bg-hover: rgba(251, 191, 36, 0.05);
+  --bg-badge: rgba(251, 191, 36, 0.1);
+  --border-color: rgba(251, 191, 36, 0.1);
+  --border-hover: rgba(251, 191, 36, 0.3);
+  --text-primary: #ffffff;
+  --text-secondary: #fbbf24;
+  --text-muted: #d97706;
+  --text-faint: #b45309;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.4);
+  --gradient-overlay: linear-gradient(to top, #022c22, rgba(2, 44, 34, 0.7), transparent);
+  --navbar-bg: rgba(2, 44, 34, 0.95);
+  --modal-bg: #064e3b;
+  --accent-color: #fbbf24;
 }
 
 h1,
@@ -105,6 +128,11 @@ h4,
 
   .theme-border {
     border-color: var(--border-color);
+  }
+
+  .group:hover .group-hover\:bg-accent {
+    background-color: var(--hover-bg, var(--accent-color));
+    border-color: var(--hover-bg, var(--accent-color));
   }
 }
 
