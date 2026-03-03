@@ -16,7 +16,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
     const handleTrack = async (e) => {
         if (e) e.preventDefault();
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        // Convert Bengali digits to English digits
+        const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
+        const cleanPhone = bnToEn(phone).replace(/[^0-9]/g, '');
+
         if (cleanPhone.length < 10) {
             setError('সঠিক মোবাইল নম্বর দিন (১০-১১ ডিজিট)।');
             return;
@@ -27,10 +30,12 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         setSearched(true);
 
         try {
+            // Search for the last 10 digits to be very flexible with prefixes (+88, 0, etc)
+            const searchPattern = `%${cleanPhone.slice(-10)}%`;
             const { data: orderData, error: fetchError } = await supabase
                 .from('orders')
                 .select('*')
-                .ilike('customer_phone', `%${cleanPhone.slice(-10)}%`)
+                .or(`customer_phone.ilike.${searchPattern},customer_phone.eq.${cleanPhone}`)
                 .order('created_at', { ascending: false });
 
             if (fetchError) throw fetchError;
