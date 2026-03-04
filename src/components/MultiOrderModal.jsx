@@ -97,6 +97,18 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                 const parts = [item.name];
                 if (item.selectedColor) parts.push(`${item.selectedColor} color`);
                 if (item.selectedSize) parts.push(`${item.selectedSize} size`);
+
+                // Find variant SKU
+                let vSKU = item.platform_id || null;
+                if (item.selectedColor && item.available_colors) {
+                    const cObj = item.available_colors.find(c => (typeof c === 'object' ? c.name : c) === item.selectedColor);
+                    if (cObj && cObj.sizes) {
+                        const sObj = cObj.sizes.find(s => (typeof s === 'object' ? s.name : s) === item.selectedSize);
+                        if (sObj && sObj.sku) vSKU = sObj.sku;
+                    }
+                }
+                if (vSKU) parts.push(`(SKU: ${vSKU})`);
+
                 parts.push(`${item.quantity} piece`);
                 return parts.join(' ');
             }).join(' + ');

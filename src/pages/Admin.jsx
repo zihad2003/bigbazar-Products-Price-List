@@ -988,7 +988,7 @@ export default function Admin() {
                                     const variantStock = typeof sObj === 'object' ? (sObj.stock ?? 0) : 0;
 
                                     return (
-                                      <div key={sIdx} className="flex flex-col gap-1.5">
+                                      <div key={sIdx} className="flex flex-col gap-1.5 p-2 bg-black/20 rounded-lg border border-white/5">
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -1000,7 +1000,7 @@ export default function Admin() {
 
                                             const newSizes = isFound
                                               ? currentSizes.filter(sz => (typeof sz === 'object' ? sz.name : sz) !== sName)
-                                              : [...currentSizes, { name: sName, stock: 0 }];
+                                              : [...currentSizes, { name: sName, stock: 0, sku: '' }];
 
                                             updatedColors[idx] = { ...normalized, sizes: newSizes };
                                             setForm({ ...form, available_colors: updatedColors });
@@ -1010,25 +1010,52 @@ export default function Admin() {
                                           {sName}
                                         </button>
                                         {isSelected && (
-                                          <input
-                                            type="number"
-                                            placeholder="Stk"
-                                            value={variantStock}
-                                            onChange={(e) => {
-                                              const updatedColors = [...form.available_colors];
-                                              const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { ...color, sizes: [] };
-                                              const newSizes = (normalized.sizes || []).map(sz => {
-                                                const szName = typeof sz === 'object' ? sz.name : sz;
-                                                if (szName === sName) {
-                                                  return { name: szName, stock: parseInt(e.target.value) || 0 };
-                                                }
-                                                return sz;
-                                              });
-                                              updatedColors[idx] = { ...normalized, sizes: newSizes };
-                                              setForm({ ...form, available_colors: updatedColors });
-                                            }}
-                                            className="w-12 bg-black/40 border border-white/10 rounded-md py-0.5 px-1 text-[8px] font-black text-white text-center outline-none focus:border-[#ce112d]"
-                                          />
+                                          <div className="space-y-1">
+                                            <div className="flex flex-col gap-0.5">
+                                              <label className="text-[7px] font-black uppercase text-neutral-600 ml-0.5 tracking-tighter">Stock</label>
+                                              <input
+                                                type="number"
+                                                placeholder="Stk"
+                                                value={variantStock}
+                                                onChange={(e) => {
+                                                  const updatedColors = [...form.available_colors];
+                                                  const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { ...color, sizes: [] };
+                                                  const newSizes = (normalized.sizes || []).map(sz => {
+                                                    const szName = typeof sz === 'object' ? sz.name : sz;
+                                                    if (szName === sName) {
+                                                      return { ...sz, stock: parseInt(e.target.value) || 0 };
+                                                    }
+                                                    return sz;
+                                                  });
+                                                  updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                                  setForm({ ...form, available_colors: updatedColors });
+                                                }}
+                                                className="w-14 bg-black/60 border border-white/10 rounded-md py-1 px-1.5 text-[8px] font-black text-white text-center outline-none focus:border-[#ce112d]"
+                                              />
+                                            </div>
+                                            <div className="flex flex-col gap-0.5">
+                                              <label className="text-[7px] font-black uppercase text-neutral-600 ml-0.5 tracking-tighter">SKU</label>
+                                              <input
+                                                type="text"
+                                                placeholder="SKU"
+                                                value={typeof sObj === 'object' ? (sObj.sku || '') : ''}
+                                                onChange={(e) => {
+                                                  const updatedColors = [...form.available_colors];
+                                                  const normalized = typeof updatedColors[idx] === 'object' ? updatedColors[idx] : { ...color, sizes: [] };
+                                                  const newSizes = (normalized.sizes || []).map(sz => {
+                                                    const szName = typeof sz === 'object' ? sz.name : sz;
+                                                    if (szName === sName) {
+                                                      return { ...sz, sku: e.target.value };
+                                                    }
+                                                    return sz;
+                                                  });
+                                                  updatedColors[idx] = { ...normalized, sizes: newSizes };
+                                                  setForm({ ...form, available_colors: updatedColors });
+                                                }}
+                                                className="w-14 bg-black/60 border border-white/10 rounded-md py-1 px-1.5 text-[7px] font-black text-white text-center outline-none focus:border-[#ce112d] uppercase"
+                                              />
+                                            </div>
+                                          </div>
                                         )}
                                       </div>
                                     );
@@ -1694,6 +1721,11 @@ export default function Admin() {
                             {p.available_colors?.length > 0 && (
                               <span className="text-[8px] font-black uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
                                 {p.available_colors.length} Colors
+                              </span>
+                            )}
+                            {p.platform_id && (
+                              <span className="text-[8px] font-black uppercase bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">
+                                SKU: {p.platform_id}
                               </span>
                             )}
                           </div>
