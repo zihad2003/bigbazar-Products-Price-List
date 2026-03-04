@@ -113,6 +113,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             : formData.district;
 
         try {
+            // Safe price parsing
+            const parsePrice = (val) => {
+                if (typeof val === 'number') return val;
+                return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
+            };
+
             const summaryParts = [product.name];
             if (selectedColor) summaryParts.push(`${selectedColor} color`);
             if (selectedSize) summaryParts.push(`${selectedSize} size`);
@@ -124,7 +130,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 .insert([{
                     product_id: product.id,
                     product_name: productSummary.substring(0, 250),
-                    product_price: parseFloat(product.price),
+                    product_price: parsePrice(product.price),
                     customer_name: formData.name,
                     customer_phone: formData.phone,
                     customer_address: `${formData.address} | ${locationStr}`,
@@ -141,7 +147,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
             if (insertError) throw insertError;
 
-            const newOrderId = insertedData?.[0]?.id;
+            // Fallback for ID if RLS blocks selection
+            const newOrderId = insertedData?.[0]?.id || `ORD-${Date.now().toString().slice(-6)}`;
             setFormData(prev => ({ ...prev, orderId: newOrderId }));
 
             // Decrease stock count (Global and Variants)
