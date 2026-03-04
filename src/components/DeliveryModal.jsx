@@ -119,9 +119,20 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
             };
 
+            // Find variant SKU if exists
+            let variantSKU = product.platform_id || null;
+            if (selectedColor && product.available_colors) {
+                const colorObj = product.available_colors.find(c => (typeof c === 'object' ? c.name : c) === selectedColor);
+                if (colorObj && colorObj.sizes) {
+                    const sizeObj = colorObj.sizes.find(s => (typeof s === 'object' ? s.name : s) === selectedSize);
+                    if (sizeObj && sizeObj.sku) variantSKU = sizeObj.sku;
+                }
+            }
+
             const summaryParts = [product.name];
             if (selectedColor) summaryParts.push(`${selectedColor} color`);
             if (selectedSize) summaryParts.push(`${selectedSize} size`);
+            if (variantSKU) summaryParts.push(`(SKU: ${variantSKU})`);
             summaryParts.push('1 piece');
             const productSummary = summaryParts.join(' ');
 
