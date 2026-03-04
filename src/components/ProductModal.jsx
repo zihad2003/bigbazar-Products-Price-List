@@ -63,7 +63,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
     // If this color has specific sizes assigned, ensure current size is valid
     if (colorObj && typeof colorObj === 'object' && colorObj.sizes?.length > 0) {
-      if (!colorObj.sizes.includes(selectedSize)) {
+      const isSizeValid = colorObj.sizes.some(sz => (typeof sz === 'object' ? sz.name : sz) === selectedSize);
+      if (!isSizeValid) {
         // If current size is invalid for this color, clear it so user can pick
         setSelectedSize('');
       }
@@ -285,7 +286,13 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                         const colorName = color.name;
                         const colorImage = color.image;
                         const colorHex = color.hex;
-                        const isAvailable = color.is_available ?? true;
+
+                        // Check if any size is in stock for this color if sizes are defined
+                        const hasStock = color.sizes?.length > 0
+                          ? color.sizes.some(s => (typeof s === 'object' ? (s.stock > 0) : true))
+                          : true;
+
+                        const isAvailable = (color.is_available ?? true) && hasStock;
                         return (
                           <button
                             key={idx}
