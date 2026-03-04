@@ -674,7 +674,26 @@ export default function Admin() {
                 <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Stock Count (খালি = unlimited)</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-black uppercase text-neutral-500 block tracking-widest">Stock Count (খালি = unlimited)</label>
+                  {form.available_colors?.some(c => c.sizes?.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        let total = 0;
+                        form.available_colors.forEach(c => {
+                          c.sizes?.forEach(s => {
+                            total += (parseInt(s.stock) || 0);
+                          });
+                        });
+                        setForm({ ...form, stock_count: total.toString() });
+                      }}
+                      className="text-[8px] font-black uppercase bg-[#ce112d]/10 text-[#ce112d] px-2 py-1 rounded-md hover:bg-[#ce112d] hover:text-white transition-all"
+                    >
+                      Sync Total from Variants
+                    </button>
+                  )}
+                </div>
                 <input type="number" min="0" value={form.stock_count} placeholder="e.g. 10" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, stock_count: e.target.value })} />
               </div>
               <div>
@@ -1664,7 +1683,21 @@ export default function Admin() {
                     </div>
                     <div className="p-6 space-y-4">
                       <div className="flex justify-between items-start">
-                        <h4 className="font-bold truncate max-w-[150px]">{p.name}</h4>
+                        <div className="min-w-0">
+                          <h4 className="font-bold truncate max-w-[150px]">{p.name}</h4>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {p.stock_count !== null && (
+                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${p.stock_count <= 5 ? 'bg-red-500/10 text-red-500 animate-pulse' : 'bg-green-500/10 text-green-500'}`}>
+                                Stock: {p.stock_count}
+                              </span>
+                            )}
+                            {p.available_colors?.length > 0 && (
+                              <span className="text-[8px] font-black uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
+                                {p.available_colors.length} Colors
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <p className="text-[#ce112d] font-black">৳{p.price}</p>
                       </div>
                       <div className="flex gap-2">

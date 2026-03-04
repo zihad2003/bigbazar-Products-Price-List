@@ -144,17 +144,44 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             const newOrderId = insertedData?.[0]?.id;
             setFormData(prev => ({ ...prev, orderId: newOrderId }));
 
-            // Decrease stock count
+            // Decrease stock count (Global and Variants)
+            let updatedGlobalStock = product.stock_count;
+            let updatedColors = product.available_colors;
+
+            // 1. Decrement Global Stock
             if (product.stock_count !== null && product.stock_count !== undefined) {
-                const newStock = Math.max(0, product.stock_count - 1);
-                await supabase
-                    .from('products')
-                    .update({
-                        stock_count: newStock,
-                        is_sold_out: newStock <= 0
-                    })
-                    .eq('id', product.id);
+                updatedGlobalStock = Math.max(0, product.stock_count - 1);
             }
+
+            // 2. Decrement Variant Stock (Size within Color)
+            if (selectedColor && updatedColors?.length > 0) {
+                updatedColors = updatedColors.map(color => {
+                    const colorName = typeof color === 'object' ? color.name : color;
+                    if (colorName === selectedColor && color.sizes?.length > 0) {
+                        const updatedSizes = color.sizes.map(sz => {
+                            const szName = typeof sz === 'object' ? sz.name : sz;
+                            if (szName === selectedSize) {
+                                return { ...sz, stock: Math.max(0, (sz.stock || 0) - 1) };
+                            }
+                            return sz;
+                        });
+                        return { ...color, sizes: updatedSizes };
+                    }
+                    return color;
+                });
+            }
+
+            // 3. Push Updates to Supabase
+            const updatePayload = {
+                stock_count: updatedGlobalStock,
+                is_sold_out: updatedGlobalStock <= 0,
+                available_colors: updatedColors
+            };
+
+            await supabase
+                .from('products')
+                .update(updatePayload)
+                .eq('id', product.id);
 
             setIsSuccess(true);
         } catch (err) {
@@ -303,7 +330,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[1000] backdrop-blur-3xl flex items-center justify-center p-3 md:p-6"
+                className="fixed inset-0 z-[1000] backdrop-blur-3xl flex items-end sm:items-center justify-center p-0 sm:p-6"
                 style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
                 onClick={onClose}
             >
@@ -312,12 +339,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.9, opacity: 0, y: 40 }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className="relative w-full max-w-lg border rounded-[32px] md:rounded-[40px] overflow-hidden"
+                    className="relative w-full max-w-lg border rounded-t-[32px] sm:rounded-[40px] overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh]"
                     style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.2)' }}
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 py-4 md:px-8 md:py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="px-5 py-4 md:px-8 md:py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent shrink-0" style={{ borderColor: 'var(--border-color)' }}>
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(206,17,45,0.4)]">
                                 <ShoppingBag className="text-white" size={20} />
@@ -337,7 +364,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     </div>
 
                     {/* Form Body */}
-                    <div className="p-5 md:p-8 overflow-y-auto max-h-[75vh] md:max-h-[70vh] no-scrollbar space-y-5">
+                    <div className="p-5 md:p-8 overflow-y-auto no-scrollbar space-y-5 flex-1">
 
                         {/* Error */}
                         <AnimatePresence>
@@ -570,7 +597,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     </div>
                 </motion.div>
             </motion.div>
-        </AnimatePresence>
+        </AnimatePresence >
     );
 };
 

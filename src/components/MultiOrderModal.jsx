@@ -125,13 +125,41 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             if (insertError) throw insertError;
 
             for (const item of cartItems) {
+                let updatedGlobalStock = item.stock_count;
+                let updatedColors = item.available_colors;
+
+                // 1. Decrement Global Stock
                 if (item.stock_count !== null && item.stock_count !== undefined) {
-                    const newStock = Math.max(0, item.stock_count - item.quantity);
-                    await supabase
-                        .from('products')
-                        .update({ stock_count: newStock, is_sold_out: newStock <= 0 })
-                        .eq('id', item.id);
+                    updatedGlobalStock = Math.max(0, item.stock_count - item.quantity);
                 }
+
+                // 2. Decrement Variant Stock
+                if (item.selectedColor && updatedColors?.length > 0) {
+                    updatedColors = updatedColors.map(color => {
+                        const colorName = typeof color === 'object' ? color.name : color;
+                        if (colorName === item.selectedColor && color.sizes?.length > 0) {
+                            const updatedSizes = color.sizes.map(sz => {
+                                const szName = typeof sz === 'object' ? sz.name : sz;
+                                if (szName === item.selectedSize) {
+                                    return { ...sz, stock: Math.max(0, (sz.stock || 0) - item.quantity) };
+                                }
+                                return sz;
+                            });
+                            return { ...color, sizes: updatedSizes };
+                        }
+                        return color;
+                    });
+                }
+
+                // 3. Update Supabase
+                await supabase
+                    .from('products')
+                    .update({
+                        stock_count: updatedGlobalStock,
+                        is_sold_out: updatedGlobalStock <= 0,
+                        available_colors: updatedColors
+                    })
+                    .eq('id', item.id);
             }
 
             clearCart();
@@ -177,7 +205,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             {!isSuccess && isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1200] backdrop-blur-3xl flex items-center justify-center p-3 md:p-6 overflow-y-auto"
+                    className="fixed inset-0 z-[1200] backdrop-blur-3xl flex items-end sm:items-center justify-center p-0 sm:p-6"
                     style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
                     onClick={onClose}
                 >
@@ -185,12 +213,12 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                         initial={{ scale: 0.9, opacity: 0, y: 40 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.9, opacity: 0, y: 40 }}
-                        className="relative w-full max-w-lg max-h-[92vh] md:max-h-[90vh] border rounded-[32px] md:rounded-[40px] overflow-hidden flex flex-col"
+                        className="relative w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] border rounded-t-[32px] sm:rounded-[40px] overflow-hidden flex flex-col shadow-2xl"
                         style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)', boxShadow: '0 0 80px rgba(0,0,0,0.2)' }}
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="px-6 py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent" style={{ borderColor: 'var(--border-color)' }}>
+                        <div className="px-6 py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent shrink-0" style={{ borderColor: 'var(--border-color)' }}>
                             <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center">
                                     <Package className="text-white" size={20} />
@@ -344,6 +372,9 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             <button onClick={handleConfirmOrder} disabled={isSubmitting || cartItems.length === 0}
                                 className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.4)] transition-all active:scale-95 disabled:opacity-50">
                                 {isSubmitting ? (language === 'bn' ? "অর্ডার হচ্ছে..." : "Processing...") : <>{t('confirm_order')} <ShoppingBag size={20} /></>}
+                            </button>
+                            <button onClick={onClose} className="w-full mt-3 font-black uppercase tracking-[0.3em] text-[10px] py-2 text-neutral-500">
+                                {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
                             </button>
                         </div>
                     </motion.div>
