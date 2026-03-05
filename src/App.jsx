@@ -29,6 +29,37 @@ function PublicLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
+  // --- Back button support for modals ---
+  const openModal = (setter) => {
+    window.history.pushState({ modal: true }, '');
+    setter(true);
+  };
+
+  const closeAllModals = () => {
+    setIsTrackOpen(false);
+    setIsCartOpen(false);
+    setIsCategoryOpen(false);
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isTrackOpen || isCartOpen || isCategoryOpen) {
+        closeAllModals();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isTrackOpen, isCartOpen, isCategoryOpen]);
+
+  const handleCloseModal = (setter) => {
+    setter(false);
+    // Pop the history entry we pushed when we opened
+    if (window.history.state?.modal) {
+      window.history.back();
+    }
+  };
+  // --- End back button support ---
+
   useEffect(() => {
     // Increment visitor count only once per session in Supabase
     if (!sessionStorage.getItem('visited')) {
@@ -44,11 +75,11 @@ function PublicLayout() {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <TrackOrderModal isOpen={isTrackOpen} onClose={() => setIsTrackOpen(false)} />
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <TrackOrderModal isOpen={isTrackOpen} onClose={() => handleCloseModal(setIsTrackOpen)} />
+      <CartDrawer isOpen={isCartOpen} onClose={() => handleCloseModal(setIsCartOpen)} />
       <CategoryModal
         isOpen={isCategoryOpen}
-        onClose={() => setIsCategoryOpen(false)}
+        onClose={() => handleCloseModal(setIsCategoryOpen)}
         selectedCategory={category}
         onSelectCategory={setCategory}
       />
@@ -56,8 +87,8 @@ function PublicLayout() {
       <Navbar
         selectedCategory={category}
         onSelectCategory={setCategory}
-        onTrackOrder={() => setIsTrackOpen(true)}
-        onOpenCart={() => setIsCartOpen(true)}
+        onTrackOrder={() => openModal(setIsTrackOpen)}
+        onOpenCart={() => openModal(setIsCartOpen)}
       />
 
       {/* Main Content */}
@@ -73,10 +104,10 @@ function PublicLayout() {
 
       {/* Mobile Customer Menu */}
       <CustomerMenu
-        onTrackOrder={() => setIsTrackOpen(true)}
-        onOpenCart={() => setIsCartOpen(true)}
+        onTrackOrder={() => openModal(setIsTrackOpen)}
+        onOpenCart={() => openModal(setIsCartOpen)}
         onSelectCategory={setCategory}
-        onOpenCategories={() => setIsCategoryOpen(true)}
+        onOpenCategories={() => openModal(setIsCategoryOpen)}
       />
     </div>
   );
