@@ -316,7 +316,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                         onClick={handleSubmitReview}
                                         className="w-full py-2.5 bg-[#ce112d] text-white rounded-xl font-bold text-sm transition-all active:scale-95"
                                     >
-                                        {language === 'bn' ? 'রিভিউ দিন ✨' : 'Submit Review ✨'}
+                                        {language === 'bn' ? 'রিভিউ দিন' : 'Submit Review'}
                                     </button>
                                 )}
                             </div>
@@ -325,7 +325,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
                                 className="text-sm font-bold text-green-500"
                             >
-                                {language === 'bn' ? 'ধন্যবাদ আপনার রিভিউয়ের জন্য! 💚' : 'Thanks for your feedback! 💚'}
+                                {language === 'bn' ? 'ধন্যবাদ আপনার রিভিউয়ের জন্য!' : 'Thanks for your feedback!'}
                             </motion.p>
                         )}
 

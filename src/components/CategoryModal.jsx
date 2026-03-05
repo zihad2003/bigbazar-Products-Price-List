@@ -1,17 +1,42 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutGrid, Check } from 'lucide-react';
+import { X, LayoutGrid, Check, Sparkles, Shirt, Baby } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// Custom SVG icons for categories without a Lucide match
+const DressIcon = ({ size = 20, className = '' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M10 2h4" />
+        <path d="M12 2v4" />
+        <path d="M8 6l-4 8h5l-1 8h8l-1-8h5l-4-8z" />
+    </svg>
+);
+
+const BoyIcon = ({ size = 20, className = '' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="7" r="4" />
+        <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
+    </svg>
+);
+
+const GirlIcon = ({ size = 20, className = '' }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="7" r="4" />
+        <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
+        <path d="M9 11c0 0-1 2-1 4" />
+        <path d="M15 11c0 0 1 2 1 4" />
+    </svg>
+);
 
 const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory }) => {
     const { t } = useLanguage();
 
     const categories = [
-        { id: 'All', label: t('all'), icon: '✨' },
-        { id: 'Men', label: t('men'), icon: '👔' },
-        { id: 'Women', label: t('women'), icon: '👗' },
-        { id: 'Kids (Boys)', label: t('boys'), icon: '👦' },
-        { id: 'Kids (Girls)', label: t('girls'), icon: '👧' }
+        { id: 'All', label: t('all'), icon: <Sparkles size={20} /> },
+        { id: 'Men', label: t('men'), icon: <Shirt size={20} /> },
+        { id: 'Women', label: t('women'), icon: <DressIcon size={20} /> },
+        { id: 'Kids (Boys)', label: t('boys'), icon: <BoyIcon size={20} /> },
+        { id: 'Kids (Girls)', label: t('girls'), icon: <GirlIcon size={20} /> }
     ];
 
     return (
@@ -56,12 +81,14 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory }) 
                                         onClose();
                                     }}
                                     className={`flex items-center justify-between p-5 rounded-3xl transition-all active:scale-[0.98] border ${selectedCategory === cat.id
-                                            ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-lg shadow-red-900/20'
-                                            : 'bg-white/5 border-white/5 text-neutral-400 hover:border-white/10'
+                                        ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-lg shadow-red-900/20'
+                                        : 'bg-white/5 border-white/5 text-neutral-400 hover:border-white/10'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <span className="text-xl">{cat.icon}</span>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedCategory === cat.id ? 'bg-white/20' : 'bg-white/5'}`}>
+                                            {cat.icon}
+                                        </div>
                                         <span className="font-black uppercase tracking-widest text-xs">{cat.label}</span>
                                     </div>
                                     {selectedCategory === cat.id && (
