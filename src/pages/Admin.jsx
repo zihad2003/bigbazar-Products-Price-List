@@ -1698,8 +1698,12 @@ export default function Admin() {
                       </div>
                     </div>
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => startEdit(p)} className="p-2 rounded-lg bg-white/5 hover:bg-[#ce112d] transition-all" title="Edit"><Edit size={14} /></button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => startEdit(p)} className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 hover:bg-[#ce112d] transition-all" title="Edit">
+                        <Edit size={12} />
+                        <span className="text-[6px] font-black uppercase tracking-tighter">Edit</span>
+                      </button>
+
                       {(activeTab === 'pending' || (activeTab === 'soldout' && p.status === 'pending')) && (
                         <button
                           onClick={() => setConfirmation({
@@ -1708,12 +1712,13 @@ export default function Admin() {
                             message: 'Are you sure you want to Publish this product to the main site?',
                             onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="p-2 rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all"
-                          title="Publish"
+                          className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all"
                         >
-                          <CheckCircle2 size={14} />
+                          <CheckCircle2 size={12} />
+                          <span className="text-[6px] font-black uppercase tracking-tighter">Live</span>
                         </button>
                       )}
+
                       {(activeTab === 'published' || (activeTab === 'soldout' && p.status === 'published')) && (
                         <button
                           onClick={() => setConfirmation({
@@ -1722,18 +1727,26 @@ export default function Admin() {
                             message: 'Are you sure you want to move this product back to Pending/Drafts?',
                             onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all"
-                          title="Unpublish"
+                          className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all"
                         >
-                          <Clock size={14} />
+                          <Clock size={12} />
+                          <span className="text-[6px] font-black uppercase tracking-tighter">Draft</span>
                         </button>
                       )}
+
                       <button
                         onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
-                        className={`p-2 rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/40' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
+                        className={`flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/40' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
                         title={p.is_sold_out ? 'Mark Available' : 'Mark Sold Out'}
-                      ><ShoppingBag size={14} /></button>
-                      <button onClick={() => deleteProduct(p.id)} className="p-2 rounded-lg bg-white/5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 transition-all" title="Delete"><Trash2 size={14} /></button>
+                      >
+                        <ShoppingBag size={12} />
+                        <span className="text-[6px] font-black uppercase tracking-tighter">{p.is_sold_out ? 'Sold' : 'Stock'}</span>
+                      </button>
+
+                      <button onClick={() => deleteProduct(p.id)} className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                        <Trash2 size={12} />
+                        <span className="text-[6px] font-black uppercase tracking-tighter">Del</span>
+                      </button>
                     </div>
                   </div>
                 );
