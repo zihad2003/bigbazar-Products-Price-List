@@ -507,7 +507,7 @@ export default function Admin() {
       )}
 
       {/* Sidebar - Fixed Position */}
-      <aside className={`fixed lg:sticky top-0 left-0 w-64 h-screen border-r border-white/5 p-6 flex flex-col justify-between shrink-0 bg-black z-50 transition-transform duration-300 lg:translate-x-0 overflow-y-auto no-scrollbar ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed lg:sticky top-0 left-0 w-64 h-[100dvh] lg:h-screen border-r border-white/5 px-6 pt-24 pb-6 lg:py-6 flex flex-col justify-between shrink-0 bg-black z-50 transition-transform duration-300 lg:translate-x-0 overflow-y-auto no-scrollbar ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl shadow-black' : '-translate-x-full'}`}>
         <div className="space-y-8">
           <div className="hidden lg:flex items-center gap-3">
             <ShoppingBag className="text-[#ce112d]" />
