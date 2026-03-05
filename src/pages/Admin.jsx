@@ -1278,10 +1278,15 @@ export default function Admin() {
                 <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2">
                   <div className="flex items-center gap-1 text-[10px] font-black uppercase text-neutral-500 tracking-widest bg-white/5 py-1 px-3 rounded-full">
                     <ShoppingBag size={12} className="text-[#ce112d]" />
-                    {orders.filter(o => o.status !== 'Deleted').length} Orders
+                    {orders.filter(o => o && o.status !== 'Deleted').length} Orders
                   </div>
                   <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest bg-green-500/10 text-green-500 py-1 px-3 rounded-full">
-                    Total: ৳{orders.filter(o => o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}
+                    Total: ৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
+                      const amount = typeof o.total_amount === 'string'
+                        ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
+                        : parseFloat(o.total_amount);
+                      return acc + (amount || 0);
+                    }, 0).toLocaleString()}
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-500/10 text-blue-500 py-1 px-3 rounded-full">
                     <Users size={12} />
@@ -1345,7 +1350,7 @@ export default function Admin() {
                     const productMap = {};
                     products.forEach(p => productMap[p.id] = p);
 
-                    return orders.filter(o => o.status !== 'Deleted').map(o => {
+                    return orders.filter(o => o && o.status !== 'Deleted').map(o => {
                       const product = productMap[o.product_id];
                       let productThumb = product?.image_url || product?.images?.[0];
 
@@ -1477,7 +1482,7 @@ export default function Admin() {
                 const productMap = {};
                 products.forEach(p => productMap[p.id] = p);
 
-                return orders.filter(o => o.status !== 'Deleted').map(o => {
+                return orders.filter(o => o && o.status !== 'Deleted').map(o => {
                   const product = productMap[o.product_id];
                   let productThumb = product?.image_url || product?.images?.[0];
 
@@ -1540,7 +1545,7 @@ export default function Admin() {
                 });
               })()}
             </div>
-            {orders.filter(o => o.status !== 'Deleted').length === 0 && !loading && (
+            {orders.filter(o => o && o.status !== 'Deleted').length === 0 && !loading && (
               <div className="py-20 text-center space-y-4">
                 <ShoppingBag className="mx-auto text-neutral-800" size={48} />
                 <p className="text-neutral-500 text-sm font-bold">No orders found.</p>
@@ -1552,9 +1557,9 @@ export default function Admin() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-black italic uppercase">Deleted <span className="text-[#ce112d]">Orders</span></h2>
-                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o.status === 'Deleted').length} ডিলিটেড অর্ডার</p>
+                <p className="text-neutral-500 text-xs mt-2 uppercase font-bold tracking-widest">{orders.filter(o => o && o.status === 'Deleted').length} ডিলিটেড অর্ডার</p>
               </div>
-              {orders.filter(o => o.status === 'Deleted').length > 0 && (
+              {orders.filter(o => o && o.status === 'Deleted').length > 0 && (
                 <button
                   onClick={emptyBin}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500 hover:text-white transition-all"
@@ -1568,7 +1573,7 @@ export default function Admin() {
                 const productMap = {};
                 products.forEach(p => productMap[p.id] = p);
 
-                return orders.filter(o => o.status === 'Deleted').map(o => {
+                return orders.filter(o => o && o.status === 'Deleted').map(o => {
                   const product = productMap[o.product_id];
                   let productThumb = product?.image_url || product?.images?.[0];
 
@@ -1621,7 +1626,7 @@ export default function Admin() {
                 });
               })()}
             </div>
-            {orders.filter(o => o.status === 'Deleted').length === 0 && (
+            {orders.filter(o => o && o.status === 'Deleted').length === 0 && (
               <div className="py-20 text-center space-y-4">
                 <Archive className="mx-auto text-neutral-800" size={48} />
                 <p className="text-neutral-500 text-sm font-bold">কোনো ডিলিটেড অর্ডার নেই।</p>
