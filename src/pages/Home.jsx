@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import BannerSlider from '../components/BannerSlider';
-import { ShoppingBag, ChevronDown, Instagram, Search, X, MessageSquare, Globe, Moon } from 'lucide-react';
+import { Search, X, MessageSquare } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -233,75 +233,53 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
 
   return (
     <div className="min-h-screen px-4 md:px-8 pb-32" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="max-w-7xl mx-auto space-y-10 md:space-y-16">
+      <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
 
-        {/* Announcement Banner */}
+        {/* Slider Section — Now first, above the notice */}
+        {siteSettings.main_slides?.length > 0 && (
+          <section className="relative">
+            <BannerSlider banners={siteSettings.main_slides} />
+          </section>
+        )}
+
+        {/* Announcement Banner — Now below the slider, non-blocking */}
         <AnimatePresence>
           {showAnnouncement && (
             <motion.div
-              initial={{ opacity: 0, y: -20, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -10, height: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="overflow-hidden"
             >
               <div
-                className="relative rounded-2xl md:rounded-3xl overflow-hidden border"
+                className="relative rounded-2xl overflow-hidden border"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderColor: 'var(--border-color)',
                   boxShadow: 'var(--shadow-card)',
                 }}
               >
-                {/* Accent gradient top bar */}
-                <div className="h-1" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
-
-                <div className="px-4 md:px-6 py-4 md:py-5 flex items-start gap-3 md:gap-4">
-                  {/* Icon */}
+                <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
+                <div className="px-4 py-3 flex items-center gap-3">
                   <div
-                    className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center mt-0.5"
+                    className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: 'rgba(206, 17, 45, 0.1)' }}
                   >
-                    <MessageSquare size={20} className="text-[#ce112d]" />
+                    <MessageSquare size={15} className="text-[#ce112d]" />
                   </div>
-
-                  {/* Text Content */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <p
-                      className="text-[10px] md:text-[11px] font-black uppercase tracking-widest"
-                      style={{ color: '#ce112d' }}
-                    >
-                      {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] md:text-xs font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                      {language === 'bn'
+                        ? <>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন — <strong className="text-[#ce112d]">দ্রুত ও সহজ!</strong></>
+                        : <>Order directly from the website — <strong className="text-[#ce112d]">Fast & Easy!</strong></>}
                     </p>
-                    <p
-                      className="text-xs md:text-sm font-semibold leading-relaxed"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      {language === 'bn' ? <>প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!</> : <>Dear customer, thanks for staying with <strong className="text-[#ce112d]">Big Bazar</strong>!</>}
-                    </p>
-                    <p
-                      className="text-[11px] md:text-xs leading-relaxed"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      {language === 'bn' ? <>বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong></> : <>Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please <strong style={{ color: 'var(--text-primary)' }}>order directly from the website.</strong></>}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1">
-                      <Globe size={12} className="text-[#ce112d]" />
-                      <span
-                        className="text-[9px] md:text-[10px] font-black uppercase tracking-widest"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
-                        {language === 'bn' ? 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!' : 'Order from Website — Fast & Easy!'}
-                      </span>
-                    </div>
                   </div>
-
-                  {/* Close Button */}
                   <button
                     onClick={dismissAnnouncement}
-                    className="flex-shrink-0 p-2 rounded-xl transition-all hover:bg-[#ce112d]/10 group"
+                    className="flex-shrink-0 p-1.5 rounded-lg transition-all hover:bg-[#ce112d]/10"
                   >
-                    <X size={16} style={{ color: 'var(--text-muted)' }} className="group-hover:text-[#ce112d] transition-colors" />
+                    <X size={14} style={{ color: 'var(--text-muted)' }} />
                   </button>
                 </div>
               </div>
@@ -309,31 +287,24 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           )}
         </AnimatePresence>
 
-        {/* Slider Section - Only show if slides exist */}
-        {siteSettings.main_slides?.length > 0 && (
-          <section className="relative">
-            <BannerSlider banners={siteSettings.main_slides} />
-          </section>
-        )}
-
         {/* Product Grid Section */}
-        <section className="space-y-8 md:space-y-10">
-          <div className="pb-6 md:pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
+        <section className="space-y-6 md:space-y-8">
+          <div className="pb-4 md:pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
             <h3 id="products-header" className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
               <span>{language === 'bn' ? 'লেটেস্ট' : 'LATEST'}</span> <span className="text-[#ce112d]">{language === 'bn' ? 'ড্রপস' : 'DROPS'}</span>
             </h3>
 
-            {/* Search Bar */}
+            {/* Modernized Search Bar */}
             <div className="relative w-full max-w-md group">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <Search size={18} style={{ color: 'var(--text-muted)' }} className="group-focus-within:text-[#ce112d] transition-colors" />
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search size={16} style={{ color: 'var(--text-muted)' }} className="group-focus-within:text-[#ce112d] transition-colors" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={language === 'bn' ? 'পোশাক, স্টাইল খুঁজুন...' : 'Search for clothes, styles...'}
-                className="w-full rounded-2xl py-3 md:py-4 pl-12 pr-12 text-sm font-bold backdrop-blur-sm focus:outline-none transition-all"
+                placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
+                className="w-full rounded-xl py-3 pl-11 pr-10 text-sm font-medium focus:outline-none transition-all focus:ring-2 focus:ring-[#ce112d]/30"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderWidth: '1px',
@@ -344,10 +315,10 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute inset-y-0 right-4 flex items-center transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center transition-colors"
                   style={{ color: 'var(--text-muted)' }}
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               )}
             </div>

@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 
   /* Dark Mode (Default) */
   --bg-primary: #000000;
@@ -52,7 +54,9 @@ h2,
 h3,
 h4,
 .font-outfit {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Noto Sans Bengali', sans-serif;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 @layer base {
