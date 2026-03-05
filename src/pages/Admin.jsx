@@ -27,7 +27,7 @@ export default function Admin() {
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Delete' });
   const [siteTheme, setSiteTheme] = useState('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
@@ -168,6 +168,7 @@ export default function Admin() {
       isOpen: true,
       title: 'Delete Order',
       message: 'অর্ডারটি ডিলিটেড সেকশনে সরানো হবে। পরে Undo করা যাবে।',
+      confirmText: 'Trash',
       onConfirm: async () => {
         const { error } = await supabase.from('orders').update({ status: 'Deleted' }).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
@@ -192,6 +193,7 @@ export default function Admin() {
       isOpen: true,
       title: 'Permanent Delete',
       message: 'এই অর্ডারটি চিরতরে মুছে ফেলা হবে। এটি আর ফেরানো যাবে না!',
+      confirmText: 'Delete Forever',
       onConfirm: async () => {
         const { error } = await supabase.from('orders').delete().eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
@@ -205,6 +207,7 @@ export default function Admin() {
       isOpen: true,
       title: 'Empty Bin',
       message: 'আপনি কি নিশ্চিত যে আপনি সবগুলি ডিলিটেড অর্ডার চিরতরে মুছে ফেলতে চান?',
+      confirmText: 'Empty All',
       onConfirm: async () => {
         const { error } = await supabase.from('orders').delete().eq('status', 'Deleted');
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
@@ -410,6 +413,7 @@ export default function Admin() {
       isOpen: true,
       title: 'Delete Product',
       message: 'Are you sure you want to permanently delete this product from the inventory?',
+      confirmText: 'Delete',
       onConfirm: async () => {
         const { error } = await supabase.from('products').delete().eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
@@ -1772,6 +1776,7 @@ export default function Admin() {
                             isOpen: true,
                             title: 'Publish Product',
                             message: 'Are you sure you want to Publish this product to the main site?',
+                            confirmText: 'Publish',
                             onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
                           })}
                           className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all"
@@ -1787,6 +1792,7 @@ export default function Admin() {
                             isOpen: true,
                             title: 'Unpublish Product',
                             message: 'Are you sure you want to move this product back to Pending/Drafts?',
+                            confirmText: 'Unpublish',
                             onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
                           })}
                           className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all"
@@ -2059,6 +2065,7 @@ export default function Admin() {
         onConfirm={confirmation.onConfirm}
         title={confirmation.title}
         message={confirmation.message}
+        confirmText={confirmation.confirmText}
       />
     </div >
   );

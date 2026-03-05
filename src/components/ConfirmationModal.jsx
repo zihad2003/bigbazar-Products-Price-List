@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 
-export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }) {
+export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Delete' }) {
     return (
         <AnimatePresence>
             {isOpen && (
@@ -38,7 +38,7 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, m
                                 Cancel
                             </button>
                             <button onClick={() => { onConfirm(); onClose(); }} className="flex-1 py-3 px-4 rounded-xl font-bold bg-[#ce112d] hover:bg-red-700 text-white shadow-lg shadow-red-900/20 transition-all">
-                                Delete
+                                {confirmText}
                             </button>
                         </div>
                     </motion.div>
