@@ -1848,201 +1848,201 @@ export default function Admin() {
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setSelectedOrder(null)}>
-          <div className="relative w-full max-w-lg bg-neutral-950 rounded-[32px] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <div className="h-1 bg-gradient-to-r from-transparent via-[#ce112d] to-transparent opacity-50 flex-shrink-0" />
+          <div className="relative w-full max-w-lg bg-neutral-950 rounded-[40px] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[85vh] sm:max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <div className="h-1.5 bg-gradient-to-r from-transparent via-[#ce112d] to-transparent opacity-80 flex-shrink-0" />
 
-            <div className="flex-1 overflow-y-auto no-scrollbar">
+            {/* Fixed Header Section (No Overlap) */}
+            <div className="px-8 pt-8 pb-5 flex justify-between items-center bg-neutral-950 border-b border-white/5 relative z-30 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 bg-[#ce112d] rounded-full shadow-[0_0_15px_rgba(206,17,45,0.4)]" />
+                <div>
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Order <span className="text-[#ce112d]">Details</span></h3>
+                  <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.2em] mt-1.5 opacity-60">
+                    {new Date(selectedOrder.created_at).toLocaleDateString('bn-BD')} • {new Date(selectedOrder.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="p-2.5 bg-white/5 hover:bg-[#ce112d] hover:text-white text-neutral-600 rounded-full transition-all border border-white/5">
+                <X size={20} className="stroke-2" />
+              </button>
+            </div>
 
-              <div className="p-8 space-y-7">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-1.5 h-6 bg-[#ce112d] rounded-full" />
-                      <h3 className="text-2xl font-black italic uppercase tracking-tighter">Order <span className="text-[#ce112d]">Details</span></h3>
+            {/* Scrollable Area */}
+            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-7 custom-scrollbar shadow-inner">
+
+              <div className="space-y-6">
+                {/* Product Section - More Premium */}
+                {(() => {
+                  const p = products.find(pr => pr.id === selectedOrder.product_id);
+                  const thumb = p?.image_url || p?.images?.[0];
+
+                  // Find color hex
+                  const colorName = selectedOrder.color;
+                  const colorObj = p?.available_colors?.find(c =>
+                    (typeof c === 'object' ? c.name : c) === colorName
+                  );
+                  const hex = (typeof colorObj === 'object' ? colorObj.hex : null);
+
+                  return (
+                    <div className="relative group overflow-hidden bg-neutral-900/50 rounded-[32px] border border-white/5 p-5 shadow-2xl">
+                      <div className="flex gap-5">
+                        <div className="w-24 h-28 bg-neutral-900 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                          {thumb ? (
+                            <img src={thumb} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
+                              <ImageIcon size={32} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                          <div>
+                            <div className="flex justify-between items-start gap-2 mb-2">
+                              <p className="text-base font-black text-white leading-tight uppercase italic">{selectedOrder.product_name || 'Generic Item'}</p>
+                              {p?.serial_no && (
+                                <span className="bg-[#ce112d] text-white text-[8px] font-black px-2 py-0.5 rounded-full shrink-0">#{p.serial_no}</span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                              {selectedOrder.size && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest ml-0.5">Size</span>
+                                  <span className="text-[10px] font-black bg-[#ce112d]/10 text-[#ce112d] px-3 py-1 rounded-lg border border-[#ce112d]/20 uppercase">{selectedOrder.size}</span>
+                                </div>
+                              )}
+                              {selectedOrder.color && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest ml-0.5">Color</span>
+                                  <div className="flex items-center gap-2 bg-white/5 text-white px-3 py-1 rounded-lg border border-white/10">
+                                    {hex && (
+                                      <div className="w-3 h-3 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }} />
+                                    )}
+                                    <span className="text-[10px] font-black uppercase tracking-tight">{selectedOrder.color}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-end mt-4">
+                            <p className="text-xl font-black text-[#ce112d] italic leading-none">৳{selectedOrder.product_price}</p>
+                            <span className="text-[7px] font-black text-neutral-600 uppercase tracking-widest pl-2">Authorized Product</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.2em] ml-3.5">
-                      {new Date(selectedOrder.created_at).toLocaleDateString('bn-BD')} • {new Date(selectedOrder.created_at).toLocaleTimeString()}
-                    </p>
+                  );
+                })()}
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Name & Phone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/[0.07] transition-all group">
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Customer Name</p>
+                        <p className="text-sm font-bold text-white truncate">{selectedOrder.customer_name}</p>
+                      </div>
+                      <button onClick={() => copyToClipboard(selectedOrder.customer_name, "Name")} className="p-2 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all">
+                        <Copy size={12} />
+                      </button>
+                    </div>
+
+                    <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/[0.07] transition-all group">
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Phone Number</p>
+                        <p className="text-sm font-black text-[#ce112d]">{selectedOrder.customer_phone}</p>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <a href={`tel:${selectedOrder.customer_phone}`} className="p-2 bg-neutral-900 hover:bg-green-500 text-neutral-500 hover:text-white rounded-xl transition-all">
+                          <ExternalLink size={12} />
+                        </a>
+                        <button onClick={() => copyToClipboard(selectedOrder.customer_phone, "Phone")} className="p-2 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all">
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={() => setSelectedOrder(null)} className="p-2.5 bg-white/5 hover:bg-[#ce112d] hover:text-white text-neutral-500 rounded-full transition-all shadow-xl">
-                    <X size={22} strokeWidth={3} />
-                  </button>
+
+                  {/* Address */}
+                  <div className="bg-white/5 p-5 rounded-3xl border border-white/5 flex items-start justify-between hover:bg-white/[0.07] transition-all group">
+                    <div className="min-w-0">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1.5 tracking-widest">Delivery Address <span className="text-[#ce112d]">({selectedOrder.delivery_area})</span></p>
+                      <p className="text-xs font-semibold text-neutral-300 leading-relaxed italic">{selectedOrder.customer_address}</p>
+                    </div>
+                    <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="p-2.5 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all shrink-0">
+                      <Copy size={14} />
+                    </button>
+                  </div>
+
+                  {/* Note */}
+                  {selectedOrder.customer_note && (
+                    <div className="bg-yellow-500/5 p-4 rounded-3xl border border-yellow-500/10 flex items-start justify-between">
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-black uppercase text-yellow-500/60 mb-1 tracking-widest">Merchant Note</p>
+                        <p className="text-xs font-bold text-yellow-500/80 leading-relaxed">{selectedOrder.customer_note}</p>
+                      </div>
+                      <button onClick={() => copyToClipboard(selectedOrder.customer_note, "Note")} className="p-2 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500/50 hover:text-white rounded-xl transition-all shrink-0">
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Payment Details */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Delivery Charge</p>
+                      <p className="text-lg font-black text-white italic">৳{selectedOrder.delivery_charge || 0}</p>
+                    </div>
+                    <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Sender / Last 4 Digits</p>
+                        <p className="text-lg font-black text-[#ce112d] italic">{selectedOrder.last_four_digits || 'N/A'}</p>
+                      </div>
+                      <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="p-2 bg-neutral-950 group-hover:bg-[#ce112d] text-neutral-600 group-hover:text-white rounded-xl transition-all">
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Product Section - More Premium */}
-                  {(() => {
-                    const p = products.find(pr => pr.id === selectedOrder.product_id);
-                    const thumb = p?.image_url || p?.images?.[0];
-
-                    // Find color hex
-                    const colorName = selectedOrder.color;
-                    const colorObj = p?.available_colors?.find(c =>
-                      (typeof c === 'object' ? c.name : c) === colorName
-                    );
-                    const hex = (typeof colorObj === 'object' ? colorObj.hex : null);
-
-                    return (
-                      <div className="relative group overflow-hidden bg-neutral-900/50 rounded-[32px] border border-white/5 p-5 shadow-2xl">
-                        <div className="flex gap-5">
-                          <div className="w-24 h-28 bg-neutral-900 rounded-2xl overflow-hidden shrink-0 border border-white/10 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                            {thumb ? (
-                              <img src={thumb} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-neutral-800">
-                                <ImageIcon size={32} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
-                            <div>
-                              <div className="flex justify-between items-start gap-2 mb-2">
-                                <p className="text-base font-black text-white leading-tight uppercase italic">{selectedOrder.product_name || 'Generic Item'}</p>
-                                {p?.serial_no && (
-                                  <span className="bg-[#ce112d] text-white text-[8px] font-black px-2 py-0.5 rounded-full shrink-0">#{p.serial_no}</span>
-                                )}
-                              </div>
-
-                              <div className="flex flex-wrap gap-3">
-                                {selectedOrder.size && (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest ml-0.5">Size</span>
-                                    <span className="text-[10px] font-black bg-[#ce112d]/10 text-[#ce112d] px-3 py-1 rounded-lg border border-[#ce112d]/20 uppercase">{selectedOrder.size}</span>
-                                  </div>
-                                )}
-                                {selectedOrder.color && (
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest ml-0.5">Color</span>
-                                    <div className="flex items-center gap-2 bg-white/5 text-white px-3 py-1 rounded-lg border border-white/10">
-                                      {hex && (
-                                        <div className="w-3 h-3 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }} />
-                                      )}
-                                      <span className="text-[10px] font-black uppercase tracking-tight">{selectedOrder.color}</span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex justify-between items-center mt-4">
-                              <p className="text-xl font-black text-[#ce112d] italic">৳{selectedOrder.product_price}</p>
-                              <span className="text-[8px] font-black text-neutral-600 uppercase tracking-[0.3em]">Authorized Product</span>
-                            </div>
-                          </div>
-                        </div>
+                {/* Status & Final Actions */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')}
+                      className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
+                    >
+                      <div className="relative z-10 flex flex-col items-center">
+                        <span className="text-xl font-black italic">৳{selectedOrder.delivery_charge}</span>
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Delivery Paid</span>
                       </div>
-                    );
-                  })()}
+                      {selectedOrder.payment_status === 'Advance Paid' && (
+                        <div className="absolute top-0 right-0 p-1 bg-white/20 rounded-bl-xl"><Check size={8} strokeWidth={4} /></div>
+                      )}
+                    </button>
 
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-1 gap-4">
-                    {/* Name & Phone */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/[0.07] transition-all group">
-                        <div className="min-w-0">
-                          <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Customer Name</p>
-                          <p className="text-sm font-bold text-white truncate">{selectedOrder.customer_name}</p>
-                        </div>
-                        <button onClick={() => copyToClipboard(selectedOrder.customer_name, "Name")} className="p-2 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all">
-                          <Copy size={12} />
-                        </button>
+                    <button
+                      onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')}
+                      className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-green-600 border-green-500 text-white shadow-2xl shadow-green-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-green-500/50 hover:bg-green-950/20'}`}
+                    >
+                      <div className="relative z-10 flex flex-col items-center">
+                        <span className="text-xl font-black italic">৳{selectedOrder.total_amount}</span>
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Full Paid</span>
                       </div>
-
-                      <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex items-center justify-between hover:bg-white/[0.07] transition-all group">
-                        <div className="min-w-0">
-                          <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Phone Number</p>
-                          <p className="text-sm font-black text-[#ce112d]">{selectedOrder.customer_phone}</p>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <a href={`tel:${selectedOrder.customer_phone}`} className="p-2 bg-neutral-900 hover:bg-green-500 text-neutral-500 hover:text-white rounded-xl transition-all">
-                            <ExternalLink size={12} />
-                          </a>
-                          <button onClick={() => copyToClipboard(selectedOrder.customer_phone, "Phone")} className="p-2 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all">
-                            <Copy size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Address */}
-                    <div className="bg-white/5 p-5 rounded-3xl border border-white/5 flex items-start justify-between hover:bg-white/[0.07] transition-all group">
-                      <div className="min-w-0">
-                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1.5 tracking-widest">Delivery Address <span className="text-[#ce112d]">({selectedOrder.delivery_area})</span></p>
-                        <p className="text-xs font-semibold text-neutral-300 leading-relaxed italic">{selectedOrder.customer_address}</p>
-                      </div>
-                      <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="p-2.5 bg-neutral-900 group-hover:bg-[#ce112d] text-neutral-500 group-hover:text-white rounded-xl transition-all shrink-0">
-                        <Copy size={14} />
-                      </button>
-                    </div>
-
-                    {/* Note */}
-                    {selectedOrder.customer_note && (
-                      <div className="bg-yellow-500/5 p-4 rounded-3xl border border-yellow-500/10 flex items-start justify-between">
-                        <div className="min-w-0">
-                          <p className="text-[8px] font-black uppercase text-yellow-500/60 mb-1 tracking-widest">Merchant Note</p>
-                          <p className="text-xs font-bold text-yellow-500/80 leading-relaxed">{selectedOrder.customer_note}</p>
-                        </div>
-                        <button onClick={() => copyToClipboard(selectedOrder.customer_note, "Note")} className="p-2 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500/50 hover:text-white rounded-xl transition-all shrink-0">
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Payment Details */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5">
-                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Delivery Charge</p>
-                        <p className="text-lg font-black text-white italic">৳{selectedOrder.delivery_charge || 0}</p>
-                      </div>
-                      <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
-                        <div className="min-w-0">
-                          <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Sender / Last 4 Digits</p>
-                          <p className="text-lg font-black text-[#ce112d] italic">{selectedOrder.last_four_digits || 'N/A'}</p>
-                        </div>
-                        <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="p-2 bg-neutral-950 group-hover:bg-[#ce112d] text-neutral-600 group-hover:text-white rounded-xl transition-all">
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                    </div>
+                      {selectedOrder.payment_status === 'Fully Paid' && (
+                        <div className="absolute top-0 right-0 p-1 bg-white/20 rounded-bl-xl"><Check size={8} strokeWidth={4} /></div>
+                      )}
+                    </button>
                   </div>
 
-                  {/* Status & Final Actions */}
-                  <div className="space-y-4 pt-2">
-                    <div className="flex gap-4">
-                      <button
-                        onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')}
-                        className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
-                      >
-                        <div className="relative z-10 flex flex-col items-center">
-                          <span className="text-xl font-black italic">৳{selectedOrder.delivery_charge}</span>
-                          <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Delivery Paid</span>
-                        </div>
-                        {selectedOrder.payment_status === 'Advance Paid' && (
-                          <div className="absolute top-0 right-0 p-1 bg-white/20 rounded-bl-xl"><Check size={8} strokeWidth={4} /></div>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')}
-                        className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-green-600 border-green-500 text-white shadow-2xl shadow-green-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-green-500/50 hover:bg-green-950/20'}`}
-                      >
-                        <div className="relative z-10 flex flex-col items-center">
-                          <span className="text-xl font-black italic">৳{selectedOrder.total_amount}</span>
-                          <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Full Paid</span>
-                        </div>
-                        {selectedOrder.payment_status === 'Fully Paid' && (
-                          <div className="absolute top-0 right-0 p-1 bg-white/20 rounded-bl-xl"><Check size={8} strokeWidth={4} /></div>
-                        )}
-                      </button>
+                  <div className={`w-full p-5 rounded-[28px] border-2 flex items-center justify-between font-black uppercase tracking-widest shadow-inner ${selectedOrder.status === 'Delivered' ? 'bg-green-500/5 border-green-500/10 text-green-500' : 'bg-[#ce112d]/5 border-[#ce112d]/10 text-[#ce112d]'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${selectedOrder.status === 'Delivered' ? 'bg-green-500' : 'bg-[#ce112d]'}`} />
+                      <span className="text-[10px] tracking-widest opacity-60">Status</span>
                     </div>
-
-                    <div className={`w-full p-5 rounded-[28px] border-2 flex items-center justify-between font-black uppercase tracking-widest shadow-inner ${selectedOrder.status === 'Delivered' ? 'bg-green-500/5 border-green-500/10 text-green-500' : 'bg-[#ce112d]/5 border-[#ce112d]/10 text-[#ce112d]'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${selectedOrder.status === 'Delivered' ? 'bg-green-500' : 'bg-[#ce112d]'}`} />
-                        <span className="text-[10px] tracking-widest opacity-60">Status</span>
-                      </div>
-                      <span className="text-xl italic transform -skew-x-12">{selectedOrder.status}</span>
-                    </div>
+                    <span className="text-xl italic transform -skew-x-12">{selectedOrder.status}</span>
                   </div>
                 </div>
               </div>
