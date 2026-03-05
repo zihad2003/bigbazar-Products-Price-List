@@ -17,30 +17,30 @@ export const generateMessengerLink = (pageId) => {
 };
 
 export const generateOrderMessage = (product, checkoutData = null) => {
-  let message = `🛍️ *NEW ORDER REQUEST*\n\n`;
-  message += `📌 *Product:* ${product.name}\n`;
-  message += `💰 *Price:* ${product.price} BDT\n`;
+  let message = `--- NEW ORDER REQUEST ---\n\n`;
+  message += `* Product: ${product.name}\n`;
+  message += `* Price: ${product.price} BDT\n`;
 
   if (checkoutData) {
     const deliveryCharge = checkoutData.deliveryArea === 'mirsarai' ? 0 : (checkoutData.deliveryArea === 'chattogram' ? 100 : 150);
-    message += `🚚 *Delivery Charge:* ${deliveryCharge} BDT\n`;
-    message += `💵 *Total Amount:* ${Number(product.price) + deliveryCharge} BDT\n\n`;
-    message += `👤 *CUSTOMER DETAILS*\n`;
-    message += `📝 *Name:* ${checkoutData.name}\n`;
-    message += `📞 *Phone:* ${checkoutData.phone}\n`;
-    message += `📍 *Address:* ${checkoutData.address}\n`;
-    message += `🗺️ *Area:* ${checkoutData.deliveryArea === 'mirsarai' ? 'মীরসরাই (Free)' : (checkoutData.deliveryArea === 'chattogram' ? 'চট্টগ্রাম (100৳)' : 'অন্যান্য (150৳+)')}\n`;
+    message += `* Delivery Charge: ${deliveryCharge} BDT\n`;
+    message += `* Total Amount: ${Number(product.price) + deliveryCharge} BDT\n\n`;
+    message += `-- CUSTOMER DETAILS --\n`;
+    message += `* Name: ${checkoutData.name}\n`;
+    message += `* Phone: ${checkoutData.phone}\n`;
+    message += `* Address: ${checkoutData.address}\n`;
+    message += `* Area: ${checkoutData.deliveryArea === 'mirsarai' ? 'মীরসরাই (Free)' : (checkoutData.deliveryArea === 'chattogram' ? 'চট্টগ্রাম (100৳)' : 'অন্যান্য (150৳+)')}\n`;
   } else {
-    message += `🏷️ *Category:* ${product.category || 'General'}\n`;
+    message += `* Category: ${product.category || 'General'}\n`;
   }
 
   if (product.video_url) {
-    message += `\n🎥 *Video Review:* ${product.video_url}`;
+    message += `\n* Video Review: ${product.video_url}`;
   }
 
   const imageUrl = product.image_url || (product.images && product.images[0]) || product.image;
   if (!product.video_url && imageUrl) {
-    message += `\n🖼️ *Image:* ${imageUrl}`;
+    message += `\n* Image: ${imageUrl}`;
   }
 
   message += `\n\n_Sent via BigBazar Online Store_`;
@@ -49,5 +49,5 @@ export const generateOrderMessage = (product, checkoutData = null) => {
 
 export const generateShareMessage = (product) => {
   const productLink = window.location.href;
-  return `${product.name} এখন Available Big Bazar-এ!\n\nপ্রোডাক্টের প্রাইস জানতে ও অনলাইনে অর্ডার করতে নিচের লিংকে ক্লিক করে ওয়েবসাইট ভিজিট করুন:\n👇 ${productLink}`;
+  return `${product.name} এখন Available Big Bazar-এ!\n\nপ্রোডাক্টের প্রাইস জানতে ও অনলাইনে অর্ডার করতে নিচের লিংকে ক্লিক করে ওয়েবসাইট ভিজিট করুন:\n${productLink}`;
 };
