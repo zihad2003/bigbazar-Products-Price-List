@@ -546,12 +546,12 @@ export default function Admin() {
           </div>
           <nav className="space-y-1.5">
             {[
-              { id: 'orders', icon: <ShoppingBag size={16} />, label: 'Orders', count: orders.filter(o => o.status !== 'Deleted').length },
-              { id: 'deleted', icon: <Archive size={16} />, label: 'Deleted', count: orders.filter(o => o.status === 'Deleted').length },
+              { id: 'orders', icon: <ShoppingBag size={16} />, label: 'Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
+              { id: 'deleted', icon: <Archive size={16} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={16} />, label: 'Reviews', count: reviews.length },
-              { id: 'pending', icon: <Clock size={16} />, label: 'Pending', count: products.filter(p => p.status === 'pending' && !p.is_sold_out).length },
-              { id: 'published', icon: <CheckCircle2 size={16} />, label: 'Published', count: products.filter(p => p.status === 'published' && !p.is_sold_out).length },
-              { id: 'soldout', icon: <AlertCircle size={16} />, label: 'Sold Out', count: products.filter(p => p.is_sold_out).length },
+              { id: 'pending', icon: <Clock size={16} />, label: 'Pending', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
+              { id: 'published', icon: <CheckCircle2 size={16} />, label: 'Published', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
+              { id: 'soldout', icon: <AlertCircle size={16} />, label: 'Sold Out', count: products.filter(p => p && p.is_sold_out).length },
               { id: 'add', icon: <Plus size={16} />, label: 'Add' },
               { id: 'settings', icon: <Settings size={16} />, label: 'Settings' },
             ].map(tab => (
@@ -1714,6 +1714,7 @@ export default function Admin() {
 
             <div className="space-y-4">
               {products.filter(p => {
+                if (!p) return false;
                 const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase());
                 if (activeTab === 'soldout') return p.is_sold_out && matchesSearch;
                 if (activeTab === 'pending' || activeTab === 'published') {
