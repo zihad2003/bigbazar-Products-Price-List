@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
@@ -19,6 +19,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  const fetchControllerRef = useRef(null);
   const [showAnnouncement, setShowAnnouncement] = useState(() => {
     const dismissed = sessionStorage.getItem('bb_announcement_dismissed');
     return !dismissed;
@@ -97,12 +98,22 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     let isMounted = true;
 
     const fetchProducts = async (isFirstPage) => {
+      // Abort previous fetch if it's still running
+      if (fetchControllerRef.current) {
+        fetchControllerRef.current.abort();
+      }
+
       setLoading(true);
       if (isFirstPage) {
+        // Only clear if it's a new category/search (to keep existing visibility during soft refreshes)
         setProducts([]);
         setPage(0);
         setHasMore(true);
       }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      fetchControllerRef.current = controller;
 
       try {
         let query = supabase
@@ -111,9 +122,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           .eq('status', 'published')
           .order('created_at', { ascending: false });
 
-        // Mapping English IDs to DB values (some products have Bengali, some English)
         if (selectedCategory && selectedCategory !== 'All') {
-          // Robust mapping to handle both English and Bengali stored values
           const categoryMaps = {
             'Men': ['Men', 'ছেলেদের'],
             'Women': ['Women', 'মেয়েদের'],
@@ -139,11 +148,12 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         query = query.range(from, to);
 
         const { data, error, count } = await query;
-        if (error) throw error;
 
+        if (controller.signal.aborted) return;
+        if (error) throw error;
         if (!isMounted) return;
 
-        if (currentPage === 0) {
+        if (isFirstPage) {
           setProducts(data || []);
         } else {
           setProducts(prev => {
@@ -153,16 +163,24 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           });
         }
 
+        // Use data.length directly for more accurate hasMore calculation
+        const resultLength = data?.length || 0;
         if (count !== null) {
-          const loadedCount = (currentPage === 0 ? 0 : products.length) + (data?.length || 0);
-          setHasMore(loadedCount < count);
+          const totalLoaded = (isFirstPage ? 0 : products.length) + resultLength;
+          setHasMore(totalLoaded < count);
         } else {
-          setHasMore((data || []).length === PAGE_SIZE);
+          setHasMore(resultLength === PAGE_SIZE);
         }
       } catch (err) {
-        console.error("List fetch error:", err);
+        if (err.name !== 'AbortError') {
+          console.error("List fetch error:", err);
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        clearTimeout(timeoutId);
+        if (isMounted && fetchControllerRef.current === controller) {
+          setLoading(false);
+          fetchControllerRef.current = null;
+        }
       }
     };
 
@@ -176,7 +194,13 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
 
     let isMounted = true;
     const fetchMore = async () => {
+      if (fetchControllerRef.current) fetchControllerRef.current.abort();
+
       setLoading(true);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      fetchControllerRef.current = controller;
+
       try {
         let query = supabase
           .from('products')
@@ -205,6 +229,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         query = query.range(from, to);
 
         const { data, error, count } = await query;
+        if (controller.signal.aborted) return;
         if (error) throw error;
         if (!isMounted) return;
 
@@ -215,15 +240,21 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         });
 
         if (count !== null) {
-          const loadedCount = products.length + (data?.length || 0);
-          setHasMore(loadedCount < count);
+          const totalLoaded = products.length + (data?.length || 0);
+          setHasMore(totalLoaded < count);
         } else {
           setHasMore((data || []).length === PAGE_SIZE);
         }
       } catch (err) {
-        console.error("See more fetch error:", err);
+        if (err.name !== 'AbortError') {
+          console.error("See more fetch error:", err);
+        }
       } finally {
-        if (isMounted) setLoading(false);
+        clearTimeout(timeoutId);
+        if (isMounted && fetchControllerRef.current === controller) {
+          setLoading(false);
+          fetchControllerRef.current = null;
+        }
       }
     };
 
