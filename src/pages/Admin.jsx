@@ -121,14 +121,45 @@ export default function Admin() {
     }
   };
 
-  const toggleAdvancePayment = async (id, currentStatus) => {
+  const togglePaymentStatus = async (order, targetStatus) => {
+    // If targetStatus matches current, reset to Unpaid
+    const nextStatus = order.payment_status === targetStatus ? 'Unpaid' : targetStatus;
+
     const { error } = await supabase
       .from('orders')
-      .update({ is_advance_paid: !currentStatus })
-      .eq('id', id);
+      .update({
+        payment_status: nextStatus,
+        is_advance_paid: nextStatus !== 'Unpaid'
+      })
+      .eq('id', order.id);
 
-    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-    else fetchOrders();
+    if (error) {
+      // Fallback for older schemas without payment_status column
+      const { error: fallbackError } = await supabase
+        .from('orders')
+        .update({ is_advance_paid: nextStatus !== 'Unpaid' })
+        .eq('id', order.id);
+
+      if (fallbackError) {
+        setAlertModal({ isOpen: true, title: 'Error', message: fallbackError.message, type: 'error' });
+      } else {
+        fetchOrders();
+        if (selectedOrder?.id === order.id) {
+          setSelectedOrder({ ...selectedOrder, is_advance_paid: nextStatus !== 'Unpaid' });
+        }
+      }
+    } else {
+      fetchOrders();
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextStatus !== 'Unpaid' });
+      }
+    }
+  };
+
+  const toggleAdvancePayment = async (id, currentStatus) => {
+    // Kept for backward compatibility if needed elsewhere, but redirecting to new logic
+    const order = orders.find(o => o.id === id);
+    if (order) togglePaymentStatus(order, 'Advance Paid');
   };
 
   // Soft delete — moves to 'Deleted' status instead of permanent delete
@@ -1382,14 +1413,22 @@ export default function Admin() {
                               <span className={`px-2 py-1 rounded-md text-[10px] font-black w-max ${o.last_four_digits === 'COD' ? 'bg-green-500/20 text-green-500 border border-green-500/10' : 'bg-blue-500/20 text-blue-500 border border-blue-500/10'}`}>
                                 {o.last_four_digits}
                               </span>
-                              <button
-                                onClick={() => toggleAdvancePayment(o.id, o.is_advance_paid)}
-                                className={`px-2 py-1 rounded-full text-[8px] font-black w-max uppercase tracking-tighter transition-all flex items-center gap-1 ${o.is_advance_paid ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-800 text-neutral-500 border border-white/5 opacity-50 hover:opacity-100'}`}
-                                title={o.is_advance_paid ? "Click to Unmark" : "Click to Mark as Paid"}
-                              >
-                                {o.is_advance_paid ? <Check size={8} /> : null}
-                                {o.is_advance_paid ? 'Adv Paid' : 'Mark Paid'}
-                              </button>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); togglePaymentStatus(o, 'Advance Paid'); }}
+                                  className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-tighter transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 text-white' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/20 text-orange-500 border border-orange-500/10' : 'bg-neutral-800 text-neutral-500'}`}
+                                  title="Delivery Paid"
+                                >
+                                  Deliv
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); togglePaymentStatus(o, 'Fully Paid'); }}
+                                  className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-tighter transition-all ${o.payment_status === 'Fully Paid' ? 'bg-green-500 text-white' : 'bg-neutral-800 text-neutral-500'}`}
+                                  title="Fully Paid"
+                                >
+                                  Full
+                                </button>
+                              </div>
                             </div>
                           </td>
                           <td className="py-6 pr-4">
@@ -1471,21 +1510,24 @@ export default function Admin() {
                         <p className="text-[9px] text-[#ce112d] font-black">৳{o.total_amount}</p>
                         <p className="text-[8px] text-neutral-500 truncate leading-tight">{o.delivery_area} • {o.customer_phone}</p>
                         <div className="flex flex-wrap items-center gap-2">
-                          {o.is_advance_paid ? (
-                            <span className="text-[6px] font-black bg-green-500 text-white px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-lg shadow-green-500/20">
-                              <Check size={6} /> Paid
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleAdvancePayment(o.id, o.is_advance_paid);
-                              }}
-                              className="text-[6px] font-black bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded uppercase border border-white/5"
-                            >
-                              Mark Paid
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePaymentStatus(o, 'Advance Paid');
+                            }}
+                            className={`text-[6px] font-black px-1.5 py-0.5 rounded uppercase border transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/20 text-orange-500 border-orange-500/20' : 'bg-neutral-800 text-neutral-500 border-white/5'}`}
+                          >
+                            Deliv Paid
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePaymentStatus(o, 'Fully Paid');
+                            }}
+                            className={`text-[6px] font-black px-1.5 py-0.5 rounded uppercase border transition-all ${o.payment_status === 'Fully Paid' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-800 text-neutral-500 border-white/5'}`}
+                          >
+                            Full Paid
+                          </button>
                           {o.size && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">S:{o.size}</span>}
                           {o.color && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">{o.color}</span>}
                         </div>
@@ -1907,20 +1949,26 @@ export default function Admin() {
               </div>
 
               <div className="pt-2">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      toggleAdvancePayment(selectedOrder.id, selectedOrder.is_advance_paid);
-                      setSelectedOrder({ ...selectedOrder, is_advance_paid: !selectedOrder.is_advance_paid });
-                    }}
-                    className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center transition-all ${selectedOrder.is_advance_paid ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
-                  >
-                    <span className="text-[14px] font-black italic">৳{selectedOrder.total_amount}</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest">{selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark as Paid'}</span>
-                  </button>
-                  <div className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center font-black uppercase tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')}
+                      className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center transition-all ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
+                    >
+                      <span className="text-[14px] font-black italic">৳{selectedOrder.delivery_charge}</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest">Delivery Paid</span>
+                    </button>
+                    <button
+                      onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')}
+                      className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center transition-all ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
+                    >
+                      <span className="text-[14px] font-black italic">৳{selectedOrder.total_amount}</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest">Full Paid</span>
+                    </button>
+                  </div>
+                  <div className={`w-full p-4 rounded-2xl border flex items-center justify-between font-black uppercase tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
+                    <span className="text-[10px]">Current Status</span>
                     <span className="text-[14px] italic">{selectedOrder.status}</span>
-                    <span className="text-[8px]">Status</span>
                   </div>
                 </div>
               </div>
