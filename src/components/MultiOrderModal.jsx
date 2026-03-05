@@ -69,11 +69,11 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             return;
         }
         if (!formData.district) {
-            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "⚠️ Please select your district.");
+            setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
             return;
         }
         if (needsUpazila && !formData.upazila) {
-            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "⚠️ Please select your upazila.");
+            setError(language === 'bn' ? "অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "Please select your upazila.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {

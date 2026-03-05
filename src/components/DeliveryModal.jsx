@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star, AlertTriangle, Search } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -83,11 +83,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             return;
         }
         if (!formData.district) {
-            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "⚠️ Please select your district.");
+            setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
             return;
         }
         if (needsUpazila && !formData.upazila) {
-            setError(language === 'bn' ? "⚠️ অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "⚠️ Please select your upazila.");
+            setError(language === 'bn' ? "অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "Please select your upazila.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
@@ -101,7 +101,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
         // Check stock
         if (product.stock_count !== null && product.stock_count !== undefined && product.stock_count <= 0) {
-            setError(language === 'bn' ? "⚠️ দুঃখিত, এই পণ্যটি স্টকে নেই।" : "⚠️ Sorry, this product is out of stock.");
+            setError(language === 'bn' ? "দুঃখিত, এই পণ্যটি স্টকে নেই।" : "Sorry, this product is out of stock.");
             return;
         }
 
@@ -261,8 +261,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 </div>
                             </div>
 
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-4 group">
-                                🔍 {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track order updates from the "Track Order" button in the menu.'}
+                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-4 group flex items-start gap-1.5">
+                                <Search size={12} className="shrink-0 mt-0.5" /> {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track order updates from the "Track Order" button in the menu.'}
                             </p>
                         </div>
 

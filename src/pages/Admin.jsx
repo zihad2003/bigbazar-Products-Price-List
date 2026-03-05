@@ -6,6 +6,7 @@ import {
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu
 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { formatColorName } from '../utils/colorNames';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -809,7 +810,7 @@ export default function Admin() {
                       }}
                       className="px-4 py-2 rounded-xl text-[11px] font-black uppercase transition-all border border-dashed border-white/10 text-neutral-500 hover:border-[#ce112d]/50 hover:text-[#ce112d]"
                     >
-                      ✏️ Custom
+                      <span className="flex items-center gap-1"><Pencil size={11} /> Custom</span>
                     </button>
                   </div>
 
@@ -1104,9 +1105,9 @@ export default function Admin() {
                   {/* Add New Color — Pick hex first, auto-suggest name */}
                   <div className="p-4 bg-white/5 border border-dashed border-white/10 rounded-2xl space-y-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest">➕ Add New Color</p>
+                      <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest flex items-center gap-1.5"><Plus size={12} /> Add New Color</p>
                       {form.images?.length > 0 && (
-                        <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest">Sample from photos below 👇</p>
+                        <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest flex items-center gap-1">Sample from photos below <ChevronDown size={10} /></p>
                       )}
                     </div>
 
@@ -1367,7 +1368,7 @@ export default function Admin() {
                               title="Click to add/edit note"
                             >
                               <p className={`text-[10px] font-bold leading-relaxed line-clamp-2 italic ${o.customer_note ? 'text-neutral-300' : 'text-neutral-700'}`} title={o.customer_note}>
-                                {o.customer_note || "➕ Add Note"}
+                                {o.customer_note || "Add Note"}
                               </p>
                             </button>
                           </td>
@@ -1474,7 +1475,7 @@ export default function Admin() {
                               onClick={() => updateOrderNote(o.id, o.customer_note)}
                               className="text-[9px] font-bold text-neutral-400 italic truncate max-w-[100px]"
                             >
-                              {o.customer_note || "➕ Add Note"}
+                              {o.customer_note || "Add Note"}
                             </button>
                           </div>
                         </div>
