@@ -235,19 +235,19 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 )}
                 <div className="h-px flex-1" style={{ backgroundColor: 'var(--border-color)' }}></div>
               </div>
-              <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight tracking-tighter mb-3 md:mb-4" style={{ color: 'var(--text-primary)' }}>{product.name}</h1>
-              <div className="flex items-center gap-4 md:gap-6 mt-4">
+              <h1 className="text-2xl md:text-5xl font-black italic uppercase leading-tight tracking-tighter mb-4 md:mb-6 pr-12 md:pr-0" style={{ color: 'var(--text-primary)' }}>{product.name}</h1>
+              <div className="flex flex-wrap items-center gap-4 md:gap-7 mt-4 md:mt-6">
                 <button
                   onClick={handleMainOrder}
                   disabled={product.is_sold_out}
-                  className={`flex-shrink-0 px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[11px] md:text-xs transition-all active:scale-95 shadow-[0_10px_30px_rgba(206,17,45,0.2)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.05]'}`}
+                  className={`flex-shrink-0 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] md:text-xs transition-all active:scale-95 shadow-[0_10px_30px_rgba(206,17,45,0.2)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.05]'}`}
                 >
                   {product.is_sold_out ? t('sold_out') : t('buy_now')}
                 </button>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl md:text-5xl font-black text-[#ce112d] tracking-tighter">৳{price}</span>
+                <div className="flex items-baseline gap-2.5">
+                  <span className="text-3xl md:text-6xl font-black text-[#ce112d] tracking-tighter">৳{price}</span>
                   {hasDiscount && (
-                    <span className="text-base md:text-xl text-neutral-600 line-through font-bold">৳{originalPrice}</span>
+                    <span className="text-base md:text-2xl text-neutral-600 line-through font-bold opacity-60">৳{originalPrice}</span>
                   )}
                 </div>
               </div>
