@@ -92,7 +92,7 @@ function PublicLayout() {
       />
 
       {/* Main Content */}
-      <main className="flex-grow pt-48 md:pt-56 pb-24 md:pb-0">
+      <main className="flex-grow pt-32 md:pt-36 pb-24 md:pb-0">
         <Home
           selectedCategory={category}
           searchQuery={searchQuery}
