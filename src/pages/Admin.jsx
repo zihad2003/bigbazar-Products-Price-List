@@ -4,9 +4,9 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu, Copy, ExternalLink
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu, Copy, ExternalLink,
+  Pencil, ChevronDown
 } from 'lucide-react';
-import { Pencil } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { formatColorName } from '../utils/colorNames';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -1309,19 +1309,19 @@ export default function Admin() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
                 <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Total Active Revenue</p>
-                <p className="text-2xl font-black text-[#ce112d]">৳{orders.filter(o => o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}</p>
+                <p className="text-2xl font-black text-[#ce112d]">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0)}</p>
               </div>
               <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
                 <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Pending Orders</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-2xl font-black text-white">{orders.filter(o => o.status === 'Pending').length}</p>
+                  <p className="text-2xl font-black text-white">{orders.filter(o => o && o.status === 'Pending').length}</p>
                   <Clock size={20} className="text-yellow-500 mb-1 opacity-50" />
                 </div>
               </div>
               <div className="bg-neutral-950 border border-white/5 p-6 rounded-3xl space-y-2">
                 <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Completed Items</p>
                 <div className="flex items-end justify-between">
-                  <p className="text-2xl font-black text-white">{orders.filter(o => o.status === 'Delivered').length}</p>
+                  <p className="text-2xl font-black text-white">{orders.filter(o => o && o.status === 'Delivered').length}</p>
                   <CheckCircle2 size={20} className="text-green-500 mb-1 opacity-50" />
                 </div>
               </div>
