@@ -271,7 +271,7 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                       className="text-[10px] md:text-[11px] font-black uppercase tracking-widest"
                       style={{ color: '#ce112d' }}
                     >
-                      📢 {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
+                      {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
                     </p>
                     <p
                       className="text-xs md:text-sm font-semibold leading-relaxed"
