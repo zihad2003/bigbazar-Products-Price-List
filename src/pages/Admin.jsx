@@ -1470,8 +1470,22 @@ export default function Admin() {
                         </div>
                         <p className="text-[9px] text-[#ce112d] font-black">৳{o.total_amount}</p>
                         <p className="text-[8px] text-neutral-500 truncate leading-tight">{o.delivery_area} • {o.customer_phone}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {o.is_advance_paid && <span className="text-[6px] font-black bg-green-500/20 text-green-500 px-1 py-0.5 rounded uppercase">Paid</span>}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {o.is_advance_paid ? (
+                            <span className="text-[6px] font-black bg-green-500 text-white px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shadow-lg shadow-green-500/20">
+                              <Check size={6} /> Paid
+                            </span>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleAdvancePayment(o.id, o.is_advance_paid);
+                              }}
+                              className="text-[6px] font-black bg-neutral-800 text-neutral-500 px-1.5 py-0.5 rounded uppercase border border-white/5"
+                            >
+                              Mark Paid
+                            </button>
+                          )}
                           {o.size && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">S:{o.size}</span>}
                           {o.color && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">{o.color}</span>}
                         </div>
@@ -1875,9 +1889,15 @@ export default function Admin() {
 
               <div className="pt-2">
                 <div className="flex items-center gap-3">
-                  <div className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest ${selectedOrder.is_advance_paid ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-neutral-900 border-white/10 text-neutral-500'}`}>
-                    {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Payment: ' + selectedOrder.last_four_digits}
-                  </div>
+                  <button
+                    onClick={() => {
+                      toggleAdvancePayment(selectedOrder.id, selectedOrder.is_advance_paid);
+                      setSelectedOrder({ ...selectedOrder, is_advance_paid: !selectedOrder.is_advance_paid });
+                    }}
+                    className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest transition-all ${selectedOrder.is_advance_paid ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
+                  >
+                    {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark as Paid'}
+                  </button>
                   <div className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
                     Status: {selectedOrder.status}
                   </div>
