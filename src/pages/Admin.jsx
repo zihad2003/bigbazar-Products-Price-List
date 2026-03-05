@@ -518,8 +518,9 @@ export default function Admin() {
               { id: 'orders', icon: <ShoppingBag size={16} />, label: 'Orders', count: orders.filter(o => o.status !== 'Deleted').length },
               { id: 'deleted', icon: <Archive size={16} />, label: 'Deleted', count: orders.filter(o => o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={16} />, label: 'Reviews', count: reviews.length },
-              { id: 'pending', icon: <Clock size={16} />, label: 'Pending' },
-              { id: 'published', icon: <CheckCircle2 size={16} />, label: 'Published' },
+              { id: 'pending', icon: <Clock size={16} />, label: 'Pending', count: products.filter(p => p.status === 'pending' && !p.is_sold_out).length },
+              { id: 'published', icon: <CheckCircle2 size={16} />, label: 'Published', count: products.filter(p => p.status === 'published' && !p.is_sold_out).length },
+              { id: 'soldout', icon: <AlertCircle size={16} />, label: 'Sold Out', count: products.filter(p => p.is_sold_out).length },
               { id: 'add', icon: <Plus size={16} />, label: 'Add' },
               { id: 'settings', icon: <Settings size={16} />, label: 'Settings' },
             ].map(tab => (
@@ -1650,8 +1651,15 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              {products.filter(p => p.status === activeTab && p.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(p => {
+            <div className="space-y-4">
+              {products.filter(p => {
+                const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase());
+                if (activeTab === 'soldout') return p.is_sold_out && matchesSearch;
+                if (activeTab === 'pending' || activeTab === 'published') {
+                  return p.status === activeTab && !p.is_sold_out && matchesSearch;
+                }
+                return false;
+              }).map(p => {
                 let displayImage = p.image_url || p.images?.[0];
                 if (!displayImage && p.video_url) {
                   const match = p.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
@@ -1673,7 +1681,12 @@ export default function Admin() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs sm:text-sm font-bold truncate">{p.name}</h4>
-                        <span className="text-[#ce112d] text-xs font-black shrink-0">৳{p.price}</span>
+                        <div className="flex gap-1.5 items-center">
+                          <span className="text-[#ce112d] text-xs font-black shrink-0">৳{p.price}</span>
+                          <span className={`text-[6px] px-1 py-0.5 rounded-[4px] font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}`}>
+                            {p.status === 'published' ? 'Live' : 'Draft'}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-1">
                         {p.serial_no && <span className="text-[7px] font-bold text-neutral-600">#{p.serial_no}</span>}
@@ -1687,15 +1700,37 @@ export default function Admin() {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button onClick={() => startEdit(p)} className="p-2 rounded-lg bg-white/5 hover:bg-[#ce112d] transition-all" title="Edit"><Edit size={14} /></button>
-                      {activeTab === 'pending' && (
-                        <button onClick={() => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)} className="p-2 rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all" title="Publish"><CheckCircle2 size={14} /></button>
+                      {(activeTab === 'pending' || (activeTab === 'soldout' && p.status === 'pending')) && (
+                        <button
+                          onClick={() => setConfirmation({
+                            isOpen: true,
+                            title: 'Publish Product',
+                            message: 'Are you sure you want to Publish this product to the main site?',
+                            onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
+                          })}
+                          className="p-2 rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all"
+                          title="Publish"
+                        >
+                          <CheckCircle2 size={14} />
+                        </button>
                       )}
-                      {activeTab === 'published' && (
-                        <button onClick={() => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)} className="p-2 rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all" title="Unpublish"><Clock size={14} /></button>
+                      {(activeTab === 'published' || (activeTab === 'soldout' && p.status === 'published')) && (
+                        <button
+                          onClick={() => setConfirmation({
+                            isOpen: true,
+                            title: 'Unpublish Product',
+                            message: 'Are you sure you want to move this product back to Pending/Drafts?',
+                            onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
+                          })}
+                          className="p-2 rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all"
+                          title="Unpublish"
+                        >
+                          <Clock size={14} />
+                        </button>
                       )}
                       <button
                         onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
-                        className={`p-2 rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
+                        className={`p-2 rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/40' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
                         title={p.is_sold_out ? 'Mark Available' : 'Mark Sold Out'}
                       ><ShoppingBag size={14} /></button>
                       <button onClick={() => deleteProduct(p.id)} className="p-2 rounded-lg bg-white/5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 transition-all" title="Delete"><Trash2 size={14} /></button>
