@@ -4,7 +4,7 @@ import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, Menu, Copy, ExternalLink
 } from 'lucide-react';
 import { Pencil } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
@@ -31,6 +31,21 @@ export default function Admin() {
   const [siteTheme, setSiteTheme] = useState('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const copyToClipboard = (text, label) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setAlertModal({
+      isOpen: true,
+      title: "Copied!",
+      message: `${label} copied to clipboard.`,
+      type: "success"
+    });
+    setTimeout(() => {
+      setAlertModal(prev => ({ ...prev, isOpen: false }));
+    }, 1200);
+  };
 
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -1309,7 +1324,11 @@ export default function Admin() {
                       }
 
                       return (
-                        <tr key={o.id} className="group hover:bg-white/[0.02] transition-colors">
+                        <tr
+                          key={o.id}
+                          onClick={() => setSelectedOrder(o)}
+                          className="group hover:bg-white/[0.02] transition-colors cursor-pointer"
+                        >
                           <td className="py-6 pr-4 text-xs font-bold text-neutral-400">
                             {new Date(o.created_at).toLocaleDateString()}<br />
                             <span className="text-[10px] opacity-50">{new Date(o.created_at).toLocaleTimeString()}</span>
@@ -1423,7 +1442,11 @@ export default function Admin() {
                   let productThumb = product?.image_url || product?.images?.[0];
 
                   return (
-                    <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-3 flex gap-3 items-start relative hover:border-[#ce112d]/30 transition-all">
+                    <div
+                      key={o.id}
+                      onClick={() => setSelectedOrder(o)}
+                      className="bg-neutral-950 border border-white/5 rounded-2xl p-3 flex gap-3 items-start relative hover:border-[#ce112d]/30 transition-all cursor-pointer"
+                    >
                       <div className="w-14 h-20 bg-neutral-900 rounded-lg overflow-hidden shrink-0 relative">
                         {productThumb && <img src={productThumb} className="w-full h-full object-cover" alt="" />}
                         {product?.serial_no && (
@@ -1704,7 +1727,6 @@ export default function Admin() {
           </div>
         )
       }
-      {/* Alert Modal */}
       <AlertModal
         isOpen={alertModal.isOpen}
         onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
@@ -1712,6 +1734,112 @@ export default function Admin() {
         message={alertModal.message}
         type={alertModal.type}
       />
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setSelectedOrder(null)}>
+          <div className="relative w-full max-w-lg bg-neutral-950 rounded-[32px] overflow-hidden shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="h-1 bg-gradient-to-r from-transparent via-[#ce112d] to-transparent opacity-50" />
+
+            <div className="p-8 space-y-8">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-black italic uppercase">Order <span className="text-[#ce112d]">Details</span></h3>
+                  <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">
+                    {new Date(selectedOrder.created_at).toLocaleDateString('bn-BD')} • {new Date(selectedOrder.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button onClick={() => setSelectedOrder(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all">
+                  <X size={20} className="text-neutral-400" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {/* Product Section */}
+                <div className="flex gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden shrink-0 border border-white/10">
+                    {(() => {
+                      const p = products.find(pr => pr.id === selectedOrder.product_id);
+                      const thumb = p?.image_url || p?.images?.[0];
+                      return thumb ? <img src={thumb} className="w-full h-full object-cover" /> : <ImageIcon size={24} className="m-auto text-neutral-800" />;
+                    })()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-white">{selectedOrder.product_name}</p>
+                    <div className="flex gap-2 mt-1">
+                      {selectedOrder.size && <span className="text-[8px] font-black bg-[#ce112d]/10 text-[#ce112d] px-1.5 py-0.5 rounded uppercase">Size: {selectedOrder.size}</span>}
+                      {selectedOrder.color && <span className="text-[8px] font-black bg-white/10 text-white px-1.5 py-0.5 rounded uppercase">Color: {selectedOrder.color}</span>}
+                    </div>
+                    <p className="text-[#ce112d] font-black text-xs mt-2">৳{selectedOrder.total_amount}</p>
+                  </div>
+                </div>
+
+                {/* Customer Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group">
+                    <div className="min-w-0">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Customer Name</p>
+                      <p className="text-sm font-bold text-white truncate">{selectedOrder.customer_name}</p>
+                    </div>
+                    <button onClick={() => copyToClipboard(selectedOrder.customer_name, "Name")} className="p-2.5 bg-white/5 hover:bg-[#ce112d] rounded-lg transition-all text-neutral-500 hover:text-white">
+                      <Copy size={14} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group">
+                    <div className="min-w-0">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Phone Number</p>
+                      <p className="text-sm font-black text-[#ce112d]">{selectedOrder.customer_phone}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <a href={`tel:${selectedOrder.customer_phone}`} className="p-2.5 bg-white/5 hover:bg-green-500 rounded-lg transition-all text-neutral-500 hover:text-white">
+                        <ExternalLink size={14} />
+                      </a>
+                      <button onClick={() => copyToClipboard(selectedOrder.customer_phone, "Phone")} className="p-2.5 bg-white/5 hover:bg-[#ce112d] rounded-lg transition-all text-neutral-500 hover:text-white">
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group">
+                    <div className="min-w-0 pr-4">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Delivery Address ({selectedOrder.delivery_area})</p>
+                      <p className="text-xs font-medium text-neutral-300 leading-relaxed">{selectedOrder.customer_address}</p>
+                    </div>
+                    <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="p-2.5 bg-white/5 hover:bg-[#ce112d] rounded-lg transition-all text-neutral-500 hover:text-white shrink-0 mt-1">
+                      <Copy size={14} />
+                    </button>
+                  </div>
+
+                  {selectedOrder.customer_note && (
+                    <div className="flex items-start justify-between p-4 bg-yellow-500/5 rounded-2xl border border-yellow-500/10">
+                      <div className="min-w-0 pr-4">
+                        <p className="text-[8px] font-black uppercase text-yellow-500/60 mb-1 tracking-widest">Customer Note</p>
+                        <p className="text-xs font-medium text-yellow-500/80 leading-relaxed italic">{selectedOrder.customer_note}</p>
+                      </div>
+                      <button onClick={() => copyToClipboard(selectedOrder.customer_note, "Note")} className="p-2.5 bg-yellow-500/10 hover:bg-yellow-500 rounded-lg transition-all text-yellow-500/50 hover:text-white shrink-0 mt-1">
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <div className="flex items-center gap-3">
+                  <div className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest ${selectedOrder.is_advance_paid ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-neutral-900 border-white/10 text-neutral-500'}`}>
+                    {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Payment: ' + selectedOrder.last_four_digits}
+                  </div>
+                  <div className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
+                    Status: {selectedOrder.status}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmation.isOpen}
