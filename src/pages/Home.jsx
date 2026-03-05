@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import BannerSlider from '../components/BannerSlider';
-import { Search, X, MessageSquare } from 'lucide-react';
+import { Search, X, MessageSquare, Globe } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -261,19 +261,29 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                 }}
               >
                 <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
-                <div className="px-4 py-3 flex items-center gap-3">
+                <div className="px-4 md:px-5 py-4 flex items-start gap-3">
                   <div
-                    className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
                     style={{ backgroundColor: 'rgba(206, 17, 45, 0.1)' }}
                   >
-                    <MessageSquare size={15} className="text-[#ce112d]" />
+                    <MessageSquare size={16} className="text-[#ce112d]" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] md:text-xs font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
-                      {language === 'bn'
-                        ? <>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন — <strong className="text-[#ce112d]">দ্রুত ও সহজ!</strong></>
-                        : <>Order directly from the website — <strong className="text-[#ce112d]">Fast & Easy!</strong></>}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <p className="text-[10px] md:text-[11px] font-extrabold uppercase tracking-widest" style={{ color: '#ce112d' }}>
+                      {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
                     </p>
+                    <p className="text-xs md:text-sm font-semibold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                      {language === 'bn' ? <>প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!</> : <>Dear customer, thanks for staying with <strong className="text-[#ce112d]">Big Bazar</strong>!</>}
+                    </p>
+                    <p className="text-[11px] md:text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      {language === 'bn' ? <>বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong></> : <>Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please <strong style={{ color: 'var(--text-primary)' }}>order directly from the website.</strong></>}
+                    </p>
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <Globe size={11} className="text-[#ce112d]" />
+                      <span className="text-[9px] md:text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                        {language === 'bn' ? 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!' : 'Order from Website — Fast & Easy!'}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={dismissAnnouncement}
