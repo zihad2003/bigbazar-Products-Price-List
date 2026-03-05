@@ -628,7 +628,7 @@ export default function Admin() {
 
           </div>
         ) : activeTab === 'add' ? (
-          <form onSubmit={handleProductSubmit} className="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
+          <form onSubmit={handleProductSubmit} className="max-w-2xl space-y-8">
             <div className="space-y-8">
               <h2 className="text-3xl font-black italic uppercase">{editingProduct ? 'Edit' : 'New'} <span className="text-[#ce112d]">Product</span></h2>
               <div className="space-y-4">
@@ -669,7 +669,7 @@ export default function Admin() {
                 </div>
               )}
             </div>
-            <div className="space-y-6 pt-12">
+            <div className="space-y-6">
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Price</label>
                 <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
@@ -735,13 +735,24 @@ export default function Admin() {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Category</label>
-                <select value={form.category} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl text-white font-bold" onChange={e => setForm({ ...form, category: e.target.value })}>
-                  <option>Men</option>
-                  <option>Women</option>
-                  <option>Kids (Boys)</option>
-                  <option>Kids (Girls)</option>
-                </select>
+                <label className="text-[10px] font-black uppercase text-neutral-500 mb-3 block tracking-widest">Category</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'Men', label: 'Men' },
+                    { id: 'Women', label: 'Women' },
+                    { id: 'Kids (Boys)', label: 'Boys' },
+                    { id: 'Kids (Girls)', label: 'Girls' }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setForm({ ...form, category: cat.id })}
+                      className={`py-3 px-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${form.category === cat.id ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-lg shadow-red-900/20' : 'bg-neutral-900 border-white/5 text-neutral-500 hover:border-white/10 hover:text-white'}`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Variants Section */}
@@ -1402,7 +1413,7 @@ export default function Admin() {
             </div>
 
             {/* Mobile Cards View */}
-            <div className="lg:hidden space-y-4 pb-20">
+            <div className="lg:hidden space-y-2 pb-20">
               {(() => {
                 const productMap = {};
                 products.forEach(p => productMap[p.id] = p);
@@ -1412,104 +1423,44 @@ export default function Admin() {
                   let productThumb = product?.image_url || product?.images?.[0];
 
                   return (
-                    <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-[24px] overflow-hidden p-5 space-y-4">
-                      {/* Header: Date & Status */}
-                      <div className="flex justify-between items-start">
-                        <div className="text-[10px] font-black uppercase text-neutral-500 tracking-wider">
-                          {new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}
-                        </div>
-                        <select
-                          value={o.status}
-                          onChange={(e) => updateOrderStatus(o.id, e.target.value)}
-                          className={`bg-neutral-900 border border-white/10 rounded-xl px-3 py-1.5 text-[9px] font-black uppercase outline-none transition-all ${o.status === 'Pending' ? 'text-yellow-500' :
-                            o.status === 'Shipped' ? 'text-blue-500' :
-                              o.status === 'Delivered' ? 'text-green-500' :
-                                'text-red-500'
-                            }`}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Shipped">Shipped</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Canceled">Canceled</option>
-                        </select>
+                    <div key={o.id} className="bg-neutral-950 border border-white/5 rounded-2xl p-3 flex gap-3 items-start relative hover:border-[#ce112d]/30 transition-all">
+                      <div className="w-14 h-20 bg-neutral-900 rounded-lg overflow-hidden shrink-0 relative">
+                        {productThumb && <img src={productThumb} className="w-full h-full object-cover" alt="" />}
+                        {product?.serial_no && (
+                          <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[6px] font-black px-1 rounded-bl">#{product.serial_no}</div>
+                        )}
                       </div>
-
-                      {/* Product Section */}
-                      <div className="flex gap-4 p-3 bg-white/[0.02] border border-white/5 rounded-2xl">
-                        <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden flex-shrink-0 relative">
-                          {productThumb ? (
-                            <img src={productThumb} className="w-full h-full object-cover" alt="" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
-                              <ImageIcon size={20} />
-                            </div>
-                          )}
-                          {product?.serial_no && (
-                            <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[7px] font-black px-1 rounded-bl">#{product.serial_no}</div>
-                          )}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-[10px] font-black text-white truncate pr-2">{o.customer_name}</p>
+                          <select
+                            value={o.status}
+                            onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                            className={`bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-black uppercase outline-none ${o.status === 'Pending' ? 'text-yellow-500' : o.status === 'Shipped' ? 'text-blue-500' : o.status === 'Delivered' ? 'text-green-500' : 'text-red-500'}`}
+                          >
+                            <option value="Pending">Pend</option>
+                            <option value="Shipped">Ship</option>
+                            <option value="Delivered">Deliv</option>
+                            <option value="Canceled">Canc</option>
+                          </select>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-black text-white leading-tight mb-1">{o.product_name}</p>
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {o.size && <span className="text-[7px] font-black bg-[#ce112d]/10 text-[#ce112d] px-1.5 py-0.5 rounded border border-[#ce112d]/10 uppercase">SIZE: {o.size}</span>}
-                            {o.color && <span className="text-[7px] font-black bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white uppercase">COLOR: {o.color}</span>}
-                          </div>
-                          <p className="text-sm font-black text-[#ce112d] mt-2">৳{o.total_amount}</p>
+                        <p className="text-[9px] text-[#ce112d] font-black">৳{o.total_amount}</p>
+                        <p className="text-[8px] text-neutral-500 truncate leading-tight">{o.delivery_area} • {o.customer_phone}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {o.is_advance_paid && <span className="text-[6px] font-black bg-green-500/20 text-green-500 px-1 py-0.5 rounded uppercase">Paid</span>}
+                          {o.size && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">S:{o.size}</span>}
+                          {o.color && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">{o.color}</span>}
                         </div>
                       </div>
-
-                      {/* Customer Info */}
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-neutral-600">গ্রাহক</p>
-                          <p className="font-black text-white">{o.customer_name}</p>
-                          <p className="text-[#ce112d] font-black">{o.customer_phone}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-neutral-600">পেমেন্ট & নোট</p>
-                          <div className="flex flex-col gap-1.5">
-                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black w-max ${o.last_four_digits === 'COD' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                              {o.last_four_digits}
-                            </span>
-                            <button
-                              onClick={() => updateOrderNote(o.id, o.customer_note)}
-                              className="text-[9px] font-bold text-neutral-400 italic truncate max-w-[100px]"
-                            >
-                              {o.customer_note || "Add Note"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Address */}
-                      <div className="p-3 bg-neutral-900/50 rounded-xl space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[8px] font-black uppercase text-[#ce112d] tracking-widest">{o.delivery_area}</span>
-                          <span className="text-[8px] font-bold text-neutral-600 tracking-widest">CHARGE: ৳{o.delivery_charge}</span>
-                        </div>
-                        <p className="text-[10px] text-neutral-400 font-medium leading-relaxed">{o.customer_address}</p>
-                      </div>
-
-                      {/* Footer Actions */}
-                      <div className="flex gap-2 pt-2 border-t border-white/5">
-                        <button
-                          onClick={() => toggleAdvancePayment(o.id, o.is_advance_paid)}
-                          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${o.is_advance_paid ? 'bg-green-500 text-white' : 'bg-white/5 text-neutral-500 border border-white/5'}`}
-                        >
-                          {o.is_advance_paid ? <Check size={12} /> : null}
-                          {o.is_advance_paid ? 'ADV PAID' : 'MARK PAID'}
-                        </button>
-                        <button onClick={() => deleteOrder(o.id)} className="px-4 bg-red-500/10 text-red-500 rounded-xl transition-all border border-red-500/10">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      <button onClick={() => deleteOrder(o.id)} className="absolute bottom-3 right-3 p-1.5 text-neutral-700 hover:text-red-500 transition-colors">
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   );
                 });
               })()}
             </div>
-
-            {orders.length === 0 && !loading && (
+            {orders.filter(o => o.status !== 'Deleted').length === 0 && !loading && (
               <div className="py-20 text-center space-y-4">
                 <ShoppingBag className="mx-auto text-neutral-800" size={48} />
                 <p className="text-neutral-500 text-sm font-bold">No orders found.</p>
@@ -1649,7 +1600,7 @@ export default function Admin() {
                       <p className="text-sm text-neutral-300 leading-relaxed italic">"{r.comment}"</p>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <p className="text-[10px] text-neutral-500 font-bold">👤 {r.customer_name || 'Anonymous'}</p>
+                      <p className="text-[10px] text-neutral-500 font-bold">{r.customer_name || 'Anonymous'}</p>
                       {r.product_name && <p className="text-[9px] text-neutral-600 font-bold uppercase truncate max-w-[120px]">{r.product_name}</p>}
                     </div>
                   </div>
@@ -1676,107 +1627,83 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="space-y-2">
               {products.filter(p => p.status === activeTab && p.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(p => {
-                // Dynamic thumbnail logic to ensure preview shows in Admin
                 let displayImage = p.image_url || p.images?.[0];
                 if (!displayImage && p.video_url) {
                   const match = p.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
                   const id = match ? match[2] : null;
                   if (id) displayImage = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
                 }
-                // Fallback
                 if (!displayImage || displayImage.includes('via.placeholder')) {
                   displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
                 }
 
                 return (
-                  <div key={p.id} className="group bg-neutral-950 border border-white/5 rounded-3xl overflow-hidden hover:border-[#ce112d]/40 transition-all">
-                    <div className="aspect-[9/16] bg-black relative">
-                      <img src={displayImage} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-all duration-700" loading="lazy" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
-                        {/* Play/Preview Button */}
-                        <button
-                          onClick={() => setPreviewVideo(p.video_url)}
-                          className="bg-white text-black p-4 rounded-full shadow-xl hover:scale-110 transition-transform"
-                        >
-                          <Play size={20} fill="currentColor" />
-                        </button>
-                        <button onClick={() => startEdit(p)} className="bg-[#ce112d] p-4 rounded-full shadow-2xl hover:scale-110 transition-transform"><Edit size={20} /></button>
-                      </div>
-                      <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full text-[10px] font-black text-[#ce112d]">#{p.serial_no}</div>
-                      {p.is_sold_out && (
-                        <div className="absolute top-4 left-4 bg-[#ce112d] px-3 py-1 rounded-full text-[10px] font-black text-white uppercase italic">Sold Out</div>
-                      )}
+                  <div key={p.id} className="group flex items-center gap-3 bg-neutral-950 border border-white/5 rounded-xl p-2.5 hover:border-[#ce112d]/30 transition-all">
+                    {/* Thumbnail */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden shrink-0 bg-neutral-900 relative cursor-pointer" onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}>
+                      <img src={displayImage} className="w-full h-full object-cover" loading="lazy" />
+                      {p.is_sold_out && <div className="absolute inset-0 bg-red-900/60 flex items-center justify-center"><span className="text-[7px] font-black text-white uppercase">Sold</span></div>}
                     </div>
-                    <div className="p-6 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="min-w-0">
-                          <h4 className="font-bold truncate max-w-[150px]">{p.name}</h4>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {p.stock_count !== null && (
-                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${p.stock_count <= 5 ? 'bg-red-500/10 text-red-500 animate-pulse' : 'bg-green-500/10 text-green-500'}`}>
-                                Stock: {p.stock_count}
-                              </span>
-                            )}
-                            {p.available_colors?.length > 0 && (
-                              <span className="text-[8px] font-black uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
-                                {p.available_colors.length} Colors
-                              </span>
-                            )}
-                            {p.platform_id && (
-                              <span className="text-[8px] font-black uppercase bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">
-                                SKU: {p.platform_id}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-[#ce112d] font-black">৳{p.price}</p>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold truncate">{p.name}</h4>
+                        <span className="text-[#ce112d] text-xs font-black shrink-0">৳{p.price}</span>
                       </div>
-                      <div className="flex gap-2">
-                        {activeTab === 'pending' && (
-                          <button onClick={() => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)} className="flex-1 bg-[#ce112d] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
-                            Publish Now
-                          </button>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {p.serial_no && <span className="text-[7px] font-bold text-neutral-600">#{p.serial_no}</span>}
+                        {p.stock_count !== null && (
+                          <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded ${p.stock_count <= 5 ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>S:{p.stock_count}</span>
                         )}
-                        {activeTab === 'published' && (
-                          <button onClick={() => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)} className="flex-1 bg-neutral-800 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
-                            Unpublish
-                          </button>
-                        )}
-                        <button
-                          onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
-                          className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-400 hover:text-[#ce112d]'}`}
-                          title={p.is_sold_out ? "Mark as Available" : "Mark as Sold Out"}
-                        >
-                          {p.is_sold_out ? "STOCK" : "SO"}
-                        </button>
+                        {p.available_colors?.length > 0 && <span className="text-[7px] font-bold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">{p.available_colors.length}C</span>}
+                        {p.platform_id && <span className="text-[7px] font-bold bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded">{p.platform_id}</span>}
                       </div>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={() => startEdit(p)} className="p-2 rounded-lg bg-white/5 hover:bg-[#ce112d] transition-all" title="Edit"><Edit size={14} /></button>
+                      {activeTab === 'pending' && (
+                        <button onClick={() => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)} className="p-2 rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all" title="Publish"><CheckCircle2 size={14} /></button>
+                      )}
+                      {activeTab === 'published' && (
+                        <button onClick={() => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)} className="p-2 rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all" title="Unpublish"><Clock size={14} /></button>
+                      )}
+                      <button
+                        onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
+                        className={`p-2 rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
+                        title={p.is_sold_out ? 'Mark Available' : 'Mark Sold Out'}
+                      ><ShoppingBag size={14} /></button>
+                      <button onClick={() => deleteProduct(p.id)} className="p-2 rounded-lg bg-white/5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 transition-all" title="Delete"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
-      </main>
+        )
+        }
+      </main >
 
       {/* Video Preview Modal */}
-      {previewVideo && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setPreviewVideo(null)}>
-          <div className="relative w-full max-w-sm bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => setPreviewVideo(null)}
-              className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full backdrop-blur-md"
-            >
-              <X size={20} />
-            </button>
-            <div className="aspect-[9/16]">
-              <VideoPlayer src={previewVideo} isActive={true} priority={true} />
+      {
+        previewVideo && (
+          <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setPreviewVideo(null)}>
+            <div className="relative w-full max-w-sm bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setPreviewVideo(null)}
+                className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full backdrop-blur-md"
+              >
+                <X size={20} />
+              </button>
+              <div className="aspect-[9/16]">
+                <VideoPlayer src={previewVideo} isActive={true} priority={true} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
       {/* Alert Modal */}
       <AlertModal
         isOpen={alertModal.isOpen}
@@ -1793,6 +1720,6 @@ export default function Admin() {
         title={confirmation.title}
         message={confirmation.message}
       />
-    </div>
+    </div >
   );
 }
