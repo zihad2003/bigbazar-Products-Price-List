@@ -1832,7 +1832,10 @@ export default function Admin() {
                       {selectedOrder.size && <span className="text-[8px] font-black bg-[#ce112d]/10 text-[#ce112d] px-1.5 py-0.5 rounded uppercase">Size: {selectedOrder.size}</span>}
                       {selectedOrder.color && <span className="text-[8px] font-black bg-white/10 text-white px-1.5 py-0.5 rounded uppercase">Color: {selectedOrder.color}</span>}
                     </div>
-                    <p className="text-[#ce112d] font-black text-xs mt-2">৳{selectedOrder.total_amount}</p>
+                    <div className="flex justify-between items-end mt-2">
+                      <p className="text-[#ce112d] font-black text-xs">৳{selectedOrder.product_price}</p>
+                      <p className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">Subtotal</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1884,6 +1887,22 @@ export default function Admin() {
                       </button>
                     </div>
                   )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Delivery Charge</p>
+                      <p className="text-sm font-black text-white">৳{selectedOrder.delivery_charge || 0}</p>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="min-w-0">
+                        <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Sender Number</p>
+                        <p className="text-sm font-black text-[#ce112d]">{selectedOrder.last_four_digits || 'N/A'}</p>
+                      </div>
+                      <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="p-2 bg-white/5 hover:bg-[#ce112d] rounded-lg transition-all text-neutral-500 hover:text-white">
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1894,12 +1913,14 @@ export default function Admin() {
                       toggleAdvancePayment(selectedOrder.id, selectedOrder.is_advance_paid);
                       setSelectedOrder({ ...selectedOrder, is_advance_paid: !selectedOrder.is_advance_paid });
                     }}
-                    className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest transition-all ${selectedOrder.is_advance_paid ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
+                    className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center transition-all ${selectedOrder.is_advance_paid ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-neutral-900 border-white/10 text-neutral-500 hover:border-white/20'}`}
                   >
-                    {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark as Paid'}
+                    <span className="text-[14px] font-black italic">৳{selectedOrder.total_amount}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest">{selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark as Paid'}</span>
                   </button>
-                  <div className={`p-4 rounded-2xl border flex-1 text-center font-black uppercase text-[10px] tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
-                    Status: {selectedOrder.status}
+                  <div className={`flex-1 p-3 rounded-2xl border flex flex-col items-center justify-center font-black uppercase tracking-widest ${selectedOrder.status === 'Delivered' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-[#ce112d]/10 border-[#ce112d]/20 text-[#ce112d]'}`}>
+                    <span className="text-[14px] italic">{selectedOrder.status}</span>
+                    <span className="text-[8px]">Status</span>
                   </div>
                 </div>
               </div>
