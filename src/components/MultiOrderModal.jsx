@@ -93,6 +93,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             : formData.district;
 
         try {
+            const isSingleItem = cartItems.length === 1;
             const combinedName = cartItems.map(item => {
                 const parts = [item.name];
                 if (item.selectedColor) parts.push(`${item.selectedColor} color`);
@@ -112,14 +113,19 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                 parts.push(`${item.quantity} piece`);
                 return parts.join(' ');
             }).join(' + ');
+
             const combinedSizes = cartItems.map(item => item.selectedSize).filter(Boolean).join(', ');
             const combinedColors = cartItems.map(item => item.selectedColor).filter(Boolean).join(', ');
 
-            const { error: insertError } = await supabase
+            // Use the first item's ID for tracking purposes if it's single, 
+            // otherwise use a "Multi" identifier if you had one, but keeping the first item is fine for image lookup.
+            const primaryProductId = isSingleItem ? cartItems[0].id : cartItems[0].id;
+
+            const { data: insertedData, error: insertError } = await supabase
                 .from('orders')
                 .insert([{
-                    product_id: cartItems[0]?.id,
-                    product_name: combinedName.substring(0, 250),
+                    product_id: primaryProductId,
+                    product_name: combinedName.substring(0, 1000),
                     product_price: cartTotal,
                     customer_name: formData.name,
                     customer_phone: formData.phone,
@@ -129,10 +135,11 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     total_amount: finalTotal,
                     last_four_digits: formData.senderNumber || (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
-                    size: combinedSizes.substring(0, 50) || null,
-                    color: combinedColors.substring(0, 50) || null,
-                    customer_note: formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`
-                }]);
+                    size: combinedSizes.substring(0, 250) || null,
+                    color: combinedColors.substring(0, 250) || null,
+                    customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500)
+                }])
+                .select();
 
             if (insertError) throw insertError;
 

@@ -240,9 +240,19 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     </div>
 
                                                     <div className="space-y-0.5 md:space-y-1 min-w-0">
-                                                        <h4 className="font-black text-xs md:text-sm truncate max-w-[120px] md:max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{order.product_name}</h4>
+                                                        <h4 className="font-black text-xs md:text-sm leading-tight group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                                            {order.product_name?.split(' + ').map((item, idx) => (
+                                                                <span key={idx} className="block mb-0.5 last:mb-0 opacity-90">
+                                                                    {item}
+                                                                </span>
+                                                            )) || order.product_name}
+                                                        </h4>
                                                         <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                                                            <span>{new Date(order.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span>{new Date(order.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                                                                <span className="text-neutral-500">•</span>
+                                                                <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </div>
                                                             <span className="text-[#ce112d]">ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
                                                         </div>
                                                     </div>
