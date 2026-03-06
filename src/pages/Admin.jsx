@@ -1906,11 +1906,19 @@ export default function Admin() {
                       quantity = parseInt(qtyMatch[1]);
                       s = s.slice(0, s.length - qtyMatch[0].length).trim();
                     }
-                    // Extract (SKU: xxx)
+                    // Extract (SKU: xxx) — complete
                     const skuMatch = s.match(/\s*\(SKU:\s*([^)]*)\)\s*$/i);
                     if (skuMatch) {
                       sku = skuMatch[1].trim();
                       s = s.slice(0, s.length - skuMatch[0].length).trim();
+                    } else {
+                      // Handle truncated/incomplete (SKU: DU… — no closing parenthesis
+                      const truncatedSku = s.match(/\s*\(SKU:\s*([^)]*)\s*$/i);
+                      if (truncatedSku) {
+                        const partial = truncatedSku[1].trim();
+                        sku = partial ? partial + '…' : '…';
+                        s = s.slice(0, s.length - truncatedSku[0].length).trim();
+                      }
                     }
                     // Extract "X size"
                     const sizeMatch = s.match(/\s+(\S+)\s+size\s*$/i);
