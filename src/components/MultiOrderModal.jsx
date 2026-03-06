@@ -144,15 +144,16 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             if (insertError) throw insertError;
 
             for (const item of cartItems) {
-                let updatedGlobalStock = item.stock_count;
+                let updatedGlobalStock = item.stock_count; // null = unlimited
                 let updatedColors = item.available_colors;
+                const hadRealStock = item.stock_count !== null && item.stock_count !== undefined;
 
-                // 1. Decrement Global Stock
-                if (item.stock_count !== null && item.stock_count !== undefined) {
+                // 1. Decrement global stock only if it was a real number
+                if (hadRealStock) {
                     updatedGlobalStock = Math.max(0, item.stock_count - item.quantity);
                 }
 
-                // 2. Decrement Variant Stock
+                // 2. Decrement variant stock
                 if (item.selectedColor && updatedColors?.length > 0) {
                     updatedColors = updatedColors.map(color => {
                         const colorName = typeof color === 'object' ? color.name : color;
@@ -170,12 +171,12 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     });
                 }
 
-                // 3. Update Supabase
+                // 3. Update Supabase — only mark sold_out if stock was real and hit 0
                 await supabase
                     .from('products')
                     .update({
                         stock_count: updatedGlobalStock,
-                        is_sold_out: updatedGlobalStock <= 0,
+                        is_sold_out: hadRealStock ? updatedGlobalStock <= 0 : false,
                         available_colors: updatedColors
                     })
                     .eq('id', item.id);
