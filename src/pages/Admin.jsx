@@ -1961,12 +1961,23 @@ export default function Admin() {
 
                       {/* Per-item cards */}
                       {parsedItems.map((item, idx) => {
-                        // Look up product
+                        // Lookup: exact SKU → exact name → fuzzy name (substring)
                         let p = idx === 0 ? products.find(pr => pr.id === selectedOrder.product_id) : null;
-                        if (!p && item.sku) p = productBySku[item.sku.toLowerCase().trim()];
-                        if (!p) p = productByName[item.name.toLowerCase().trim()];
+                        if (!p && item.sku && item.sku.length > 2)
+                          p = productBySku[item.sku.toLowerCase().trim()];
+                        if (!p && item.name)
+                          p = productByName[item.name.toLowerCase().trim()];
+                        // Fuzzy fallback: find first product whose name contains the item name
+                        if (!p && item.name && item.name.length > 2) {
+                          const needle = item.name.toLowerCase().trim();
+                          p = products.find(pr =>
+                            pr.name?.toLowerCase().includes(needle) ||
+                            needle.includes(pr.name?.toLowerCase())
+                          );
+                        }
 
                         const thumb = p?.image_url || p?.images?.[0];
+                        const unitPrice = p?.price ?? null;
 
                         // Color hex
                         const colorObj = p?.available_colors?.find(c =>
@@ -2003,9 +2014,14 @@ export default function Admin() {
 
                               {/* Info */}
                               <div className="flex-1 min-w-0 space-y-2 pr-5">
-                                <p className="text-xs font-black text-white uppercase italic leading-snug">
-                                  {item.name || 'Unknown Item'}
-                                </p>
+                                <div className="flex justify-between items-start gap-2">
+                                  <p className="text-xs font-black text-white uppercase italic leading-snug">
+                                    {item.name || 'Unknown Item'}
+                                  </p>
+                                  {unitPrice && (
+                                    <span className="text-xs font-black text-[#ce112d] italic shrink-0">৳{unitPrice}</span>
+                                  )}
+                                </div>
 
                                 {item.sku && (
                                   <p className="text-[9px] font-mono text-neutral-600 tracking-wider">
