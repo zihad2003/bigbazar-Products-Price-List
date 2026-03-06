@@ -1729,7 +1729,7 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               {products.filter(p => {
                 if (!p) return false;
                 const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1750,37 +1750,70 @@ export default function Admin() {
                 }
 
                 return (
-                  <div key={p.id} className="group flex items-center gap-3 bg-neutral-950 border border-white/5 rounded-xl p-2.5 hover:border-[#ce112d]/30 transition-all">
-                    {/* Thumbnail */}
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden shrink-0 bg-neutral-900 relative cursor-pointer" onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}>
-                      <img src={displayImage} className="w-full h-full object-cover" loading="lazy" />
-                      {p.is_sold_out && <div className="absolute inset-0 bg-red-900/60 flex items-center justify-center"><span className="text-[7px] font-black text-white uppercase">Sold</span></div>}
+                  <div key={p.id} className="group flex items-center gap-4 bg-neutral-950 border border-white/5 rounded-2xl p-3 hover:border-[#ce112d]/40 hover:bg-neutral-900/60 transition-all duration-200">
+
+                    {/* Thumbnail — portrait, bigger */}
+                    <div
+                      className="w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-neutral-900 relative cursor-pointer border border-white/5"
+                      onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}
+                    >
+                      <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
+                      {p.is_sold_out && (
+                        <div className="absolute inset-0 bg-red-900/70 flex items-center justify-center">
+                          <span className="text-[8px] font-black text-white uppercase tracking-wider">Sold</span>
+                        </div>
+                      )}
                     </div>
-                    {/* Info */}
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs sm:text-sm font-bold truncate">{p.name}</h4>
-                        <div className="flex gap-1.5 items-center">
-                          <span className="text-[#ce112d] text-xs font-black shrink-0">৳{p.price}</span>
-                          <span className={`text-[6px] px-1 py-0.5 rounded-[4px] font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-black'}`}>
+
+                    {/* Info block */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      {/* Row 1: Name + Price + Status */}
+                      <div className="flex items-start gap-2 flex-wrap">
+                        <h4 className="text-sm sm:text-base font-black text-white truncate flex-1 min-w-0 leading-tight">
+                          {p.name || <span className="text-neutral-600 italic">No name</span>}
+                        </h4>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[#ce112d] text-sm font-black">৳{p.price}</span>
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
                             {p.status === 'published' ? 'Live' : 'Draft'}
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {p.serial_no && <span className="text-[7px] font-bold text-neutral-600">#{p.serial_no}</span>}
-                        {p.stock_count !== null && (
-                          <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded ${p.stock_count <= 5 ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>S:{p.stock_count}</span>
+
+                      {/* Row 2: Meta badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {p.serial_no && (
+                          <span className="text-[10px] font-bold text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
+                            #{p.serial_no}
+                          </span>
                         )}
-                        {p.available_colors?.length > 0 && <span className="text-[7px] font-bold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">{p.available_colors.length}C</span>}
-                        {p.platform_id && <span className="text-[7px] font-bold bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded">{p.platform_id}</span>}
+                        {p.stock_count !== null && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p.stock_count <= 3 ? 'bg-red-500/10 text-red-400 border-red-500/20' : p.stock_count <= 8 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                            📦 {p.stock_count} pcs
+                          </span>
+                        )}
+                        {p.available_colors?.length > 0 && (
+                          <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                            🎨 {p.available_colors.length} colors
+                          </span>
+                        )}
+                        {p.platform_id && (
+                          <span className="text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                            {p.platform_id}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => startEdit(p)} className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 hover:bg-[#ce112d] transition-all" title="Edit">
-                        <Edit size={12} />
-                        <span className="text-[6px] font-black uppercase tracking-tighter">Edit</span>
+
+                    {/* Action buttons — bigger, clearer */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-white/5 hover:bg-[#ce112d] hover:text-white text-neutral-400 transition-all"
+                        title="Edit"
+                      >
+                        <Edit size={14} />
+                        <span className="text-[8px] font-black uppercase">Edit</span>
                       </button>
 
                       {(activeTab === 'pending' || (activeTab === 'soldout' && p.status === 'pending')) && (
@@ -1792,10 +1825,10 @@ export default function Admin() {
                             confirmText: 'Publish',
                             onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-[#ce112d]/10 text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all"
+                          className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-white hover:border-green-500 transition-all"
                         >
-                          <CheckCircle2 size={12} />
-                          <span className="text-[6px] font-black uppercase tracking-tighter">Live</span>
+                          <CheckCircle2 size={14} />
+                          <span className="text-[8px] font-black uppercase">Live</span>
                         </button>
                       )}
 
@@ -1808,25 +1841,28 @@ export default function Admin() {
                             confirmText: 'Unpublish',
                             onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 hover:bg-yellow-500/20 text-neutral-400 hover:text-yellow-500 transition-all"
+                          className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black hover:border-yellow-500 transition-all"
                         >
-                          <Clock size={12} />
-                          <span className="text-[6px] font-black uppercase tracking-tighter">Draft</span>
+                          <Clock size={14} />
+                          <span className="text-[8px] font-black uppercase">Draft</span>
                         </button>
                       )}
 
                       <button
                         onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
-                        className={`flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/40' : 'bg-white/5 text-neutral-500 hover:text-red-400'}`}
+                        className={`flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl transition-all border ${p.is_sold_out ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-lg shadow-red-900/30' : 'bg-white/5 text-neutral-500 border-white/5 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5'}`}
                         title={p.is_sold_out ? 'Mark Available' : 'Mark Sold Out'}
                       >
-                        <ShoppingBag size={12} />
-                        <span className="text-[6px] font-black uppercase tracking-tighter">{p.is_sold_out ? 'Sold' : 'Stock'}</span>
+                        <ShoppingBag size={14} />
+                        <span className="text-[8px] font-black uppercase">{p.is_sold_out ? 'Sold' : 'Stock'}</span>
                       </button>
 
-                      <button onClick={() => deleteProduct(p.id)} className="flex flex-col items-center gap-1 p-1.5 min-w-[36px] rounded-lg bg-white/5 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                        <Trash2 size={12} />
-                        <span className="text-[6px] font-black uppercase tracking-tighter">Del</span>
+                      <button
+                        onClick={() => deleteProduct(p.id)}
+                        className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-white/5 border border-white/5 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                      >
+                        <Trash2 size={14} />
+                        <span className="text-[8px] font-black uppercase">Del</span>
                       </button>
                     </div>
                   </div>
