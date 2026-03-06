@@ -107,9 +107,17 @@ export default function Admin() {
   };
 
   const updateOrderStatus = async (id, status) => {
-    const { error } = await supabase.from('orders').update({ status }).eq('id', id);
-    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-    else fetchOrders();
+    setConfirmation({
+      isOpen: true,
+      title: 'Update Order Status',
+      message: `আপনি কি পরিবর্তন করে "${status}" করতে চান?`,
+      confirmText: 'Update Status',
+      onConfirm: async () => {
+        const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else fetchOrders();
+      }
+    });
   };
 
   const updateOrderNote = async (id, currentNote) => {
@@ -125,35 +133,43 @@ export default function Admin() {
     // If targetStatus matches current, reset to Unpaid
     const nextStatus = order.payment_status === targetStatus ? 'Unpaid' : targetStatus;
 
-    const { error } = await supabase
-      .from('orders')
-      .update({
-        payment_status: nextStatus,
-        is_advance_paid: nextStatus !== 'Unpaid'
-      })
-      .eq('id', order.id);
+    setConfirmation({
+      isOpen: true,
+      title: 'Update Payment Status',
+      message: `পেমেন্ট স্ট্যাটাস "${nextStatus}" করতে চান?`,
+      confirmText: 'Update Payment',
+      onConfirm: async () => {
+        const { error } = await supabase
+          .from('orders')
+          .update({
+            payment_status: nextStatus,
+            is_advance_paid: nextStatus !== 'Unpaid'
+          })
+          .eq('id', order.id);
 
-    if (error) {
-      // Fallback for older schemas without payment_status column
-      const { error: fallbackError } = await supabase
-        .from('orders')
-        .update({ is_advance_paid: nextStatus !== 'Unpaid' })
-        .eq('id', order.id);
+        if (error) {
+          // Fallback for older schemas without payment_status column
+          const { error: fallbackError } = await supabase
+            .from('orders')
+            .update({ is_advance_paid: nextStatus !== 'Unpaid' })
+            .eq('id', order.id);
 
-      if (fallbackError) {
-        setAlertModal({ isOpen: true, title: 'Error', message: fallbackError.message, type: 'error' });
-      } else {
-        fetchOrders();
-        if (selectedOrder?.id === order.id) {
-          setSelectedOrder({ ...selectedOrder, is_advance_paid: nextStatus !== 'Unpaid' });
+          if (fallbackError) {
+            setAlertModal({ isOpen: true, title: 'Error', message: fallbackError.message, type: 'error' });
+          } else {
+            fetchOrders();
+            if (selectedOrder?.id === order.id) {
+              setSelectedOrder({ ...selectedOrder, is_advance_paid: nextStatus !== 'Unpaid' });
+            }
+          }
+        } else {
+          fetchOrders();
+          if (selectedOrder?.id === order.id) {
+            setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextStatus !== 'Unpaid' });
+          }
         }
       }
-    } else {
-      fetchOrders();
-      if (selectedOrder?.id === order.id) {
-        setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextStatus !== 'Unpaid' });
-      }
-    }
+    });
   };
 
   const toggleAdvancePayment = async (id, currentStatus) => {
@@ -179,12 +195,20 @@ export default function Admin() {
 
   // Undo — restore deleted order back to Pending
   const restoreOrder = async (id) => {
-    const { error } = await supabase.from('orders').update({ status: 'Pending' }).eq('id', id);
-    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-    else {
-      fetchOrders();
-      setAlertModal({ isOpen: true, title: 'Restored!', message: 'অর্ডারটি সফলভাবে পুনরুদ্ধার করা হয়েছে।', type: 'success' });
-    }
+    setConfirmation({
+      isOpen: true,
+      title: 'Restore Order',
+      message: 'আপনি কি এই অর্ডারটি পুনরুদ্ধার করতে চান?',
+      confirmText: 'Restore Order',
+      onConfirm: async () => {
+        const { error } = await supabase.from('orders').update({ status: 'Pending' }).eq('id', id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else {
+          fetchOrders();
+          setAlertModal({ isOpen: true, title: 'Restored!', message: 'অর্ডারটি সফলভাবে পুনরুদ্ধার করা হয়েছে।', type: 'success' });
+        }
+      }
+    });
   };
 
   // Permanent delete
@@ -1856,7 +1880,13 @@ export default function Admin() {
                       )}
 
                       <button
-                        onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
+                        onClick={() => setConfirmation({
+                          isOpen: true,
+                          title: p.is_sold_out ? 'Mark as Available' : 'Mark as Sold Out',
+                          message: p.is_sold_out ? 'আপনি কি নিশ্চিত যে পণ্যটি স্টকে আছে?' : 'আপনি কি এই পণ্যটিকে Sold Out হিসেবে চিহ্নিত করতে চান?',
+                          confirmText: 'Confirm',
+                          onConfirm: () => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)
+                        })}
                         className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'}`}
                       >
                         <ShoppingBag size={15} />
