@@ -1389,11 +1389,15 @@ export default function Admin() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-black text-white truncate max-w-[140px] leading-tight">{o.product_name}</p>
-                                <p className="text-[10px] text-neutral-500 font-bold mt-1 uppercase italic">৳{o.product_price}</p>
-                                {product?.serial_no && (
-                                  <p className="text-[8px] text-[#ce112d] font-black mt-0.5 tracking-widest uppercase">SL NO: {product.serial_no}</p>
-                                )}
+                                <p className="text-xs font-black text-white leading-tight overflow-hidden text-ellipsis line-clamp-3 hover:line-clamp-none transition-all duration-300" title={o.product_name}>
+                                  {o.product_name}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  <p className="text-[10px] text-[#ce112d] font-black uppercase italic">৳{o.product_price}</p>
+                                  {product?.serial_no && (
+                                    <span className="text-[8px] bg-[#ce112d]/10 text-[#ce112d] font-black px-1.5 py-0.5 rounded tracking-widest uppercase">SL: #{product.serial_no}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -1504,7 +1508,16 @@ export default function Admin() {
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex justify-between items-start">
-                          <p className="text-[10px] font-black text-white truncate pr-2">{o.customer_name}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-black text-white truncate pr-2">{o.customer_name}</p>
+                            <div className="mt-1 space-y-0.5">
+                              {o.product_name?.split(' + ').map((item, idx) => (
+                                <p key={idx} className="text-[8px] font-bold text-neutral-400 leading-tight">
+                                  {item}
+                                </p>
+                              )) || <p className="text-[8px] font-bold text-neutral-400">Generic Item</p>}
+                            </div>
+                          </div>
                           <select
                             value={o.status}
                             onChange={(e) => updateOrderStatus(o.id, e.target.value)}
@@ -1904,7 +1917,13 @@ export default function Admin() {
                         <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
                           <div>
                             <div className="flex justify-between items-start gap-2 mb-2">
-                              <p className="text-base font-black text-white leading-tight uppercase italic">{selectedOrder.product_name || 'Generic Item'}</p>
+                              <p className="text-base font-black text-white leading-tight uppercase italic break-words">
+                                {selectedOrder.product_name?.split(' + ').map((item, idx) => (
+                                  <span key={idx} className="block mb-1 border-b border-white/5 pb-1 last:border-0">
+                                    {item}
+                                  </span>
+                                )) || 'Generic Item'}
+                              </p>
                               {p?.serial_no && (
                                 <span className="bg-[#ce112d] text-white text-[8px] font-black px-2 py-0.5 rounded-full shrink-0">#{p.serial_no}</span>
                               )}
