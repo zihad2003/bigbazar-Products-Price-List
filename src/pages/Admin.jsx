@@ -1750,70 +1750,77 @@ export default function Admin() {
                 }
 
                 return (
-                  <div key={p.id} className="group flex items-center gap-4 bg-neutral-950 border border-white/5 rounded-2xl p-3 hover:border-[#ce112d]/40 hover:bg-neutral-900/60 transition-all duration-200">
+                  <div key={p.id} className="group bg-neutral-950 border border-white/5 rounded-2xl overflow-hidden hover:border-[#ce112d]/40 hover:bg-neutral-900/60 transition-all duration-200">
 
-                    {/* Thumbnail — portrait, bigger */}
-                    <div
-                      className="w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-neutral-900 relative cursor-pointer border border-white/5"
-                      onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}
-                    >
-                      <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
-                      {p.is_sold_out && (
-                        <div className="absolute inset-0 bg-red-900/70 flex items-center justify-center">
-                          <span className="text-[8px] font-black text-white uppercase tracking-wider">Sold</span>
-                        </div>
-                      )}
-                    </div>
+                    {/* ── Top section: big image + info ── */}
+                    <div className="flex gap-4 p-3">
 
-                    {/* Info block */}
-                    <div className="flex-1 min-w-0 space-y-2">
-                      {/* Row 1: Name + Price + Status */}
-                      <div className="flex items-start gap-2 flex-wrap">
-                        <h4 className="text-sm sm:text-base font-black text-white truncate flex-1 min-w-0 leading-tight">
+                      {/* Thumbnail — tall portrait, big enough to see clothing */}
+                      <div
+                        className="w-24 h-32 sm:w-28 sm:h-36 rounded-xl overflow-hidden shrink-0 bg-neutral-900 relative cursor-pointer border border-white/5"
+                        onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}
+                      >
+                        <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
+                        {p.is_sold_out && (
+                          <div className="absolute inset-0 bg-red-900/70 flex items-center justify-center">
+                            <span className="text-[9px] font-black text-white uppercase tracking-widest">Sold Out</span>
+                          </div>
+                        )}
+                        {/* Serial badge overlay */}
+                        {p.serial_no && (
+                          <div className="absolute top-1 left-1 bg-black/70 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                            #{p.serial_no}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0 space-y-2 py-0.5">
+
+                        {/* Name — up to 3 lines, no truncation */}
+                        <h4 style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                          className="text-sm sm:text-base font-black text-white leading-tight">
                           {p.name || <span className="text-neutral-600 italic">No name</span>}
                         </h4>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[#ce112d] text-sm font-black">৳{p.price}</span>
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
+
+                        {/* Price + Status */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[#ce112d] text-base font-black">৳{p.price}</span>
+                          <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
                             {p.status === 'published' ? 'Live' : 'Draft'}
                           </span>
                         </div>
-                      </div>
 
-                      {/* Row 2: Meta badges */}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {p.serial_no && (
-                          <span className="text-[10px] font-bold text-neutral-500 bg-white/5 px-2 py-0.5 rounded-full">
-                            #{p.serial_no}
-                          </span>
-                        )}
-                        {p.stock_count !== null && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p.stock_count <= 3 ? 'bg-red-500/10 text-red-400 border-red-500/20' : p.stock_count <= 8 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                            📦 {p.stock_count} pcs
-                          </span>
-                        )}
-                        {p.available_colors?.length > 0 && (
-                          <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
-                            🎨 {p.available_colors.length} colors
-                          </span>
-                        )}
-                        {p.platform_id && (
-                          <span className="text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full">
-                            {p.platform_id}
-                          </span>
-                        )}
+                        {/* Meta badges */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {p.stock_count !== null && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${p.stock_count <= 3 ? 'bg-red-500/10 text-red-400 border-red-500/20' : p.stock_count <= 8 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                              📦 {p.stock_count} pcs
+                            </span>
+                          )}
+                          {p.available_colors?.length > 0 && (
+                            <span className="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                              🎨 {p.available_colors.length}
+                            </span>
+                          )}
+                          {p.platform_id && (
+                            <span className="text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full truncate max-w-[100px]">
+                              {p.platform_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action buttons — bigger, clearer */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    {/* ── Bottom: full-width action strip ── */}
+                    <div className="flex items-stretch border-t border-white/5 divide-x divide-white/5">
+
                       <button
                         onClick={() => startEdit(p)}
-                        className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-white/5 hover:bg-[#ce112d] hover:text-white text-neutral-400 transition-all"
-                        title="Edit"
+                        className="flex-1 flex flex-col items-center gap-1 py-3 text-neutral-400 hover:bg-[#ce112d] hover:text-white transition-all"
                       >
-                        <Edit size={14} />
-                        <span className="text-[8px] font-black uppercase">Edit</span>
+                        <Edit size={15} />
+                        <span className="text-[9px] font-black uppercase">Edit</span>
                       </button>
 
                       {(activeTab === 'pending' || (activeTab === 'soldout' && p.status === 'pending')) && (
@@ -1825,10 +1832,10 @@ export default function Admin() {
                             confirmText: 'Publish',
                             onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-white hover:border-green-500 transition-all"
+                          className="flex-1 flex flex-col items-center gap-1 py-3 text-green-400 hover:bg-green-500 hover:text-white transition-all"
                         >
-                          <CheckCircle2 size={14} />
-                          <span className="text-[8px] font-black uppercase">Live</span>
+                          <CheckCircle2 size={15} />
+                          <span className="text-[9px] font-black uppercase">Live</span>
                         </button>
                       )}
 
@@ -1841,28 +1848,27 @@ export default function Admin() {
                             confirmText: 'Unpublish',
                             onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
                           })}
-                          className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black hover:border-yellow-500 transition-all"
+                          className="flex-1 flex flex-col items-center gap-1 py-3 text-yellow-400 hover:bg-yellow-500 hover:text-black transition-all"
                         >
-                          <Clock size={14} />
-                          <span className="text-[8px] font-black uppercase">Draft</span>
+                          <Clock size={15} />
+                          <span className="text-[9px] font-black uppercase">Draft</span>
                         </button>
                       )}
 
                       <button
                         onClick={() => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)}
-                        className={`flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl transition-all border ${p.is_sold_out ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-lg shadow-red-900/30' : 'bg-white/5 text-neutral-500 border-white/5 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5'}`}
-                        title={p.is_sold_out ? 'Mark Available' : 'Mark Sold Out'}
+                        className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'}`}
                       >
-                        <ShoppingBag size={14} />
-                        <span className="text-[8px] font-black uppercase">{p.is_sold_out ? 'Sold' : 'Stock'}</span>
+                        <ShoppingBag size={15} />
+                        <span className="text-[9px] font-black uppercase">{p.is_sold_out ? 'Resell' : 'Sold'}</span>
                       </button>
 
                       <button
                         onClick={() => deleteProduct(p.id)}
-                        className="flex flex-col items-center gap-1 p-2 min-w-[44px] rounded-xl bg-white/5 border border-white/5 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                        className="flex-1 flex flex-col items-center gap-1 py-3 text-neutral-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
                       >
-                        <Trash2 size={14} />
-                        <span className="text-[8px] font-black uppercase">Del</span>
+                        <Trash2 size={15} />
+                        <span className="text-[9px] font-black uppercase">Del</span>
                       </button>
                     </div>
                   </div>
