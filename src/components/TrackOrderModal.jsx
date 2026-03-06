@@ -265,13 +265,30 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
                                             <div className="grid grid-cols-2 gap-3 py-3 border-y" style={{ borderColor: 'var(--border-color)' }}>
                                                 <div className="space-y-0.5">
-                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'বিবরণ' : 'Details'}</p>
-                                                    <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                                                        {order.size ? `${language === 'bn' ? 'সাইজ' : 'Size'}: ${order.size}` : ''}
-                                                        {order.size && order.color ? ' | ' : ''}
-                                                        {order.color ? `${language === 'bn' ? 'রঙ' : 'Color'}: ${order.color}` : ''}
-                                                        {!order.size && !order.color ? (language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details') : ''}
+                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>
+                                                        {language === 'bn' ? 'বিবরণ' : 'Details'}
                                                     </p>
+                                                    {(() => {
+                                                        const itemParts = (order.product_name || '').split(' + ');
+                                                        const isMulti = itemParts.length > 1;
+                                                        if (isMulti) {
+                                                            return (
+                                                                <p className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
+                                                                    {language === 'bn'
+                                                                        ? `${itemParts.length}টি পণ্য অর্ডার করা হয়েছে`
+                                                                        : `${itemParts.length} items ordered`}
+                                                                </p>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                                                                {order.size ? `${language === 'bn' ? 'সাইজ' : 'Size'}: ${order.size}` : ''}
+                                                                {order.size && order.color ? ' | ' : ''}
+                                                                {order.color ? `${language === 'bn' ? 'রঙ' : 'Color'}: ${order.color}` : ''}
+                                                                {!order.size && !order.color ? (language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details') : ''}
+                                                            </p>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <div className="space-y-0.5 text-right">
                                                     <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'মোট খরচ' : 'Total Amount'}</p>
