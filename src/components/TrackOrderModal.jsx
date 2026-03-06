@@ -227,36 +227,45 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                             style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
                                         >
                                             <div className="flex justify-between items-start gap-3">
-                                                <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                                                    {/* Product Thumbnail */}
-                                                    <div className="w-10 h-14 md:w-12 md:h-16 bg-black/40 rounded-xl overflow-hidden flex-shrink-0 border border-white/5">
-                                                        {productImages[order.product_id] ? (
-                                                            <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} className="w-full h-full object-cover" alt="" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-neutral-800">
-                                                                <ShoppingBag size={18} />
+                                                {(() => {
+                                                    const itemParts = (order.product_name || '').split(' + ');
+                                                    const isMulti = itemParts.length > 1;
+                                                    return (
+                                                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                                                            {/* Thumbnail: generic for multi-item, product image for single */}
+                                                            <div className="w-10 h-14 md:w-12 md:h-16 rounded-xl overflow-hidden flex-shrink-0 border border-white/5 flex flex-col items-center justify-center gap-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                                                                {isMulti ? (
+                                                                    <>
+                                                                        <ShoppingBag size={14} style={{ color: 'var(--text-muted)' }} />
+                                                                        <span className="text-[8px] font-black" style={{ color: 'var(--text-muted)' }}>{itemParts.length}x</span>
+                                                                    </>
+                                                                ) : productImages[order.product_id] ? (
+                                                                    <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} className="w-full h-full object-cover" alt="" />
+                                                                ) : (
+                                                                    <ShoppingBag size={18} className="text-neutral-800" />
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </div>
 
-                                                    <div className="space-y-0.5 md:space-y-1 min-w-0">
-                                                        <h4 className="font-black text-xs md:text-sm leading-tight group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-primary)' }}>
-                                                            {order.product_name?.split(' + ').map((item, idx) => (
-                                                                <span key={idx} className="block mb-0.5 last:mb-0 opacity-90">
-                                                                    {item}
-                                                                </span>
-                                                            )) || order.product_name}
-                                                        </h4>
-                                                        <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                                                            <div className="flex items-center gap-2">
-                                                                <span>{new Date(order.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}</span>
-                                                                <span className="text-neutral-500">•</span>
-                                                                <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <div className="space-y-0.5 md:space-y-1 min-w-0">
+                                                                <h4 className="font-black text-xs md:text-sm leading-tight group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                                                    {isMulti
+                                                                        ? (language === 'bn'
+                                                                            ? `${itemParts.length}টি পণ্যের অর্ডার`
+                                                                            : `${itemParts.length} Items Order`)
+                                                                        : order.product_name}
+                                                                </h4>
+                                                                <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span>{new Date(order.created_at).toLocaleDateString(language === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                                                                        <span className="text-neutral-500">•</span>
+                                                                        <span>{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                    </div>
+                                                                    <span className="text-[#ce112d]">ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
+                                                                </div>
                                                             </div>
-                                                            <span className="text-[#ce112d]">ID: #{String(order.id).slice(0, 8).toUpperCase()}</span>
                                                         </div>
-                                                    </div>
-                                                </div>
+                                                    );
+                                                })()}
                                                 <div className={`shrink-0 flex items-center gap-1.5 px-2 md:px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-wider md:tracking-widest border ${statusInfo.bg} ${statusInfo.color}`} style={{ borderColor: 'currentColor' }}>
                                                     {statusInfo.icon}
                                                     {statusInfo.label}
@@ -268,6 +277,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>
                                                         {language === 'bn' ? 'বিবরণ' : 'Details'}
                                                     </p>
+
                                                     {(() => {
                                                         const itemParts = (order.product_name || '').split(' + ');
                                                         const isMulti = itemParts.length > 1;

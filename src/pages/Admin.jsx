@@ -1969,20 +1969,52 @@ export default function Admin() {
 
                       {/* Per-item cards */}
                       {parsedItems.map((item, idx) => {
-                        // Lookup: exact SKU → exact name → fuzzy name (substring)
-                        let p = idx === 0 ? products.find(pr => pr.id === selectedOrder.product_id) : null;
-                        if (!p && item.sku && item.sku.length > 2)
-                          p = productBySku[item.sku.toLowerCase().trim()];
-                        if (!p && item.name)
-                          p = productByName[item.name.toLowerCase().trim()];
-                        // Fuzzy fallback: find first product whose name contains the item name
-                        if (!p && item.name && item.name.length > 2) {
-                          const needle = item.name.toLowerCase().trim();
-                          p = products.find(pr =>
-                            pr.name?.toLowerCase().includes(needle) ||
-                            needle.includes(pr.name?.toLowerCase())
-                          );
+                        const isTruncatedSku = item.sku?.endsWith('…');
+
+                        // Build set of product IDs already assigned to earlier items
+                        // so we don't accidentally assign the same product to two items
+                        const alreadyUsedIds = new Set(
+                          parsedItems.slice(0, idx).map(pi => {
+                            if (!pi.sku || pi.sku.endsWith('…')) return null;
+                            return (
+                              productBySku[pi.sku.toLowerCase().trim()]?.id ||
+                              productByName[pi.name.toLowerCase().trim()]?.id ||
+                              null
+                            );
+                          }).filter(Boolean)
+                        );
+                        // idx===0 is always the primary product_id
+                        const primaryP = idx === 0
+                          ? products.find(pr => pr.id === selectedOrder.product_id)
+                          : null;
+                        if (idx === 0 && primaryP) alreadyUsedIds.add(primaryP.id);
+
+                        let p = primaryP;
+
+                        // Only do lookups for items with complete (non-truncated) SKUs
+                        if (!p && !isTruncatedSku) {
+                          // 1. Exact SKU
+                          if (item.sku && item.sku.length > 2) {
+                            const candidate = productBySku[item.sku.toLowerCase().trim()];
+                            if (candidate && !alreadyUsedIds.has(candidate.id)) p = candidate;
+                          }
+                          // 2. Exact name
+                          if (!p && item.name) {
+                            const candidate = productByName[item.name.toLowerCase().trim()];
+                            if (candidate && !alreadyUsedIds.has(candidate.id)) p = candidate;
+                          }
+                          // 3. Fuzzy substring — only as last resort, skip if SKU partial
+                          if (!p && item.name && item.name.length > 2) {
+                            const needle = item.name.toLowerCase().trim();
+                            p = products.find(pr =>
+                              !alreadyUsedIds.has(pr.id) && (
+                                pr.name?.toLowerCase().includes(needle) ||
+                                needle.includes(pr.name?.toLowerCase())
+                              )
+                            );
+                          }
                         }
+                        // If isTruncatedSku and not primary: leave p = null → shows placeholder
 
                         const thumb = p?.image_url || p?.images?.[0];
                         const unitPrice = p?.price ?? null;
