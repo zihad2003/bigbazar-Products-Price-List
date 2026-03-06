@@ -163,11 +163,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             setFormData(prev => ({ ...prev, orderId: newOrderId }));
 
             // Decrease stock count (Global and Variants)
-            let updatedGlobalStock = product.stock_count;
+            let updatedGlobalStock = product.stock_count; // null = unlimited
             let updatedColors = product.available_colors;
+            const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
 
-            // 1. Decrement Global Stock
-            if (product.stock_count !== null && product.stock_count !== undefined) {
+            // 1. Decrement global stock only if it was a real number
+            if (hadRealStock) {
                 updatedGlobalStock = Math.max(0, product.stock_count - 1);
             }
 
@@ -189,10 +190,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 });
             }
 
-            // 3. Push Updates to Supabase
+            // 3. Push Updates to Supabase — only mark sold_out if stock was real and hit 0
             const updatePayload = {
                 stock_count: updatedGlobalStock,
-                is_sold_out: updatedGlobalStock <= 0,
+                is_sold_out: hadRealStock ? updatedGlobalStock <= 0 : false,
                 available_colors: updatedColors
             };
 
