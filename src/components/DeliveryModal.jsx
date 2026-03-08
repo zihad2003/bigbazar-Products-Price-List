@@ -42,6 +42,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         : null;
 
     const deliveryCharge = deliveryInfo?.charge ?? 0;
+    const isExclusiveOrder = product?.is_exclusive || false;
+    const advanceAmount = isExclusiveOrder ? 500 : deliveryCharge;
 
     const calculateTotal = () => {
         if (!deliveryInfo) return Number(product.price);
@@ -94,8 +96,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Provide the sender bKash number.");
             return;
         }
-        if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.senderNumber) {
-            setError(language === 'bn' ? `ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Send delivery charge ৳${deliveryCharge} via bKash and provide sender number.`);
+        if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
+            const prefix = isExclusiveOrder ? 'অগ্রিম' : 'ডেলিভারি চার্জ';
+            setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Send advance ৳${advanceAmount} via bKash and provide sender number.`);
             return;
         }
 
@@ -152,6 +155,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     status: 'Pending',
                     size: selectedSize || null,
                     color: selectedColor || null,
+                    is_exclusive_order: isExclusiveOrder || false,
                     customer_note: formData.note || null
                 }])
                 .select();
@@ -212,7 +216,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
     };
 
     const needsAdvancePayment = formData.paymentMethod === 'bkash' ||
-        (formData.paymentMethod === 'cod' && deliveryInfo && deliveryCharge > 0);
+        (formData.paymentMethod === 'cod' && deliveryInfo && advanceAmount > 0);
 
     const handleSubmitReview = async () => {
         if (rating === 0) return;
@@ -501,6 +505,18 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                         </div>
 
+                        {/* ===== Exclusive Order Alert ===== */}
+                        {isExclusiveOrder && (
+                            <div className="bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-xl p-4 flex items-start gap-3">
+                                <AlertCircle className="text-[#ce112d] shrink-0 mt-0.5" size={18} />
+                                <p className="text-[#ce112d] text-xs font-bold leading-relaxed">
+                                    {language === 'bn'
+                                        ? "এটি একটি এক্সক্লুসিভ প্রোডাক্ট। অর্ডারটি নিশ্চিত করতে সর্বমোট ৫০০ টাকা অগ্রিম প্রদান করতে হবে।"
+                                        : "This is an Exclusive product. To confirm the order, a total advance payment of 500 TK is required."}
+                                </p>
+                            </div>
+                        )}
+
                         {/* ===== Order Summary ===== */}
                         <div className="rounded-2xl border p-4 space-y-2.5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                             {selectedSize && (
@@ -565,8 +581,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
                                 <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-3 space-y-3">
                                     <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                        {formData.paymentMethod === 'cod' && deliveryCharge > 0
-                                            ? <>{language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'} <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন। পণ্যের টাকা হাতে পেয়ে দিবেন।' : 'Send money via bKash. Pay product price on delivery.'}</>
+                                        {formData.paymentMethod === 'cod' && advanceAmount > 0
+                                            ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge')} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন। পণ্যের টাকা হাতে পেয়ে দিবেন।' : 'Send money via bKash. Pay product price on delivery.'}</>
                                             : <>{language === 'bn' ? 'সম্পূর্ণ টাকা' : 'Total Amount'} <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন।' : 'Send money via bKash.'}</>}
                                     </p>
                                     <div className="flex items-center gap-2">
@@ -587,7 +603,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         )}
 
                         {/* COD free delivery message */}
-                        {formData.paymentMethod === 'cod' && deliveryInfo?.charge === 0 && (
+                        {formData.paymentMethod === 'cod' && !isExclusiveOrder && deliveryInfo?.charge === 0 && (
                             <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                 <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
                                 <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
