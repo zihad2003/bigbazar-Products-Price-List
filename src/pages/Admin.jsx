@@ -602,15 +602,29 @@ export default function Admin() {
             ))}
           </nav>
         </div>
-        <button
-          onClick={() => {
-            supabase.auth.signOut();
-            setIsMobileMenuOpen(false);
-          }}
-          className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-white transition-all mt-auto border-t border-white/5 pt-6"
-        >
-          <LogOut size={16} /> Logout
-        </button>
+        <div className="mt-auto border-t border-white/5 pt-6 space-y-2">
+          <button
+            onClick={() => {
+              fetchProducts();
+              fetchOrders();
+              fetchReviews();
+            }}
+            disabled={loading}
+            className="w-full flex items-center gap-3 p-4 text-neutral-400 hover:text-white transition-all rounded-xl hover:bg-white/5 uppercase text-[10px] font-black tracking-widest"
+          >
+            <RotateCcw size={16} className={loading ? "animate-spin" : ""} /> {loading ? "Refreshing..." : "Refresh Data"}
+          </button>
+
+          <button
+            onClick={() => {
+              supabase.auth.signOut();
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center gap-3 p-4 text-neutral-600 hover:text-red-500 transition-all rounded-xl hover:bg-white/5 uppercase text-[10px] font-black tracking-widest"
+          >
+            <LogOut size={16} /> Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
