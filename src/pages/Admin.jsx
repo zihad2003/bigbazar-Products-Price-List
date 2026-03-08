@@ -1909,6 +1909,20 @@ export default function Admin() {
                       <button
                         onClick={() => setConfirmation({
                           isOpen: true,
+                          title: p.is_exclusive ? 'Remove Exclusive Status' : 'Mark as Exclusive/Premium',
+                          message: p.is_exclusive ? 'আপনি কি নিশ্চিত যে পণ্যটি আর এক্সক্লুসিভ নয়?' : 'আপনি কি এই পণ্যটিকে Exclusive/Premium হিসেবে চিহ্নিত করতে চান?',
+                          confirmText: 'Confirm',
+                          onConfirm: () => supabase.from('products').update({ is_exclusive: !p.is_exclusive }).eq('id', p.id).then(fetchProducts)
+                        })}
+                        className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_exclusive ? 'bg-orange-500/10 text-orange-400' : 'text-neutral-500 hover:text-orange-400 hover:bg-orange-500/10'}`}
+                      >
+                        <Star size={15} className={p.is_exclusive ? "fill-orange-400" : ""} />
+                        <span className="text-[9px] font-black uppercase text-center leading-tight">PREMIUM</span>
+                      </button>
+
+                      <button
+                        onClick={() => setConfirmation({
+                          isOpen: true,
                           title: p.is_sold_out ? 'Mark as Available' : 'Mark as Sold Out',
                           message: p.is_sold_out ? 'আপনি কি নিশ্চিত যে পণ্যটি স্টকে আছে?' : 'আপনি কি এই পণ্যটিকে Sold Out হিসেবে চিহ্নিত করতে চান?',
                           confirmText: 'Confirm',
