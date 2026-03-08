@@ -375,7 +375,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
                                         <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                             {formData.paymentMethod === 'cod'
-                                                ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge')} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>
+                                                ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge')} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন। বাকি টাকা হাতে পেয়ে দিবেন।' : 'Send money via bKash. Pay due amount on delivery.'}</>
                                                 : <>{language === 'bn' ? 'সর্বমোট' : 'Total'} <strong className="text-[#ce112d]">৳{finalTotal}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>}
                                         </p>
                                         <div className="flex items-center gap-3 bg-black/20 p-2 rounded-lg">
