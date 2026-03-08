@@ -12,6 +12,7 @@ import { formatColorName } from '../utils/colorNames';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AlertModal from '../components/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
+import ModeratorEntry from '../components/ModeratorEntry';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -50,7 +51,7 @@ export default function Admin() {
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
     images: [], video_url: '', is_sale: false, is_hot: false,
-    is_new: false, is_sold_out: false, category: 'Women',
+    is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
     status: 'pending', platform_id: '', serial_no: '',
     available_sizes: [], available_colors: [], stock_count: ''
   });
@@ -301,6 +302,7 @@ export default function Admin() {
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       serial_no: parseInt(finalSerialNo),
       stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null,
+      is_exclusive: form.is_exclusive || false,
       // platform_id can be null; video_url & description must stay as empty string (DB NOT NULL)
       platform_id: form.platform_id || null,
       video_url: form.video_url || '',
@@ -496,7 +498,7 @@ export default function Admin() {
     setForm({
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
-      is_new: false, is_sold_out: false, category: 'Women',
+      is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
       status: 'pending', platform_id: '', serial_no: '',
       available_sizes: [], available_colors: [], stock_count: ''
     });
@@ -1282,14 +1284,25 @@ export default function Admin() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <input
-                    type="checkbox"
-                    checked={form.is_sold_out}
-                    onChange={e => setForm({ ...form, is_sold_out: e.target.checked })}
-                    className="w-5 h-5 rounded bg-neutral-900 border-white/10 text-[#ce112d] focus:ring-[#ce112d]"
-                  />
-                  <label className="text-xs font-black uppercase text-white tracking-widest cursor-pointer">Sold Out (অর্ডার বন্ধ করুন)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10 cursor-pointer hover:bg-white/10 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={form.is_sold_out}
+                      onChange={e => setForm({ ...form, is_sold_out: e.target.checked })}
+                      className="w-5 h-5 rounded bg-neutral-900 border-white/10 text-[#ce112d] focus:ring-[#ce112d] cursor-pointer"
+                    />
+                    <span className="text-xs font-black uppercase text-white tracking-widest">Sold Out (অর্ডার বন্ধ করুন)</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-4 bg-[#ce112d]/5 rounded-2xl border border-[#ce112d]/20 cursor-pointer hover:bg-[#ce112d]/10 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={form.is_exclusive}
+                      onChange={e => setForm({ ...form, is_exclusive: e.target.checked })}
+                      className="w-5 h-5 rounded bg-neutral-900 border-[#ce112d]/50 text-[#ce112d] focus:ring-[#ce112d] cursor-pointer"
+                    />
+                    <span className="text-xs font-black uppercase text-[#ce112d] tracking-widest cursor-pointer">Exclusive / Premium</span>
+                  </label>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -1298,6 +1311,12 @@ export default function Admin() {
               </div>
             </div>
           </form>
+        ) : activeTab === 'moderator' ? (
+          <ModeratorEntry
+            products={products}
+            onSuccess={() => { fetchOrders(); setActiveTab('orders'); }}
+            onCancel={() => setActiveTab('orders')}
+          />
         ) : activeTab === 'orders' ? (
           <div className="space-y-12">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -1323,6 +1342,12 @@ export default function Admin() {
                 </div>
               </div>
               <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('moderator')}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all text-white"
+                >
+                  <Plus size={14} /> Create Moderator Entry
+                </button>
                 <button
                   onClick={handleExportCSV}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group"
@@ -1470,7 +1495,7 @@ export default function Admin() {
                           </td>
                           <td className="py-6 pr-4">
                             <button
-                              onClick={() => updateOrderNote(o.id, o.customer_note)}
+                              onClick={(e) => { e.stopPropagation(); updateOrderNote(o.id, o.customer_note); }}
                               className="max-w-[120px] text-left transition-all hover:bg-white/5 p-2 rounded-xl border border-transparent hover:border-white/5 group"
                               title="Click to add/edit note"
                             >
@@ -1482,6 +1507,7 @@ export default function Admin() {
                           <td className="py-6 pr-4">
                             <select
                               value={o.status}
+                              onClick={(e) => e.stopPropagation()}
                               onChange={(e) => updateOrderStatus(o.id, e.target.value)}
                               className={`bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none focus:border-[#ce112d] cursor-pointer transition-all ${o.status === 'Pending' ? 'text-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.1)]' :
                                 o.status === 'Shipped' ? 'text-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.1)]' :
@@ -1496,7 +1522,7 @@ export default function Admin() {
                             </select>
                           </td>
                           <td className="py-6">
-                            <button onClick={() => deleteOrder(o.id)} className="p-3 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
+                            <button onClick={(e) => { e.stopPropagation(); deleteOrder(o.id); }} className="p-3 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all">
                               <Trash2 size={16} />
                             </button>
                           </td>
@@ -1544,6 +1570,7 @@ export default function Admin() {
                           </div>
                           <select
                             value={o.status}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => updateOrderStatus(o.id, e.target.value)}
                             className={`bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-[8px] font-black uppercase outline-none ${o.status === 'Pending' ? 'text-yellow-500' : o.status === 'Shipped' ? 'text-blue-500' : o.status === 'Delivered' ? 'text-green-500' : 'text-red-500'}`}
                           >
@@ -1578,7 +1605,7 @@ export default function Admin() {
                           {o.color && <span className="text-[6px] font-black bg-white/5 text-neutral-400 px-1 py-0.5 rounded uppercase">{o.color}</span>}
                         </div>
                       </div>
-                      <button onClick={() => deleteOrder(o.id)} className="absolute bottom-3 right-3 p-1.5 text-neutral-700 hover:text-red-500 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); deleteOrder(o.id); }} className="absolute bottom-3 right-3 p-1.5 text-neutral-700 hover:text-red-500 transition-colors">
                         <Trash2 size={12} />
                       </button>
                     </div>

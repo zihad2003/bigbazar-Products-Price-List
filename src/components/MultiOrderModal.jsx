@@ -37,6 +37,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
 
     const deliveryCharge = deliveryInfo?.charge ?? 0;
     const finalTotal = cartTotal + deliveryCharge;
+    const isExclusiveOrder = cartItems.some(item => item.is_exclusive);
+    const advanceAmount = isExclusiveOrder ? 500 : deliveryCharge;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -80,8 +82,9 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
-        if (formData.paymentMethod === 'cod' && deliveryCharge > 0 && !formData.senderNumber) {
-            setError(language === 'bn' ? `ডেলিভারি চার্জ ৳${deliveryCharge} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${deliveryCharge} delivery charge and enter sender number.`);
+        if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
+            const prefix = isExclusiveOrder ? 'অগ্রিম' : 'ডেলিভারি চার্জ';
+            setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${advanceAmount} advance and enter sender number.`);
             return;
         }
 
@@ -137,6 +140,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     status: 'Pending',
                     size: combinedSizes.substring(0, 250) || null,
                     color: combinedColors.substring(0, 250) || null,
+                    is_exclusive_order: isExclusiveOrder || false,
                     customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500)
                 }])
                 .select();
@@ -193,7 +197,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
     };
 
     const needsAdvancePayment = formData.paymentMethod === 'bkash' ||
-        (formData.paymentMethod === 'cod' && deliveryInfo && deliveryCharge > 0);
+        (formData.paymentMethod === 'cod' && deliveryInfo && advanceAmount > 0);
 
     return (
         <AnimatePresence>
@@ -340,6 +344,17 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                 </div>
 
+                                {isExclusiveOrder && (
+                                    <div className="bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-xl p-4 flex items-start gap-3">
+                                        <AlertCircle className="text-[#ce112d] shrink-0 mt-0.5" size={18} />
+                                        <p className="text-[#ce112d] text-xs font-bold leading-relaxed">
+                                            {language === 'bn'
+                                                ? "এটি একটি এক্সক্লুসিভ প্রোডাক্ট। অর্ডারটি নিশ্চিত করতে সর্বমোট ৫০০ টাকা অগ্রিম প্রদান করতে হবে।"
+                                                : "This is an Exclusive product. To confirm the order, a total advance payment of 500 TK is required."}
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="space-y-3">
                                     <h4 className="text-[10px] font-black uppercase text-neutral-500 tracking-widest ml-1">💳 পেমেন্ট করার মাধ্যম</h4>
                                     <div className="grid grid-cols-2 gap-3">
@@ -360,7 +375,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
                                         <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                             {formData.paymentMethod === 'cod'
-                                                ? <>{language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'} <strong className="text-[#ce112d]">৳{deliveryCharge}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>
+                                                ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge')} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>
                                                 : <>{language === 'bn' ? 'সর্বমোট' : 'Total'} <strong className="text-[#ce112d]">৳{finalTotal}</strong> {language === 'bn' ? 'সেন্ড মানি করুন।' : 'Send Money to below number.'}</>}
                                         </p>
                                         <div className="flex items-center gap-3 bg-black/20 p-2 rounded-lg">
