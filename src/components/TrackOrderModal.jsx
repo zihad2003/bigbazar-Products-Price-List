@@ -272,7 +272,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3 py-3 border-y" style={{ borderColor: 'var(--border-color)' }}>
+                                            <div className="py-3 border-y space-y-3" style={{ borderColor: 'var(--border-color)' }}>
                                                 <div className="space-y-0.5">
                                                     <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>
                                                         {language === 'bn' ? 'বিবরণ' : 'Details'}
@@ -300,9 +300,41 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         );
                                                     })()}
                                                 </div>
-                                                <div className="space-y-0.5 text-right">
-                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'মোট খরচ' : 'Total Amount'}</p>
-                                                    <p className="text-[10px] md:text-xs font-black text-[#ce112d]">৳{order.total_amount}</p>
+
+                                                <div className="rounded-xl p-3 md:p-4 space-y-2 border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                                                    <div className="flex justify-between text-[10px] md:text-[11px]">
+                                                        <span className="font-bold opacity-70" style={{ color: 'var(--text-muted)' }}>
+                                                            {language === 'bn' ? `আইটেম মূল্য (${(order.product_name || '').split(' + ').length} pcs)` : `Items (${(order.product_name || '').split(' + ').length} pcs)`}
+                                                        </span>
+                                                        <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{order.product_price || (order.total_amount - (order.delivery_charge || 0))}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] md:text-[11px]">
+                                                        <span className="font-bold opacity-70" style={{ color: 'var(--text-muted)' }}>
+                                                            {language === 'bn' ? `ডেলিভারি (${order.delivery_area || 'Outside'})` : `Delivery (${order.delivery_area || 'Outside'})`}
+                                                        </span>
+                                                        <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{order.delivery_charge || 0}</span>
+                                                    </div>
+                                                    {order.is_exclusive_order ? (
+                                                        <div className="flex justify-between text-[10px] md:text-[11px]">
+                                                            <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
+                                                            <span className="font-black text-orange-500">-৳500</span>
+                                                        </div>
+                                                    ) : order.delivery_charge > 0 ? (
+                                                        <div className="flex justify-between text-[10px] md:text-[11px]">
+                                                            <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
+                                                            <span className="font-black text-orange-500">-৳{order.delivery_charge}</span>
+                                                        </div>
+                                                    ) : null}
+                                                    <div className="flex justify-between items-center pt-2 mt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-70" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সর্বমোট' : 'Total'}</span>
+                                                        <span className="text-xs md:text-sm font-black text-[#ce112d] italic">৳{order.total_amount}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center mt-1">
+                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#ce112d]">{language === 'bn' ? 'ডেলিভারির সময় প্রদেয়' : 'Due on Delivery'}</span>
+                                                        <span className="text-sm md:text-base font-black italic" style={{ color: 'var(--text-primary)' }}>
+                                                            ৳{order.payment_status === 'Fully Paid' ? 0 : order.total_amount - (order.is_exclusive_order ? 500 : (order.delivery_charge || 0))}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
 
