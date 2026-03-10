@@ -1493,9 +1493,8 @@ export default function Admin() {
                                 <button
                                   onClick={(e) => { e.stopPropagation(); togglePaymentStatus(o, 'Advance Paid'); }}
                                   className={`px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-tighter transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 text-white' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/20 text-orange-500 border border-orange-500/10' : 'bg-neutral-800 text-neutral-500'}`}
-                                  title="Delivery Paid"
                                 >
-                                  Deliv
+                                  {o.payment_status === 'Advance Paid' || o.is_advance_paid ? (o.is_exclusive_order ? 'Adv Paid' : 'Deliv Paid') : 'Unpaid'}
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); togglePaymentStatus(o, 'Fully Paid'); }}
@@ -1604,7 +1603,7 @@ export default function Admin() {
                             }}
                             className={`text-[6px] font-black px-1.5 py-0.5 rounded uppercase border transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/20 text-orange-500 border-orange-500/20' : 'bg-neutral-800 text-neutral-500 border-white/5'}`}
                           >
-                            Deliv Paid
+                            {o.is_exclusive_order ? 'Adv Paid' : 'Deliv Paid'}
                           </button>
                           <button
                             onClick={(e) => {
@@ -2239,9 +2238,25 @@ export default function Admin() {
                             </span>
                             <span className="font-black text-white">৳{selectedOrder.delivery_charge || 0}</span>
                           </div>
+                          {selectedOrder.is_exclusive_order && (
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-orange-500 font-bold">Advance (Premium)</span>
+                              <span className="font-black text-orange-400">-৳500</span>
+                            </div>
+                          )}
+                          {!selectedOrder.is_exclusive_order && selectedOrder.delivery_charge > 0 && (
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-orange-500 font-bold">Advance</span>
+                              <span className="font-black text-orange-400">-৳{selectedOrder.delivery_charge}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center pt-2 border-t border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Total</span>
                             <span className="text-xl font-black text-[#ce112d] italic">৳{selectedOrder.total_amount}</span>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Due on Delivery</span>
+                            <span className="text-lg font-black text-white italic">৳{selectedOrder.total_amount - (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0))}</span>
                           </div>
                         </div>
                       </div>
@@ -2306,8 +2321,8 @@ export default function Admin() {
                   {/* Payment Details */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5">
-                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">Delivery Charge</p>
-                      <p className="text-lg font-black text-white italic">৳{selectedOrder.delivery_charge || 0}</p>
+                      <p className="text-[8px] font-black uppercase text-neutral-600 mb-1 tracking-widest">{selectedOrder.is_exclusive_order ? 'Advance Amount' : 'Delivery Charge'}</p>
+                      <p className="text-lg font-black text-white italic">৳{selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)}</p>
                     </div>
                     <div className="bg-neutral-900/50 p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
                       <div className="min-w-0">
@@ -2329,8 +2344,8 @@ export default function Admin() {
                       className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
                     >
                       <div className="relative z-10 flex flex-col items-center">
-                        <span className="text-xl font-black italic">৳{selectedOrder.delivery_charge}</span>
-                        <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Delivery Paid</span>
+                        <span className="text-xl font-black italic">৳{selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)}</span>
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">{selectedOrder.is_exclusive_order ? 'Adv Paid' : 'Delivery Paid'}</span>
                       </div>
                       {selectedOrder.payment_status === 'Advance Paid' && (
                         <div className="absolute top-0 right-0 p-1 bg-white/20 rounded-bl-xl"><Check size={8} strokeWidth={4} /></div>
