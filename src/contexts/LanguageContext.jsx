@@ -18,6 +18,7 @@ const translations = {
         // Product Section
         buy_now: 'অর্ডার করুন',
         add_to_cart: 'কার্টে যোগ করুন',
+        add_to_bag: 'ব্যাগে যোগ করুন',
         out_of_stock: 'স্টক নেই',
         sold_out: 'বিক্রি হয়ে গেছে',
         size: 'সাইজ',
@@ -74,6 +75,7 @@ const translations = {
         // Product Section
         buy_now: 'Buy Now',
         add_to_cart: 'Add to Cart',
+        add_to_bag: 'Add to Bag',
         out_of_stock: 'Out of Stock',
         sold_out: 'Sold Out',
         size: 'Size',
