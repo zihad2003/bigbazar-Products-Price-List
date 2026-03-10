@@ -242,7 +242,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   disabled={product.is_sold_out}
                   className={`flex-shrink-0 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] md:text-xs transition-all active:scale-95 shadow-[0_10px_30px_rgba(206,17,45,0.2)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.05]'}`}
                 >
-                  {product.is_sold_out ? t('sold_out') : t('buy_now')}
+                  {product.is_sold_out ? t('sold_out') : t('order_now')}
                 </button>
                 <div className="flex items-baseline gap-2.5">
                   <span className="text-3xl md:text-6xl font-black text-[#ce112d] tracking-tighter">৳{price}</span>
@@ -397,20 +397,29 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={handleAddToCart}
-                  disabled={product.is_sold_out}
-                  className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${product.is_sold_out ? 'border-neutral-800 text-neutral-500 cursor-not-allowed' : (showCartSuccess || isInCart ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white')}`}
-                >
-                  {showCartSuccess || isInCart ? <><Check size={18} /> {language === 'bn' ? 'যোগ করা হয়েছে!' : 'Added to cart!'}</> : <><ShoppingBag size={18} /> {t('add_to_cart')}</>}
-                </button>
-                <button
-                  onClick={handleMainOrder}
-                  disabled={product.is_sold_out}
-                  className={`w-full flex items-center justify-center gap-4 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 shadow-[0_10px_40px_rgba(206,17,45,0.3)] ${product.is_sold_out ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed shadow-none' : 'bg-[#ce112d] text-white hover:scale-[1.02]'}`}
-                >
-                  {product.is_sold_out ? t('sold_out') : t('buy_now')}
-                </button>
+                {product.is_sold_out ? (
+                  <button
+                    disabled
+                    className="col-span-1 sm:col-span-2 w-full flex items-center justify-center gap-4 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                  >
+                    {t('sold_out')}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleAddToCart}
+                      className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 border-2 ${showCartSuccess || isInCart ? 'bg-green-500 border-green-500 text-white' : 'border-[#ce112d] text-[#ce112d] hover:bg-[#ce112d] hover:text-white'}`}
+                    >
+                      {showCartSuccess || isInCart ? <><Check size={18} /> {language === 'bn' ? 'যোগ করা হয়েছে!' : 'Added to bag!'}</> : <><ShoppingBag size={18} /> {t('add_to_bag')}</>}
+                    </button>
+                    <button
+                      onClick={handleMainOrder}
+                      className="w-full flex items-center justify-center gap-4 py-5 rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm transition-all active:scale-95 shadow-[0_10px_40px_rgba(206,17,45,0.3)] bg-[#ce112d] text-white hover:scale-[1.02]"
+                    >
+                      {t('order_now')}
+                    </button>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => {
