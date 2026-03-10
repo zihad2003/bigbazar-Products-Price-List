@@ -140,6 +140,23 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
         return statuses[status] || statuses['Pending'];
     };
 
+    const cleanProductName = (name, order) => {
+        if (!name) return '';
+        let clean = name
+            .replace(/\s*\(SKU:[^)]+\)/gi, '')
+            .replace(/\s*\d+\s*piece\b/gi, '')
+            .replace(/\s*\d+\s*pc\b/gi, '');
+
+        if (order && order.color) {
+            clean = clean.replace(new RegExp(`\\s*${order.color}\\s*`, 'gi'), ' ');
+        }
+        if (order && order.size) {
+            clean = clean.replace(new RegExp(`\\s*${order.size}\\s*`, 'gi'), ' ');
+        }
+
+        return clean.replace(/\b(color|size|রঙ|সাইজ)\b/gi, '').replace(/\s+/g, ' ').trim();
+    };
+
     return (
         <AnimatePresence>
             <motion.div
@@ -252,7 +269,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                                         ? (language === 'bn'
                                                                             ? `${itemParts.length}টি পণ্যের অর্ডার`
                                                                             : `${itemParts.length} Items Order`)
-                                                                        : order.product_name}
+                                                                        : cleanProductName(order.product_name, order)}
                                                                 </h4>
                                                                 <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
                                                                     <div className="flex items-center gap-2">
@@ -291,12 +308,25 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                             );
                                                         }
                                                         return (
-                                                            <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                                                                {order.size ? `${language === 'bn' ? 'সাইজ' : 'Size'}: ${order.size}` : ''}
-                                                                {order.size && order.color ? ' | ' : ''}
-                                                                {order.color ? `${language === 'bn' ? 'রঙ' : 'Color'}: ${order.color}` : ''}
-                                                                {!order.size && !order.color ? (language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details') : ''}
-                                                            </p>
+                                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                                {order.size && (
+                                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+                                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সাইজ' : 'Size'}</span>
+                                                                        <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{order.size}</span>
+                                                                    </div>
+                                                                )}
+                                                                {order.color && (
+                                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+                                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'রঙ' : 'Color'}</span>
+                                                                        <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{order.color}</span>
+                                                                    </div>
+                                                                )}
+                                                                {!order.size && !order.color && (
+                                                                    <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                                                                        {language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details'}
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         );
                                                     })()}
                                                 </div>
