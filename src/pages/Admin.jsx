@@ -719,46 +719,54 @@ export default function Admin() {
 
           </div>
         ) : activeTab === 'add' ? (
-          <form onSubmit={handleProductSubmit} className="max-w-2xl space-y-8">
+          <form onSubmit={handleProductSubmit} className="max-w-4xl space-y-8">
             <div className="space-y-8">
               <h2 className="text-3xl font-black italic uppercase">{editingProduct ? 'Edit' : 'New'} <span className="text-[#ce112d]">Product</span></h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
-                  <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
+              
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                {/* Inputs on the left */}
+                <div className="flex-1 space-y-4 w-full md:max-w-2xl">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Video URL (Instagram)</label>
+                    <input value={form.video_url} onBlur={handleVideoBlur} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" placeholder="https://..." onChange={e => setForm({ ...form, video_url: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Main Product Photo (ফটো আপলোড করুন)</label>
+                    <label className="flex items-center gap-3 w-full bg-neutral-950 border border-white/5 p-4 rounded-xl cursor-pointer hover:bg-white/5 transition-all text-neutral-500">
+                      <div className="w-10 h-10 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d]">
+                        <Plus size={18} />
+                      </div>
+                      <span className="text-[11px] font-black uppercase tracking-widest">Click to Upload Photo</span>
+                      <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Main Product Photo (ফটো আপলোড করুন)</label>
-                  <label className="flex items-center gap-3 w-full bg-neutral-950 border border-white/5 p-4 rounded-xl cursor-pointer hover:bg-white/5 transition-all text-neutral-500">
-                    <div className="w-10 h-10 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d]">
-                      <Plus size={18} />
+
+                {/* Previews on the right */}
+                <div className="w-full md:w-[280px] shrink-0 empty:hidden">
+                  {(previewImage || form.video_url) && (
+                    <div className="flex flex-col gap-4">
+                      {previewImage && (
+                        <div className="aspect-[4/5] w-full bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                          <img src={previewImage} className="w-full h-full object-cover object-top" />
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage(null)}
+                            className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors z-[10]"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {form.video_url && (
+                        <div className="aspect-[4/5] w-full bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                          <VideoPlayer src={form.video_url} priority={true} />
+                        </div>
+                      )}
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-widest">Click to Upload Photo</span>
-                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
-                  </label>
+                  )}
                 </div>
               </div>
-              {(previewImage || form.video_url) && (
-                <div className={`grid gap-4 ${previewImage && form.video_url ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-sm mx-auto w-full'}`}>
-                  {previewImage && (
-                    <div className="aspect-[4/5] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-                      <img src={previewImage} className="w-full h-full object-cover object-top" />
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(null)}
-                        className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-[#ce112d] transition-colors z-[10]"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
-                  {form.video_url && (
-                    <div className="aspect-[4/5] bg-neutral-900 rounded-3xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-                      <VideoPlayer src={form.video_url} priority={true} />
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
