@@ -536,7 +536,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                             )}
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'পণ্যের দাম' : 'Product Price'}</span>
-                                <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{product.price}</span>
+                                <div className="flex items-center gap-2">
+                                    {product.original_price && product.original_price > product.price && (
+                                        <span className="text-neutral-500 line-through text-xs font-bold">৳{product.original_price}</span>
+                                    )}
+                                    <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{product.price}</span>
+                                </div>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{t('delivery_charge')}</span>

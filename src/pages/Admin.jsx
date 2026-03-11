@@ -761,9 +761,15 @@ export default function Admin() {
               )}
             </div>
             <div className="space-y-6">
-              <div>
-                <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Price</label>
-                <input value={form.price} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Regular Price (আসল দাম)</label>
+                  <input type="number" min="0" value={form.original_price || ''} placeholder="e.g. 1500" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, original_price: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Sale Price (ছাড়ের দাম)</label>
+                  <input type="number" min="0" value={form.price || ''} placeholder="e.g. 1200" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
+                </div>
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
@@ -1850,6 +1856,11 @@ export default function Admin() {
                         {/* Price + Status */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[#ce112d] text-base font-black">৳{p.price}</span>
+                          {p.original_price && p.original_price > p.price && (
+                             <span className="text-neutral-500 line-through text-xs font-bold">
+                               ৳{p.original_price}
+                             </span>
+                          )}
                           <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${p.status === 'published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
                             {p.status === 'published' ? 'Live' : 'Draft'}
                           </span>
