@@ -8,6 +8,7 @@ import { Search, X, MessageSquare, Globe } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { calculatePrice } from '../utils/pricing';
 
 const PAGE_SIZE = 12;
 
@@ -405,7 +406,19 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
                     <div className="absolute inset-x-0 bottom-0 p-3 md:p-4" style={{ background: 'var(--gradient-overlay)' }}>
                       <div className="flex flex-col gap-0.5 md:gap-1">
                         <p className="text-[9px] md:text-[10px] font-black italic uppercase truncate" style={{ color: 'var(--text-primary)', opacity: 0.9 }}>{product.name}</p>
-                        <p className="text-[#ce112d] font-black text-xs md:text-sm">৳ {product.price}</p>
+                        {(() => {
+                          const { price, originalPrice, hasDiscount } = calculatePrice(product);
+                          return (
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[#ce112d] font-black text-xs md:text-sm">৳ {price}</span>
+                              {hasDiscount && (
+                                <span className="text-neutral-300 line-through font-bold text-[9px] md:text-[11px] opacity-70">
+                                  ৳ {originalPrice}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

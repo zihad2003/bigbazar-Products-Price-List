@@ -474,7 +474,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         <DeliveryModal
           isOpen={showDeliveryModal}
           onClose={() => setShowDeliveryModal(false)}
-          product={product}
+          product={{ ...product, price, original_price: originalPrice }}
           contactInfo={contactInfo}
           onMessengerOrder={handleMessengerOrder}
           selectedSize={selectedSize}
