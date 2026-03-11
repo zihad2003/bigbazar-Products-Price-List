@@ -771,29 +771,7 @@ export default function Admin() {
                   <input type="number" min="0" value={form.price || ''} placeholder="e.g. 1200" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, price: e.target.value })} />
                 </div>
               </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-[10px] font-black uppercase text-neutral-500 block tracking-widest">Stock Count (খালি = unlimited)</label>
-                  {form.available_colors?.some(c => c.sizes?.length > 0) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        let total = 0;
-                        form.available_colors.forEach(c => {
-                          c.sizes?.forEach(s => {
-                            total += (parseInt(s.stock) || 0);
-                          });
-                        });
-                        setForm({ ...form, stock_count: total.toString() });
-                      }}
-                      className="text-[8px] font-black uppercase bg-[#ce112d]/10 text-[#ce112d] px-2 py-1 rounded-md hover:bg-[#ce112d] hover:text-white transition-all"
-                    >
-                      Sync Total from Variants
-                    </button>
-                  )}
-                </div>
-                <input type="number" min="0" value={form.stock_count} placeholder="e.g. 10" className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, stock_count: e.target.value })} />
-              </div>
+
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-500 mb-2 block tracking-widest">Name</label>
                 <input value={form.name} className="w-full bg-neutral-950 border border-white/5 p-4 rounded-xl" onChange={e => setForm({ ...form, name: e.target.value })} />
