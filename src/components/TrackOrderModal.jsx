@@ -344,25 +344,27 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         </span>
                                                         <span className="font-black" style={{ color: 'var(--text-primary)' }}>৳{order.delivery_charge || 0}</span>
                                                     </div>
-                                                    {order.is_exclusive_order ? (
-                                                        <div className="flex justify-between text-[10px] md:text-[11px]">
-                                                            <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
-                                                            <span className="font-black text-orange-500">-৳500</span>
-                                                        </div>
-                                                    ) : order.delivery_charge > 0 ? (
-                                                        <div className="flex justify-between text-[10px] md:text-[11px]">
-                                                            <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
-                                                            <span className="font-black text-orange-500">-৳{order.delivery_charge}</span>
-                                                        </div>
-                                                    ) : null}
                                                     <div className="flex justify-between items-center pt-2 mt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-70" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সর্বমোট' : 'Total'}</span>
                                                         <span className="text-xs md:text-sm font-black text-[#ce112d] italic">৳{order.total_amount}</span>
                                                     </div>
-                                                    <div className="flex justify-between items-center mt-1">
+                                                    {order.is_advance_paid && (
+                                                        order.is_exclusive_order ? (
+                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
+                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
+                                                                <span className="font-black text-orange-500">-৳500</span>
+                                                            </div>
+                                                        ) : order.delivery_charge > 0 ? (
+                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
+                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
+                                                                <span className="font-black text-orange-500">-৳{order.delivery_charge}</span>
+                                                            </div>
+                                                        ) : null
+                                                    )}
+                                                    <div className="flex justify-between items-center mt-2 pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#ce112d]">{language === 'bn' ? 'ডেলিভারির সময় প্রদেয়' : 'Due on Delivery'}</span>
                                                         <span className="text-sm md:text-base font-black italic" style={{ color: 'var(--text-primary)' }}>
-                                                            ৳{order.payment_status === 'Fully Paid' ? 0 : order.total_amount - (order.is_exclusive_order ? 500 : (order.delivery_charge || 0))}
+                                                        ৳{order.payment_status === 'Fully Paid' ? 0 : (order.is_advance_paid ? order.total_amount - (order.is_exclusive_order ? 500 : (order.delivery_charge || 0)) : order.total_amount)}
                                                         </span>
                                                     </div>
                                                 </div>
