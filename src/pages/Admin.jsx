@@ -2235,25 +2235,26 @@ export default function Admin() {
                             </span>
                             <span className="font-black text-white">৳{selectedOrder.delivery_charge || 0}</span>
                           </div>
-                          {selectedOrder.is_exclusive_order && (
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-orange-500 font-bold">Advance (Premium)</span>
-                              <span className="font-black text-orange-400">-৳500</span>
-                            </div>
-                          )}
-                          {!selectedOrder.is_exclusive_order && selectedOrder.delivery_charge > 0 && (
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-orange-500 font-bold">Advance</span>
-                              <span className="font-black text-orange-400">-৳{selectedOrder.delivery_charge}</span>
-                            </div>
-                          )}
                           <div className="flex justify-between items-center pt-2 border-t border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Total</span>
                             <span className="text-xl font-black text-[#ce112d] italic">৳{selectedOrder.total_amount}</span>
                           </div>
-                          <div className="flex justify-between items-center mt-1">
+                          {selectedOrder.is_advance_paid && (
+                            selectedOrder.is_exclusive_order ? (
+                              <div className="flex justify-between text-[11px] mt-2">
+                                <span className="text-orange-500 font-bold">Advance (Premium)</span>
+                                <span className="font-black text-orange-400">-৳500</span>
+                              </div>
+                            ) : selectedOrder.delivery_charge > 0 ? (
+                              <div className="flex justify-between text-[11px] mt-2">
+                                <span className="text-orange-500 font-bold">Advance</span>
+                                <span className="font-black text-orange-400">-৳{selectedOrder.delivery_charge}</span>
+                              </div>
+                            ) : null
+                          )}
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
                             <span className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Due on Delivery</span>
-                            <span className="text-lg font-black text-white italic">৳{selectedOrder.total_amount - (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0))}</span>
+                            <span className="text-lg font-black text-white italic">৳{selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? selectedOrder.total_amount - (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)) : selectedOrder.total_amount)}</span>
                           </div>
                         </div>
                       </div>
