@@ -25,7 +25,8 @@
   --gradient-overlay: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.6), transparent);
   --navbar-bg: rgba(245, 245, 240, 0.95);
   --modal-bg: #ffffff;
-  --accent-color: #ce112d;
+  --accent-color: #c8102e;
+  --bg-panel: #fbfbfb;
 }
 
 [data-theme="dark"] {
@@ -45,8 +46,9 @@
   --shadow-card: 0 0 0 transparent;
   --gradient-overlay: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.6), transparent);
   --navbar-bg: rgba(0, 0, 0, 0.95);
-  --modal-bg: #171717;
-  --accent-color: #ce112d;
+  --modal-bg: #111111;
+  --accent-color: #c8102e;
+  --bg-panel: #0a0a0a;
 }
 
 h1,

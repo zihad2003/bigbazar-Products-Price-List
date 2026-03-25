@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
-import BannerSlider from '../components/BannerSlider';
+import HeroSlider from '../components/HeroSlider';
 import { Search, X, MessageSquare, Globe } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
@@ -31,7 +31,16 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
       subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE',
       image_url: null
     },
-    main_slides: []
+    main_slides: [],
+    announcement: {
+      enabled: false,
+      title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
+      title_en: 'Important Notice',
+      message_bn: 'প্রিয় গ্রাহক, Big Bazar-এর সাথে থাকার জন্য ধন্যবাদ! বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।',
+      message_en: 'Dear customer, thanks for staying with Big Bazar! Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please order directly from the website.',
+      footer_bn: 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!',
+      footer_en: 'Order from Website — Fast & Easy!'
+    }
   });
 
   const { productId } = useParams();
@@ -57,10 +66,12 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         if (data) {
           const banner = data.find(s => s.key === 'hero_banner')?.value;
           const slides = data.find(s => s.key === 'main_slides')?.value;
+          const announcement = data.find(s => s.key === 'announcement')?.value;
           setSiteSettings(prev => ({
             ...prev,
             banner: banner || prev.banner,
-            main_slides: Array.isArray(slides) ? slides : []
+            main_slides: Array.isArray(slides) ? slides : [],
+            announcement: announcement || prev.announcement
           }));
         }
       });
@@ -267,62 +278,64 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     <div className="min-h-screen px-4 md:px-8 pb-32" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
 
-        {/* Slider Section — Now first, above the notice */}
+        {/* Hero Slider */}
         {siteSettings.main_slides?.length > 0 && (
-          <section className="relative">
-            <BannerSlider banners={siteSettings.main_slides} />
+          <section className="-mx-4 md:-mx-8">
+            <HeroSlider slides={siteSettings.main_slides} />
           </section>
         )}
 
         {/* Announcement Banner — Now below the slider, non-blocking */}
         <AnimatePresence>
-          {showAnnouncement && (
+          {showAnnouncement && siteSettings.announcement?.enabled !== false && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="relative rounded-3xl overflow-hidden border shadow-2xl transition-all"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                borderColor: 'var(--border-color)',
+              }}
             >
-              <div
-                className="relative rounded-2xl overflow-hidden border"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderColor: 'var(--border-color)',
-                  boxShadow: 'var(--shadow-card)',
-                }}
-              >
-                <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #ce112d, #ff4d6d, #ce112d)' }} />
-                <div className="px-4 md:px-5 py-4 flex items-start gap-3">
-                  <div
-                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
-                    style={{ backgroundColor: 'rgba(206, 17, 45, 0.1)' }}
-                  >
-                    <MessageSquare size={16} className="text-[#ce112d]" />
+              {/* Full-width Accent Line */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-[#ce112d] via-[#ff4d6d] to-[#ce112d] shadow-lg shadow-red-500/10" />
+              
+              <div className="p-5 md:p-8 flex gap-4 md:gap-6 relative">
+                {/* Icon Column */}
+                <div className="hidden sm:flex flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-[#ce112d]/5 items-center justify-center text-[#ce112d] border border-[#ce112d]/10">
+                  <MessageSquare size={24} className="md:w-8 md:h-8" />
+                </div>
+                
+                {/* Content Column */}
+                <div className="flex-1 min-w-0 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] md:text-xs font-black uppercase text-[#ce112d] tracking-[0.3em]">
+                      {language === 'bn' ? (siteSettings.announcement?.title_bn || 'গুরুত্বপূর্ণ বিজ্ঞপ্তি') : (siteSettings.announcement?.title_en || 'Important Notice')}
+                    </p>
+                    <button
+                      onClick={dismissAnnouncement}
+                      className="p-2 hover:bg-[#ce112d]/10 rounded-xl transition-all text-zinc-500 hover:text-[#ce112d]"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <p className="text-[10px] md:text-[11px] font-extrabold uppercase tracking-widest" style={{ color: '#ce112d' }}>
-                      {language === 'bn' ? 'গুরুত্বপূর্ণ বিজ্ঞপ্তি' : 'Important Notice'}
+
+                  <div className="space-y-2">
+                    <p className="text-sm md:text-lg font-bold text-white leading-relaxed">
+                      {language === 'bn' ? (siteSettings.announcement?.message_bn || '') : (siteSettings.announcement?.message_en || '')}
                     </p>
-                    <p className="text-xs md:text-sm font-semibold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-                      {language === 'bn' ? <>প্রিয় গ্রাহক, <strong className="text-[#ce112d]">Big Bazar</strong>-এর সাথে থাকার জন্য ধন্যবাদ!</> : <>Dear customer, thanks for staying with <strong className="text-[#ce112d]">Big Bazar</strong>!</>}
-                    </p>
-                    <p className="text-[11px] md:text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                      {language === 'bn' ? <>বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে <strong style={{ color: 'var(--text-primary)' }}>ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।</strong></> : <>Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please <strong style={{ color: 'var(--text-primary)' }}>order directly from the website.</strong></>}
-                    </p>
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <Globe size={11} className="text-[#ce112d]" />
-                      <span className="text-[9px] md:text-[10px] font-extrabold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                        {language === 'bn' ? 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!' : 'Order from Website — Fast & Easy!'}
+                  </div>
+
+                  {(siteSettings.announcement?.footer_bn || siteSettings.announcement?.footer_en) && (
+                    <div className="flex items-center gap-2 pt-2 px-3 py-2 bg-[#ce112d]/5 rounded-xl border border-[#ce112d]/10 w-fit">
+                      <Globe size={14} className="text-[#ce112d]" />
+                      <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-zinc-400">
+                        {language === 'bn' ? (siteSettings.announcement?.footer_bn || '') : (siteSettings.announcement?.footer_en || '')}
                       </span>
                     </div>
-                  </div>
-                  <button
-                    onClick={dismissAnnouncement}
-                    className="flex-shrink-0 p-1.5 rounded-lg transition-all hover:bg-[#ce112d]/10"
-                  >
-                    <X size={14} style={{ color: 'var(--text-muted)' }} />
-                  </button>
+                  )}
                 </div>
               </div>
             </motion.div>
