@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
-const ThemeContext = createContext({ theme: 'dark' });
+const ThemeContext = createContext({ theme: 'light' });
 
 export function ThemeProvider({ children }) {
     const [theme, setTheme] = useState(() => {
         try {
-            return localStorage.getItem('site_theme') || 'dark';
+            return localStorage.getItem('site_theme') || 'light';
         } catch (e) {
-            return 'dark';
+            return 'light';
         }
     });
 

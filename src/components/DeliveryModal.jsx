@@ -132,12 +132,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                 }
             }
 
-            const summaryParts = [product.name];
-            if (selectedColor) summaryParts.push(`${selectedColor} color`);
-            if (selectedSize) summaryParts.push(`${selectedSize} size`);
-            if (variantSKU) summaryParts.push(`(SKU: ${variantSKU})`);
-            summaryParts.push('1 piece');
-            const productSummary = summaryParts.join(' ');
+            let name = product.name || 'Item';
+            if (selectedColor) name += ` (Color: ${selectedColor})`;
+            if (selectedSize) name += ` (Size: ${selectedSize})`;
+            if (variantSKU) name += ` (SKU: ${variantSKU})`;
+            name += ` (Qty: 1)`;
+            const productSummary = name;
 
             const { data: insertedData, error: insertError } = await supabase
                 .from('orders')
@@ -239,8 +239,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             <AnimatePresence>
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1000] backdrop-blur-3xl flex items-center justify-center p-4"
-                    style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+                    className="fixed inset-0 z-[1300] backdrop-blur-3xl flex items-center justify-center p-4"
+                    style={{ backgroundColor: 'var(--bg-overlay)' }}
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -248,26 +248,42 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
                     >
                         {/* Order confirmed header */}
-                        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                            <CheckCircle2 className="text-green-500" size={32} />
+                        {/* Order confirmed header */}
+                        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20 group">
+                            <CheckCircle2 className="text-green-500 group-hover:scale-110 transition-transform" size={40} />
                         </div>
-                        <div>
-                            <h2 className="text-2xl font-black italic uppercase" style={{ color: 'var(--text-primary)' }}>{language === 'bn' ? 'অর্ডার সফল হয়েছে!' : 'Order Confirmed!'}</h2>
-                            <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-secondary)' }}>{language === 'bn' ? 'আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।' : 'Your order has been received successfully.'}</p>
+                        <div className="space-y-2">
+                            <h2 className="text-3xl font-black italic uppercase italic leading-none tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                {language === 'bn' ? 'অর্ডার সফল!' : 'SUCCESS!'}
+                            </h2>
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-green-500/80">
+                                {language === 'bn' ? 'আমরা আপনার অর্ডার পেয়েছি' : 'Order Received Successfully'}
+                            </p>
+                        </div>
 
-                            <div className="flex flex-col gap-2">
-                                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl inline-block mx-auto">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Order ID</p>
-                                    <p className="text-lg font-black text-white">#{String(formData.orderId).slice(0, 8).toUpperCase()}</p>
+                        <div className="flex flex-col gap-3 py-4">
+                            <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-[24px] relative overflow-hidden group">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-[#ce112d]" />
+                                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Global Order ID</p>
+                                <p className="text-2xl font-black text-white mt-1">#{String(formData.orderId).slice(0, 8).toUpperCase()}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-4 bg-neutral-900 border border-white/5 rounded-[24px]">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Contact</p>
+                                    <p className="text-sm font-black text-white mt-1">{formData.phone}</p>
                                 </div>
-                                <div className="p-3 bg-neutral-900 border border-white/5 rounded-2xl inline-block mx-auto min-w-[140px]">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Track with Phone</p>
-                                    <p className="text-sm font-black text-white">{formData.phone}</p>
+                                <div className="p-4 bg-neutral-900 border border-white/5 rounded-[24px] flex flex-col justify-center">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-[#ce112d]">Live Tracking</p>
+                                    <p className="text-[10px] font-bold text-neutral-300 mt-1">Enabled ✅</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] mt-4 group flex items-start gap-1.5">
-                                <Search size={12} className="shrink-0 mt-0.5" /> {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track order updates from the "Track Order" button in the menu.'}
+                        <div className="flex items-start gap-3 p-4 bg-white/5 rounded-[24px] border border-white/5 text-left">
+                            <Search size={16} className="text-[#ce112d] shrink-0 mt-0.5" />
+                            <p className="text-[10px] font-bold leading-relaxed text-neutral-400">
+                                {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track real-time delivery updates from the "Track Order" button in the main menu.'}
                             </p>
                         </div>
 
@@ -353,8 +369,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[1000] backdrop-blur-3xl flex items-end sm:items-center justify-center p-0 sm:p-6"
-                style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+                className="fixed inset-0 z-[1100] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
+                style={{ backgroundColor: 'var(--bg-overlay)' }}
                 onClick={onClose}
             >
                 <motion.div
@@ -367,22 +383,22 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="px-5 py-4 md:px-8 md:py-5 border-b flex items-center justify-between bg-gradient-to-r from-[#ce112d]/10 to-transparent shrink-0" style={{ borderColor: 'var(--border-color)' }}>
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-[#ce112d] rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(206,17,45,0.4)]">
-                                <ShoppingBag className="text-white" size={20} />
+                    <div className="px-6 py-5 md:px-10 md:py-6 border-b flex items-center justify-between shrink-0" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 bg-white rounded-3xl flex items-center justify-center shadow-[0_15px_45px_rgba(0,0,0,0.1)] border border-neutral-100 rotate-[-5deg]">
+                                <ShoppingBag className="text-[#ce112d]" size={28} />
                             </div>
-                            <div>
-                                <h2 className="text-lg md:text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>
+                            <div className="space-y-1">
+                                <h2 className="text-2xl font-black italic uppercase leading-none tracking-tight" style={{ color: 'var(--text-primary)' }}>
                                     {language === 'bn' ? 'অর্ডার ফর্ম' : 'Order Form'}
                                 </h2>
-                                <p className="text-[#ce112d] text-[9px] font-black uppercase tracking-[0.2em] mt-1">
+                                <p className="text-[#ce112d] text-[10px] font-black uppercase tracking-[0.4em]">
                                     {language === 'bn' ? 'দ্রুত চেকআউট' : 'Quick Checkout'}
                                 </p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-full transition-all" style={{ color: 'var(--text-muted)' }}>
-                            <X size={22} />
+                        <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-neutral-100 transition-all border border-transparent hover:border-neutral-200" style={{ color: 'var(--text-muted)' }}>
+                            <X size={24} />
                         </button>
                     </div>
 
@@ -507,14 +523,23 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
                         {/* ===== Exclusive Order Alert ===== */}
                         {isExclusiveOrder && (
-                            <div className="bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-xl p-4 flex items-start gap-3">
-                                <AlertCircle className="text-[#ce112d] shrink-0 mt-0.5" size={18} />
-                                <p className="text-[#ce112d] text-xs font-bold leading-relaxed">
-                                    {language === 'bn'
-                                        ? "এটি একটি এক্সক্লুসিভ প্রোডাক্ট। অর্ডারটি নিশ্চিত করতে সর্বমোট ৫০০ টাকা অগ্রিম প্রদান করতে হবে।"
-                                        : "This is an Exclusive product. To confirm the order, a total advance payment of 500 TK is required."}
-                                </p>
-                            </div>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="bg-red-50 border border-red-200 rounded-[24px] p-5 flex items-start gap-4 shadow-sm"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 border border-red-200">
+                                    <AlertCircle className="text-[#ce112d] animate-pulse" size={20} />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-400">Security Requirement</p>
+                                    <p className="text-[#ce112d] text-xs font-bold leading-relaxed">
+                                        {language === 'bn'
+                                            ? "এটি একটি এক্সক্লুসিভ প্রোডাক্ট। অর্ডারটি নিশ্চিত করতে সর্বমোট ৫০০ টাকা অগ্রিম প্রদান করতে হবে।"
+                                            : "This is an Exclusive product. To confirm the order, a total advance payment of 500 TK is required."}
+                                    </p>
+                                </div>
+                            </motion.div>
                         )}
 
                         {/* ===== Order Summary ===== */}
@@ -618,21 +643,18 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         )}
                     </div>
 
-                    {/* Footer - padded for mobile bars (increased for safety) */}
-                    <div className="px-5 pb-16 pt-4 md:px-8 md:py-5 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                    {/* Footer */}
+                    <div className="px-6 pb-12 pt-5 md:px-10 md:pb-10 md:pt-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                         <button onClick={handleConfirmOrder} disabled={isSubmitting}
-                            className="w-full flex items-center justify-center gap-3 py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100">
+                            className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_15px_45px_rgba(206,17,45,0.35)] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100">
                             {isSubmitting ? (
                                 <div className="flex items-center gap-3">
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     {language === 'bn' ? 'সাবমিট হচ্ছে...' : 'Submitting...'}
                                 </div>
                             ) : (
-                                <>{t('confirm_order')} <ShoppingBag size={18} /></>
+                                <>{t('confirm_order')} <ShoppingBag size={20} /> </>
                             )}
-                        </button>
-                        <button onClick={onClose} className="w-full mt-3 font-black uppercase tracking-[0.3em] text-[10px] py-2" style={{ color: 'var(--text-muted)' }}>
-                            {language === 'bn' ? 'বন্ধ করুন' : 'Close'}
                         </button>
                     </div>
                 </motion.div>

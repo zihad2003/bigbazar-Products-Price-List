@@ -63,11 +63,11 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
         setError('');
 
         const combinedName = cart.map(item => {
-            const parts = [item.name];
-            if (item.selectedColor) parts.push(`${item.selectedColor}`);
-            if (item.selectedSize) parts.push(`${item.selectedSize}`);
-            parts.push(`${item.quantity}pc`);
-            return parts.join(' ');
+            let name = item.name || 'Item';
+            if (item.selectedColor) name += ` (Color: ${item.selectedColor})`;
+            if (item.selectedSize) name += ` (Size: ${item.selectedSize})`;
+            name += ` (Qty: ${item.quantity})`;
+            return name;
         }).join(' + ');
 
         const combinedSizes = cart.map(item => item.selectedSize).filter(Boolean).join(', ');

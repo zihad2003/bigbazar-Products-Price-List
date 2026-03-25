@@ -98,10 +98,12 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
         try {
             const isSingleItem = cartItems.length === 1;
             const combinedName = cartItems.map(item => {
-                const parts = [item.name];
-                if (item.selectedColor) parts.push(`${item.selectedColor} color`);
-                if (item.selectedSize) parts.push(`${item.selectedSize} size`);
-
+                let name = item.name || 'Item';
+                
+                // Add metadata in structured format
+                if (item.selectedColor) name += ` (Color: ${item.selectedColor})`;
+                if (item.selectedSize) name += ` (Size: ${item.selectedSize})`;
+                
                 // Find variant SKU
                 let vSKU = item.platform_id || null;
                 if (item.selectedColor && item.available_colors) {
@@ -111,10 +113,10 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                         if (sObj && sObj.sku) vSKU = sObj.sku;
                     }
                 }
-                if (vSKU) parts.push(`(SKU: ${vSKU})`);
-
-                parts.push(`${item.quantity} piece`);
-                return parts.join(' ');
+                if (vSKU) name += ` (SKU: ${vSKU})`;
+                
+                name += ` (Qty: ${item.quantity})`;
+                return name;
             }).join(' + ');
 
             const combinedSizes = cartItems.map(item => item.selectedSize).filter(Boolean).join(', ');

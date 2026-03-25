@@ -142,11 +142,18 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
     const cleanProductName = (name, order) => {
         if (!name) return '';
+        
+        // 1. Handle NEW structured format: (Color: ...), (Size: ...), (Qty: ...), (SKU: ...)
         let clean = name
-            .replace(/\s*\(SKU:[^)]+\)/gi, '')
-            .replace(/\s*\d+\s*piece\b/gi, '')
-            .replace(/\s*\d+\s*pc\b/gi, '');
+            .replace(/\s*\((?:Color|রঙ):\s*[^)]*\)/gi, '')
+            .replace(/\s*\((?:Size|সাইজ):\s*[^)]*\)/gi, '')
+            .replace(/\s*\(SKU:\s*[^)]*\)/gi, '')
+            .replace(/\s*\((?:Qty|পরিমাণ):\s*[^)]*\)/gi, '')
+            // Handle OLD format parts
+            .replace(/\s+\d+\s*(?:piece|pc)\b/gi, '')
+            .replace(/\s*(?:color|size|রঙ|সাইজ)\b/gi, '');
 
+        // 2. Further cleaning using order-specific columns (if available)
         if (order && order.color) {
             clean = clean.replace(new RegExp(`\\s*${order.color}\\s*`, 'gi'), ' ');
         }
@@ -154,14 +161,14 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             clean = clean.replace(new RegExp(`\\s*${order.size}\\s*`, 'gi'), ' ');
         }
 
-        return clean.replace(/\b(color|size|রঙ|সাইজ)\b/gi, '').replace(/\s+/g, ' ').trim();
+        return clean.replace(/\s+/g, ' ').trim();
     };
 
     return (
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[1000] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
+                className="fixed inset-0 z-[1100] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
                 style={{ backgroundColor: 'var(--bg-overlay)' }}
                 onClick={onClose}
             >

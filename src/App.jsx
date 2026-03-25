@@ -84,15 +84,17 @@ function PublicLayout() {
         onSelectCategory={setCategory}
       />
 
-      <Navbar
-        selectedCategory={category}
-        onSelectCategory={setCategory}
-        onTrackOrder={() => openModal(setIsTrackOpen)}
-        onOpenCart={() => openModal(setIsCartOpen)}
-      />
+      <header className="fixed top-0 left-0 right-0 z-[1000] flex flex-col">
+        <Navbar
+          selectedCategory={category}
+          onSelectCategory={setCategory}
+          onTrackOrder={() => openModal(setIsTrackOpen)}
+          onOpenCart={() => openModal(setIsCartOpen)}
+        />
+      </header>
 
       {/* Main Content */}
-      <main className="flex-grow pt-32 md:pt-36 pb-24 md:pb-0">
+      <main className="flex-grow pt-28 md:pt-32 pb-24 md:pb-0">
         <Home
           selectedCategory={category}
           searchQuery={searchQuery}
