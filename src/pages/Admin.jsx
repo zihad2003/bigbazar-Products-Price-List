@@ -60,7 +60,16 @@ export default function Admin() {
   const [siteSettings, setSiteSettings] = useState({
     hero_banner: { title: '', subtitle: '', image_url: '' },
     contact_info: { whatsapp: '', facebook: '', instagram: '' },
-    main_slides: []
+    main_slides: [],
+    announcement: {
+      enabled: false,
+      title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
+      title_en: 'Important Notice',
+      message_bn: 'প্রিয় গ্রাহক, Big Bazar-এর সাথে থাকার জন্য ধন্যবাদ! বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।',
+      message_en: 'Dear customer, thanks for staying with Big Bazar! Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please order directly from the website.',
+      footer_bn: 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!',
+      footer_en: 'Order from Website — Fast & Easy!'
+    }
   });
 
   useEffect(() => {
@@ -247,16 +256,27 @@ export default function Admin() {
     const settings = {
       hero_banner: { title: '5% FLAT DISCOUNT', subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE', image_url: null },
       contact_info: { whatsapp: '', facebook: '', instagram: '' },
-      main_slides: []
+      main_slides: [],
+      announcement: {
+        enabled: false,
+        title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
+        title_en: 'Important Notice',
+        message_bn: 'প্রিয় গ্রাহক, Big Bazar-এর সাথে থাকার জন্য ধন্যবাদ! বর্তমানে আমাদের ইনবক্সে মেসেজের চাপ অনেক বেশি থাকায় রিপ্লাই দিতে সাময়িক বিলম্ব হচ্ছে। আপনার শপিং অভিজ্ঞতা আরও সহজ ও দ্রুত করতে, অনুগ্রহ করে ওয়েবসাইট থেকেই সরাসরি অর্ডার করুন।',
+        message_en: 'Dear customer, thanks for staying with Big Bazar! Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please order directly from the website.',
+        footer_bn: 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!',
+        footer_en: 'Order from Website — Fast & Easy!'
+      }
     };
 
     if (data) {
       const banner = data.find(s => s.key === 'hero_banner')?.value;
       const contact = data.find(s => s.key === 'contact_info')?.value;
       const slides = data.find(s => s.key === 'main_slides')?.value;
+      const announcement = data.find(s => s.key === 'announcement')?.value;
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
       if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
+      if (announcement) settings.announcement = announcement;
       const themeData = data.find(s => s.key === 'site_theme')?.value;
       if (themeData?.mode) setSiteTheme(themeData.mode);
     }
@@ -667,20 +687,65 @@ export default function Admin() {
                 <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Add images for the main page carousel (স্লাইডার ইমেজ যোগ করুন)</p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="space-y-6">
                 {siteSettings.main_slides?.map((slide, i) => (
-                  <div key={slide.id || i} className="relative aspect-video bg-zinc-900 rounded-[20px] overflow-hidden border border-white/5 group shadow-lg">
-                    <img src={slide.image} className="w-full h-full object-cover" alt="" />
-                    <button
-                      type="button"
-                      onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
-                      className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-[#ce112d] shadow-xl"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <div key={slide.id || i} className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="relative aspect-[21/9] bg-black">
+                      <img src={slide.image} className="w-full h-full object-cover" alt="" />
+                      <button
+                        type="button"
+                        onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
+                        className="absolute top-3 right-3 p-2.5 bg-black/60 text-white rounded-xl hover:bg-[#ce112d] transition-all shadow-xl backdrop-blur-md"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <div className="absolute bottom-3 left-3 px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-bold text-white/60 uppercase">Slide {i + 1}</div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <input
+                        value={slide.title || ''}
+                        placeholder="Slide title (optional)"
+                        onChange={e => {
+                          const updated = [...siteSettings.main_slides];
+                          updated[i] = { ...slide, title: e.target.value };
+                          setSiteSettings({ ...siteSettings, main_slides: updated });
+                        }}
+                        className="w-full bg-black/40 border border-white/5 h-10 px-3 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                      />
+                      <input
+                        value={slide.subtitle || ''}
+                        placeholder="Subtitle (optional)"
+                        onChange={e => {
+                          const updated = [...siteSettings.main_slides];
+                          updated[i] = { ...slide, subtitle: e.target.value };
+                          setSiteSettings({ ...siteSettings, main_slides: updated });
+                        }}
+                        className="w-full bg-black/40 border border-white/5 h-10 px-3 rounded-xl text-xs text-zinc-400 placeholder:text-zinc-700 outline-none focus:border-white/10 transition-all"
+                      />
+                      <input
+                        value={slide.cta || ''}
+                        placeholder="Button text, e.g. Shop Now (optional)"
+                        onChange={e => {
+                          const updated = [...siteSettings.main_slides];
+                          updated[i] = { ...slide, cta: e.target.value };
+                          setSiteSettings({ ...siteSettings, main_slides: updated });
+                        }}
+                        className="w-full bg-black/40 border border-white/5 h-10 px-3 rounded-xl text-xs text-[#ce112d] placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/30 transition-all font-bold"
+                      />
+                      <input
+                        value={slide.product_id || ''}
+                        placeholder="Target Product ID (optional)"
+                        onChange={e => {
+                          const updated = [...siteSettings.main_slides];
+                          updated[i] = { ...slide, product_id: e.target.value };
+                          setSiteSettings({ ...siteSettings, main_slides: updated });
+                        }}
+                        className="w-full bg-black/40 border border-white/5 h-10 px-3 rounded-xl text-[10px] text-zinc-500 placeholder:text-zinc-800 outline-none focus:border-white/10 transition-all font-mono"
+                      />
+                    </div>
                   </div>
                 ))}
-                <label className="aspect-video rounded-[20px] border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-zinc-900 hover:border-[#ce112d]/50 transition-all text-zinc-500 hover:text-white shadow-inner">
+                <label className="flex items-center justify-center gap-3 h-24 rounded-2xl border-2 border-dashed border-zinc-800 cursor-pointer hover:bg-zinc-900 hover:border-[#ce112d]/50 transition-all text-zinc-500 hover:text-white">
                   <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-white/5 shadow-lg">
                     <Plus size={18} />
                   </div>
@@ -704,6 +769,126 @@ export default function Admin() {
                 >
                   {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
                   <span>{loading ? 'Saving...' : 'Save Slider'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-8 pt-12 border-t border-white/5">
+              <div>
+                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Announcement <span className="text-[#ce112d]">Banner</span></h3>
+                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Manage the notification banner on home page (বিজ্ঞপ্তির ব্যানার পরিবর্তন করুন)</p>
+              </div>
+
+              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-8">
+                {/* Enable/Disable Toggle */}
+                <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${siteSettings.announcement?.enabled ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
+                      <MessageSquare size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white uppercase tracking-wider">Show Announcement</p>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Toggle visibility on home page</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, enabled: !siteSettings.announcement?.enabled }
+                    })}
+                    className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
+                  >
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.announcement?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                {/* Bangla Content */}
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em] px-1 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#ce112d]" /> Bangla Content (বাংলা ভাষা)
+                  </label>
+                  <input
+                    value={siteSettings.announcement?.title_bn || ''}
+                    placeholder="বিজ্ঞপ্তির শিরোনাম (যেমন: গুরুত্বপূর্ণ বিজ্ঞপ্তি)"
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, title_bn: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                  <textarea
+                    value={siteSettings.announcement?.message_bn || ''}
+                    placeholder="বিজ্ঞপ্তির বিস্তারিত বার্তা"
+                    rows={4}
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, message_bn: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 p-4 rounded-xl text-sm font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all resize-none"
+                  />
+                  <input
+                    value={siteSettings.announcement?.footer_bn || ''}
+                    placeholder="নিচের ছোট বার্তা (যেমন: Website থেকে অর্ডার করুন)"
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, footer_bn: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-zinc-400 placeholder:text-zinc-700 outline-none focus:border-white/10 transition-all"
+                  />
+                </div>
+
+                {/* English Content */}
+                <div className="space-y-4 pt-4 border-t border-white/5">
+                  <label className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em] px-1 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> English Content
+                  </label>
+                  <input
+                    value={siteSettings.announcement?.title_en || ''}
+                    placeholder="Announcement Title (e.g., Important Notice)"
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, title_en: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                  <textarea
+                    value={siteSettings.announcement?.message_en || ''}
+                    placeholder="Announcement detailed message"
+                    rows={4}
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, message_en: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 p-4 rounded-xl text-sm font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all resize-none"
+                  />
+                  <input
+                    value={siteSettings.announcement?.footer_en || ''}
+                    placeholder="Footer small message (e.g., Order from Website)"
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      announcement: { ...siteSettings.announcement, footer_en: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-zinc-400 placeholder:text-zinc-700 outline-none focus:border-white/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex pt-4">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await supabase.from('site_settings').upsert({ key: 'announcement', value: siteSettings.announcement }, { onConflict: 'key' });
+                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                    else setAlertModal({ isOpen: true, title: 'Success', message: "Announcement Updated Successfully!", type: 'success' });
+                    setLoading(false);
+                  }}
+                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                >
+                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
+                  <span>{loading ? 'Saving...' : 'Save Announcement'}</span>
                 </button>
               </div>
             </div>
