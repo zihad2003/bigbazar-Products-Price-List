@@ -17,6 +17,7 @@ import { useLanguage } from '../contexts/LanguageContext';
  * - Horizontal scrolling for colors
  * - Condensed service grid
  * - Tighter spacing for high-conversion flow
+ * - SOLD OUT Logic restored
  */
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const { t, language } = useLanguage();
@@ -111,10 +112,15 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                  />
                )}
                
-               <div className="absolute top-6 left-6 pointer-events-none">
-                 <span className="px-4 py-1.5 bg-[#c8102e] text-white text-[9px] font-black uppercase tracking-[0.2em] shadow-xl rounded-sm">
+               <div className="absolute top-6 left-6 pointer-events-none flex flex-col gap-2">
+                 <span className="px-5 py-1.5 bg-[#ce112d] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl rounded-sm">
                    {language === 'bn' ? 'এক্সক্লুসিভ' : 'Selective'}
                  </span>
+                 {product.is_sold_out && (
+                   <span className="px-5 py-1.5 bg-black text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl rounded-sm">
+                     {language === 'bn' ? 'স্টক নেই' : 'Sold Out'}
+                   </span>
+                 )}
                </div>
 
                {product.video_url && (
@@ -175,17 +181,25 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                      )}
                    </AnimatePresence>
 
-                   <div className="flex flex-col sm:flex-row gap-3">
-                      <button onClick={handleMainOrder}
-                        className="flex-[1.5] py-4 bg-[#c8102e] text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:brightness-110 active:scale-[0.98] shadow-2xl shadow-red-500/10 rounded-xl">
-                        {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
-                      </button>
-                      <button onClick={handleAddToCart}
-                        className={`flex-1 flex items-center justify-center gap-2 py-4 border-[1.5px] text-[11px] font-black uppercase tracking-[0.1em] transition-all active:scale-[0.98] rounded-xl ${isInCart || showCartSuccess ? 'bg-zinc-100 border-zinc-100 text-[#c8102e]' : 'border-zinc-950 text-zinc-950 hover:bg-zinc-950 hover:text-white'}`}>
-                        {isInCart || showCartSuccess ? <Check size={18} /> : <ShoppingCart size={18} />}
-                        {isInCart || showCartSuccess ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
-                      </button>
-                   </div>
+                   {product.is_sold_out ? (
+                     <div className="w-full py-5 bg-zinc-50 border border-zinc-100 text-zinc-400 text-center rounded-2xl shadow-inner">
+                        <p className="text-[13px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2">
+                          <Box size={16} /> {language === 'bn' ? 'পণ্যটি বর্তমানে স্টকে নেই' : 'Currently Out of Stock'}
+                        </p>
+                     </div>
+                   ) : (
+                     <div className="flex flex-col sm:flex-row gap-3">
+                        <button onClick={handleMainOrder}
+                          className="flex-[1.5] py-4 bg-[#c8102e] text-white text-[11px] font-black uppercase tracking-[0.2em] transition-all hover:brightness-110 active:scale-[0.98] shadow-2xl shadow-red-500/10 rounded-xl">
+                          {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
+                        </button>
+                        <button onClick={handleAddToCart}
+                          className={`flex-1 flex items-center justify-center gap-2 py-4 border-[1.5px] text-[11px] font-black uppercase tracking-[0.1em] transition-all active:scale-[0.98] rounded-xl ${isInCart || showCartSuccess ? 'bg-zinc-100 border-zinc-100 text-[#c8102e]' : 'border-zinc-950 text-zinc-950 hover:bg-zinc-950 hover:text-white'}`}>
+                          {isInCart || showCartSuccess ? <Check size={18} /> : <ShoppingCart size={18} />}
+                          {isInCart || showCartSuccess ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
+                        </button>
+                     </div>
+                   )}
                 </div>
             </div>
 
@@ -251,7 +265,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
             {/* Description (Condensed) */}
             <div className="space-y-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Description</p>
-              <p className="text-[13px] leading-relaxed text-zinc-600 font-medium line-clamp-4">
+              <p className="text-[13px] leading-relaxed text-zinc-600 font-medium line-clamp-4 text-justify">
                 {product.description}
               </p>
             </div>
