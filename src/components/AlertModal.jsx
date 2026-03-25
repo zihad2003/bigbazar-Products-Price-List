@@ -8,20 +8,19 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    />
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[1100] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
+                    style={{ backgroundColor: 'var(--bg-overlay)' }}
+                    onClick={onClose}
+                >
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         className="relative w-full max-w-md border rounded-3xl p-6 shadow-2xl overflow-hidden"
                         style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
+                        onClick={(e) => e.stopPropagation()} // Prevent clicks on modal content from closing the modal
                     >
                         {/* Background Glow */}
                         <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[100px] opacity-20 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -60,7 +59,7 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
                             <X size={20} />
                         </button>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>
     );

@@ -3,7 +3,7 @@
  * Uses nearest-color matching via Euclidean distance in RGB space.
  */
 
-const COLOR_MAP = [
+export const COLOR_MAP = [
     // Whites & Off-whites
     { hex: '#FFFFFF', bn: 'সাদা', en: 'White' },
     { hex: '#FFFDD0', bn: 'ক্রিম', en: 'Cream' },
