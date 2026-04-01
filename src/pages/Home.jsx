@@ -9,6 +9,7 @@ import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { calculatePrice } from '../utils/pricing';
+import { getFallbackProducts, getFallbackProduct } from '../utils/fallback';
 
 const PAGE_SIZE = 12;
 
@@ -95,7 +96,12 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           .eq('id', productId)
           .single();
 
-        if (data && !error) {
+        if (error) {
+          console.warn("Supabase single product fetch failed. Falling back to local data...", error);
+          const fbData = getFallbackProduct(productId);
+          if (fbData) setSelectedProduct(fbData);
+          else setSelectedProduct(null);
+        } else if (data) {
           setSelectedProduct(data);
         }
       };
@@ -160,26 +166,37 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         query = query.range(from, to);
 
         const { data, error, count } = await query;
+        let finalData = data;
+        let finalCount = count;
+        let hasError = error;
+
+        if (error) {
+          console.warn("Supabase products fetch failed. Falling back to local data...");
+          const fb = getFallbackProducts(selectedCategory, debouncedSearchQuery, isFirstPage ? 0 : page, PAGE_SIZE);
+          finalData = fb.data;
+          finalCount = fb.count;
+          hasError = null;
+        }
 
         if (controller.signal.aborted) return;
-        if (error) throw error;
+        if (hasError) throw hasError;
         if (!isMounted) return;
 
         if (isFirstPage) {
-          setProducts(data || []);
+          setProducts(finalData || []);
         } else {
           setProducts(prev => {
             const existingIds = new Set(prev.map(p => p.id));
-            const newItems = (data || []).filter(p => !existingIds.has(p.id));
+            const newItems = (finalData || []).filter(p => !existingIds.has(p.id));
             return [...prev, ...newItems];
           });
         }
 
-        // Use data.length directly for more accurate hasMore calculation
-        const resultLength = data?.length || 0;
-        if (count !== null) {
+        // Use finalData.length directly for more accurate hasMore calculation
+        const resultLength = finalData?.length || 0;
+        if (finalCount !== null) {
           const totalLoaded = (isFirstPage ? 0 : products.length) + resultLength;
-          setHasMore(totalLoaded < count);
+          setHasMore(totalLoaded < finalCount);
         } else {
           setHasMore(resultLength === PAGE_SIZE);
         }
@@ -241,21 +258,33 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         query = query.range(from, to);
 
         const { data, error, count } = await query;
+        let finalData = data;
+        let finalCount = count;
+        let hasError = error;
+
+        if (error) {
+          console.warn("Supabase pagination fetch failed. Falling back to local data...");
+          const fb = getFallbackProducts(selectedCategory, debouncedSearchQuery, page, PAGE_SIZE);
+          finalData = fb.data;
+          finalCount = fb.count;
+          hasError = null;
+        }
+
         if (controller.signal.aborted) return;
-        if (error) throw error;
+        if (hasError) throw hasError;
         if (!isMounted) return;
 
         setProducts(prev => {
           const existingIds = new Set(prev.map(p => p.id));
-          const newItems = (data || []).filter(p => !existingIds.has(p.id));
+          const newItems = (finalData || []).filter(p => !existingIds.has(p.id));
           return [...prev, ...newItems];
         });
 
-        if (count !== null) {
-          const totalLoaded = products.length + (data?.length || 0);
-          setHasMore(totalLoaded < count);
+        if (finalCount !== null) {
+          const totalLoaded = products.length + (finalData?.length || 0);
+          setHasMore(totalLoaded < finalCount);
         } else {
-          setHasMore((data || []).length === PAGE_SIZE);
+          setHasMore((finalData || []).length === PAGE_SIZE);
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
