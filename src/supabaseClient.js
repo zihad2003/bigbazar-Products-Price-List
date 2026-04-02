@@ -1,11 +1,8 @@
 // src/supabaseClient.js
-import { createClient } from '@supabase/supabase-js';
+// ⚡ MIGRATED: Now routes through local MySQL API instead of Supabase
+// All existing imports of `supabase` from this file will continue to work.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { supabase } from './api/client';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Supabase environment variables are missing! Check your .env file.");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };
+export default supabase;

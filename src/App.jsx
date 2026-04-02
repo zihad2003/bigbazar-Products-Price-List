@@ -61,13 +61,10 @@ function PublicLayout() {
   // --- End back button support ---
 
   useEffect(() => {
-    // Increment visitor count only once per session in Supabase
+    // Increment visitor count only once per session
     if (!sessionStorage.getItem('visited')) {
-      supabase.from('site_settings').select('value').eq('key', 'visitor_count').single()
-        .then(({ data }) => {
-          const currentCount = data?.value || 0;
-          return supabase.from('site_settings').upsert({ key: 'visitor_count', value: currentCount + 1 });
-        })
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      fetch(`${apiBase}/api/settings/visitor_count/increment`, { method: 'POST' })
         .then(() => sessionStorage.setItem('visited', 'true'))
         .catch(err => console.log('Visitor tracking failed', err));
     }
