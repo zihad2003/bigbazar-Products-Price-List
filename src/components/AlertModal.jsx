@@ -1,10 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
 
 const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
-    const { language } = useLanguage();
     return (
         <AnimatePresence>
             {isOpen && (
@@ -46,9 +44,7 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
                                     : 'bg-red-600 text-white hover:bg-red-500'
                                     }`}
                             >
-                                {type === 'success'
-                                    ? (language === 'bn' ? 'চালিয়ে যান' : 'Continue')
-                                    : (language === 'bn' ? 'আবার চেষ্টা করুন' : 'Try Again')}
+                                {type === 'success' ? 'Continue' : 'Try Again'}
                             </button>
                         </div>
 
