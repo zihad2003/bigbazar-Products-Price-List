@@ -8,6 +8,7 @@ import {
   Pencil, ChevronDown, ArrowRight, ArrowLeft, Video
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP } from '../utils/colorNames';
 import ConfirmationModal from '../components/ConfirmationModal';
 import AlertModal from '../components/AlertModal';
@@ -1461,6 +1462,10 @@ export default function Admin() {
                       return acc + (amount || 0);
                     }, 0).toLocaleString()}
                   </div>
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 py-1.5 px-4 rounded-full border border-purple-500/20">
+                    <ShieldCheck size={14} />
+                    Advance: ৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => acc + (o.is_exclusive_order ? 500 : 100), 0).toLocaleString()}
+                  </div>
                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 py-1.5 px-4 rounded-full border border-blue-500/20">
                     <Users size={14} />
                     {visitorCount} Visitors
@@ -1485,10 +1490,39 @@ export default function Admin() {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Total Active Revenue</p>
-                <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0).toLocaleString()}</p>
+                <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
+                  const amount = typeof o.total_amount === 'string'
+                     ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
+                     : parseFloat(o.total_amount);
+                  return acc + (amount || 0);
+                }, 0).toLocaleString()}</p>
+              </div>
+              <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
+                <p className="text-xs font-semibold text-purple-500 uppercase tracking-widest">Advance Received</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => acc + (o.is_exclusive_order ? 500 : 100), 0).toLocaleString()}</p>
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20">
+                    <ShieldCheck size={20} className="text-purple-500" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
+                <p className="text-xs font-semibold text-[#ce112d] uppercase tracking-widest">Total Due</p>
+                <div className="flex items-end justify-between">
+                  <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
+                    const totalAmount = typeof o.total_amount === 'string'
+                       ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
+                       : parseFloat(o.total_amount);
+                    const advanceAmount = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_charge || 0)) : 0;
+                    return acc + (totalAmount - advanceAmount);
+                  }, 0).toLocaleString()}</p>
+                  <div className="w-10 h-10 bg-[#ce112d]/10 rounded-2xl flex items-center justify-center border border-[#ce112d]/20">
+                    <span className="text-[#ce112d] font-bold text-sm">৳</span>
+                  </div>
+                </div>
               </div>
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Pending Orders</p>
@@ -1938,7 +1972,7 @@ export default function Admin() {
                 }
                 return false;
               }).map(p => {
-                let displayImage = p.image_url || p.images?.[0];
+                let displayImage = getOptimizedUrl(p.image_url || p.images?.[0], mediaSizes.thumbnail);
                 if (!displayImage && p.video_url) {
                   const match = p.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
                   const id = match ? match[2] : null;
