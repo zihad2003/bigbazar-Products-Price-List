@@ -65,15 +65,13 @@ export default function HeroSlider({ slides = [] }) {
 
   return (
     <div
-      className="relative w-full overflow-hidden group"
+      className="relative w-full h-full overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Dynamic Aspect Container */}
-      <div className="relative w-full aspect-[4/5] md:aspect-[21/9]">
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+      <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={current}
             custom={direction}
@@ -84,60 +82,60 @@ export default function HeroSlider({ slides = [] }) {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="absolute inset-0"
           >
-            {/* Image Source */}
+            {/* Edge-to-Edge Image */}
             <img
               src={getOptimizedUrl(slide.image, mediaSizes.banner)}
               alt={slide.title || 'Collection Banner'}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover select-none"
               loading={current === 0 ? 'eager' : 'lazy'}
               draggable={false}
             />
 
-            {/* Subtle Contrast Overlay (If needed for legibility) */}
-            {(slide.title || slide.subtitle) && (
-                <div className="absolute inset-0 bg-black/10" />
-            )}
+            {/* Premium Aesthetic Overlays */}
+            <div className="absolute inset-0 bg-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
-            {/* Premium Content Overlay */}
+            {/* Dynamic Content Overlay */}
             {(slide.title || slide.subtitle || slide.cta) && (
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full max-w-7xl mx-auto px-6 md:px-16 lg:px-24">
-                  <div className="max-w-xl space-y-4 md:space-y-6 text-center md:text-left">
+              <div className="absolute inset-0 flex items-center md:items-end md:pb-24">
+                <div className="w-full max-w-7xl mx-auto px-8 md:px-20 lg:px-24">
+                  <div className="max-w-2xl space-y-4 md:space-y-6 text-center md:text-left">
                     {slide.subtitle && (
                       <motion.p
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2, duration: 0.8 }}
-                        className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-white/90"
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-[10px] md:text-xs font-black uppercase tracking-[0.6em] text-white/90 drop-shadow-sm"
                       >
                         {slide.subtitle}
                       </motion.p>
                     )}
                     {slide.title && (
                       <motion.h2
-                        initial={{ opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3, duration: 1 }}
-                        className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none uppercase italic tracking-tighter"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                        className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-[0.9] uppercase italic tracking-tighter drop-shadow-2xl"
                       >
                         {slide.title}
                       </motion.h2>
                     )}
                     {slide.cta && (
                       <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                        className="pt-4 md:pt-8"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className="pt-6 md:pt-10"
                       >
                         <button 
                           onClick={handleCtaClick}
-                          className="group relative px-10 md:px-14 py-4 md:py-5 bg-white text-zinc-950 text-[11px] font-black uppercase tracking-widest overflow-hidden transition-all hover:scale-105 active:scale-95"
+                          className="group relative h-14 md:h-20 px-12 md:px-20 bg-white text-zinc-900 text-[11px] md:text-xs font-black uppercase tracking-[0.3em] overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl"
                         >
-                           <div className="relative z-10 flex items-center gap-3">
+                           <div className="relative z-10 flex items-center justify-center gap-4">
                               <span>{slide.cta}</span>
-                              <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                              <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform duration-500" />
                            </div>
+                           <div className="absolute inset-0 bg-neutral-50 -translate-x-full group-hover:translate-x-0 transition-transform duration-700" />
                         </button>
                       </motion.div>
                     )}
@@ -147,7 +145,6 @@ export default function HeroSlider({ slides = [] }) {
             )}
           </motion.div>
         </AnimatePresence>
-      </div>
 
       {/* Navigation arrows */}
       {total > 1 && (

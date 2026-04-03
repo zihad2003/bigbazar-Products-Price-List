@@ -1,4 +1,4 @@
-import { ShoppingBag, Globe, User, Bell } from 'lucide-react';
+import { ShoppingCart, Globe, User, Bell } from 'lucide-react';
 import { useCart } from '../CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,11 +10,7 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
     const navigate = useNavigate();
 
     const categories = [
-        { id: 'All', label: t('all') },
-        { id: 'Men', label: t('men') },
-        { id: 'Women', label: t('women') },
-        { id: 'Kids (Boys)', label: t('boys') },
-        { id: 'Kids (Girls)', label: t('girls') }
+        { id: 'All', label: t('all') }
     ];
 
     return (
@@ -80,7 +76,7 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                             onClick={onOpenCart}
                             className="relative w-9 h-9 md:h-11 md:px-5 rounded-xl flex items-center justify-center md:gap-3 bg-[#ce112d] text-white shadow-xl shadow-red-500/20 active:scale-95 hover:brightness-110 transition-all"
                         >
-                            <ShoppingBag size={18} />
+                             <ShoppingCart size={18} />
                             {cartCount > 0 && (
                                 <span className="absolute -top-1 -right-1 bg-zinc-900 border-2 border-white text-white w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center">
                                     {cartCount}
