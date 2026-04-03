@@ -1,9 +1,6 @@
 -- BigBazar MySQL Schema
 -- Converted from PostgreSQL (Supabase)
 
-CREATE DATABASE IF NOT EXISTS bigbazar CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE bigbazar;
-
 -- ============================================
 -- PRODUCTS TABLE
 -- ============================================
