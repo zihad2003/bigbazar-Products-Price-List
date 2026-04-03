@@ -1,42 +1,57 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LayoutGrid, Check, Sparkles, Shirt, Baby } from 'lucide-react';
+import { X, LayoutGrid, Check } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// Custom SVG icons for categories without a Lucide match
-const DressIcon = ({ size = 20, className = '' }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M10 2h4" />
-        <path d="M12 2v4" />
-        <path d="M8 6l-4 8h5l-1 8h8l-1-8h5l-4-8z" />
-    </svg>
+// Clothing silhouette icons (matching Home.jsx)
+const IconAll = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>
 );
-
-const BoyIcon = ({ size = 20, className = '' }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <circle cx="12" cy="7" r="4" />
-        <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
-    </svg>
+const IconMen = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 3h8" /><path d="M7 3L4 8l3 1v10h10V9l3-1-3-5" />
+    <path d="M10 3v4" /><path d="M14 3v4" /><path d="M10 7h4" />
+  </svg>
 );
-
-const GirlIcon = ({ size = 20, className = '' }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <circle cx="12" cy="7" r="4" />
-        <path d="M5.5 21v-2a6.5 6.5 0 0 1 13 0v2" />
-        <path d="M9 11c0 0-1 2-1 4" />
-        <path d="M15 11c0 0 1 2 1 4" />
-    </svg>
+const IconWomen = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 2h6" />
+    <path d="M9 2c-1 0-2 1-2 2v3l-3 2 2 2h2v9h8V11h2l2-2-3-2V4c0-1-1-2-2-2" />
+    <path d="M9 11c1 3 5 4 6 9" />
+  </svg>
+);
+const IconBoy = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 3h6" /><path d="M8 3L6 7l3 1v4h6V8l3-1-2-4" />
+    <path d="M9 12v6h2v-4h2v4h2v-6" />
+  </svg>
+);
+const IconGirl = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 3h6" /><path d="M9 3L7 6l2 1v4h6V7l2-1-2-3" />
+    <path d="M7 11l-2 8h14l-2-8" />
+  </svg>
+);
+const IconPremium = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 15l-2 5L9 9l11 4-5 2zm0 0l4 4M7.5 13.5L5 15l1 1M8.5 8L7 5l-1 1M15.5 8L17 5l1 1" />
+    <path d="M12 7a5 5 0 100 10 5 5 0 000-10z" />
+  </svg>
 );
 
 const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
 
     const categories = [
-        { id: 'All', label: t('all'), icon: <Sparkles size={20} /> },
-        { id: 'Men', label: t('men'), icon: <Shirt size={20} /> },
-        { id: 'Women', label: t('women'), icon: <DressIcon size={20} /> },
-        { id: 'Kids (Boys)', label: t('boys'), icon: <BoyIcon size={20} /> },
-        { id: 'Kids (Girls)', label: t('girls'), icon: <GirlIcon size={20} /> }
+        { id: 'All',          label: t('all'),   icon: <IconAll size={20} /> },
+        { id: 'Men',          label: t('men'),   icon: <IconMen size={20} /> },
+        { id: 'Women',        label: t('women'), icon: <IconWomen size={20} /> },
+        { id: 'Kids (Boys)',  label: t('boys'),  icon: <IconBoy size={20} /> },
+        { id: 'Kids (Girls)', label: t('girls'), icon: <IconGirl size={20} /> },
+        { id: 'Premium',      label: language === 'bn' ? 'এক্সক্লুসিভ' : 'Premium', icon: <IconPremium size={20} /> },
     ];
 
     return (

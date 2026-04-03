@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingBag, ArrowRight, Zap, X, Star, ChevronRight, MapPin, Layers, Award, User as LucideUser, Tag } from 'lucide-react';
+import { Search, ArrowRight, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import ProductModal from '../components/ProductModal';
@@ -8,6 +8,74 @@ import { supabase } from '../supabaseClient';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// ─── Clothing Silhouette SVG Icons ───────────────────────────────────────────
+const IconAll = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>
+);
+
+const IconMen = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    {/* Kurta/Panjabi silhouette */}
+    <path d="M8 3h8" />
+    <path d="M7 3L4 8l3 1v10h10V9l3-1-3-5" />
+    <path d="M10 3v4" />
+    <path d="M14 3v4" />
+    <path d="M10 7h4" />
+  </svg>
+);
+
+const IconWomen = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    {/* Saree/dress silhouette */}
+    <path d="M9 2h6" />
+    <path d="M9 2c-1 0-2 1-2 2v3l-3 2 2 2h2v9h8V11h2l2-2-3-2V4c0-1-1-2-2-2" />
+    <path d="M9 11c1 3 5 4 6 9" />
+  </svg>
+);
+
+const IconBoy = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    {/* Small Panjabi + shorts */}
+    <path d="M9 3h6" />
+    <path d="M8 3L6 7l3 1v4h6V8l3-1-2-4" />
+    <path d="M9 12v6h2v-4h2v4h2v-6" />
+  </svg>
+);
+
+const IconGirl = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    {/* Small frock silhouette */}
+    <path d="M9 3h6" />
+    <path d="M9 3L7 6l2 1v4h6V7l2-1-2-3" />
+    <path d="M7 11l-2 8h14l-2-8" />
+  </svg>
+);
+
+const IconNew = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+  </svg>
+);
+
+const IconSale = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+    <circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" />
+  </svg>
+);
+const IconPremium = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 15l-2 5L9 9l11 4-5 2zm0 0l4 4M7.5 13.5L5 15l1 1M8.5 8L7 5l-1 1M15.5 8L17 5l1 1" />
+    <path d="M12 7a5 5 0 100 10 5 5 0 000-10z" />
+  </svg>
+);
+// ─────────────────────────────────────────────────────────────────────────────
 
 const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
@@ -43,23 +111,23 @@ const ProductCard = ({ product, onClick }) => {
           loading="lazy"
         />
         {hasDiscount && (
-          <div className="absolute top-4 left-4 bg-[#ce112d] text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest py-1.5 px-3 rounded-full shadow-lg">
+          <div className="absolute top-4 left-4 bg-[#ce112d] text-white text-[10px] font-bold uppercase tracking-wide py-1 px-3 rounded-full shadow-lg">
             SALE
           </div>
         )}
         {product.is_sold_out && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center p-6 text-center">
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] text-neutral-900 border-2 border-neutral-900 px-4 py-2 rounded-xl">
+            <span className="text-xs font-bold uppercase text-neutral-900 border-2 border-neutral-900 px-4 py-2 rounded-xl">
               {language === 'bn' ? 'স্টক নেই' : 'Sold Out'}
             </span>
           </div>
         )}
       </div>
       <div className="p-4 md:p-6 flex flex-col flex-1 gap-2">
-        <div className="space-y-1">
-           <p className="text-[9px] md:text-[10px] font-black uppercase text-neutral-300 tracking-[0.3em] truncate">
-             {product.category || 'Clothing'}
-           </p>
+         <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-wide truncate">
+              {product.category || 'Clothing'}
+            </p>
            <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight h-10">{product.name}</h4>
         </div>
         <div className="mt-auto flex items-end justify-between">
@@ -123,9 +191,10 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [siteSettings, setSiteSettings] = useState({ 
+  const [siteSettings, setSiteSettings] = useState({
     main_slides: [],
-    announcement: '' 
+    announcement: '',
+    category_visibility: { show_new: true, show_sale: true, show_exclusive: true }
   });
 
   // Fetch settings with robust fallback
@@ -165,14 +234,22 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         .range(start, end);
 
       if (selectedCategory && selectedCategory !== 'All') {
-        const catMap = {
-            'Men': ['Men', 'ছেলেদের'],
-            'Women': ['Women', 'মেয়েদের'],
-            'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
-        };
-        const searchCats = catMap[selectedCategory] || [selectedCategory];
-        query = query.in('category', searchCats);
+        if (selectedCategory === 'New') {
+          query = query.eq('is_new', true);
+        } else if (selectedCategory === 'Sale') {
+          query = query.eq('is_sale', true);
+        } else if (selectedCategory === 'Premium') {
+          query = query.eq('is_exclusive', true);
+        } else {
+          const catMap = {
+              'Men': ['Men', 'ছেলেদের'],
+              'Women': ['Women', 'মেয়েদের'],
+              'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+              'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+          };
+          const searchCats = catMap[selectedCategory] || [selectedCategory];
+          query = query.in('category', searchCats);
+        }
       }
 
       if (searchQuery) {
@@ -200,15 +277,16 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     setPage(0);
   }, [selectedCategory, searchQuery]);
 
+  const visibility = siteSettings.category_visibility || {};
   const categories = [
-    { id: 'All', icon: <Layers size={24} />, label: t('all') },
-    { id: 'Men', icon: <LucideUser size={24} />, label: t('men') },
-    { id: 'Women', icon: <ShoppingBag size={24} />, label: t('women') },
-    { id: 'Kids (Boys)', icon: <Star size={24} />, label: t('boys') },
-    { id: 'Kids (Girls)', icon: <Star size={24} />, label: t('girls') },
-    { id: 'Exclusive', icon: <Award size={24} />, label: language === 'bn' ? 'এক্সক্লুসিভ' : 'Premium' },
-    { id: 'New', icon: <Zap size={24} />, label: language === 'bn' ? 'নতুন' : 'New' },
-    { id: 'Sale', icon: <Tag size={24} />, label: language === 'bn' ? 'অফার' : 'Sale' }
+    { id: 'All',          icon: <IconAll size={22} />,   label: t('all') },
+    { id: 'Men',          icon: <IconMen size={22} />,   label: t('men') },
+    { id: 'Women',        icon: <IconWomen size={22} />, label: t('women') },
+    { id: 'Kids (Boys)',  icon: <IconBoy size={22} />,   label: t('boys') },
+    { id: 'Kids (Girls)', icon: <IconGirl size={22} />,  label: t('girls') },
+    ...(visibility.show_new  !== false ? [{ id: 'New',     icon: <IconNew     size={22} />, label: language === 'bn' ? 'নতুন'  : 'New'      }] : []),
+    ...(visibility.show_sale !== false ? [{ id: 'Sale',    icon: <IconSale    size={22} />, label: language === 'bn' ? 'অফার'  : 'Sale'     }] : []),
+    ...(visibility.show_exclusive !== false ? [{ id: 'Premium', icon: <IconPremium size={22} />, label: language === 'bn' ? 'এক্সক্লুসিভ' : 'Premium' }] : []),
   ];
 
   return (
@@ -239,7 +317,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                   <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${selectedCategory === cat.id ? 'bg-[#ce112d] text-white ring-4 ring-[#ce112d]/10 scale-110' : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-900'}`}>
                     <div className="transition-transform duration-500">{cat.icon}</div>
                   </div>
-                  <span className={`block text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
+                  <span className={`block text-[10px] md:text-[11px] font-bold uppercase tracking-wide transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
                 </button>
               ))}
            </div>
@@ -268,8 +346,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
               </h3>
               <div className="flex items-center gap-4">
                  <div className="h-[2px] w-12 bg-[#ce112d]" />
-                 <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-zinc-400">
-                    {products.length} {language === 'bn' ? 'টি পণ্য পাওয়া গেছে' : 'Articles curated'}
+                 <p className="text-[11px] md:text-xs font-medium text-zinc-500">
+                    {products.length} {language === 'bn' ? 'টি পণ্য পাওয়া গেছে' : 'items found'}
                  </p>
               </div>
             </div>
@@ -292,7 +370,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           {loading && page > 0 && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
                <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
-               <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ce112d] animate-pulse">Loading more...</p>
+               <p className="text-xs font-bold text-[#ce112d] animate-pulse">Loading more...</p>
             </div>
           )}
 
@@ -303,7 +381,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                   className="group relative px-16 py-6 bg-zinc-900 text-white rounded-[24px] overflow-hidden transition-all hover:scale-105 active:scale-95"
                 >
                    <div className="relative z-10 flex items-center gap-4">
-                      <span className="text-[11px] font-black uppercase tracking-[0.4em]">{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Load More Designs'}</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore Designs'}</span>
                       <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
                    </div>
                    <div className="absolute inset-0 bg-[#ce112d] translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
