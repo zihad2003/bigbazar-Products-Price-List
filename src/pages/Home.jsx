@@ -78,6 +78,23 @@ const ProductCard = ({ product, onClick }) => {
   );
 };
 
+const DEFAULT_SLIDES = [
+  {
+    id: 'default-1',
+    title: 'Elite Panjabi Collection',
+    subtitle: 'Curated Elegance 2026',
+    image: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1600',
+    cta: 'Explore Collection'
+  },
+  {
+    id: 'default-2',
+    title: 'Selective Premium Sari',
+    subtitle: 'Signature Styles',
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=1600',
+    cta: 'Shop Selective'
+  }
+];
+
 const PAGE_SIZE = 12;
 
 const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChange }) => {
@@ -85,6 +102,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -93,16 +111,22 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     announcement: '' 
   });
 
-  // Fetch settings
+  // Fetch settings with robust fallback
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data } = await supabase.from('site_settings').select('*');
-      if (data && Array.isArray(data)) {
-        const settingsMap = {};
-        data.forEach(item => {
-            settingsMap[item.key] = item.value;
-        });
-        setSiteSettings(prev => ({ ...prev, ...settingsMap }));
+      try {
+        const { data } = await supabase.from('site_settings').select('*');
+        if (data && Array.isArray(data)) {
+          const settingsMap = {};
+          data.forEach(item => {
+              settingsMap[item.key] = item.value;
+          });
+          setSiteSettings(prev => ({ ...prev, ...settingsMap }));
+        }
+      } catch (err) {
+        console.error('Settings fetch failed', err);
+      } finally {
+        setSettingsLoading(false);
       }
     };
     fetchSettings();
@@ -172,14 +196,18 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-32">
-        {/* Floating Hero Slider - Selective Premium View */}
-        {siteSettings.main_slides?.length > 0 && (
-          <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
-             <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-white">
-                <HeroSlider slides={siteSettings.main_slides} />
-             </div>
-          </section>
-        )}
+        {/* Elite Hero Section - Guaranteed Visibility */}
+        <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
+           <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative">
+              {settingsLoading ? (
+                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
+                    <div className="w-24 h-24 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
+                 </div>
+              ) : (
+                 <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
+              )}
+           </div>
+        </section>
 
       <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-24">
         {/* Category Circular Grid (Premium Layout) */}
