@@ -11,7 +11,20 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
-  const displayImage = product.image_url || product.images?.[0] || 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  let displayImage = product.image_url || product.images?.[0];
+  
+  // Hande local uploads from the Admin panel
+  if (displayImage && (displayImage.startsWith('uploads/') || displayImage.startsWith('/uploads/'))) {
+      const cleanPath = displayImage.startsWith('/') ? displayImage : `/${displayImage}`;
+      displayImage = `${API_URL}${cleanPath}`;
+  }
+
+  // Fallback to high-quality mockup if still missing
+  if (!displayImage) {
+      displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
+  }
+
   const { language } = useLanguage();
 
   return (
@@ -171,15 +184,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-24">
         {/* Category Circular Grid (Premium Layout) */}
         <section className="space-y-12">
-           <div className="text-center space-y-3 pt-20">
-              <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-[#ce112d]">
-                 {language === 'bn' ? 'কালেকশন বেছে নিন' : 'Curated Collections'}
-              </p>
-              <h2 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter text-zinc-900 leading-none">
-                 {language === 'bn' ? 'টপ ক্যাটাগরি' : 'Top Categories'}
-              </h2>
-           </div>
-
            <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
               {categories.map((cat) => (
                 <button

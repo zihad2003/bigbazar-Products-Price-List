@@ -17,24 +17,28 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
  */
 export const getOptimizedUrl = (originalUrl, options = {}) => {
     if (!originalUrl) return '';
+    if (originalUrl.startsWith('data:') || originalUrl.includes('images.weserv.nl')) return originalUrl;
 
-    // If it's already an external URL (Instagram/Unsplash), just return it
-    if (!originalUrl.includes(SUPABASE_URL)) {
-        return originalUrl;
+    // Normalize protocol
+    let url = originalUrl;
+    if (!url.startsWith('http') && !url.startsWith('//')) {
+        url = 'https://' + url;
+    } else if (url.startsWith('//')) {
+        url = 'https:' + url;
     }
 
     const { w, h, q = 80, fit = 'cover' } = options;
 
     /**
      * Using 'images.weserv.nl' (Free Open Source Image Proxy & CDN)
-     * This offloads the egress from Supabase to Weserv's Cloudflare-powered CDN.
-     * It also allows for on-the-fly resizing and compression.
+     * We use this for ALL images to ensure consistent loading, 
+     * bypass hotlinking restrictions (like Instagram), and optimize assets.
      */
-    let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(originalUrl)}`;
+    let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
 
     if (w) proxyUrl += `&w=${w}`;
     if (h) proxyUrl += `&h=${h}`;
-    proxyUrl += `&q=${q}&fit=${fit}&output=webp&il`; // output: webp for smaller file size
+    proxyUrl += `&q=${q}&fit=${fit}&output=webp&il`;
 
     return proxyUrl;
 };
