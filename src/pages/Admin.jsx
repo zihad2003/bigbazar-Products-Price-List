@@ -62,6 +62,7 @@ export default function Admin() {
     hero_banner: { title: '', subtitle: '', image_url: '' },
     contact_info: { whatsapp: '', facebook: '', instagram: '' },
     main_slides: [],
+    category_visibility: { show_new: true, show_sale: true, show_exclusive: true },
     announcement: {
       enabled: false,
       title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
@@ -273,6 +274,7 @@ export default function Admin() {
       hero_banner: { title: '5% FLAT DISCOUNT', subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE', image_url: null },
       contact_info: { whatsapp: '', facebook: '', instagram: '' },
       main_slides: [],
+      category_visibility: { show_new: true, show_sale: true, show_exclusive: true },
       announcement: {
         enabled: false,
         title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
@@ -295,6 +297,8 @@ export default function Admin() {
       if (announcement) settings.announcement = announcement;
       const themeData = data.find(s => s.key === 'site_theme')?.value;
       if (themeData?.mode) setSiteTheme(themeData.mode);
+      const catVis = data.find(s => s.key === 'category_visibility')?.value;
+      if (catVis) settings.category_visibility = catVis;
     }
     setSiteSettings(settings);
   };
@@ -672,7 +676,7 @@ export default function Admin() {
               fetchReviews();
             }}
             disabled={loading}
-            className="w-full flex items-center gap-3 p-4 text-zinc-500 hover:text-white transition-all rounded-2xl hover:bg-white/5 uppercase text-[10px] font-bold tracking-widest"
+            className="w-full flex items-center gap-3 p-4 text-zinc-500 hover:text-white transition-all rounded-2xl hover:bg-white/5 text-xs font-semibold"
           >
             <RotateCcw size={16} className={loading ? "animate-spin" : ""} /> {loading ? "Refreshing..." : "Refresh Data"}
           </button>
@@ -682,7 +686,7 @@ export default function Admin() {
               supabase.auth.signOut();
               setIsMobileMenuOpen(false);
             }}
-            className="w-full flex items-center gap-3 p-4 text-zinc-700 hover:text-red-500 transition-all rounded-2xl hover:bg-white/5 uppercase text-[10px] font-bold tracking-widest"
+            className="w-full flex items-center gap-3 p-4 text-zinc-700 hover:text-red-500 transition-all rounded-2xl hover:bg-white/5 text-xs font-semibold"
           >
             <LogOut size={16} /> Logout
           </button>
@@ -694,14 +698,14 @@ export default function Admin() {
         {activeTab === 'settings' ? (
           <div className="max-w-3xl space-y-12">
             <div>
-              <h2 className="text-3xl font-bold uppercase tracking-tight text-white">Site <span className="text-[#ce112d]">Settings</span></h2>
-              <p className="text-zinc-500 text-xs mt-3 uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">Manage Banner & Announcements</p>
+              <h2 className="text-3xl font-bold italic uppercase tracking-tight text-white">Site <span className="text-[#ce112d]">Settings</span></h2>
+              <p className="text-zinc-500 text-xs mt-2 font-medium">Configure banner and system notifications</p>
             </div>
 
             <div className="space-y-8 pt-12 border-t border-white/5">
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Home Slider <span className="text-[#ce112d]">Images</span></h3>
-                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Add images for the main page carousel (স্লাইডার ইমেজ যোগ করুন)</p>
+                <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home Slider <span className="text-[#ce112d]">Images</span></h3>
+                <p className="text-zinc-500 text-xs mt-1 font-medium">Carousel images for the main page (স্লাইডার ইমেজ)</p>
               </div>
 
               <div className="space-y-6">
@@ -912,8 +916,61 @@ export default function Admin() {
 
             <div className="space-y-8 pt-12 border-t border-white/5">
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Site <span className="text-[#ce112d]">Theme</span></h3>
-                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Choose Light or Dark mode for customers</p>
+                <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Category <span className="text-[#ce112d]">Filters</span></h3>
+                <p className="text-zinc-500 text-xs mt-1 font-medium">Show or hide category tabs on the homepage</p>
+              </div>
+              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-4">
+                {[
+                  { key: 'show_new',       label: 'New Arrivals Tab',     desc: 'Shows the "New" filter on homepage', icon: <><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></> },
+                  { key: 'show_sale',      label: 'Sale / Offers Tab',    desc: 'Shows the "Sale" filter on homepage', icon: <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" /></> },
+                  { key: 'show_exclusive', label: 'Premium Collections Tab', desc: 'Shows the "Premium" filter on homepage', icon: <><path d="M12 15l-2 5L9 9l11 4-5 2zm0 0l4 4M7.5 13.5L5 15l1 1M8.5 8L7 5l-1 1M15.5 8L17 5l1 1" /><path d="M12 7a5 5 0 100 10 5 5 0 000-10z" /></> },
+                ].map(({ key, label, desc, icon }) => {
+                  const isOn = (siteSettings.category_visibility || {})[key] !== false;
+                  return (
+                    <div key={key} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isOn ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white uppercase tracking-wider">{label}</p>
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{desc}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSiteSettings(prev => ({ ...prev, category_visibility: { ...(prev.category_visibility || {}), [key]: !isOn } }))}
+                        className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${isOn ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
+                      >
+                        <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${isOn ? 'translate-x-6' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex pt-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await supabase.from('site_settings').upsert({ key: 'category_visibility', value: siteSettings.category_visibility || {} }, { onConflict: 'key' });
+                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                    else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Category visibility updated.', type: 'success' });
+                    setLoading(false);
+                  }}
+                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                >
+                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
+                  <span>{loading ? 'Saving...' : 'Save Visibility'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-8 pt-12 border-t border-white/5">
+              <div>
+                <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Site <span className="text-[#ce112d]">Theme</span></h3>
+                <p className="text-zinc-500 text-xs mt-1 font-medium">Choose color scheme for customers</p>
               </div>
               <div className="flex gap-6">
                 <button type="button" onClick={() => setSiteTheme('dark')}
@@ -1352,7 +1409,7 @@ export default function Admin() {
 
                                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                                      <div className="lg:col-span-12 space-y-4">
-                                        <label className="text-[9px] font-black uppercase text-zinc-600 tracking-widest px-1 italic">Stock & SKU per Size</label>
+                                        <label className="text-[11px] font-bold uppercase text-zinc-500 px-1 italic tracking-wide">Stock & SKU per Size</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                                            {form.available_sizes?.map((sz, sIdx) => {
                                              const sName = typeof sz === 'object' ? sz.name : sz;
@@ -1401,7 +1458,7 @@ export default function Admin() {
 
                                   {form.images?.length > 0 && (
                                     <div className="pt-6 border-t border-white/5">
-                                       <label className="text-[9px] font-black uppercase text-zinc-600 tracking-widest px-1 mb-4 block">Pick Photo for this Color</label>
+                                       <label className="text-[11px] font-bold uppercase text-zinc-500 px-1 mb-4 block italic tracking-wide">Pick Photo for this Color</label>
                                        <div className="flex flex-wrap gap-3">
                                           {form.images.map((img, i) => (
                                             <div key={i} onClick={() => {
@@ -1436,7 +1493,7 @@ export default function Admin() {
                         <input type="checkbox" checked={form.is_exclusive} onChange={e => setForm({ ...form, is_exclusive: e.target.checked })} className="w-8 h-8 rounded-xl accent-[#ce112d] shrink-0" />
                         <div>
                            <span className="text-base font-black text-[#ce112d] uppercase tracking-wider italic">Exclusive Product</span>
-                           <p className="text-[10px] font-bold text-red-900/60 uppercase tracking-widest mt-1">Requires 500 TK advance</p>
+                           <p className="text-xs font-semibold text-red-900/60 mt-1">Requires 500 TK advance</p>
                         </div>
                      </label>
                   </div>
@@ -1465,7 +1522,7 @@ export default function Admin() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-bold uppercase tracking-tight text-white">Pending <span className="text-yellow-500">Deliveries</span></h2>
-                <p className="text-zinc-500 text-[10px] mt-3 uppercase font-black tracking-widest bg-zinc-900 py-2 px-5 rounded-full border border-white/5 inline-block">
+                <p className="text-zinc-500 text-[10px] mt-3 uppercase font-bold tracking-wide bg-zinc-900 py-2 px-5 rounded-full border border-white/5 inline-block">
                   {orders.filter(o => o.status === 'Pending' && o.status !== 'Deleted').length} Items to Pack
                 </p>
               </div>
@@ -1522,10 +1579,10 @@ export default function Admin() {
 
                      {/* Quick Move Action */}
                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <a href={`tel:${order.customer_phone}`} className="h-12 flex items-center justify-center bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-400/20 shadow-lg shadow-blue-500/10">Call Customer</a>
+                        <a href={`tel:${order.customer_phone}`} className="h-12 flex items-center justify-center bg-blue-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-wide border border-blue-400/20 shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all">Call Customer</a>
                         <button 
                           onClick={() => updateOrderStatus(order.id, 'Shipped')}
-                          className="h-12 flex items-center justify-center bg-yellow-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-yellow-500/10 active:scale-[0.98] transition-all"
+                          className="h-12 flex items-center justify-center bg-yellow-500 text-black rounded-2xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-yellow-500/10 active:scale-[0.98] transition-all"
                         >
                           Mark Shipped
                         </button>
@@ -1583,7 +1640,7 @@ export default function Admin() {
             {/* Stats Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Total Active Revenue</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Total Active Revenue</p>
                 <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
                   const amount = typeof o.total_amount === 'string'
                      ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
@@ -1592,7 +1649,7 @@ export default function Admin() {
                 }, 0).toLocaleString()}</p>
               </div>
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-purple-500 uppercase tracking-widest">Advance Received</p>
+                <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Advance Received</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => acc + (o.is_exclusive_order ? 500 : 100), 0).toLocaleString()}</p>
                   <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20">
@@ -1601,7 +1658,7 @@ export default function Admin() {
                 </div>
               </div>
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-[#ce112d] uppercase tracking-widest">Total Due</p>
+                <p className="text-xs font-semibold text-[#ce112d] uppercase tracking-wide">Total Due</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
                     const totalAmount = typeof o.total_amount === 'string'
@@ -1616,7 +1673,7 @@ export default function Admin() {
                 </div>
               </div>
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Pending Orders</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Pending Orders</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Pending').length}</p>
                   <div className="w-10 h-10 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/20">
@@ -1625,7 +1682,7 @@ export default function Admin() {
                 </div>
               </div>
               <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Completed Items</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Completed Items</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Delivered').length}</p>
                   <div className="w-10 h-10 bg-green-500/10 rounded-2xl flex items-center justify-center border border-green-500/20">
@@ -1672,15 +1729,15 @@ export default function Admin() {
                         <div className="bg-black/40 rounded-[32px] p-6 border border-white/5 space-y-6">
                            <div className="flex items-center gap-3">
                               <User size={16} className="text-[#ce112d]" />
-                              <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Customer Detail</p>
+                              <p className="text-xs font-bold uppercase tracking-wide text-[#ce112d]">Customer Detail</p>
                            </div>
                            <div className="space-y-4">
                               <div>
-                                 <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mb-1.5">Name</p>
+                                 <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-wide mb-1.5">Name</p>
                                  <p className="text-base font-black text-white italic">{selectedOrder.customer_name}</p>
                               </div>
                               <div>
-                                 <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mb-1.5">Phone Control</p>
+                                 <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-wide mb-1.5">Phone Information</p>
                                  <div className="flex items-center justify-between bg-zinc-900 px-4 py-3 rounded-2xl border border-white/5">
                                     <span className="text-base font-black text-white tracking-widest italic">{selectedOrder.customer_phone}</span>
                                     <div className="flex gap-2">

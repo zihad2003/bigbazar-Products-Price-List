@@ -511,6 +511,26 @@ app.get('/api/settings', async (req, res) => {
     }
 });
 
+// site settings upsert (POST to base handles bulk or single upsert)
+app.post('/api/settings', requireAuth, async (req, res) => {
+    try {
+        const items = Array.isArray(req.body) ? req.body : [req.body];
+        const results = [];
+        for (const item of items) {
+            const { key, value } = item;
+            if (!key) continue;
+            await pool.query(
+                'INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?',
+                [key, JSON.stringify(value), JSON.stringify(value)]
+            );
+            results.push({ key, value });
+        }
+        res.json({ data: results.length === 1 ? results[0] : results });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.put('/api/settings/:key', requireAuth, async (req, res) => {
     try {
         const { value } = req.body;
