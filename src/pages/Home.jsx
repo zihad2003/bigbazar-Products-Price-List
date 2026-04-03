@@ -78,6 +78,23 @@ const ProductCard = ({ product, onClick }) => {
   );
 };
 
+const ProductSkeleton = () => (
+  <div className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden border border-neutral-100 animate-pulse flex flex-col h-full">
+    <div className="aspect-[4/5] bg-neutral-100" />
+    <div className="p-4 md:p-6 space-y-4 flex flex-col flex-1">
+      <div className="space-y-2">
+        <div className="h-2 w-16 bg-neutral-100 rounded-full" />
+        <div className="h-4 w-full bg-neutral-100 rounded-lg" />
+        <div className="h-4 w-2/3 bg-neutral-50 rounded-lg" />
+      </div>
+      <div className="mt-auto flex justify-between items-end">
+        <div className="h-6 w-20 bg-neutral-100 rounded-lg" />
+        <div className="h-10 w-10 bg-neutral-100 rounded-2xl" />
+      </div>
+    </div>
+  </div>
+);
+
 const DEFAULT_SLIDES = [
   {
     id: 'default-1',
@@ -195,7 +212,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   ];
 
   return (
-    <div className="min-h-screen bg-white pb-32">
+    <div className="min-h-screen bg-white pb-16">
         {/* Elite Hero Section - Guaranteed Visibility */}
         <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
            <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative">
@@ -209,47 +226,42 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
            </div>
         </section>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-12 space-y-24">
-        {/* Category Circular Grid (Premium Layout) */}
-        <section className="space-y-12">
-           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
+        {/* Category Grid */}
+        <section>
+           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className="flex flex-col items-center gap-4 transition-all active:scale-95 group"
+                  className="flex flex-col items-center gap-2 transition-all active:scale-95 group"
                 >
-                  <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center transition-all duration-700 shadow-2xl ${selectedCategory === cat.id ? 'bg-[#ce112d] text-white ring-8 ring-[#ce112d]/10 scale-110' : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-900 group-hover:scale-110'}`}>
+                  <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${selectedCategory === cat.id ? 'bg-[#ce112d] text-white ring-4 ring-[#ce112d]/10 scale-110' : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-900'}`}>
                     <div className="transition-transform duration-500">{cat.icon}</div>
                   </div>
-                  <div className="text-center space-y-1">
-                    <span className={`block text-[10px] md:text-[11px] font-black uppercase tracking-widest transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
-                    <div className={`h-1 w-4 mx-auto bg-[#ce112d] rounded-full transition-all duration-700 ${selectedCategory === cat.id ? 'opacity-100' : 'opacity-0 scale-0'}`} />
-                  </div>
+                  <span className={`block text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
                 </button>
               ))}
            </div>
         </section>
 
-        {/* Search Bar Above Products */}
-        <section className="space-y-8">
-          <div className="max-w-md mx-auto">
+        {/* Search Bar - Left Aligned */}
+        <div className="max-w-sm">
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-[#ce112d] transition-colors" size={18} />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={language === 'bn' ? 'পছন্দের পণ্যটি খুঁজুন...' : 'Search selective collections...'}
-                className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/10 focus:bg-white rounded-2xl py-4 pl-12 pr-6 text-sm font-bold uppercase tracking-widest outline-none transition-all shadow-sm"
+                placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
+                className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/10 focus:bg-white rounded-2xl py-3.5 pl-12 pr-6 text-sm outline-none transition-all shadow-sm"
               />
             </div>
-          </div>
-        </section>
+        </div>
 
         {/* Dynamic Product Grid */}
-        <section className="space-y-16 pt-20">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
+        <section className="space-y-8 pt-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-4">
               <h3 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
                  {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'প্রিমিয়াম কালেকশন' : 'Selective Edits') : selectedCategory)}
@@ -263,7 +275,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {loading && page === 0 ? (
                Array.from({ length: 10 }).map((_, i) => <ProductSkeleton key={i} />)
             ) : (
@@ -278,14 +290,14 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           </div>
 
           {loading && page > 0 && (
-            <div className="flex flex-col items-center justify-center py-32 gap-6">
-               <div className="w-12 h-12 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
-               <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ce112d] animate-pulse">Curating Luxury Content</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+               <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
+               <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ce112d] animate-pulse">Loading more...</p>
             </div>
           )}
 
           {hasMore && !loading && (
-             <div className="flex justify-center pt-32">
+             <div className="flex justify-center pt-12">
                 <button
                   onClick={() => setPage(prev => prev + 1)}
                   className="group relative px-16 py-6 bg-zinc-900 text-white rounded-[24px] overflow-hidden transition-all hover:scale-105 active:scale-95"
@@ -301,7 +313,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
 
         {/* Global Footer Accent - Clean & Minimal */}
-        <section className="py-40 text-center">
+        <section className="py-16 text-center">
             <div className="inline-flex flex-col items-center gap-8 group">
                <div className="relative">
                   <div className="absolute inset-0 bg-[#ce112d]/5 rounded-full blur-3xl group-hover:bg-[#ce112d]/10 transition-colors" />
