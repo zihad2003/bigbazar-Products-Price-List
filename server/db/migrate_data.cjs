@@ -9,11 +9,11 @@ const fs = require('fs');
 const path = require('path');
 
 const DB_CONFIG = {
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: '1234',
-    database: 'bigbazar',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT) || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '1234',
+    database: process.env.DB_NAME || 'bigbazar',
     multipleStatements: true,
     charset: 'utf8mb4'
 };
