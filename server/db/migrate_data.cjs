@@ -41,7 +41,10 @@ async function migrate() {
         // 4. Migrate site_settings
         await migrateSiteSettings(conn);
 
-        // 5. Create default admin user (password: 1234)
+        // 5. Migrate orders
+        await migrateOrders(conn);
+
+        // 6. Create default admin user (password: 1234)
         await createAdminUser(conn);
 
         console.log('\n🎉 Migration complete!');
@@ -194,6 +197,91 @@ async function migrateSiteSettings(conn) {
         }
     }
     console.log(`  ✅ Inserted ${inserted} settings`);
+}
+
+async function migrateOrders(conn) {
+    console.log('\n📦 Migrating orders...');
+    const csvPath = path.join(DATA_DIR, 'orders_rows.csv');
+    if (!fs.existsSync(csvPath)) {
+        console.log('  ⚠️ No orders CSV file found, skipping');
+        return;
+    }
+
+    await conn.query('DELETE FROM orders');
+
+    const content = fs.readFileSync(csvPath, 'utf-8');
+    const lines = content.split('\n');
+    const header = lines[0].split(',');
+    
+    // Create a mapping of header names to their indices
+    const h = {};
+    header.forEach((name, i) => h[name.trim()] = i);
+
+    let inserted = 0;
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        // Use a CSV line parser that handles quoted strings correctly
+        const fields = parseCsvLine(lines[i]);
+        if (fields.length < 10) continue;
+
+        try {
+            await conn.query(
+                `INSERT INTO orders (
+                    id, created_at, product_id, product_name, product_price, 
+                    customer_name, customer_phone, customer_address, customer_note, 
+                    delivery_area, delivery_charge, total_amount, last_four_digits, 
+                    status, size, color, is_advance_paid, is_exclusive_order, 
+                    payment_status, moderator_reference
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    fields[h.id],
+                    new Date(fields[h.created_at]),
+                    fields[h.product_id],
+                    fields[h.product_name],
+                    fields[h.product_price],
+                    fields[h.customer_name],
+                    fields[h.customer_phone],
+                    fields[h.customer_address],
+                    fields[h.customer_note] || null,
+                    fields[h.delivery_area],
+                    fields[h.delivery_charge],
+                    fields[h.total_amount],
+                    fields[h.last_four_digits],
+                    fields[h.status],
+                    fields[h.size] || null,
+                    fields[h.color] || null,
+                    fields[h.is_advance_paid] === 'true' ? 1 : 0,
+                    fields[h.is_exclusive_order] === 'true' ? 1 : 0,
+                    fields[h.payment_status],
+                    fields[h.moderator_reference] || null
+                ]
+            );
+            inserted++;
+        } catch (err) {
+            console.error(`  ⚠️ Failed order row ${i}: ${err.message}`);
+        }
+    }
+    console.log(`  ✅ Inserted ${inserted} orders`);
+}
+
+function parseCsvLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim().replace(/^"|"$/g, ''));
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim().replace(/^"|"$/g, ''));
+    return result;
 }
 
 async function createAdminUser(conn) {

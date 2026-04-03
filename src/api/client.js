@@ -106,6 +106,7 @@ class QueryBuilder {
         this._inFilters = {};
         this._orFilter = null;
         this._likeFilters = {};
+        this._limitCount = null;
     }
 
     select(fields = '*', opts = {}) {
@@ -132,12 +133,21 @@ class QueryBuilder {
         return this;
     }
 
+    limit(count) {
+        this._limitCount = count;
+        return this;
+    }
+
     single() { this._single = true; return this; }
 
-    // Execute SELECT
-    async then(resolve) {
+    // Execute SELECT or other queued action
+    async then(resolve, reject) {
         try {
-            const result = await this._executeSelect();
+            let result;
+            if (this._action === 'update') result = await this._executeUpdate();
+            else if (this._action === 'delete') result = await this._executeDelete();
+            else if (this._action === 'upsert' || this._action === 'insert') result = await this._executeInsert();
+            else result = await this._executeSelect();
             resolve(result);
         } catch (err) {
             resolve({ data: null, error: err, count: 0 });
@@ -185,6 +195,10 @@ class QueryBuilder {
             params.set('ascending', String(this._orderAsc));
         }
         
+        if (this._limitCount !== null) {
+            params.set('limit', this._limitCount);
+        }
+        
         if (this._rangeFrom !== null) {
             const limit = this._rangeTo - this._rangeFrom + 1;
             const page = Math.floor(this._rangeFrom / limit);
@@ -208,12 +222,17 @@ class QueryBuilder {
         return { data, error: null, count };
     }
 
-    // Execute INSERT
-    async insert(records) {
+    // Lazy action queueing
+    insert(records) { this._action = 'insert'; this._records = records; return this; }
+    upsert(records) { this._action = 'upsert'; this._records = records; return this; }
+    update(values) { this._action = 'update'; this._values = values; return this; }
+    delete() { this._action = 'delete'; return this; }
+
+    // Internal Executors
+    async _executeInsert() {
         const endpoint = this._getEndpoint();
-        const items = Array.isArray(records) ? records : [records];
+        const items = Array.isArray(this._records) ? this._records : [this._records];
         const results = [];
-        
         for (const item of items) {
             const res = await fetch(`${API_BASE}${endpoint}`, {
                 method: 'POST',
@@ -224,36 +243,35 @@ class QueryBuilder {
             if (!res.ok) return { data: null, error: { message: json.error } };
             results.push(json.data);
         }
-        
         return { data: results.length === 1 ? results[0] : results, error: null };
     }
 
-    // Execute UPDATE
-    async update(values) {
+    async _executeUpdate() {
         const id = this._filters.id;
         if (!id) return { data: null, error: { message: 'No ID filter for update' } };
-        
         const endpoint = this._getEndpoint();
         const res = await fetch(`${API_BASE}${endpoint}/${id}`, {
             method: 'PUT',
             headers: headers(),
-            body: JSON.stringify(values)
+            body: JSON.stringify(this._values)
         });
         const json = await res.json();
         if (!res.ok) return { data: null, error: { message: json.error } };
         return { data: json.data, error: null };
     }
 
-    // Execute DELETE
-    async delete() {
+    async _executeDelete() {
         const id = this._filters.id;
-        if (!id) return { data: null, error: { message: 'No ID filter for delete' } };
-        
+        const key = this._filters.key;
+        const status = this._filters.status;
+        if (!id && !key && !status) return { data: null, error: { message: 'No filter for delete' } };
         const endpoint = this._getEndpoint();
-        const res = await fetch(`${API_BASE}${endpoint}/${id}`, {
-            method: 'DELETE',
-            headers: headers()
-        });
+        let url = `${API_BASE}${endpoint}`;
+        if (id) url += `/${id}`;
+        else if (key) url += `/${key}`;
+        else if (status) url += `?status=${status}`;
+
+        const res = await fetch(url, { method: 'DELETE', headers: headers() });
         const json = await res.json();
         if (!res.ok) return { data: null, error: { message: json.error } };
         return { data: null, error: null };

@@ -7,12 +7,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load env
-const envContent = fs.readFileSync(path.join(__dirname, '../.env'), 'utf8');
-const env = {};
-envContent.split('\n').filter(l => l.includes('=')).forEach(l => {
-    const [k, ...vParts] = l.split('=');
-    env[k.trim()] = vParts.join('=').trim();
-});
+let env = {};
+const envPaths = [path.join(__dirname, '../.env.local'), path.join(__dirname, '../.env')];
+for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        envContent.split('\n').filter(l => l.includes('=')).forEach(l => {
+            const [k, ...vParts] = l.split('=');
+            if (k && !env[k.trim()]) env[k.trim()] = vParts.join('=').trim();
+        });
+    }
+}
 
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
