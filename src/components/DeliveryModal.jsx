@@ -239,126 +239,92 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             <AnimatePresence>
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1300] backdrop-blur-3xl flex items-center justify-center p-4"
-                    style={{ backgroundColor: 'var(--bg-overlay)' }}
+                    className="fixed inset-0 z-[2000] bg-neutral-900/95 backdrop-blur-3xl flex items-center justify-center p-4"
                 >
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                        className="border rounded-[32px] p-8 max-w-sm w-full text-center space-y-5"
-                        style={{ backgroundColor: 'var(--modal-bg)', borderColor: 'var(--border-color)' }}
+                        initial={{ scale: 0.9, opacity: 0, y: 50 }} 
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        className="relative w-full max-w-md bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col"
                     >
-                        {/* Order confirmed header */}
-                        {/* Order confirmed header */}
-                        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto border border-green-500/20 group">
-                            <CheckCircle2 className="text-green-500 group-hover:scale-110 transition-transform" size={40} />
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-3xl font-black italic uppercase italic leading-none tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                                {language === 'bn' ? 'অর্ডার সফল!' : 'SUCCESS!'}
+                        {/* Cut Line Circle Accents */}
+                        <div className="absolute left-0 top-[115px] -translate-x-1/2 w-8 h-8 rounded-full bg-neutral-900/40 z-1" />
+                        <div className="absolute right-0 top-[115px] translate-x-1/2 w-8 h-8 rounded-full bg-neutral-900/40 z-1" />
+
+                        {/* Top Success Header */}
+                        <div className="bg-[#ce112d] p-8 text-center text-white shrink-0">
+                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20 backdrop-blur-sm">
+                                <Check size={32} strokeWidth={4} />
+                            </div>
+                            <h2 className="text-2xl font-black italic uppercase leading-none tracking-tight">
+                                {language === 'bn' ? 'অর্ডার সফল হয়েছে!' : 'Order Placed!'}
                             </h2>
-                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-green-500/80">
-                                {language === 'bn' ? 'আমরা আপনার অর্ডার পেয়েছি' : 'Order Received Successfully'}
+                            <p className="text-[10px] uppercase font-black tracking-widest mt-2 opacity-80">
+                                {language === 'bn' ? 'আমরা আপনার কাছে ফোন দিব' : 'We will call you soon'}
                             </p>
                         </div>
 
-                        <div className="flex flex-col gap-3 py-4">
-                            <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-[24px] relative overflow-hidden group">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-[#ce112d]" />
-                                <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Global Order ID</p>
-                                <p className="text-2xl font-black text-white mt-1">#{String(formData.orderId).slice(0, 8).toUpperCase()}</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="p-4 bg-neutral-900 border border-white/5 rounded-[24px]">
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Contact</p>
-                                    <p className="text-sm font-black text-white mt-1">{formData.phone}</p>
+                        {/* Receipt Content */}
+                        <div className="flex-1 p-8 pt-10 text-neutral-900 space-y-6 overflow-y-auto no-scrollbar">
+                           <div className="space-y-1">
+                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Order Reference</p>
+                               <div className="flex items-center justify-between gap-4">
+                                  <h3 className="text-2xl font-black text-neutral-900 italic tracking-tighter">#{String(formData.orderId).toUpperCase()}</h3>
+                                  <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/10">CONFIRMED ✅</div>
+                               </div>
+                           </div>
+
+                           <div className="space-y-4 pt-6 border-t border-dashed border-neutral-200">
+                                {/* Details Row */}
+                                <div className="space-y-3">
+                                   <div className="flex justify-between items-start">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Customer</span>
+                                      <span className="text-sm font-bold text-right">{formData.name}</span>
+                                   </div>
+                                   <div className="flex justify-between items-start">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Address</span>
+                                      <span className="text-xs font-medium text-right max-w-[200px] leading-tight text-neutral-600">{formData.address}</span>
+                                   </div>
+                                   <div className="flex justify-between items-start">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Phone</span>
+                                      <span className="text-sm font-bold text-right">{formData.phone}</span>
+                                   </div>
                                 </div>
-                                <div className="p-4 bg-neutral-900 border border-white/5 rounded-[24px] flex flex-col justify-center">
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-[#ce112d]">Live Tracking</p>
-                                    <p className="text-[10px] font-bold text-neutral-300 mt-1">Enabled ✅</p>
+
+                                <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-3">
+                                   <div className="flex justify-between text-xs">
+                                      <span className="font-medium text-neutral-500">{product.name}</span>
+                                      <span className="font-black">৳{product.price}</span>
+                                   </div>
+                                   <div className="flex justify-between text-xs">
+                                      <span className="font-medium text-neutral-500">{language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'}</span>
+                                      <span className="font-black">৳{deliveryCharge}</span>
+                                   </div>
+                                   <div className="pt-2 border-t border-neutral-200 flex justify-between items-baseline">
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{language === 'bn' ? 'মমোট বিল' : 'Grand Total'}</span>
+                                      <span className="text-2xl font-black text-[#ce112d] italic">৳{calculateTotal()}</span>
+                                   </div>
                                 </div>
-                            </div>
+                           </div>
+                           
+                           <div className="space-y-3 pt-4">
+                              <div className="flex items-center gap-3 p-4 bg-yellow-500/5 rounded-2xl border border-yellow-500/10">
+                                 <AlertTriangle size={16} className="text-yellow-600 shrink-0" />
+                                 <p className="text-[10px] font-bold text-neutral-600 leading-tight italic">
+                                    {language === 'bn' ? 'অর্ডারের স্ক্রিনশট নিয়ে রাখুন এবং মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে আপডেট দেখুন।' : 'Please take a screenshot and track your order from the "Track Order" button.'}
+                                 </p>
+                              </div>
+                           </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-4 bg-white/5 rounded-[24px] border border-white/5 text-left">
-                            <Search size={16} className="text-[#ce112d] shrink-0 mt-0.5" />
-                            <p className="text-[10px] font-bold leading-relaxed text-neutral-400">
-                                {language === 'bn' ? 'আপনি মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে অডারের আপডেট দেখতে পাবেন।' : 'You can track real-time delivery updates from the "Track Order" button in the main menu.'}
-                            </p>
-                        </div>
-
-                        {/* Review section */}
-                        {!reviewSubmitted ? (
-                            <div className="rounded-2xl border p-4 space-y-4 text-left" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-                                <p className="text-xs font-bold text-center" style={{ color: 'var(--text-secondary)' }}>
-                                    {language === 'bn' ? 'আপনার অভিজ্ঞতা কেমন ছিল? ⭐' : 'How was your experience? ⭐'}
-                                </p>
-
-                                {/* Star Rating */}
-                                <div className="flex justify-center gap-1.5">
-                                    {[1, 2, 3, 4, 5].map(star => (
-                                        <button
-                                            key={star}
-                                            type="button"
-                                            onClick={() => setRating(star)}
-                                            onMouseEnter={() => setHoverRating(star)}
-                                            onMouseLeave={() => setHoverRating(0)}
-                                            className="transition-transform hover:scale-110 active:scale-95"
-                                        >
-                                            <Star
-                                                size={32}
-                                                className={`transition-colors ${star <= (hoverRating || rating)
-                                                    ? 'text-yellow-400 fill-yellow-400'
-                                                    : ''
-                                                    }`}
-                                                style={star > (hoverRating || rating) ? { color: 'var(--border-color)' } : {}}
-                                            />
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Comment */}
-                                {rating > 0 && (
-                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                                        <textarea
-                                            value={reviewText}
-                                            onChange={(e) => setReviewText(e.target.value)}
-                                            placeholder={language === 'bn' ? "আপনার মতামত লিখুন (ঐচ্ছিক)" : "Write your feedback (optional)"}
-                                            rows="2"
-                                            className="w-full border rounded-xl py-2.5 px-3 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                        />
-                                    </motion.div>
-                                )}
-
-                                {/* Submit review */}
-                                {rating > 0 && (
-                                    <button
-                                        onClick={handleSubmitReview}
-                                        className="w-full py-2.5 bg-[#ce112d] text-white rounded-xl font-bold text-sm transition-all active:scale-95"
-                                    >
-                                        {language === 'bn' ? 'রিভিউ দিন' : 'Submit Review'}
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <motion.p
-                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
-                                className="text-sm font-bold text-green-500"
+                        {/* Footer Action */}
+                        <div className="p-8 pt-2 bg-neutral-50 border-t border-neutral-100">
+                            <button onClick={onClose}
+                                className="w-full py-5 bg-neutral-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
                             >
-                                {language === 'bn' ? 'ধন্যবাদ আপনার রিভিউয়ের জন্য!' : 'Thanks for your feedback!'}
-                            </motion.p>
-                        )}
-
-                        <button onClick={onClose} className="w-full py-4 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_10px_40px_rgba(206,17,45,0.3)] transition-all active:scale-95">
-                            {language === 'bn' ? 'শপে ফিরে যান' : 'Back To Shop'}
-                        </button>
-
-                        {!reviewSubmitted && rating === 0 && (
-                            <button onClick={onClose} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                                {language === 'bn' ? 'এড়িয়ে যান' : 'Skip'}
+                                <ChevronDown size={18} className="rotate-90" />
+                                <span>{language === 'bn' ? 'শপে ফিরে যান' : 'Back to Shop'}</span>
                             </button>
-                        )}
+                        </div>
                     </motion.div>
                 </motion.div>
             </AnimatePresence>
