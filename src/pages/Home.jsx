@@ -159,10 +159,12 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-32">
-        {/* Hero Slider - Clean & High-Impact */}
+        {/* Floating Hero Slider - Selective Premium View */}
         {siteSettings.main_slides?.length > 0 && (
-          <section className="w-full relative overflow-hidden bg-white">
-             <HeroSlider slides={siteSettings.main_slides} />
+          <section className="w-full h-[45vh] md:h-[65vh] relative px-4 md:px-12 pt-4 md:pt-8">
+             <div className="w-full h-full rounded-[32px] md:rounded-[48px] overflow-hidden shadow-2xl shadow-zinc-200">
+                <HeroSlider slides={siteSettings.main_slides} />
+             </div>
           </section>
         )}
 

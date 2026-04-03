@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingBag, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucide-react';
+import { Home, Search, ShoppingCart, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../CartContext';
 
@@ -40,7 +40,7 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
             isCenter: true,
             icon: (
                 <div className="relative">
-                    <ShoppingBag size={28} className="text-white" />
+                    <ShoppingCart size={28} className="text-white" />
                     {cartCount > 0 && (
                         <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-white text-[#ce112d] text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#ce112d]">
                             {cartCount}
