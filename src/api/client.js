@@ -42,12 +42,30 @@ function headers() {
 // Auth API (replaces supabase.auth)
 // ============================================
 export const auth = {
-    async signInWithPassword({ email, password }) {
+    async signUp({ name, email, mobile, password }) {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, mobile, password })
+            });
+            const json = await res.json();
+            if (!res.ok) return { data: {}, error: { message: json.error || 'Signup failed' } };
+            
+            setToken(json.session.access_token);
+            _authListeners.forEach(fn => fn('SIGNED_IN', json.session));
+            return { data: json, error: null };
+        } catch (err) {
+            return { data: {}, error: { message: err.message } };
+        }
+    },
+
+    async signInWithPassword({ email, mobile, password }) {
         try {
             const res = await fetch(`${API_BASE}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, mobile, password })
             });
             const json = await res.json();
             if (!res.ok) return { data: {}, error: { message: json.error || 'Login failed' } };

@@ -65,14 +65,14 @@ export default function HeroSlider({ slides = [] }) {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl md:rounded-3xl shadow-2xl group"
+      className="relative w-full overflow-hidden group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Aspect ratio container - significantly taller for better proportion */}
-      <div className="relative w-full aspect-[1/1] md:aspect-[21/9]">
+      {/* Dynamic Aspect Container */}
+      <div className="relative w-full aspect-[4/5] md:aspect-[21/9]">
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={current}
@@ -81,61 +81,67 @@ export default function HeroSlider({ slides = [] }) {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="absolute inset-0"
           >
-            {/* Image */}
+            {/* Image Source */}
             <img
               src={getOptimizedUrl(slide.image, mediaSizes.banner)}
-              alt={slide.title || 'Banner'}
+              alt={slide.title || 'Collection Banner'}
               className="w-full h-full object-cover"
               loading={current === 0 ? 'eager' : 'lazy'}
               draggable={false}
             />
 
-            {/* Gradient overlays */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            {/* Subtle Contrast Overlay (If needed for legibility) */}
+            {(slide.title || slide.subtitle) && (
+                <div className="absolute inset-0 bg-black/10" />
+            )}
 
-            {/* Text overlay */}
+            {/* Premium Content Overlay */}
             {(slide.title || slide.subtitle || slide.cta) && (
-              <div className="absolute inset-0 flex items-center justify-center md:justify-start">
-                <div className="p-6 md:p-12 lg:p-16 w-full md:max-w-xl space-y-3 md:space-y-4 text-center md:text-left transition-all duration-500">
-                  {slide.subtitle && (
-                    <motion.p
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2, duration: 0.5 }}
-                      className="text-[9px] md:text-xs font-bold uppercase tracking-[0.4em] text-white/80"
-                    >
-                      {slide.subtitle}
-                    </motion.p>
-                  )}
-                  {slide.title && (
-                    <motion.h2
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.5 }}
-                      className="text-xl md:text-3xl lg:text-4xl font-black text-white leading-tight uppercase tracking-tight"
-                    >
-                      {slide.title}
-                    </motion.h2>
-                  )}
-                  {slide.cta && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5, duration: 0.5 }}
-                      className="flex justify-center md:justify-start pt-4"
-                    >
-                      <button 
-                        onClick={handleCtaClick}
-                        className="px-8 md:px-12 py-3.5 md:py-4 bg-[#ce112d] text-white text-[11px] md:text-sm font-black uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-red-900/40 border border-white/20 whitespace-nowrap"
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full max-w-7xl mx-auto px-6 md:px-16 lg:px-24">
+                  <div className="max-w-xl space-y-4 md:space-y-6 text-center md:text-left">
+                    {slide.subtitle && (
+                      <motion.p
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2, duration: 0.8 }}
+                        className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-white/90"
                       >
-                        {slide.cta}
-                      </button>
-                    </motion.div>
-                  )}
+                        {slide.subtitle}
+                      </motion.p>
+                    )}
+                    {slide.title && (
+                      <motion.h2
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3, duration: 1 }}
+                        className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none uppercase italic tracking-tighter"
+                      >
+                        {slide.title}
+                      </motion.h2>
+                    )}
+                    {slide.cta && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                        className="pt-4 md:pt-8"
+                      >
+                        <button 
+                          onClick={handleCtaClick}
+                          className="group relative px-10 md:px-14 py-4 md:py-5 bg-white text-zinc-950 text-[11px] font-black uppercase tracking-widest overflow-hidden transition-all hover:scale-105 active:scale-95"
+                        >
+                           <div className="relative z-10 flex items-center gap-3">
+                              <span>{slide.cta}</span>
+                              <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                           </div>
+                        </button>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

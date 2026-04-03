@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingBag, Globe, LayoutGrid, Tag, User, ReceiptText } from 'lucide-react';
+import { Home, Search, ShoppingBag, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../CartContext';
 
@@ -52,7 +52,7 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
         },
         {
             id: 'tracking',
-            icon: <ReceiptText size={22} />,
+            icon: <ClipboardList size={22} />,
             label: language === 'bn' ? 'ট্র্যাকিং' : 'Orders',
             onClick: onTrackOrder,
             active: false

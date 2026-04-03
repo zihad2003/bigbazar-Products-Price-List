@@ -12,6 +12,7 @@ import TrackOrderModal from './components/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
 import CategoryModal from './components/CategoryModal';
+import LoginModal from './components/LoginModal';
 import { supabase } from './supabaseClient';
 
 function ScrollToTop() {
@@ -28,6 +29,7 @@ function PublicLayout() {
   const [isTrackOpen, setIsTrackOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -39,17 +41,18 @@ function PublicLayout() {
     setIsTrackOpen(false);
     setIsCartOpen(false);
     setIsCategoryOpen(false);
+    setIsAuthOpen(false);
   };
 
   useEffect(() => {
     const handlePopState = () => {
-      if (isTrackOpen || isCartOpen || isCategoryOpen) {
+      if (isTrackOpen || isCartOpen || isCategoryOpen || isAuthOpen) {
         closeAllModals();
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isTrackOpen, isCartOpen, isCategoryOpen]);
+  }, [isTrackOpen, isCartOpen, isCategoryOpen, isAuthOpen]);
 
   const handleCloseModal = (setter) => {
     setter(false);
@@ -74,6 +77,7 @@ function PublicLayout() {
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <TrackOrderModal isOpen={isTrackOpen} onClose={() => handleCloseModal(setIsTrackOpen)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => handleCloseModal(setIsCartOpen)} />
+      <LoginModal isOpen={isAuthOpen} onClose={() => handleCloseModal(setIsAuthOpen)} />
       <CategoryModal
         isOpen={isCategoryOpen}
         onClose={() => handleCloseModal(setIsCategoryOpen)}
@@ -87,13 +91,15 @@ function PublicLayout() {
           onSelectCategory={setCategory}
           onTrackOrder={() => openModal(setIsTrackOpen)}
           onOpenCart={() => openModal(setIsCartOpen)}
+          onOpenAuth={() => openModal(setIsAuthOpen)}
         />
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow pt-28 md:pt-32 pb-24 md:pb-0">
+      <main className="flex-grow pt-16 md:pt-20 pb-24 md:pb-0">
         <Home
           selectedCategory={category}
+          setSelectedCategory={setCategory}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />

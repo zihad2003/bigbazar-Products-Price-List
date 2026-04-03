@@ -1,9 +1,10 @@
-import { Search, ShoppingBag, Globe, MapPin, Bell } from 'lucide-react';
+import { ShoppingBag, Globe, User, Bell } from 'lucide-react';
 import { useCart } from '../CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }) => {
+const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, onOpenAuth }) => {
     const { cartCount } = useCart();
     const { language, toggleLanguage, t } = useLanguage();
     const navigate = useNavigate();
@@ -17,87 +18,76 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }
     ];
 
     return (
-        <nav className="relative z-[1002] border-b transition-all duration-300" style={{ backgroundColor: 'var(--navbar-bg)', borderColor: 'var(--border-color)' }}>
-            {/* Top Row — App Style Location (Mobile Only) */}
-            <div className="md:hidden w-full px-4 pt-4 pb-2 flex items-center justify-between">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-1 text-[10px] uppercase font-black text-neutral-400 tracking-widest">
-                        <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Deliver to'}</span>
-                        <MapPin size={10} className="text-[#ce112d]" />
-                    </div>
-                    <div className="text-sm font-black italic flex items-center gap-1">
-                        <span>Bariarhat, Mirsarai</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                    </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={toggleLanguage}
-                        className="h-9 px-3 rounded-full bg-neutral-100 flex items-center gap-1.5 active:scale-95 transition-all"
-                    >
-                        <Globe size={14} className="text-[#ce112d]" />
-                        <span className="text-[10px] font-black">{language === 'bn' ? 'EN' : 'বাং'}</span>
-                    </button>
-                    <button className="h-9 w-9 rounded-full bg-neutral-100 flex items-center justify-center relative active:scale-95 transition-all">
-                        <Bell size={16} />
-                        <span className="absolute top-2 right-2.5 w-2 h-2 bg-[#ce112d] rounded-full border-2 border-white" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Main Row — Logo + Desktop Nav */}
-            <div className="w-full max-w-7xl mx-auto px-4 md:px-8 h-14 md:h-16 flex items-center justify-between">
-                {/* Logo */}
-                <h1 
-                    onClick={() => navigate('/')}
-                    className="text-xl md:text-2xl font-black italic tracking-tighter select-none leading-none cursor-pointer" 
-                    style={{ color: 'var(--text-primary)' }}
-                >
-                    <span>BIG</span>
-                    <span className="text-[#ce112d]">BAZAR</span>
-                </h1>
-
-                {/* Desktop Actions */}
-                <div className="hidden md:flex items-center gap-3">
-                    <button
-                        onClick={onTrackOrder}
-                        className="h-10 px-4 rounded-xl text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all hover:bg-neutral-100"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        <Search size={14} className="text-[#ce112d]" />
-                        <span>{t('track')}</span>
-                    </button>
-                    <button
-                        onClick={onOpenCart}
-                        className="relative h-10 px-4 rounded-xl flex items-center gap-2 transition-all bg-[#ce112d] text-white active:scale-95"
-                    >
-                        <ShoppingBag size={14} />
-                        <span className="text-[11px] font-black uppercase tracking-wider">{t('cart')}</span>
-                        {cartCount > 0 && (
-                            <span className="bg-white text-[#ce112d] px-1.5 rounded-md text-[10px] font-black">
-                                {cartCount}
-                            </span>
-                        )}
-                    </button>
-                </div>
-            </div>
-
-            {/* Category Pills (Mobile Only) */}
-            <div className="md:hidden w-full overflow-x-auto no-scrollbar pb-3">
-                <div className="flex items-center gap-2 px-4 min-w-max mx-auto">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat.id}
-                            onClick={() => onSelectCategory(cat.id)}
-                            className={`px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300 whitespace-nowrap active:scale-95 ${selectedCategory === cat.id
-                                ? 'bg-[#ce112d] text-white shadow-[0_4px_12px_rgba(206,17,45,0.3)]'
-                                : 'bg-neutral-100 text-neutral-500'
-                                }`}
+        <nav className="relative z-[1002] transition-all duration-500 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
+            <div className="w-full max-w-7xl mx-auto px-4 md:px-8">
+                <div className="h-14 md:h-20 flex items-center justify-between gap-4 md:gap-8">
+                    {/* Logo Section */}
+                    <div className="shrink-0">
+                        <h1 
+                            onClick={() => { onSelectCategory('All'); navigate('/'); }}
+                            className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none" 
                         >
-                            {cat.label}
+                            <span className="text-zinc-900">BIG</span>
+                            <span className="text-[#ce112d]">BAZAR</span>
+                        </h1>
+                    </div>
+
+                    {/* Desktop Category Links (Elegant) */}
+                    <div className="hidden lg:flex items-center gap-6">
+                        {categories.slice(1).map((cat) => (
+                            <button
+                                key={cat.id}
+                                onClick={() => onSelectCategory(cat.id)}
+                                className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all relative py-1 ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-400 hover:text-zinc-900'}`}
+                            >
+                                {cat.label}
+                                {selectedCategory === cat.id && (
+                                    <motion.div layoutId="navline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ce112d]" />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Quick Access Area */}
+                    <div className="flex items-center gap-2 md:gap-3">
+                        {/* Track Order */}
+                        <button 
+                            onClick={onTrackOrder}
+                            className="p-2 md:px-4 md:py-2 rounded-xl text-zinc-400 hover:text-zinc-900 md:bg-zinc-50 transition-all border border-transparent flex items-center gap-2"
+                        >
+                            <Globe size={18} />
+                            <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">{t('track')}</span>
                         </button>
-                    ))}
+
+                        {/* Language */}
+                        <button 
+                            onClick={toggleLanguage}
+                            className="w-9 h-9 md:w-11 md:h-11 rounded-xl bg-zinc-50 flex items-center justify-center active:scale-95 transition-all text-zinc-900 border border-transparent hover:border-zinc-200"
+                        >
+                            <span className="text-[10px] font-black">{language === 'bn' ? 'EN' : 'বাং'}</span>
+                        </button>
+
+                        {/* Profile */}
+                        <button 
+                           onClick={onOpenAuth}
+                           className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-900 active:scale-95 transition-all"
+                        >
+                            <User size={18} />
+                        </button>
+
+                        {/* Cart */}
+                        <button
+                            onClick={onOpenCart}
+                            className="relative w-9 h-9 md:h-11 md:px-5 rounded-xl flex items-center justify-center md:gap-3 bg-[#ce112d] text-white shadow-xl shadow-red-500/20 active:scale-95 hover:brightness-110 transition-all"
+                        >
+                            <ShoppingBag size={18} />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-zinc-900 border-2 border-white text-white w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </nav>
