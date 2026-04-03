@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import ProductModal from '../components/ProductModal';
 import HeroSlider from '../components/HeroSlider';
-import { Search, X, MessageSquare, Globe } from 'lucide-react';
+import { Search, X, MessageSquare, Globe, ArrowRight } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useTheme } from '../ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -47,6 +47,13 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   const { productId } = useParams();
   const navigate = useNavigate();
 
+  const quickCategories = [
+    { id: 'Saree', label_en: 'Saree', label_bn: 'শাড়ি', img: 'https://images.weserv.nl/?url=www.taneira.com/dw/image/v2/BGCW_PRD/on/demandware.static/-/Sites-Taneira-Library/default/dwb51ee6ac/Saree%201.jpg' },
+    { id: 'Three Piece', label_en: '3 Piece', label_bn: 'থ্রি পিস', img: 'https://images.weserv.nl/?url=images.clothesline365.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/t/h/three-piece_1.jpg' },
+    { id: 'Panjabi', label_en: 'Panjabi', label_bn: 'পাঞ্জাবি', img: 'https://images.weserv.nl/?url=www.aarong.com/media/catalog/product/0/1/0150000030545.jpg' },
+    { id: 'Exclusive', label_en: 'Exclusive', label_bn: 'এক্সক্লুসিভ', img: 'https://images.weserv.nl/?url=i.pinimg.com/736x/8f/3e/2a/8f3e2a0f8eb543b593efd67f78eb5833.jpg' }
+  ];
+
   const dismissAnnouncement = () => {
     setShowAnnouncement(false);
     sessionStorage.setItem('bb_announcement_dismissed', 'true');
@@ -61,7 +68,6 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
   }, [searchQuery]);
 
   useEffect(() => {
-    // Fetch Banner & Slider Settings
     supabase.from('site_settings').select('*')
       .then(({ data }) => {
         if (data) {
@@ -76,17 +82,8 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           }));
         }
       });
-
-    // Handle scroll to products from mobile menu
-    if (window.history.state?.usr?.scrollToProducts) {
-      setTimeout(() => {
-        const header = document.getElementById('products-header');
-        if (header) header.scrollIntoView({ behavior: 'smooth' });
-      }, 500);
-    }
   }, []);
 
-  // Handle direct product link
   useEffect(() => {
     if (productId) {
       const fetchProduct = async () => {
@@ -97,7 +94,6 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
           .single();
 
         if (error) {
-          console.warn("Supabase single product fetch failed. Falling back to local data...", error);
           const fbData = getFallbackProduct(productId);
           if (fbData) setSelectedProduct(fbData);
           else setSelectedProduct(null);
@@ -111,19 +107,13 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     }
   }, [productId]);
 
-  // Combined effect for resetting and fetching
   useEffect(() => {
     let isMounted = true;
 
     const fetchProducts = async (isFirstPage) => {
-      // Abort previous fetch if it's still running
-      if (fetchControllerRef.current) {
-        fetchControllerRef.current.abort();
-      }
-
+      if (fetchControllerRef.current) fetchControllerRef.current.abort();
       setLoading(true);
       if (isFirstPage) {
-        // Only clear if it's a new category/search (to keep existing visibility during soft refreshes)
         setProducts([]);
         setPage(0);
         setHasMore(true);
@@ -147,13 +137,8 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
             'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
             'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
           };
-
           const values = categoryMaps[selectedCategory] || [selectedCategory];
-          if (values.length > 1) {
-            query = query.in('category', values);
-          } else {
-            query = query.eq('category', selectedCategory);
-          }
+          query = values.length > 1 ? query.in('category', values) : query.eq('category', selectedCategory);
         }
 
         if (debouncedSearchQuery) {
@@ -171,7 +156,6 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         let hasError = error;
 
         if (error) {
-          console.warn("Supabase products fetch failed. Falling back to local data...");
           const fb = getFallbackProducts(selectedCategory, debouncedSearchQuery, isFirstPage ? 0 : page, PAGE_SIZE);
           finalData = fb.data;
           finalCount = fb.count;
@@ -182,28 +166,12 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
         if (hasError) throw hasError;
         if (!isMounted) return;
 
-        if (isFirstPage) {
-          setProducts(finalData || []);
-        } else {
-          setProducts(prev => {
-            const existingIds = new Set(prev.map(p => p.id));
-            const newItems = (finalData || []).filter(p => !existingIds.has(p.id));
-            return [...prev, ...newItems];
-          });
-        }
+        if (isFirstPage) setProducts(finalData || []);
+        else setProducts(prev => [...prev, ...(finalData || [])]);
 
-        // Use finalData.length directly for more accurate hasMore calculation
-        const resultLength = finalData?.length || 0;
-        if (finalCount !== null) {
-          const totalLoaded = (isFirstPage ? 0 : products.length) + resultLength;
-          setHasMore(totalLoaded < finalCount);
-        } else {
-          setHasMore(resultLength === PAGE_SIZE);
-        }
+        setHasMore((finalCount !== null) ? (products.length + (finalData?.length || 0) < finalCount) : (finalData?.length === PAGE_SIZE));
       } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("List fetch error:", err);
-        }
+        if (err.name !== 'AbortError') console.error("List fetch error:", err);
       } finally {
         clearTimeout(timeoutId);
         if (isMounted && fetchControllerRef.current === controller) {
@@ -217,251 +185,151 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
     return () => { isMounted = false; };
   }, [selectedCategory, debouncedSearchQuery]);
 
-  // Separate effect for pagination
   useEffect(() => {
     if (page === 0) return;
-
     let isMounted = true;
     const fetchMore = async () => {
-      if (fetchControllerRef.current) fetchControllerRef.current.abort();
-
       setLoading(true);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      fetchControllerRef.current = controller;
+      const query = supabase
+        .from('products')
+        .select('*', { count: 'exact' })
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-      try {
-        let query = supabase
-          .from('products')
-          .select('*', { count: 'exact' })
-          .eq('status', 'published')
-          .order('created_at', { ascending: false });
-
-        if (selectedCategory && selectedCategory !== 'All') {
-          const categoryMaps = {
-            'Men': ['Men', 'ছেলেদের'],
-            'Women': ['Women', 'মেয়েদের'],
-            'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
-          };
-          const values = categoryMaps[selectedCategory] || [selectedCategory];
-          if (values.length > 1) query = query.in('category', values);
-          else query = query.eq('category', selectedCategory);
-        }
-
-        if (debouncedSearchQuery) {
-          query = query.or(`name.ilike.%${debouncedSearchQuery}%,description.ilike.%${debouncedSearchQuery}%`);
-        }
-
-        const from = page * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
-        query = query.range(from, to);
-
-        const { data, error, count } = await query;
-        let finalData = data;
-        let finalCount = count;
-        let hasError = error;
-
-        if (error) {
-          console.warn("Supabase pagination fetch failed. Falling back to local data...");
-          const fb = getFallbackProducts(selectedCategory, debouncedSearchQuery, page, PAGE_SIZE);
-          finalData = fb.data;
-          finalCount = fb.count;
-          hasError = null;
-        }
-
-        if (controller.signal.aborted) return;
-        if (hasError) throw hasError;
-        if (!isMounted) return;
-
-        setProducts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newItems = (finalData || []).filter(p => !existingIds.has(p.id));
-          return [...prev, ...newItems];
-        });
-
-        if (finalCount !== null) {
-          const totalLoaded = products.length + (finalData?.length || 0);
-          setHasMore(totalLoaded < finalCount);
-        } else {
-          setHasMore((finalData || []).length === PAGE_SIZE);
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("See more fetch error:", err);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        if (isMounted && fetchControllerRef.current === controller) {
-          setLoading(false);
-          fetchControllerRef.current = null;
-        }
+      if (selectedCategory && selectedCategory !== 'All') {
+        const categoryMaps = {
+          'Men': ['Men', 'ছেলেদের'],
+          'Women': ['Women', 'মেয়েদের'],
+          'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+          'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+        };
+        const values = categoryMaps[selectedCategory] || [selectedCategory];
+        query.in('category', values);
       }
-    };
 
+      const { data, error, count } = await query;
+      if (!isMounted) return;
+
+      if (data) {
+        setProducts(prev => [...prev, ...data]);
+        setHasMore(products.length + data.length < count);
+      }
+      setLoading(false);
+    };
     fetchMore();
     return () => { isMounted = false; };
   }, [page]);
 
   return (
-    <div className="min-h-screen px-4 md:px-8 pb-32" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
+    <div className="min-h-screen bg-neutral-50 pb-32">
+      {/* Mobile Prominent Search Bar (Foodi Style) */}
+      <div className="md:hidden sticky top-0 md:top-auto z-[1000] px-4 py-3 bg-white border-b border-neutral-100 shadow-sm">
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <Search size={18} className="text-neutral-400" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={language === 'bn' ? 'পণ্য, ডিজাইন বা ক্যাটাগরি খুঁজুন...' : 'Search for designs, saree...'}
+            className="w-full bg-neutral-100 rounded-2xl py-3 pl-11 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#ce112d]/10 transition-all border-none"
+          />
+          {searchQuery && (
+            <button onClick={() => onSearchChange('')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <X size={18} className="text-neutral-400" />
+            </button>
+          )}
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-12 px-4 md:px-8 pt-4 md:pt-0">
+        
         {/* Hero Slider */}
         {siteSettings.main_slides?.length > 0 && (
-          <section className="-mx-4 md:-mx-8">
+          <section className="-mx-4 md:mx-0">
             <HeroSlider slides={siteSettings.main_slides} />
           </section>
         )}
 
-        {/* Announcement Banner — Now below the slider, non-blocking */}
-        <AnimatePresence>
-          {showAnnouncement && siteSettings.announcement?.enabled !== false && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="relative rounded-3xl overflow-hidden border shadow-2xl transition-all"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-color)',
-              }}
+        {/* Quick Service/Category Grid (Foodi Style) */}
+        <section className="grid grid-cols-4 gap-4 md:hidden">
+          {quickCategories.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onSearchChange(item.id)}
+              className="flex flex-col items-center gap-2 group active:scale-95 transition-all"
             >
-              {/* Full-width Accent Line */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#ce112d] via-[#ff4d6d] to-[#ce112d] shadow-lg shadow-red-500/10" />
-              
-              <div className="p-5 md:p-8 flex gap-4 md:gap-6 relative">
-                {/* Icon Column */}
-                <div className="hidden sm:flex flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-[#ce112d]/5 items-center justify-center text-[#ce112d] border border-[#ce112d]/10">
-                  <MessageSquare size={24} className="md:w-8 md:h-8" />
-                </div>
-                
-                {/* Content Column */}
-                <div className="flex-1 min-w-0 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] md:text-xs font-black uppercase text-[#ce112d] tracking-[0.3em]">
-                      {language === 'bn' ? (siteSettings.announcement?.title_bn || 'গুরুত্বপূর্ণ বিজ্ঞপ্তি') : (siteSettings.announcement?.title_en || 'Important Notice')}
-                    </p>
-                    <button
-                      onClick={dismissAnnouncement}
-                      className="p-2 hover:bg-[#ce112d]/10 rounded-xl transition-all text-zinc-500 hover:text-[#ce112d]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm md:text-lg font-bold text-white leading-relaxed">
-                      {language === 'bn' ? (siteSettings.announcement?.message_bn || '') : (siteSettings.announcement?.message_en || '')}
-                    </p>
-                  </div>
-
-                  {(siteSettings.announcement?.footer_bn || siteSettings.announcement?.footer_en) && (
-                    <div className="flex items-center gap-2 pt-2 px-3 py-2 bg-[#ce112d]/5 rounded-xl border border-[#ce112d]/10 w-fit">
-                      <Globe size={14} className="text-[#ce112d]" />
-                      <span className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-zinc-400">
-                        {language === 'bn' ? (siteSettings.announcement?.footer_bn || '') : (siteSettings.announcement?.footer_en || '')}
-                      </span>
-                    </div>
-                  )}
-                </div>
+              <div className="w-16 h-16 rounded-2xl bg-white shadow-sm border border-neutral-100 flex items-center justify-center p-1 overflow-hidden group-hover:border-[#ce112d]/50">
+                <img src={item.img} alt={item.label_en} className="w-full h-full object-cover rounded-xl" />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <span className="text-[10px] font-black uppercase text-neutral-600 truncate w-full text-center">
+                {language === 'bn' ? item.label_bn : item.label_en}
+              </span>
+            </button>
+          ))}
+        </section>
 
-        {/* Product Grid Section */}
-        <section className="space-y-6 md:space-y-8">
-          <div className="pb-4 md:pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-            <h3 id="products-header" className="text-2xl md:text-4xl font-black italic uppercase tracking-tighter shrink-0" style={{ color: 'var(--text-primary)' }}>
-              <span>{language === 'bn' ? 'লেটেস্ট' : 'LATEST'}</span> <span className="text-[#ce112d]">{language === 'bn' ? 'ড্রপস' : 'DROPS'}</span>
-            </h3>
-
-            {/* Modernized Search Bar */}
-            <div className="relative w-full max-w-md group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search size={16} style={{ color: 'var(--text-muted)' }} className="group-focus-within:text-[#ce112d] transition-colors" />
-              </div>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
-                className="w-full rounded-xl py-3 pl-11 pr-10 text-sm font-medium focus:outline-none transition-all focus:ring-2 focus:ring-[#ce112d]/30"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderWidth: '1px',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => onSearchChange('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center transition-colors"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <X size={16} />
-                </button>
-              )}
+        {/* Product Grid Header */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-6 bg-[#ce112d] rounded-full" />
+              <h3 id="products-header" className="text-xl md:text-3xl font-black italic uppercase tracking-tighter">
+                <span>{language === 'bn' ? 'লেটেস্ট' : 'LATEST'}</span> <span className="text-[#ce112d]">{language === 'bn' ? 'ড্রপস' : 'DROPS'}</span>
+              </h3>
             </div>
+            
+            <button className="flex items-center gap-1 text-[#ce112d] font-black text-[10px] uppercase tracking-widest">
+              <span>{language === 'bn' ? 'সব দেখুন' : 'View All'}</span>
+              <ArrowRight size={14} />
+            </button>
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-            {products.map((product, index) => {
-              let displayImage = product.image_url || product.images?.[0];
-              if (!displayImage && product.video_url) {
-                const match = product.video_url.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
-                const id = match ? match[2] : null;
-                if (id) {
-                  displayImage = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
-                }
-              }
-              if (!displayImage || displayImage.includes('via.placeholder')) {
-                displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
-              }
-
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
+            {products.map((product) => {
+              const displayImage = product.image_url || product.images?.[0] || 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
+              const { price, originalPrice, hasDiscount } = calculatePrice(product);
+              
               return (
                 <motion.div
                   key={product.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.4 }}
                   onClick={() => navigate(`/product/${product.id}`)}
-                  className="group cursor-pointer"
+                  className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-neutral-100 cursor-pointer group"
                 >
-                  <div
-                    className="relative aspect-[9/14] rounded-2xl md:rounded-3xl overflow-hidden border transition-all duration-500 group-hover:border-[#ce112d]/50"
-                    style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', boxShadow: 'var(--shadow-card)' }}
-                  >
+                  <div className="relative aspect-[3/4] overflow-hidden">
                     <img
                       src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
-                      className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       alt={product.name}
                       loading="lazy"
                     />
-
-                    {/* Info Overlay */}
-                    <div className="absolute inset-x-0 bottom-0 p-3 md:p-4" style={{ background: 'var(--gradient-overlay)' }}>
-                      <div className="flex flex-col gap-0.5 md:gap-1">
-                        <p className="text-[9px] md:text-[10px] font-black italic uppercase truncate" style={{ color: 'var(--text-primary)', opacity: 0.9 }}>{product.name}</p>
-                        {(() => {
-                          const { price, originalPrice, hasDiscount } = calculatePrice(product);
-                          return (
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-[#ce112d] font-black text-xs md:text-sm">৳ {price}</span>
-                              {hasDiscount && (
-                                <span className="text-neutral-300 line-through font-bold text-[9px] md:text-[11px] opacity-70">
-                                  ৳ {originalPrice}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
+                    {hasDiscount && (
+                      <div className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-black italic py-1 px-3 rounded-full shadow-lg transform -rotate-1">
+                        SALE
                       </div>
+                    )}
+                  </div>
+                  <div className="p-4 space-y-1">
+                    <p className="text-[10px] font-black uppercase text-neutral-400 tracking-widest truncate">
+                      {product.category || 'Clothing'}
+                    </p>
+                    <h4 className="text-sm font-bold text-neutral-800 line-clamp-1 truncate">{product.name}</h4>
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-col">
+                        <span className="text-lg font-black text-[#ce112d]">৳ {price}</span>
+                        {hasDiscount && (
+                          <span className="text-[10px] text-neutral-400 line-through">৳ {originalPrice}</span>
+                        )}
+                      </div>
+                      <button className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 group-hover:bg-[#ce112d] group-hover:text-white transition-colors">
+                        <ArrowRight size={16} />
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -469,15 +337,13 @@ export default function Home({ selectedCategory, searchQuery, onSearchChange }) 
             })}
           </div>
 
-          {/* Load More */}
           {hasMore && !loading && (
-            <div className="flex justify-center pt-8 md:pt-12">
+            <div className="flex justify-center pt-8">
               <button
                 onClick={() => setPage(p => p + 1)}
-                className="px-6 md:px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border hover:bg-[#ce112d] hover:text-white hover:border-[#ce112d]"
-                style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className="px-10 py-4 bg-white border border-neutral-200 rounded-full text-[11px] font-black uppercase tracking-widest text-neutral-800 hover:bg-neutral-50 transition-all shadow-sm"
               >
-                {language === 'bn' ? 'আরো দেখুন' : 'See More'}
+                {language === 'bn' ? 'আরো লোড করুন' : 'Load More Products'}
               </button>
             </div>
           )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingBag, Globe, LayoutGrid } from 'lucide-react';
+import { Home, Search, ShoppingBag, Globe, LayoutGrid, Tag, User, ReceiptText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../CartContext';
 
@@ -20,80 +20,83 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
         }
     };
 
-    const handleMenuClick = () => {
-        if (location.pathname !== '/') {
-            navigate('/');
-            setTimeout(() => {
-                if (onOpenCategories) onOpenCategories();
-            }, 150);
-        } else {
-            if (onOpenCategories) onOpenCategories();
-        }
-    };
-
-    const items = [
+    const navItems = [
         {
-            key: 'home',
-            icon: <Home size={20} strokeWidth={1.8} />,
+            id: 'home',
+            icon: <Home size={22} />,
             label: language === 'bn' ? 'হোম' : 'Home',
             onClick: handleHomeClick,
-            accent: false,
+            active: location.pathname === '/' && !location.search
         },
         {
-            key: 'category',
-            icon: <LayoutGrid size={20} strokeWidth={1.8} />,
-            label: language === 'bn' ? 'ক্যাটাগরি' : 'Category',
-            onClick: handleMenuClick,
-            accent: false,
+            id: 'offers',
+            icon: <Tag size={22} />,
+            label: language === 'bn' ? 'অফার' : 'Offers',
+            onClick: () => { if (onSelectCategory) onSelectCategory('Offers'); navigate('/'); },
+            active: false
         },
         {
-            key: 'cart',
+            id: 'cart',
+            isCenter: true,
             icon: (
                 <div className="relative">
-                    <ShoppingBag size={20} strokeWidth={1.8} />
+                    <ShoppingBag size={28} className="text-white" />
                     {cartCount > 0 && (
-                        <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] bg-[#ce112d] text-white text-[8px] font-black rounded-full flex items-center justify-center px-0.5 leading-none shadow-md">
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-white text-[#ce112d] text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#ce112d]">
                             {cartCount}
                         </span>
                     )}
                 </div>
             ),
-            label: t('cart'),
             onClick: onOpenCart,
-            accent: true,
         },
         {
-            key: 'track',
-            icon: <Search size={20} strokeWidth={1.8} />,
-            label: t('tracking'),
+            id: 'tracking',
+            icon: <ReceiptText size={22} />,
+            label: language === 'bn' ? 'ট্র্যাকিং' : 'Orders',
             onClick: onTrackOrder,
-            accent: false,
+            active: false
         },
         {
-            key: 'lang',
-            icon: <Globe size={20} strokeWidth={1.8} />,
-            label: language === 'bn' ? 'EN' : 'বাং',
-            onClick: toggleLanguage,
-            accent: true,
-        },
+            id: 'account',
+            icon: <User size={22} />,
+            label: language === 'bn' ? 'অ্যাকাউন্ট' : 'Account',
+            onClick: () => navigate('/admin'),
+            active: location.pathname === '/admin'
+        }
     ];
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-3 pointer-events-none">
-            <div className="flex items-stretch justify-around bg-neutral-900/90 backdrop-blur-2xl border border-white/[0.06] rounded-2xl shadow-[0_-4px_30px_rgba(0,0,0,0.4)] pointer-events-auto max-w-sm mx-auto overflow-hidden">
-                {items.map((item) => (
-                    <button
-                        key={item.key}
-                        onClick={item.onClick}
-                        className="flex flex-col items-center justify-center gap-[3px] py-2.5 flex-1 active:bg-white/5 transition-all"
-                    >
-                        <span className={item.accent ? 'text-[#ce112d]' : 'text-white/60'}>
-                            {item.icon}
-                        </span>
-                        <span className={`text-[8px] font-bold uppercase tracking-wider leading-none ${item.accent ? 'text-[#ce112d]/80' : 'text-white/35'}`}>
-                            {item.label}
-                        </span>
-                    </button>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[1001] bg-white border-t border-neutral-100 px-4 pt-2 pb-safe-area shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center justify-between max-w-lg mx-auto h-14 relative">
+                {navItems.map((item) => (
+                    <React.Fragment key={item.id}>
+                        {item.isCenter ? (
+                            <div className="absolute left-1/2 -translate-x-1/2 -top-10 flex flex-col items-center pointer-events-auto">
+                                <button
+                                    onClick={item.onClick}
+                                    className="w-16 h-16 bg-[#ce112d] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(206,17,45,0.4)] border-4 border-white active:scale-95 transition-all outline-none"
+                                >
+                                    {item.icon}
+                                </button>
+                                <div className="absolute top-[70px] bg-neutral-100 h-1 w-10 rounded-full" />
+                            </div>
+                        ) : (
+                            <button
+                                onClick={item.onClick}
+                                className={`flex flex-col items-center justify-center flex-1 gap-1 active:scale-90 transition-all outline-none ${item.active ? 'text-[#ce112d]' : 'text-neutral-400'}`}
+                            >
+                                <div className={`${item.active ? 'transform -translate-y-1' : ''} transition-transform duration-300`}>
+                                    {item.icon}
+                                </div>
+                                <span className="text-[10px] font-medium leading-none">
+                                    {item.label}
+                                </span>
+                            </button>
+                        )}
+                        {/* Placeholder for center spacing */}
+                        {item.id === 'offers' && <div className="flex-1 pointer-events-none" />}
+                    </React.Fragment>
                 ))}
             </div>
         </div>
