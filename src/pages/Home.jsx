@@ -264,16 +264,20 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-12">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onClick={() => setSelectedProduct(product)}
-              />
-            ))}
+            {loading && page === 0 ? (
+               Array.from({ length: 10 }).map((_, i) => <ProductSkeleton key={i} />)
+            ) : (
+               products.map((product) => (
+                 <ProductCard
+                   key={product.id}
+                   product={product}
+                   onClick={() => setSelectedProduct(product)}
+                 />
+               ))
+            )}
           </div>
 
-          {loading && (
+          {loading && page > 0 && (
             <div className="flex flex-col items-center justify-center py-32 gap-6">
                <div className="w-12 h-12 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ce112d] animate-pulse">Curating Luxury Content</p>
