@@ -63,22 +63,89 @@ function requireAuth(req, res, next) {
 }
 
 // ============================================
-// AUTH ROUTES
+// AUTH ROUTES (Admin & Customer)
 // ============================================
+
+// Initialize Tables
+async function initTables() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS customers (
+                id VARCHAR(255) PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                name VARCHAR(255),
+                email VARCHAR(255) UNIQUE,
+                mobile VARCHAR(20) UNIQUE,
+                password_hash VARCHAR(255),
+                address TEXT,
+                avatar_url TEXT,
+                status VARCHAR(50) DEFAULT 'active'
+            )
+        `);
+        console.log("✅ Customer table verified");
+    } catch (err) {
+        console.error("❌ Table init error:", err);
+    }
+}
+initTables();
+
+// Customer Register
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { name, email, mobile, password } = req.body;
+        if (!mobile || !password) return res.status(400).json({ error: 'Mobile and Password are required' });
+
+        const id = require('crypto').randomUUID();
+        const hash = await bcrypt.hash(password, 10);
+        
+        await pool.query(
+            'INSERT INTO customers (id, name, email, mobile, password_hash) VALUES (?, ?, ?, ?, ?)',
+            [id, name || null, email || null, mobile, hash]
+        );
+
+        const token = jwt.sign({ id, mobile, type: 'customer' }, JWT_SECRET, { expiresIn: '30d' });
+        res.json({
+            session: { access_token: token, user: { id, name, email, mobile } },
+            user: { id, name, email, mobile }
+        });
+    } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Email or Mobile already exists' });
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin/Customer Login
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const [rows] = await pool.query('SELECT * FROM admin_users WHERE email = ?', [email]);
-        if (rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+        const { email, mobile, password } = req.body;
+        const identifier = email || mobile;
+        if (!identifier || !password) return res.status(400).json({ error: 'Identifier and Password are required' });
 
-        const user = rows[0];
+        // Check Admin first
+        const [admins] = await pool.query('SELECT * FROM admin_users WHERE email = ?', [identifier]);
+        if (admins.length > 0) {
+            const user = admins[0];
+            const valid = await bcrypt.compare(password, user.password_hash);
+            if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+            const token = jwt.sign({ id: user.id, email: user.email, type: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+            return res.json({
+                session: { access_token: token, user: { id: user.id, email: user.email, role: 'admin' } },
+                user: { id: user.id, email: user.email, role: 'admin' }
+            });
+        }
+
+        // Check Customer
+        const [customers] = await pool.query('SELECT * FROM customers WHERE email = ? OR mobile = ?', [identifier, identifier]);
+        if (customers.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+
+        const user = customers[0];
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: user.id, mobile: user.mobile, type: 'customer' }, JWT_SECRET, { expiresIn: '30d' });
         res.json({
-            session: { access_token: token, user: { id: user.id, email: user.email } },
-            user: { id: user.id, email: user.email }
+            session: { access_token: token, user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile, role: 'customer' } },
+            user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile, role: 'customer' }
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
