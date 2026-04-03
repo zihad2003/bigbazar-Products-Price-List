@@ -4,12 +4,21 @@ const CartContext = createContext();
 
 export function CartProvider({ children }) {
     const [cartItems, setCartItems] = useState(() => {
-        const savedCart = localStorage.getItem('bigbazar_cart');
-        return savedCart ? JSON.parse(savedCart) : [];
+        try {
+            const savedCart = localStorage.getItem('bigbazar_cart');
+            return savedCart ? JSON.parse(savedCart) : [];
+        } catch (error) {
+            console.error('Error parsing cart from localStorage:', error);
+            return [];
+        }
     });
 
     useEffect(() => {
-        localStorage.setItem('bigbazar_cart', JSON.stringify(cartItems));
+        try {
+            localStorage.setItem('bigbazar_cart', JSON.stringify(cartItems));
+        } catch (error) {
+            console.error('Error saving cart to localStorage:', error);
+        }
     }, [cartItems]);
 
     const addToCart = (product, color, size, quantity = 1) => {
