@@ -1,10 +1,12 @@
-import { Search, ShoppingBag, Globe } from 'lucide-react';
+import { Search, ShoppingBag, Globe, MapPin, Bell } from 'lucide-react';
 import { useCart } from '../CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useNavigate } from 'react-router-dom';
 
 const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }) => {
     const { cartCount } = useCart();
     const { language, toggleLanguage, t } = useLanguage();
+    const navigate = useNavigate();
 
     const categories = [
         { id: 'All', label: t('all') },
@@ -15,46 +17,65 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }
     ];
 
     return (
-        <nav className="relative z-50 backdrop-blur-xl border-b transition-all duration-300" style={{ backgroundColor: 'var(--navbar-bg)', borderColor: 'var(--border-color)' }}>
-            {/* Top Row — Logo + Actions */}
+        <nav className="relative z-[1002] border-b transition-all duration-300" style={{ backgroundColor: 'var(--navbar-bg)', borderColor: 'var(--border-color)' }}>
+            {/* Top Row — App Style Location (Mobile Only) */}
+            <div className="md:hidden w-full px-4 pt-4 pb-2 flex items-center justify-between">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-1 text-[10px] uppercase font-black text-neutral-400 tracking-widest">
+                        <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Deliver to'}</span>
+                        <MapPin size={10} className="text-[#ce112d]" />
+                    </div>
+                    <div className="text-sm font-black italic flex items-center gap-1">
+                        <span>Bariarhat, Mirsarai</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={toggleLanguage}
+                        className="h-9 px-3 rounded-full bg-neutral-100 flex items-center gap-1.5 active:scale-95 transition-all"
+                    >
+                        <Globe size={14} className="text-[#ce112d]" />
+                        <span className="text-[10px] font-black">{language === 'bn' ? 'EN' : 'বাং'}</span>
+                    </button>
+                    <button className="h-9 w-9 rounded-full bg-neutral-100 flex items-center justify-center relative active:scale-95 transition-all">
+                        <Bell size={16} />
+                        <span className="absolute top-2 right-2.5 w-2 h-2 bg-[#ce112d] rounded-full border-2 border-white" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Row — Logo + Desktop Nav */}
             <div className="w-full max-w-7xl mx-auto px-4 md:px-8 h-14 md:h-16 flex items-center justify-between">
                 {/* Logo */}
-                <h1 className="text-xl md:text-2xl font-black italic tracking-tighter select-none leading-none" style={{ color: 'var(--text-primary)' }}>
+                <h1 
+                    onClick={() => navigate('/')}
+                    className="text-xl md:text-2xl font-black italic tracking-tighter select-none leading-none cursor-pointer" 
+                    style={{ color: 'var(--text-primary)' }}
+                >
                     <span>BIG</span>
                     <span className="text-[#ce112d]">BAZAR</span>
                 </h1>
 
-                {/* Right Actions — all on same baseline */}
-                <div className="flex items-center gap-2 md:gap-3">
-                    {/* Language */}
-                    <button
-                        onClick={toggleLanguage}
-                        className="h-9 px-3 rounded-xl text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95"
-                        style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                        <Globe size={13} className="text-[#ce112d]" />
-                        <span>{language === 'bn' ? 'EN' : 'বাং'}</span>
-                    </button>
-
-                    {/* Track */}
+                {/* Desktop Actions */}
+                <div className="hidden md:flex items-center gap-3">
                     <button
                         onClick={onTrackOrder}
-                        className="h-9 px-3 rounded-xl text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95"
-                        style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                        className="h-10 px-4 rounded-xl text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all hover:bg-neutral-100"
+                        style={{ color: 'var(--text-primary)' }}
                     >
-                        <Search size={13} className="text-[#ce112d]" />
-                        <span className="hidden sm:inline">{t('track')}</span>
+                        <Search size={14} className="text-[#ce112d]" />
+                        <span>{t('track')}</span>
                     </button>
-
-                    {/* Cart */}
                     <button
                         onClick={onOpenCart}
-                        className="relative h-9 w-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-                        style={{ backgroundColor: 'var(--bg-secondary)', borderWidth: '1px', borderColor: 'var(--border-color)' }}
+                        className="relative h-10 px-4 rounded-xl flex items-center gap-2 transition-all bg-[#ce112d] text-white active:scale-95"
                     >
-                        <ShoppingBag size={16} className="text-[#ce112d]" />
+                        <ShoppingBag size={14} />
+                        <span className="text-[11px] font-black uppercase tracking-wider">{t('cart')}</span>
                         {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#ce112d] text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 leading-none shadow-lg" style={{ borderWidth: '2px', borderColor: 'var(--bg-primary)' }}>
+                            <span className="bg-white text-[#ce112d] px-1.5 rounded-md text-[10px] font-black">
                                 {cartCount}
                             </span>
                         )}
@@ -62,23 +83,17 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart }
                 </div>
             </div>
 
-            {/* Category Pills — smooth horizontal scroll on mobile */}
-            <div className="w-full overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <div className="flex items-center gap-2 px-4 md:px-8 pb-3 pt-1 md:justify-center min-w-max mx-auto">
+            {/* Category Pills (Mobile Only) */}
+            <div className="md:hidden w-full overflow-x-auto no-scrollbar pb-3">
+                <div className="flex items-center gap-2 px-4 min-w-max mx-auto">
                     {categories.map((cat) => (
                         <button
                             key={cat.id}
                             onClick={() => onSelectCategory(cat.id)}
-                            className={`px-4 md:px-5 py-1.5 md:py-2 text-[10px] md:text-[11px] font-bold uppercase tracking-wider rounded-full transition-all duration-200 whitespace-nowrap leading-tight active:scale-95 ${selectedCategory === cat.id
-                                ? 'bg-[#ce112d] text-white shadow-[0_4px_16px_rgba(206,17,45,0.35)]'
-                                : ''
+                            className={`px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-full transition-all duration-300 whitespace-nowrap active:scale-95 ${selectedCategory === cat.id
+                                ? 'bg-[#ce112d] text-white shadow-[0_4px_12px_rgba(206,17,45,0.3)]'
+                                : 'bg-neutral-100 text-neutral-500'
                                 }`}
-                            style={selectedCategory !== cat.id ? {
-                                backgroundColor: 'var(--bg-secondary)',
-                                color: 'var(--text-muted)',
-                                borderWidth: '1px',
-                                borderColor: 'var(--border-color)'
-                            } : {}}
                         >
                             {cat.label}
                         </button>
