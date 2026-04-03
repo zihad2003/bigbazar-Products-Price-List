@@ -161,8 +161,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     <div className="min-h-screen bg-white pb-32">
         {/* Floating Hero Slider - Selective Premium View */}
         {siteSettings.main_slides?.length > 0 && (
-          <section className="w-full h-[45vh] md:h-[65vh] relative px-4 md:px-12 pt-4 md:pt-8">
-             <div className="w-full h-full rounded-[32px] md:rounded-[48px] overflow-hidden shadow-2xl shadow-zinc-200">
+          <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
+             <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-white">
                 <HeroSlider slides={siteSettings.main_slides} />
              </div>
           </section>
