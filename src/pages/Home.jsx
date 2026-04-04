@@ -4,6 +4,7 @@ import { Search, ArrowRight, Award, Play, Instagram } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import ProductModal from '../components/ProductModal';
+import VideoPlayer from '../components/VideoPlayer';
 import { supabase } from '../supabaseClient';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -107,7 +108,9 @@ const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {displayImage ? (
+        {hasVideo ? (
+          <VideoPlayer src={product.video_url} poster={displayImage} priority={false} />
+        ) : displayImage ? (
           <img
             src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
             className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
@@ -117,13 +120,11 @@ const ProductCard = ({ product, onClick }) => {
         ) : (
           <div className="w-full h-full bg-neutral-900 flex flex-col items-center justify-center gap-3 group-hover:bg-neutral-800 transition-colors">
             <div className="w-14 h-14 rounded-full bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center">
-              {hasVideo ? <Play size={22} className="text-[#ce112d] ml-1" /> : <Instagram size={22} className="text-neutral-500" />}
+              <Instagram size={22} className="text-neutral-500" />
             </div>
-            {hasVideo && (
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
-                {language === 'bn' ? 'ভিডিও দেখুন' : 'Tap to watch'}
-              </span>
-            )}
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
+               {language === 'bn' ? 'ছবি নেই' : 'No Preview'}
+            </span>
           </div>
         )}
         {hasDiscount && (
