@@ -63,10 +63,15 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
         return url;
     }
 
-    // Special handling for Instagram thumbnails which weserv.nl now rejects
+    // Special handling for Instagram thumbnails (weserv.nl rejects many direct IG URLs now)
     if (url.includes('instagram.com')) {
-        // Return direct media URL if possible, weserv 404s on these now
-        return url.replace('media/?size=l', 'media/?size=m'); 
+        // If it already has size param, try to just pass it through or downgrade to medium
+        if (url.includes('media/?size=')) {
+            return url.replace('size=l', 'size=m');
+        }
+        // If it's a plain reel/post URL, we can't easily proxy it here without a known ID
+        // But if it's already a direct media URL from IG, return as is
+        return url;
     }
 
     // All other external URLs (Supabase storage, etc.)

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Phone, Lock, User, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Mail, Phone, Lock, User, ArrowRight, Loader2, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
 import { supabase } from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -10,6 +10,8 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +19,21 @@ const LoginModal = ({ isOpen, onClose }) => {
     mobile: '',
     password: ''
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUser(data?.session?.user ?? null);
+      setAuthChecked(true);
+    });
+  }, [isOpen]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    onClose();
+    window.location.reload();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,6 +71,59 @@ const LoginModal = ({ isOpen, onClose }) => {
   };
 
   if (!isOpen) return null;
+
+  // Profile view for logged-in users
+  if (authChecked && currentUser) {
+    const displayName = currentUser.name || '';
+    const displayEmail = currentUser.email || '';
+    const displayPhone = currentUser.mobile || '';
+    const initials = displayName ? displayName.slice(0, 2).toUpperCase() : (displayPhone ? displayPhone[0] : (displayEmail ? displayEmail[0].toUpperCase() : 'U'));
+
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md" />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-md bg-white rounded-[40px] overflow-hidden shadow-2xl">
+            <div className="p-8 pb-4 flex items-center justify-between">
+              <h1 className="text-3xl font-black italic tracking-tighter">
+                <span className="text-zinc-900">BIG</span><span className="text-[#ce112d]">BAZAR</span>
+              </h1>
+              <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-zinc-900 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 pt-2 space-y-6">
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="w-20 h-20 rounded-full bg-[#ce112d] flex items-center justify-center text-white text-2xl font-black">
+                  {initials}
+                </div>
+                {displayName && <p className="text-xl font-black text-zinc-900">{displayName}</p>}
+                {displayPhone && (
+                  <div className="flex items-center gap-2 text-sm text-zinc-500 font-bold">
+                    <Phone size={14} />
+                    <span>{displayPhone}</span>
+                  </div>
+                )}
+                {displayEmail && (
+                  <div className="flex items-center gap-2 text-sm text-zinc-500 font-bold">
+                    <Mail size={14} />
+                    <span>{displayEmail}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full h-14 bg-zinc-100 text-zinc-900 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-red-50 hover:text-[#ce112d] active:scale-95 transition-all"
+              >
+                <LogOut size={18} />
+                <span>{language === 'bn' ? 'লগআউট' : 'Sign Out'}</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>

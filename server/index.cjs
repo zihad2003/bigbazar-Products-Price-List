@@ -10,10 +10,27 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { randomUUID } = require('crypto');
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'bigbazar_secret_key_2026';
+
+// ============================================
+// Admin 2FA — In-Memory Pending Code Store
+// ============================================
+const pendingAdminCodes = new Map(); // login_id → { code, email, adminId, expiresAt, attempts }
+
+function generateCode() {
+    return String(Math.floor(1000 + Math.random() * 9000)); // 4-digit, never starts with 0
+}
+
+function cleanExpiredCodes() {
+    const now = Date.now();
+    for (const [id, entry] of pendingAdminCodes) {
+        if (entry.expiresAt < now) pendingAdminCodes.delete(id);
+    }
+}
 
 // ============================================
 // MySQL Connection Pool
@@ -32,7 +49,17 @@ const pool = mysql.createPool({
 // ============================================
 // Middleware
 // ============================================
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        // Allow any localhost port in dev, plus production domain
+        if (!origin || /^http:\/\/localhost:\d+$/.test(origin) || origin === 'https://bigbazarbariarhat.pages.dev' || /\.bigbazarbariarhat\.pages\.dev$/.test(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Serve uploaded files
@@ -82,7 +109,84 @@ async function initTables() {
                 status VARCHAR(50) DEFAULT 'active'
             )
         `);
-        console.log("✅ Customer table verified");
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS products (
+                serial_no INT,
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                name VARCHAR(500),
+                price VARCHAR(50),
+                original_price VARCHAR(50) DEFAULT NULL,
+                description TEXT,
+                category VARCHAR(100),
+                images JSON,
+                image_url TEXT,
+                video_url TEXT,
+                status VARCHAR(50) DEFAULT 'published',
+                platform_id VARCHAR(100),
+                is_sale TINYINT(1) DEFAULT 0,
+                is_hot TINYINT(1) DEFAULT 0,
+                is_new TINYINT(1) DEFAULT 0,
+                is_sold_out TINYINT(1) DEFAULT 0,
+                is_deleted TINYINT(1) DEFAULT 0,
+                available_sizes JSON,
+                available_colors JSON,
+                stock_count INT DEFAULT 3,
+                is_exclusive TINYINT(1) DEFAULT 0
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS orders (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                product_id CHAR(36),
+                product_name VARCHAR(1000),
+                product_price DECIMAL(10,2),
+                customer_name VARCHAR(255),
+                customer_phone VARCHAR(50),
+                customer_address TEXT,
+                customer_note TEXT,
+                delivery_area VARCHAR(100),
+                delivery_charge DECIMAL(10,2) DEFAULT 0,
+                total_amount DECIMAL(10,2),
+                last_four_digits VARCHAR(50),
+                status VARCHAR(50) DEFAULT 'Pending',
+                size VARCHAR(255),
+                color VARCHAR(255),
+                is_advance_paid TINYINT(1) DEFAULT 0,
+                is_exclusive_order TINYINT(1) DEFAULT 0,
+                payment_status VARCHAR(50) DEFAULT 'Unpaid',
+                moderator_reference VARCHAR(100)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS reviews (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                rating INT DEFAULT 5,
+                comment TEXT,
+                customer_name VARCHAR(255),
+                product_id CHAR(36),
+                product_name VARCHAR(500),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS site_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                \`key\` VARCHAR(100) NOT NULL UNIQUE,
+                value JSON,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log("✅ All tables verified");
     } catch (err) {
         console.error("❌ Table init error:", err);
     }
@@ -95,7 +199,7 @@ app.post('/api/auth/register', async (req, res) => {
         const { name, email, mobile, password } = req.body;
         if (!mobile || !password) return res.status(400).json({ error: 'Mobile and Password are required' });
 
-        const id = require('crypto').randomUUID();
+        const id = randomUUID();
         const hash = await bcrypt.hash(password, 10);
         
         await pool.query(
@@ -121,17 +225,24 @@ app.post('/api/auth/login', async (req, res) => {
         const identifier = email || mobile;
         if (!identifier || !password) return res.status(400).json({ error: 'Identifier and Password are required' });
 
-        // Check Admin first
+        // Check Admin first — requires 2FA code step
         const [admins] = await pool.query('SELECT * FROM admin_users WHERE email = ?', [identifier]);
         if (admins.length > 0) {
             const user = admins[0];
             const valid = await bcrypt.compare(password, user.password_hash);
             if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-            const token = jwt.sign({ id: user.id, email: user.email, type: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
-            return res.json({
-                session: { access_token: token, user: { id: user.id, email: user.email, role: 'admin' } },
-                user: { id: user.id, email: user.email, role: 'admin' }
+
+            cleanExpiredCodes();
+            const loginId = randomUUID();
+            const code = generateCode();
+            pendingAdminCodes.set(loginId, {
+                code,
+                email: user.email,
+                adminId: user.id,
+                expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
             });
+            console.log(`\n🔐 ADMIN LOGIN CODE for ${user.email}: ${code}\n`);
+            return res.json({ step: 2, login_id: loginId });
         }
 
         // Check Customer
@@ -160,21 +271,74 @@ app.post('/api/auth/logout', (req, res) => {
     res.json({ success: true });
 });
 
+// Step 2: Verify 4-digit admin code
+app.post('/api/auth/verify-code', (req, res) => {
+    cleanExpiredCodes();
+    const { login_id, code } = req.body;
+    if (!login_id || !code) return res.status(400).json({ error: 'login_id and code are required' });
+
+    const entry = pendingAdminCodes.get(login_id);
+    if (!entry) return res.status(401).json({ error: 'Code expired or invalid. Please login again.' });
+
+    // Brute-force protection: max 5 wrong attempts
+    entry.attempts = (entry.attempts || 0) + 1;
+    if (entry.attempts > 5) {
+        pendingAdminCodes.delete(login_id);
+        return res.status(429).json({ error: 'Too many wrong attempts. Please login again.' });
+    }
+
+    if (entry.code !== String(code)) {
+        return res.status(401).json({ error: `Wrong code. ${5 - entry.attempts} attempt(s) remaining.` });
+    }
+
+    pendingAdminCodes.delete(login_id);
+    const token = jwt.sign({ id: entry.adminId, email: entry.email, type: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({
+        session: { access_token: token, user: { id: entry.adminId, email: entry.email, role: 'admin' } },
+        user: { id: entry.adminId, email: entry.email, role: 'admin' }
+    });
+});
+
+// View pending admin login codes (requires existing admin session)
+app.get('/api/auth/pending-codes', requireAuth, (req, res) => {
+    if (req.user.type !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    cleanExpiredCodes();
+    const codes = [];
+    for (const [login_id, entry] of pendingAdminCodes) {
+        codes.push({
+            login_id,
+            email: entry.email,
+            code: entry.code,
+            expires_in: Math.max(0, Math.round((entry.expiresAt - Date.now()) / 1000))
+        });
+    }
+    res.json({ codes });
+});
+
 // ============================================
 // PRODUCTS ROUTES
 // ============================================
 app.get('/api/products', async (req, res) => {
     try {
-        const { status, category, search, page = 0, limit = 12, id, order_by = 'created_at', ascending = 'false' } = req.query;
-        
+        const { status, category, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = req.query;
+
         let sql = 'SELECT * FROM products WHERE 1=1';
         const params = [];
-        
+
         if (id) {
             sql += ' AND id = ?';
             params.push(id);
             const [rows] = await pool.query(sql, params);
             return res.json({ data: rows[0] || null, count: rows.length });
+        }
+
+        if (ids) {
+            const idList = ids.split(',').map(s => s.trim()).filter(Boolean);
+            if (idList.length === 0) return res.json({ data: [], count: 0 });
+            sql += ` AND id IN (${idList.map(() => '?').join(',')})`;
+            params.push(...idList);
+            const [rows] = await pool.query(sql, params);
+            return res.json({ data: rows.map(parseProductRow), count: rows.length });
         }
         
         if (status) {
@@ -539,6 +703,15 @@ app.put('/api/settings/:key', requireAuth, async (req, res) => {
             [req.params.key, JSON.stringify(value), JSON.stringify(value)]
         );
         res.json({ data: { key: req.params.key, value } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/settings/:key', requireAuth, async (req, res) => {
+    try {
+        await pool.query("DELETE FROM site_settings WHERE `key` = ?", [req.params.key]);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

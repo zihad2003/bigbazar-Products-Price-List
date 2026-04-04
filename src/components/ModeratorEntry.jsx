@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, Minus, Trash2, CheckCircle2, AlertCircle, ShoppingBag, Truck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { allDistricts } from '../data/bdLocations';
+import { extractInstagramId } from '../utils/instagram';
 
 export default function ModeratorEntry({ products, onSuccess, onCancel }) {
     const [step, setStep] = useState(1); // 1: Customer & Moderator, 2: Products, 3: Review
@@ -249,10 +250,16 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
                             {filteredProducts.map(product => (
                                 <div key={product.id} className="flex items-center justify-between p-3 bg-black border border-white/5 rounded-2xl hover:border-[#ce112d]/50 transition-all">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-neutral-900 rounded-lg overflow-hidden shrink-0">
-                                            {(product.image_url || product.images?.[0]) && (
-                                                <img src={product.image_url || product.images[0]} className="w-full h-full object-cover" alt="" />
-                                            )}
+                                        <div className="w-10 h-10 bg-neutral-900 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                                            {(() => {
+                                                const thumb = product.image_url || product.images?.[0];
+                                                if (thumb) return <img src={thumb} className="w-full h-full object-cover" alt="" />;
+                                                
+                                                const id = extractInstagramId(product.video_url);
+                                                if (id) return <img src={`https://www.instagram.com/p/${id}/media/?size=m`} className="w-full h-full object-cover" alt="" />;
+                                                
+                                                return <ShoppingBag size={20} className="text-neutral-700" />;
+                                            })()}
                                         </div>
                                         <div>
                                             <p className="text-sm font-black truncate max-w-[200px]">{product.name}</p>

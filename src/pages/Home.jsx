@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award } from 'lucide-react';
+import { Search, ArrowRight, Award, Play, Instagram } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import ProductModal from '../components/ProductModal';
@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
+import { extractInstagramId } from '../utils/instagram';
 
 // ─── Clothing Silhouette SVG Icons ───────────────────────────────────────────
 const IconAll = ({ size = 24 }) => (
@@ -82,17 +83,19 @@ const ProductCard = ({ product, onClick }) => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   let displayImage = product.image_url || product.images?.[0];
 
-  // Hande local uploads from the Admin panel
+  // Weserv Instagram thumbnail URLs are deprecated — attempt to recover the direct URL
+  if (displayImage && displayImage.includes('weserv.nl') && displayImage.includes('instagram.com')) {
+    const id = extractInstagramId(displayImage);
+    displayImage = id ? `https://www.instagram.com/p/${id}/media/?size=l` : null;
+  }
+
+  // Handle local uploads from the Admin panel
   if (displayImage && (displayImage.startsWith('uploads/') || displayImage.startsWith('/uploads/'))) {
     const cleanPath = displayImage.startsWith('/') ? displayImage : `/${displayImage}`;
     displayImage = `${API_URL}${cleanPath}`;
   }
 
-  // Fallback to high-quality mockup if still missing
-  if (!displayImage) {
-    displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
-  }
-
+  const hasVideo = !!product.video_url;
   const { language } = useLanguage();
 
   return (
@@ -104,12 +107,25 @@ const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        <img
-          src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
-          className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
-          alt={product.name}
-          loading="lazy"
-        />
+        {displayImage ? (
+          <img
+            src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
+            className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
+            alt={product.name}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-neutral-900 flex flex-col items-center justify-center gap-3 group-hover:bg-neutral-800 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center">
+              {hasVideo ? <Play size={22} className="text-[#ce112d] ml-1" /> : <Instagram size={22} className="text-neutral-500" />}
+            </div>
+            {hasVideo && (
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
+                {language === 'bn' ? 'ভিডিও দেখুন' : 'Tap to watch'}
+              </span>
+            )}
+          </div>
+        )}
         {hasDiscount && (
           <div className="absolute top-4 left-4 bg-[#ce112d] text-white text-[10px] font-bold uppercase tracking-wide py-1 px-3 rounded-full shadow-lg">
             SALE

@@ -113,6 +113,7 @@ function PublicLayout() {
         onOpenCart={() => openModal(setIsCartOpen)}
         onSelectCategory={setCategory}
         onOpenCategories={() => openModal(setIsCategoryOpen)}
+        onOpenAuth={() => openModal(setIsAuthOpen)}
       />
     </div>
   );

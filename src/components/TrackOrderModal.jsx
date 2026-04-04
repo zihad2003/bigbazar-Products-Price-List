@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { extractInstagramId } from '../utils/instagram';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const TrackOrderModal = ({ isOpen, onClose }) => {
@@ -111,9 +112,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                     pData.forEach(p => {
                         let thumb = p.image_url || p.images?.[0];
                         if (!thumb && p.video_url) {
-                            const match = p.video_url.match(/\/(reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/);
-                            const id = match ? match[2] : null;
-                            if (id) thumb = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
+                            const id = extractInstagramId(p.video_url);
+                            if (id) thumb = `https://www.instagram.com/p/${id}/media/?size=l`;
                         }
                         imgMap[p.id] = thumb;
                     });
