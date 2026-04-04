@@ -81,16 +81,16 @@ const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   let displayImage = product.image_url || product.images?.[0];
-  
+
   // Hande local uploads from the Admin panel
   if (displayImage && (displayImage.startsWith('uploads/') || displayImage.startsWith('/uploads/'))) {
-      const cleanPath = displayImage.startsWith('/') ? displayImage : `/${displayImage}`;
-      displayImage = `${API_URL}${cleanPath}`;
+    const cleanPath = displayImage.startsWith('/') ? displayImage : `/${displayImage}`;
+    displayImage = `${API_URL}${cleanPath}`;
   }
 
   // Fallback to high-quality mockup if still missing
   if (!displayImage) {
-      displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
+    displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
   }
 
   const { language } = useLanguage();
@@ -124,11 +124,11 @@ const ProductCard = ({ product, onClick }) => {
         )}
       </div>
       <div className="p-4 md:p-6 flex flex-col flex-1 gap-2">
-         <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-wide truncate">
-              {product.category || 'Clothing'}
-            </p>
-           <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight h-10">{product.name}</h4>
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-wide truncate">
+            {product.category || 'Clothing'}
+          </p>
+          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight h-10">{product.name}</h4>
         </div>
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">
@@ -205,7 +205,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         if (data && Array.isArray(data)) {
           const settingsMap = {};
           data.forEach(item => {
-              settingsMap[item.key] = item.value;
+            settingsMap[item.key] = item.value;
           });
           setSiteSettings(prev => ({ ...prev, ...settingsMap }));
         }
@@ -242,10 +242,10 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           query = query.eq('is_exclusive', true);
         } else {
           const catMap = {
-              'Men': ['Men', 'ছেলেদের'],
-              'Women': ['Women', 'মেয়েদের'],
-              'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-              'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+            'Men': ['Men', 'ছেলেদের'],
+            'Women': ['Women', 'মেয়েদের'],
+            'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
           };
           const searchCats = catMap[selectedCategory] || [selectedCategory];
           query = query.in('category', searchCats);
@@ -257,7 +257,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       }
 
       const { data, error, count } = await query;
-      
+
       if (isMounted) {
         if (data) {
           if (page === 0) setProducts(data);
@@ -279,62 +279,62 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   const visibility = siteSettings.category_visibility || {};
   const categories = [
-    { id: 'All',          icon: <IconAll size={22} />,   label: t('all') },
-    { id: 'Men',          icon: <IconMen size={22} />,   label: t('men') },
-    { id: 'Women',        icon: <IconWomen size={22} />, label: t('women') },
-    { id: 'Kids (Boys)',  icon: <IconBoy size={22} />,   label: t('boys') },
-    { id: 'Kids (Girls)', icon: <IconGirl size={22} />,  label: t('girls') },
-    ...(visibility.show_new  !== false ? [{ id: 'New',     icon: <IconNew     size={22} />, label: language === 'bn' ? 'নতুন'  : 'New'      }] : []),
-    ...(visibility.show_sale !== false ? [{ id: 'Sale',    icon: <IconSale    size={22} />, label: language === 'bn' ? 'অফার'  : 'Sale'     }] : []),
+    { id: 'All', icon: <IconAll size={22} />, label: t('all') },
+    { id: 'Men', icon: <IconMen size={22} />, label: t('men') },
+    { id: 'Women', icon: <IconWomen size={22} />, label: t('women') },
+    { id: 'Kids (Boys)', icon: <IconBoy size={22} />, label: t('boys') },
+    { id: 'Kids (Girls)', icon: <IconGirl size={22} />, label: t('girls') },
+    ...(visibility.show_new !== false ? [{ id: 'New', icon: <IconNew size={22} />, label: language === 'bn' ? 'নতুন' : 'New' }] : []),
+    ...(visibility.show_sale !== false ? [{ id: 'Sale', icon: <IconSale size={22} />, label: language === 'bn' ? 'অফার' : 'Sale' }] : []),
     ...(visibility.show_exclusive !== false ? [{ id: 'Premium', icon: <IconPremium size={22} />, label: language === 'bn' ? 'এক্সক্লুসিভ' : 'Premium' }] : []),
   ];
 
   return (
     <div className="min-h-screen bg-white pb-16">
-        {/* Elite Hero Section - Guaranteed Visibility */}
-        <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
-           <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative">
-              {settingsLoading ? (
-                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
-                    <div className="w-24 h-24 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
-                 </div>
-              ) : (
-                 <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
-              )}
-           </div>
-        </section>
+      {/* Elite Hero Section - Guaranteed Visibility */}
+      <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
+        <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative">
+          {settingsLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
+              <div className="w-24 h-24 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
+            </div>
+          ) : (
+            <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
+          )}
+        </div>
+      </section>
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Category Grid */}
         <section>
-           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className="flex flex-col items-center gap-2 transition-all active:scale-95 group"
-                >
-                  <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${selectedCategory === cat.id ? 'bg-[#ce112d] text-white ring-4 ring-[#ce112d]/10 scale-110' : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-900'}`}>
-                    <div className="transition-transform duration-500">{cat.icon}</div>
-                  </div>
-                  <span className={`block text-[10px] md:text-[11px] font-bold uppercase tracking-wide transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
-                </button>
-              ))}
-           </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className="flex flex-col items-center gap-2 transition-all active:scale-95 group"
+              >
+                <div className={`w-12 h-12 md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${selectedCategory === cat.id ? 'bg-[#ce112d] text-white ring-4 ring-[#ce112d]/10 scale-110' : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-900'}`}>
+                  <div className="transition-transform duration-500">{cat.icon}</div>
+                </div>
+                <span className={`block text-[10px] md:text-[11px] font-bold uppercase tracking-wide transition-colors ${selectedCategory === cat.id ? 'text-[#ce112d]' : 'text-zinc-500'}`}>{cat.label}</span>
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* Search Bar - Left Aligned */}
         <div className="max-w-sm">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-[#ce112d] transition-colors" size={18} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
-                className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/10 focus:bg-white rounded-2xl py-3.5 pl-12 pr-6 text-sm outline-none transition-all shadow-sm"
-              />
-            </div>
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-[#ce112d] transition-colors" size={18} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
+              className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/10 focus:bg-white rounded-2xl py-3.5 pl-12 pr-6 text-sm outline-none transition-all shadow-sm"
+            />
+          </div>
         </div>
 
         {/* Dynamic Product Grid */}
@@ -342,68 +342,68 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-4">
               <h3 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
-                 {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'প্রিমিয়াম কালেকশন' : 'Selective Edits') : selectedCategory)}
+                {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'প্রিমিয়াম কালেকশন' : 'Selective Edits') : selectedCategory)}
               </h3>
               <div className="flex items-center gap-4">
-                 <div className="h-[2px] w-12 bg-[#ce112d]" />
-                 <p className="text-[11px] md:text-xs font-medium text-zinc-500">
-                    {products.length} {language === 'bn' ? 'টি পণ্য পাওয়া গেছে' : 'items found'}
-                 </p>
+                <div className="h-[2px] w-12 bg-[#ce112d]" />
+                <p className="text-[11px] md:text-xs font-medium text-zinc-500">
+                  {products.length} {language === 'bn' ? 'টি পণ্য পাওয়া গেছে' : 'items found'}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {loading && page === 0 ? (
-               Array.from({ length: 10 }).map((_, i) => <ProductSkeleton key={i} />)
+              Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
             ) : (
-               products.map((product) => (
-                 <ProductCard
-                   key={product.id}
-                   product={product}
-                   onClick={() => setSelectedProduct(product)}
-                 />
-               ))
+              products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onClick={() => setSelectedProduct(product)}
+                />
+              ))
             )}
           </div>
 
           {loading && page > 0 && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
-               <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
-               <p className="text-xs font-bold text-[#ce112d] animate-pulse">Loading more...</p>
+              <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-[#ce112d] animate-pulse">Loading more...</p>
             </div>
           )}
 
           {hasMore && !loading && (
-             <div className="flex justify-center pt-12">
-                <button
-                  onClick={() => setPage(prev => prev + 1)}
-                  className="group relative px-16 py-6 bg-zinc-900 text-white rounded-[24px] overflow-hidden transition-all hover:scale-105 active:scale-95"
-                >
-                   <div className="relative z-10 flex items-center gap-4">
-                      <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore Designs'}</span>
-                      <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-                   </div>
-                   <div className="absolute inset-0 bg-[#ce112d] translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                </button>
-             </div>
+            <div className="flex justify-center pt-12">
+              <button
+                onClick={() => setPage(prev => prev + 1)}
+                className="group relative px-16 py-6 bg-zinc-900 text-white rounded-[24px] overflow-hidden transition-all hover:scale-105 active:scale-95"
+              >
+                <div className="relative z-10 flex items-center gap-4">
+                  <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore Designs'}</span>
+                  <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
+                </div>
+                <div className="absolute inset-0 bg-[#ce112d] translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+              </button>
+            </div>
           )}
         </section>
 
         {/* Global Footer Accent - Clean & Minimal */}
         <section className="py-16 text-center">
-            <div className="inline-flex flex-col items-center gap-8 group">
-               <div className="relative">
-                  <div className="absolute inset-0 bg-[#ce112d]/5 rounded-full blur-3xl group-hover:bg-[#ce112d]/10 transition-colors" />
-                  <div className="relative w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-2xl border border-zinc-50 transition-transform duration-1000 group-hover:rotate-[360deg]">
-                     <Award size={40} className="text-[#ce112d]" />
-                  </div>
-               </div>
-               <div className="space-y-2">
-                  <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar Selective</p>
-                  <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic">Redefining Premium Shopping • Dhaka</p>
-               </div>
+          <div className="inline-flex flex-col items-center gap-8 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#ce112d]/5 rounded-full blur-3xl group-hover:bg-[#ce112d]/10 transition-colors" />
+              <div className="relative w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-2xl border border-zinc-50 transition-transform duration-1000 group-hover:rotate-[360deg]">
+                <Award size={40} className="text-[#ce112d]" />
+              </div>
             </div>
+            <div className="space-y-2">
+              <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar Selective</p>
+              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic">Redefining Premium Shopping • Dhaka</p>
+            </div>
+          </div>
         </section>
       </div>
 

@@ -63,7 +63,13 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
         return url;
     }
 
-    // All other external URLs (Supabase storage, Instagram CDN, etc.)
+    // Special handling for Instagram thumbnails which weserv.nl now rejects
+    if (url.includes('instagram.com')) {
+        // Return direct media URL if possible, weserv 404s on these now
+        return url.replace('media/?size=l', 'media/?size=m'); 
+    }
+
+    // All other external URLs (Supabase storage, etc.)
     // → route through images.weserv.nl for reliability and CORS handling
     const { w, h, q = 80, fit = 'cover' } = options;
     let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
