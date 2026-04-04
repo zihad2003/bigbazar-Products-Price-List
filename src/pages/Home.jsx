@@ -97,6 +97,13 @@ const ProductCard = ({ product, onClick }) => {
   }
 
   const hasVideo = !!product.video_url;
+  
+  // High Priority: If there's a video url but no image, use the Instagram thumbnail as display image
+  if (hasVideo && !displayImage) {
+    const id = extractInstagramId(product.video_url);
+    if (id) displayImage = `https://www.instagram.com/p/${id}/media/?size=l`;
+  }
+  
   const { language } = useLanguage();
 
   return (
@@ -108,15 +115,22 @@ const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {hasVideo ? (
-          <VideoPlayer src={product.video_url} poster={displayImage} priority={false} />
-        ) : displayImage ? (
-          <img
-            src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
-            className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
-            alt={product.name}
-            loading="lazy"
-          />
+        {displayImage ? (
+          <div className="w-full h-full relative group/media">
+            <img
+              src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
+              className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
+              alt={product.name}
+              loading="lazy"
+            />
+            {hasVideo && (
+               <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover/media:opacity-100 transition-opacity">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                    <Play size={24} className="text-white fill-white ml-1" />
+                  </div>
+               </div>
+            )}
+          </div>
         ) : (
           <div className="w-full h-full bg-neutral-900 flex flex-col items-center justify-center gap-3 group-hover:bg-neutral-800 transition-colors">
             <div className="w-14 h-14 rounded-full bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center">
