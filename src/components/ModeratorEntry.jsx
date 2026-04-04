@@ -252,11 +252,11 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 bg-neutral-900 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
                                             {(() => {
-                                                const thumb = product.image_url || product.images?.[0];
-                                                if (thumb) return <img src={thumb} className="w-full h-full object-cover" alt="" />;
-                                                
                                                 const id = extractInstagramId(product.video_url);
                                                 if (id) return <img src={`https://www.instagram.com/p/${id}/media/?size=m`} className="w-full h-full object-cover" alt="" />;
+                                                
+                                                const thumb = product.image_url || product.images?.[0];
+                                                if (thumb) return <img src={thumb} className="w-full h-full object-cover" alt="" />;
                                                 
                                                 return <ShoppingBag size={20} className="text-neutral-700" />;
                                             })()}

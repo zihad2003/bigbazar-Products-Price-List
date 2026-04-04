@@ -110,11 +110,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 if (pData) {
                     const imgMap = {};
                     pData.forEach(p => {
-                        let thumb = p.image_url || p.images?.[0];
-                        if (!thumb && p.video_url) {
-                            const id = extractInstagramId(p.video_url);
-                            if (id) thumb = `https://www.instagram.com/p/${id}/media/?size=l`;
-                        }
+                        const id = extractInstagramId(p.video_url);
+                        const thumb = id ? `https://www.instagram.com/p/${id}/media/?size=l` : (p.image_url || p.images?.[0]);
                         imgMap[p.id] = thumb;
                     });
                     setProductImages(imgMap);
