@@ -56,8 +56,11 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
   const handleAddToCart = () => {
     if (product.is_sold_out) return;
-    if (product.available_colors?.length > 0 && !selectedColor) { setValidationError('color'); return; }
-    if (product.available_sizes?.length > 0 && !selectedSize) { setValidationError('size'); return; }
+    const hasValidColors = product.available_colors?.some(c => !!(typeof c === 'object' ? c.name : c));
+    const hasValidSizes = product.available_sizes?.some(s => !!(typeof s === 'object' ? s.name : s));
+
+    if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
+    if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     addToCart({ ...product, price }, selectedColor, selectedSize);
     setShowCartSuccess(true);
     setTimeout(() => setShowCartSuccess(false), 2000);
@@ -66,8 +69,11 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
   const handleMainOrder = () => {
     if (product.is_sold_out) return;
-    if (product.available_colors?.length > 0 && !selectedColor) { setValidationError('color'); return; }
-    if (product.available_sizes?.length > 0 && !selectedSize) { setValidationError('size'); return; }
+    const hasValidColors = product.available_colors?.some(c => !!(typeof c === 'object' ? c.name : c));
+    const hasValidSizes = product.available_sizes?.some(s => !!(typeof s === 'object' ? s.name : s));
+
+    if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
+    if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     setValidationError('');
     setShowDeliveryModal(true);
   };
@@ -102,7 +108,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </button>
 
           {/* Media Section */}
-          <div className="w-full md:w-[48%] relative flex flex-col shrink-0 bg-neutral-50 overflow-hidden">
+          <div className="w-full md:w-[48%] relative flex flex-col shrink-0 bg-neutral-50 overflow-hidden min-h-[40vh] md:min-h-0">
              <ProductModalMedia 
                 images={images} 
                 videoUrl={product.video_url} 
@@ -112,22 +118,24 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                 setIndex={setCurrentImageIndex}
              />
              
-             {/* Photo/Video Toggle (Foodi Style) */}
+             {/* Photo/Video Toggle */}
              {product.video_url && (
                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-white/90 backdrop-blur-md rounded-full p-1 shadow-2xl border border-neutral-200 z-[10]">
                  <button 
                   onClick={() => setShowVideo(false)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
+                  className={`flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${!showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
                  >
                    <ImageIcon size={14} />
-                   <span>{language === 'bn' ? 'ছবি দেখুন' : 'See Photo'}</span>
+                   <span className="hidden sm:inline">{language === 'bn' ? 'ছবি দেখুন' : 'See Photo'}</span>
+                   <span className="sm:hidden">{language === 'bn' ? 'ছবি' : 'Photo'}</span>
                  </button>
                  <button 
                   onClick={() => setShowVideo(true)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
+                  className={`flex items-center gap-2 px-4 md:px-6 py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
                  >
                    <Play size={14} />
-                   <span>{language === 'bn' ? 'ভিডিও দেখুন' : 'See Video'}</span>
+                   <span className="hidden sm:inline">{language === 'bn' ? 'ভিডিও দেখুন' : 'See Video'}</span>
+                   <span className="sm:hidden">{language === 'bn' ? 'ভিডিও' : 'Video'}</span>
                  </button>
                </div>
              )}
@@ -140,13 +148,13 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           </div>
 
           {/* Details Panel */}
-          <div className="flex-1 p-6 md:p-12 lg:p-14 bg-white flex flex-col gap-10">
+          <div className="flex-1 p-6 md:p-12 lg:p-14 bg-white flex flex-col gap-8 md:gap-10">
             <div className="space-y-4">
-               <h2 className="text-3xl md:text-5xl font-black text-neutral-900 italic leading-tight">{product.name}</h2>
+               <h2 className="text-2xl md:text-5xl font-black text-neutral-900 italic leading-tight">{product.name}</h2>
                <div className="flex items-baseline gap-4">
-                  <span className="text-4xl md:text-6xl font-black text-[#ce112d] italic">৳ {price}</span>
+                  <span className="text-3xl md:text-6xl font-black text-[#ce112d] italic">৳ {price}</span>
                   {hasDiscount && (
-                    <span className="text-xl text-neutral-300 line-through font-bold">৳ {originalPrice}</span>
+                    <span className="text-lg md:text-xl text-neutral-300 line-through font-bold">৳ {originalPrice}</span>
                   )}
                </div>
             </div>
@@ -163,7 +171,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                          const name = typeof s === 'object' ? s.name : s;
                          return (
                            <button key={i} onClick={() => { setSelectedSize(name); setValidationError(''); }}
-                             className={`py-3 border-[2px] text-xs font-black tracking-widest transition-all rounded-xl ${selectedSize === name ? 'bg-neutral-900 text-white border-neutral-900 shadow-xl' : 'border-neutral-100 text-neutral-500'}`}>
+                             className={`py-3 border-[2px] text-[10px] md:text-xs font-black tracking-widest transition-all rounded-xl ${selectedSize === name ? 'bg-neutral-900 text-white border-neutral-900 shadow-xl' : 'border-neutral-100 text-neutral-500'}`}>
                              {name}
                            </button>
                          );
@@ -188,11 +196,11 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                  ) : (
                    <div className="flex flex-col gap-3">
                       <button onClick={handleMainOrder}
-                        className="w-full py-5 bg-[#ce112d] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.25)] active:scale-95 transition-all">
+                        className="w-full py-5 bg-[#ce112d] text-white text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.15)] active:scale-95 transition-all">
                         {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
                       </button>
                       <button onClick={handleAddToCart}
-                        className={`w-full py-5 border-2 text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}>
+                        className={`w-full py-5 border-2 text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}>
                         {isInCart ? <Check size={18} /> : <ShoppingCart size={18} />}
                         {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
                       </button>
