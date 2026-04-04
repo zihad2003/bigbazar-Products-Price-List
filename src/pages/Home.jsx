@@ -115,23 +115,16 @@ const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {displayImage ? (
-          <div className="w-full h-full relative group/media">
-            <img
-              src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
-              className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
-              alt={product.name}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-            {hasVideo && (
-               <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover/media:opacity-100 transition-opacity">
-                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                    <Play size={24} className="text-white fill-white ml-1" />
-                  </div>
-               </div>
-            )}
-          </div>
+        {hasVideo ? (
+          <VideoPlayer src={product.video_url} poster={displayImage} priority={false} />
+        ) : displayImage ? (
+          <img
+            src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
+            className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
+            alt={product.name}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
         ) : (
           <div className="w-full h-full bg-neutral-900 flex flex-col items-center justify-center gap-3 group-hover:bg-neutral-800 transition-colors">
             <div className="w-14 h-14 rounded-full bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center">
@@ -179,17 +172,15 @@ const ProductCard = ({ product, onClick }) => {
 };
 
 const ProductSkeleton = () => (
-  <div className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden border border-neutral-100 animate-pulse flex flex-col h-full">
-    <div className="aspect-[4/5] bg-neutral-100" />
-    <div className="p-4 md:p-6 space-y-4 flex flex-col flex-1">
-      <div className="space-y-2">
-        <div className="h-2 w-16 bg-neutral-100 rounded-full" />
-        <div className="h-4 w-full bg-neutral-100 rounded-lg" />
-        <div className="h-4 w-2/3 bg-neutral-50 rounded-lg" />
-      </div>
-      <div className="mt-auto flex justify-between items-end">
+  <div className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden border border-neutral-100 animate-pulse h-full">
+    <div className="aspect-[4/5] bg-neutral-200" />
+    <div className="p-4 md:p-6 space-y-3">
+      <div className="h-2 w-16 bg-neutral-100 rounded-full" />
+      <div className="h-4 w-full bg-neutral-200 rounded-lg" />
+      <div className="h-4 w-2/3 bg-neutral-100 rounded-lg" />
+      <div className="mt-8 flex justify-between items-end">
         <div className="h-6 w-20 bg-neutral-100 rounded-lg" />
-        <div className="h-10 w-10 bg-neutral-100 rounded-2xl" />
+        <div className="h-10 w-10 bg-neutral-200 rounded-2xl" />
       </div>
     </div>
   </div>
