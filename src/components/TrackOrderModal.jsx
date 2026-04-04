@@ -261,7 +261,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                                         <span className="text-[8px] font-black" style={{ color: 'var(--text-muted)' }}>{itemParts.length}x</span>
                                                                     </>
                                                                 ) : productImages[order.product_id] ? (
-                                                                    <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} className="w-full h-full object-cover" alt="" />
+                                                                    <img src={getOptimizedUrl(productImages[order.product_id], { w: 100, h: 140 })} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" />
                                                                 ) : (
                                                                     <ShoppingBag size={18} className="text-neutral-800" />
                                                                 )}

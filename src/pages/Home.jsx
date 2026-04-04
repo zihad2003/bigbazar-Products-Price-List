@@ -122,6 +122,7 @@ const ProductCard = ({ product, onClick }) => {
               className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
               alt={product.name}
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
             {hasVideo && (
                <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover/media:opacity-100 transition-opacity">

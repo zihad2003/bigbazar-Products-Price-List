@@ -256,7 +256,7 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
                                                 if (id) return <img src={`https://www.instagram.com/p/${id}/media/?size=m`} className="w-full h-full object-cover" alt="" />;
                                                 
                                                 const thumb = product.image_url || product.images?.[0];
-                                                if (thumb) return <img src={thumb} className="w-full h-full object-cover" alt="" />;
+                                                if (thumb) return <img src={thumb} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" />;
                                                 
                                                 return <ShoppingBag size={20} className="text-neutral-700" />;
                                             })()}
