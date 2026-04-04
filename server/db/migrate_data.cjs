@@ -7,6 +7,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
 const DB_CONFIG = {
     host: process.env.DB_HOST || 'localhost',
@@ -15,7 +16,11 @@ const DB_CONFIG = {
     password: process.env.DB_PASSWORD || '1234',
     database: process.env.DB_NAME || 'bigbazar',
     multipleStatements: true,
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    ssl: process.env.DB_SSL === 'true' ? {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true
+    } : null
 };
 
 const DATA_DIR = 'D:\\bigbazardata';
