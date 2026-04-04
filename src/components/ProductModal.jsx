@@ -23,12 +23,20 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen && product) {
-      const validColors = product.available_colors?.filter(c => typeof c === 'object' ? (c.is_available !== false) : true) || [];
+      const getValidOptions = (arr) => (arr || []).filter(item => {
+        const name = typeof item === 'object' ? item.name : item;
+        const isAvailable = typeof item === 'object' ? item.is_available !== false : true;
+        return name && String(name).trim() !== '' && isAvailable;
+      });
+
+      const validColors = getValidOptions(product.available_colors);
       if (validColors.length === 1) setSelectedColor(typeof validColors[0] === 'object' ? validColors[0].name : validColors[0]);
       else setSelectedColor('');
-      const validSizes = product.available_sizes?.filter(s => typeof s === 'object' ? (s.is_available !== false) : true) || [];
+
+      const validSizes = getValidOptions(product.available_sizes);
       if (validSizes.length === 1) setSelectedSize(typeof validSizes[0] === 'object' ? validSizes[0].name : validSizes[0]);
       else setSelectedSize('');
+
       setValidationError('');
       setCurrentImageIndex(0);
       setShowVideo(false);
@@ -54,11 +62,17 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     ? product.images
     : [product.image || product.image_url].filter(Boolean);
 
+  const hasValidColors = product.available_colors?.some(c => {
+    const name = typeof c === 'object' ? c.name : c;
+    return name && String(name).trim() !== '';
+  });
+  const hasValidSizes = product.available_sizes?.some(s => {
+    const name = typeof s === 'object' ? s.name : s;
+    return name && String(name).trim() !== '';
+  });
+
   const handleAddToCart = () => {
     if (product.is_sold_out) return;
-    const hasValidColors = product.available_colors?.some(c => !!(typeof c === 'object' ? c.name : c));
-    const hasValidSizes = product.available_sizes?.some(s => !!(typeof s === 'object' ? s.name : s));
-
     if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
     if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     addToCart({ ...product, price }, selectedColor, selectedSize);
@@ -69,9 +83,6 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
   const handleMainOrder = () => {
     if (product.is_sold_out) return;
-    const hasValidColors = product.available_colors?.some(c => !!(typeof c === 'object' ? c.name : c));
-    const hasValidSizes = product.available_sizes?.some(s => !!(typeof s === 'object' ? s.name : s));
-
     if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
     if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     setValidationError('');
@@ -161,13 +172,16 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
             {/* Selection & Actions */}
             <div className="space-y-8">
-               {product.available_sizes?.length > 0 && (
+               {hasValidSizes && (
                  <div className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
                       {language === 'bn' ? 'সাইজ সিলেক্ট করুন' : 'Select Size'}
                     </p>
                     <div className="grid grid-cols-4 gap-2">
-                       {product.available_sizes.map((s, i) => {
+                       {product.available_sizes?.filter(s => {
+                         const name = typeof s === 'object' ? s.name : s;
+                         return name && String(name).trim() !== '';
+                       }).map((s, i) => {
                          const name = typeof s === 'object' ? s.name : s;
                          return (
                            <button key={i} onClick={() => { setSelectedSize(name); setValidationError(''); }}
