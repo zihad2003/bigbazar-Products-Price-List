@@ -7,6 +7,21 @@ import bcrypt from 'bcryptjs';
 // Cloudflare Serverless API
 const app = new Hono().basePath('/api');
 
+// Global Error Handler for Debugging
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({ 
+    error: 'Internal Server Error', 
+    message: err.message,
+    stack: err.stack,
+    env_check: {
+      has_db_url: !!c.env.DATABASE_URL,
+      has_db_host: !!c.env.DB_HOST,
+      jwt_secret_set: !!c.env.JWT_SECRET
+    }
+  }, 500);
+});
+
 // Helper to get connection to TiDB
 const getConn = (env) => {
   // Use the prioritized DATABASE_URL secret
