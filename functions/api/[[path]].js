@@ -111,8 +111,8 @@ app.post('/auth/login', async (c) => {
   
   // Check Admin
   const admins = await conn.execute('SELECT * FROM admin_users WHERE email = ?', [identifier]);
-  if (admins.rows.length > 0) {
-    const user = admins.rows[0];
+  if (admins.length > 0) {
+    const user = admins[0];
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
 
@@ -131,9 +131,9 @@ app.post('/auth/login', async (c) => {
 
   // Check Customer
   const customers = await conn.execute('SELECT * FROM customers WHERE email = ? OR mobile = ?', [identifier, identifier]);
-  if (customers.rows.length === 0) return c.json({ error: 'Invalid credentials' }, 401);
+  if (customers.length === 0) return c.json({ error: 'Invalid credentials' }, 401);
 
-  const user = customers.rows[0];
+  const user = customers[0];
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
 
@@ -210,14 +210,14 @@ app.get('/products', async (c) => {
 
   if (id) {
     const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
-    return c.json({ data: parseProductRow(res.rows[0]) || null, count: res.rows.length });
+    return c.json({ data: parseProductRow(res[0]) || null, count: res.length });
   }
 
   if (ids) {
     const list = ids.split(',').filter(Boolean);
     if (!list.length) return c.json({ data: [], count: 0 });
     const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
-    return c.json({ data: res.rows.map(parseProductRow), count: res.rows.length });
+    return c.json({ data: res.map(parseProductRow), count: res.length });
   }
 
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -235,7 +235,7 @@ app.get('/products', async (c) => {
   // Count
   const countSQL = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
   const countRes = await conn.execute(countSQL, params);
-  const total = countRes.rows[0].total;
+  const total = countRes[0].total;
 
   // Paginate
   const dir = ascending === 'true' ? 'ASC' : 'DESC';
@@ -244,14 +244,14 @@ app.get('/products', async (c) => {
   params.push(parseInt(limit), parseInt(page) * parseInt(limit));
 
   const res = await conn.execute(sql, params);
-  return c.json({ data: res.rows.map(parseProductRow), count: total });
+  return c.json({ data: res.map(parseProductRow), count: total });
 });
 
 app.get('/products/:id', async (c) => {
   const conn = getConn(c.env);
   const res = await conn.execute('SELECT * FROM products WHERE id = ?', [c.req.param('id')]);
-  if (!res.rows.length) return c.json({ error: 'Not found' }, 404);
-  return c.json({ data: parseProductRow(res.rows[0]) });
+  if (!res.length) return c.json({ error: 'Not found' }, 404);
+  return c.json({ data: parseProductRow(res[0]) });
 });
 
 app.post('/products', requireAuth, async (c) => {
@@ -326,11 +326,11 @@ app.get('/orders', requireAuth, async (c) => {
   }
   const countSQL = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
   const countRes = await conn.execute(countSQL, params);
-  const total = countRes.rows[0].total;
+  const total = countRes[0].total;
   sql += ` ORDER BY created_at ${ascending === 'true' ? 'ASC' : 'DESC'} LIMIT ? OFFSET ?`;
   params.push(parseInt(limit), parseInt(page) * parseInt(limit));
   const res = await conn.execute(sql, params);
-  return c.json({ data: res.rows, count: total });
+  return c.json({ data: res, count: total });
 });
 
 app.post('/orders', async (c) => {
@@ -384,7 +384,7 @@ app.get('/orders/track', async (c) => {
     'SELECT * FROM orders WHERE customer_phone = ? OR id = ? ORDER BY created_at DESC',
     [query, query]
   );
-  return c.json({ data: res.rows });
+  return c.json({ data: res });
 });
 
 // ============================================
@@ -394,7 +394,7 @@ app.get('/reviews', async (c) => {
   const pid = c.req.query('product_id');
   const conn = getConn(c.env);
   const res = await conn.execute('SELECT * FROM reviews' + (pid ? ' WHERE product_id = ?' : '') + ' ORDER BY created_at DESC', pid ? [pid] : []);
-  return c.json({ data: res.rows });
+  return c.json({ data: res });
 });
 
 app.post('/reviews', async (c) => {
@@ -415,7 +415,7 @@ app.get('/settings', async (c) => {
   const conn = getConn(c.env);
   const res = await conn.execute('SELECT * FROM site_settings');
   const settings = {};
-  res.rows.forEach(r => {
+  res.forEach(r => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
   });
   return c.json({ data: settings });

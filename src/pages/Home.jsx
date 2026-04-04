@@ -97,13 +97,13 @@ const ProductCard = ({ product, onClick }) => {
   }
 
   const hasVideo = !!product.video_url;
-  
+
   // High Priority: If there's a video url but no image, use the Instagram thumbnail as display image
   if (hasVideo && !displayImage) {
     const id = extractInstagramId(product.video_url);
     if (id) displayImage = `https://www.instagram.com/p/${id}/media/?size=l`;
   }
-  
+
   const { language } = useLanguage();
 
   return (
@@ -131,7 +131,7 @@ const ProductCard = ({ product, onClick }) => {
               <Instagram size={22} className="text-neutral-500" />
             </div>
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
-               {language === 'bn' ? 'ছবি নেই' : 'No Preview'}
+              {language === 'bn' ? 'ছবি নেই' : 'No Preview'}
             </span>
           </div>
         )}
@@ -328,6 +328,31 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       </section>
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
+        {/* Maintenance Notice */}
+        {!loading && products.length === 0 && (
+          <section className="px-4">
+            <div className="bg-[#ce112d]/5 border border-[#ce112d]/20 rounded-3xl p-6 md:p-10 flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 bg-[#ce112d]/10 rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-[#ce112d] rounded-full animate-ping" />
+              </div>
+              <div className="space-y-4 max-w-2xl">
+                <h2 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">
+                  {language === 'bn' ? 'সিস্টেম আপগ্রেড চলছে' : 'System Upgrade in Progress'}
+                </h2>
+                <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                  {language === 'bn'
+                    ? 'আমরা আন্তরিকভাবে দুঃখিত। সার্ভার আপগ্রেড এবং ডেটা শিফটিং এর কাজ চলায় পণ্য প্রদর্শনে সাময়িক সমস্যা হচ্ছে। আমরা অত্যন্ত দ্রুত এটি ঠিক করার কাজ করছি। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।'
+                    : 'We are sincerely sorry. A temporary issue is occurring with product display due to ongoing server upgrades. we are working to fix this as quickly as possible. Please check back shortly.'}
+                </p>
+                <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#ce112d]">
+                  <span className="w-2 h-2 bg-[#ce112d] rounded-full" />
+                  Live Migration in Progress
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Category Grid */}
         <section>
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
