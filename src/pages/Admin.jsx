@@ -412,15 +412,22 @@ export default function Admin() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `assets/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage.from('assets').upload(filePath, file, {
+    const { data: uploadData, error: uploadError } = await supabase.storage.from('assets').upload(filePath, file, {
       cacheControl: '31536000',
       upsert: false
     });
+    
     if (uploadError) {
       console.error(uploadError);
       return null;
     }
-    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    
+    // Support for local Express API which returns the exact fullPath immediately
+    if (uploadData && uploadData.fullPath) {
+      return uploadData.fullPath;
+    }
+
+    const { data } = supabase.storage.from('assets').getPublicUrl(uploadData?.path || filePath);
     return data.publicUrl;
   };
 

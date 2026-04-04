@@ -37,7 +37,7 @@ const ProductModalMedia = ({ images, videoUrl, showVideo, setShowVideo, currentI
   };
 
   return (
-    <div 
+    <div
       className="relative flex-1 bg-neutral-100 flex flex-col"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -46,10 +46,10 @@ const ProductModalMedia = ({ images, videoUrl, showVideo, setShowVideo, currentI
       <div className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           {showVideo && videoUrl ? (
-            <motion.div 
+            <motion.div
               key="video"
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-0 bg-black"
             >
@@ -74,9 +74,9 @@ const ProductModalMedia = ({ images, videoUrl, showVideo, setShowVideo, currentI
       {!showVideo && images.length > 1 && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 flex gap-2 z-20">
           {images.map((_, i) => (
-            <div 
-              key={i} 
-              className={`h-1.5 rounded-full transition-all ${i === currentIndex ? 'w-6 bg-[#ce112d]' : 'w-1.5 bg-white/50'}`} 
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${i === currentIndex ? 'w-6 bg-[#ce112d]' : 'w-1.5 bg-white/50'}`}
             />
           ))}
         </div>
@@ -85,13 +85,13 @@ const ProductModalMedia = ({ images, videoUrl, showVideo, setShowVideo, currentI
       {/* Navigation arrows (Desktop only) */}
       {!showVideo && images.length > 1 && (
         <>
-          <button 
+          <button
             onClick={prevSlide}
             className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full items-center justify-center text-neutral-800 shadow-lg hover:bg-[#ce112d] hover:text-white transition-all z-20"
           >
             <ChevronLeft size={20} />
           </button>
-          <button 
+          <button
             onClick={nextSlide}
             className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full items-center justify-center text-neutral-800 shadow-lg hover:bg-[#ce112d] hover:text-white transition-all z-20"
           >
@@ -103,15 +103,15 @@ const ProductModalMedia = ({ images, videoUrl, showVideo, setShowVideo, currentI
       {/* Thumbnail Bar (Mobile only, horizontal scroll) */}
       {!showVideo && images.length > 1 && (
         <div className="md:hidden absolute bottom-20 inset-x-0 p-3 flex gap-2 overflow-x-auto no-scrollbar pointer-events-auto z-[20]">
-           {images.map((img, i) => (
-              <button 
-                key={i} 
-                onClick={() => setIndex(i)}
-                className={`w-12 h-16 shrink-0 border-2 rounded-lg overflow-hidden transition-all ${i === currentIndex ? 'border-[#ce112d] scale-105' : 'border-transparent opacity-60'}`}
-              >
-                 <img src={getOptimizedUrl(img, { w: 100, h: 140 })} className="w-full h-full object-cover" />
-              </button>
-           ))}
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setIndex(i)}
+              className={`w-12 h-16 shrink-0 border-2 rounded-lg overflow-hidden transition-all ${i === currentIndex ? 'border-[#ce112d] scale-105' : 'border-transparent opacity-60'}`}
+            >
+              <img src={getOptimizedUrl(img, { w: 100, h: 140 })} className="w-full h-full object-cover" />
+            </button>
+          ))}
         </div>
       )}
     </div>
