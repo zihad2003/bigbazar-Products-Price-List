@@ -128,6 +128,11 @@ app.post('/auth/login', async (c) => {
   });
 });
 
+app.get('/auth/session', requireAuth, async (c) => {
+  const user = c.get('user');
+  return c.json({ session: { user, access_token: c.req.header('Authorization')?.replace('Bearer ', '') } });
+});
+
 app.post('/auth/verify-2fa', async (c) => {
   const { login_id, code } = await c.req.json();
   const entry = pendingAdminCodes.get(login_id);
@@ -142,6 +147,19 @@ app.post('/auth/verify-2fa', async (c) => {
     session: { access_token: token, user: { id: entry.adminId, email: entry.email, type: 'admin' } },
     user: { id: entry.adminId, email: entry.email }
   });
+});
+
+// Admin list codes
+app.get('/auth/pending-codes', requireAuth, (c) => {
+  const user = c.get('user');
+  if (user.type !== 'admin') return c.json({ error: 'Admin only' }, 403);
+  const codes = [];
+  for (const [login_id, entry] of pendingAdminCodes) {
+    if (entry.expiresAt > Date.now()) {
+      codes.push({ login_id, email: entry.email, code: entry.code, expires_in: Math.max(0, Math.round((entry.expiresAt - Date.now()) / 1000)) });
+    }
+  }
+  return c.json({ codes });
 });
 
 // ============================================
@@ -220,12 +238,87 @@ app.get('/products/:id', async (c) => {
   return c.json({ data: parseProductRow(res.rows[0]) });
 });
 
+app.post('/products', requireAuth, async (c) => {
+  const p = await c.req.json();
+  const conn = getConn(c.env);
+  const id = p.id || crypto.randomUUID();
+  try {
+    await conn.execute(
+      `INSERT INTO products (serial_no, id, created_at, name, price, original_price, description, category, images, image_url, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive)
+       VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        p.serial_no || null, id, p.name, p.price, p.original_price || null, p.description || '', p.category || 'Women',
+        JSON.stringify(p.images || []), p.image_url || null, p.video_url || null, p.status || 'published', p.platform_id || null,
+        p.is_sale ? 1 : 0, p.is_hot ? 1 : 0, p.is_new ? 1 : 0, p.is_sold_out ? 1 : 0, p.is_deleted ? 1 : 0,
+        JSON.stringify(p.available_sizes || []), JSON.stringify(p.available_colors || []), p.stock_count ?? 3, p.is_exclusive ? 1 : 0
+      ]
+    );
+    return c.json({ success: true, id });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.put('/products/:id', requireAuth, async (c) => {
+  const p = await c.req.json();
+  const id = c.req.param('id');
+  const conn = getConn(c.env);
+  const setClauses = [];
+  const params = [];
+  
+  const fields = {
+    name: p.name, price: p.price, original_price: p.original_price, description: p.description, category: p.category,
+    images: p.images !== undefined ? JSON.stringify(p.images) : undefined, image_url: p.image_url, video_url: p.video_url,
+    status: p.status, is_sale: p.is_sale !== undefined ? (p.is_sale ? 1 : 0) : undefined,
+    is_hot: p.is_hot !== undefined ? (p.is_hot ? 1 : 0) : undefined, is_new: p.is_new !== undefined ? (p.is_new ? 1 : 0) : undefined,
+    is_sold_out: p.is_sold_out !== undefined ? (p.is_sold_out ? 1 : 0) : undefined,
+    is_deleted: p.is_deleted !== undefined ? (p.is_deleted ? 1 : 0) : undefined,
+    available_sizes: p.available_sizes !== undefined ? JSON.stringify(p.available_sizes) : undefined,
+    available_colors: p.available_colors !== undefined ? JSON.stringify(p.available_colors) : undefined,
+    stock_count: p.stock_count, is_exclusive: p.is_exclusive !== undefined ? (p.is_exclusive ? 1 : 0) : undefined,
+    serial_no: p.serial_no
+  };
+
+  for (const [key, val] of Object.entries(fields)) {
+    if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
+  }
+  if (!setClauses.length) return c.json({ success: true });
+  params.push(id);
+  await conn.execute(`UPDATE products SET ${setClauses.join(', ')} WHERE id = ?`, params);
+  return c.json({ success: true });
+});
+
+app.delete('/products/:id', requireAuth, async (c) => {
+  const conn = getConn(c.env);
+  await conn.execute('DELETE FROM products WHERE id = ?', [c.req.param('id')]);
+  return c.json({ success: true });
+});
+
 // ============================================
 // ORDER ROUTES
 // ============================================
 
+app.get('/orders', requireAuth, async (c) => {
+  const { status, search, page = 0, limit = 20, ascending = 'false' } = c.req.query();
+  const conn = getConn(c.env);
+  let sql = 'SELECT * FROM orders WHERE 1=1';
+  const params = [];
+  if (status) { sql += ' AND status = ?'; params.push(status); }
+  if (search) {
+    sql += ' AND (customer_phone LIKE ? OR customer_name LIKE ? OR customer_address LIKE ? OR id LIKE ?)';
+    const p = `%${search}%`; params.push(p, p, p, p);
+  }
+  const countSQL = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
+  const countRes = await conn.execute(countSQL, params);
+  const total = countRes.rows[0].total;
+  sql += ` ORDER BY created_at ${ascending === 'true' ? 'ASC' : 'DESC'} LIMIT ? OFFSET ?`;
+  params.push(parseInt(limit), parseInt(page) * parseInt(limit));
+  const res = await conn.execute(sql, params);
+  return c.json({ data: res.rows, count: total });
+});
+
 app.post('/orders', async (c) => {
-  const order = await c.req.json();
+  const o = await c.req.json();
   const conn = getConn(c.env);
   const id = crypto.randomUUID();
 
@@ -234,18 +327,37 @@ app.post('/orders', async (c) => {
       `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, order.product_id, order.product_name, order.product_price,
-        order.customer_name, order.customer_phone, order.customer_address, order.customer_note || null,
-        order.delivery_area, order.delivery_charge || 0, order.total_amount,
-        order.last_four_digits || null, 'Pending', order.size || null, order.color || null,
-        order.is_advance_paid ? 1 : 0, order.is_exclusive_order ? 1 : 0,
-        order.payment_status || 'Unpaid', order.moderator_reference || null
+        id, o.product_id, o.product_name, o.product_price, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
+        o.delivery_area || 'Inside Dhaka', o.delivery_charge || 0, o.total_amount, o.last_four_digits || 'COD', 'Pending',
+        o.size || null, o.color || null, o.is_advance_paid ? 1 : 0, o.is_exclusive_order ? 1 : 0, o.payment_status || 'Unpaid', o.moderator_reference || null
       ]
     );
     return c.json({ success: true, order_id: id });
   } catch (err) {
     return c.json({ error: err.message }, 500);
   }
+});
+
+app.put('/orders/:id', requireAuth, async (c) => {
+  const o = await c.req.json();
+  const id = c.req.param('id');
+  const conn = getConn(c.env);
+  const setClauses = [];
+  const params = [];
+  const fields = { status: o.status, is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined, payment_status: o.payment_status, delivery_charge: o.delivery_charge, total_amount: o.total_amount };
+  for (const [key, val] of Object.entries(fields)) {
+    if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
+  }
+  if (!setClauses.length) return c.json({ success: true });
+  params.push(id);
+  await conn.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
+  return c.json({ success: true });
+});
+
+app.delete('/orders/:id', requireAuth, async (c) => {
+  const conn = getConn(c.env);
+  await conn.execute('DELETE FROM orders WHERE id = ?', [c.req.param('id')]);
+  return c.json({ success: true });
 });
 
 app.get('/orders/track', async (c) => {
@@ -260,6 +372,27 @@ app.get('/orders/track', async (c) => {
 });
 
 // ============================================
+// REVIEWS
+// ============================================
+app.get('/reviews', async (c) => {
+  const pid = c.req.query('product_id');
+  const conn = getConn(c.env);
+  const res = await conn.execute('SELECT * FROM reviews' + (pid ? ' WHERE product_id = ?' : '') + ' ORDER BY created_at DESC', pid ? [pid] : []);
+  return c.json({ data: res.rows });
+});
+
+app.post('/reviews', async (c) => {
+  const r = await c.req.json();
+  const conn = getConn(c.env);
+  const id = crypto.randomUUID();
+  await conn.execute(
+    'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, r.rating || 5, r.comment, r.customer_name, r.product_id, r.product_name]
+  );
+  return c.json({ success: true, id });
+});
+
+// ============================================
 // SETTINGS
 // ============================================
 app.get('/settings', async (c) => {
@@ -270,6 +403,23 @@ app.get('/settings', async (c) => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
   });
   return c.json({ data: settings });
+});
+
+app.post('/settings', requireAuth, async (c) => {
+  const s = await c.req.json();
+  const conn = getConn(c.env);
+  await conn.execute(
+    'INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)',
+    [s.key, JSON.stringify(s.value)]
+  );
+  return c.json({ success: true });
+});
+
+// ============================================
+// UPLOAD (Placeholder)
+// ============================================
+app.post('/upload', requireAuth, async (c) => {
+  return c.json({ error: 'Local file uploads are not supported on Cloudflare. Please use external URLs.' }, 400);
 });
 
 // ============================================
