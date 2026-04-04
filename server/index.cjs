@@ -11,6 +11,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { randomUUID } = require('crypto');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -43,7 +44,11 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME || 'bigbazar',
     waitForConnections: true,
     connectionLimit: 10,
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    ssl: process.env.DB_SSL === 'true' ? {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true
+    } : null
 });
 
 // ============================================
