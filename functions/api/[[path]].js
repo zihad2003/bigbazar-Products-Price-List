@@ -30,11 +30,8 @@ const getConn = (env) => {
 };
 
 // ============================================
-// Admin 2FA — In-Memory Store (Ephemeral on Workers!)
-// NOTE: On Cloudflare Workers, this resets every time the worker sleeps.
-// For production, use KV or Durable Objects. For now, matching original logic.
+// Auth Logic — Uses TiDB pending_2fa table for persistent 2FA codes
 // ============================================
-const pendingAdminCodes = new Map();
 
 function generateCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -118,12 +115,13 @@ app.post('/auth/login', async (c) => {
 
     const loginId = crypto.randomUUID();
     const code = generateCode();
-    pendingAdminCodes.set(loginId, {
-      code,
-      email: user.email,
-      adminId: user.id,
-      expiresAt: Date.now() + 5 * 60 * 1000
-    });
+    const expiresAt = Date.now() + 5 * 60 * 1000;
+    
+    // Store in TiDB for persistence across Worker restarts
+    await conn.execute(
+      'INSERT INTO pending_2fa (login_id, code, email, admin_id, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [loginId, code, user.email, user.id, expiresAt]
+    );
     
     console.log(`\n🔐 ADMIN LOGIN CODE: ${code}\n`);
     return c.json({ step: 2, login_id: loginId });
@@ -151,30 +149,38 @@ app.get('/auth/session', requireAuth, async (c) => {
 
 app.post('/auth/verify-2fa', async (c) => {
   const { login_id, code } = await c.req.json();
-  const entry = pendingAdminCodes.get(login_id);
+  const conn = getConn(c.env);
+  
+  const entries = await conn.execute('SELECT * FROM pending_2fa WHERE login_id = ?', [login_id]);
+  const entry = entries[0];
 
-  if (!entry || entry.expiresAt < Date.now()) return c.json({ error: 'Code expired or invalid' }, 401);
+  if (!entry || entry.expires_at < Date.now()) return c.json({ error: 'Code expired or invalid' }, 401);
   if (entry.code !== code) return c.json({ error: 'Incorrect code' }, 401);
 
-  const token = jwt.sign({ id: entry.adminId, email: entry.email, type: 'admin' }, c.env.JWT_SECRET, { expiresIn: '24h' });
-  pendingAdminCodes.delete(login_id);
+  const token = jwt.sign({ id: entry.admin_id, email: entry.email, type: 'admin' }, c.env.JWT_SECRET, { expiresIn: '24h' });
+  await conn.execute('DELETE FROM pending_2fa WHERE login_id = ?', [login_id]);
 
   return c.json({
-    session: { access_token: token, user: { id: entry.adminId, email: entry.email, type: 'admin' } },
-    user: { id: entry.adminId, email: entry.email }
+    session: { access_token: token, user: { id: entry.admin_id, email: entry.email, type: 'admin' } },
+    user: { id: entry.admin_id, email: entry.email }
   });
 });
 
 // Admin list codes
-app.get('/auth/pending-codes', requireAuth, (c) => {
+app.get('/auth/pending-codes', requireAuth, async (c) => {
   const user = c.get('user');
   if (user.type !== 'admin') return c.json({ error: 'Admin only' }, 403);
-  const codes = [];
-  for (const [login_id, entry] of pendingAdminCodes) {
-    if (entry.expiresAt > Date.now()) {
-      codes.push({ login_id, email: entry.email, code: entry.code, expires_in: Math.max(0, Math.round((entry.expiresAt - Date.now()) / 1000)) });
-    }
-  }
+  
+  const conn = getConn(c.env);
+  const entries = await conn.execute('SELECT * FROM pending_2fa WHERE expires_at > ?', [Date.now()]);
+  
+  const codes = entries.map(entry => ({
+    login_id: entry.login_id,
+    email: entry.email,
+    code: entry.code,
+    expires_in: Math.max(0, Math.round((entry.expires_at - Date.now()) / 1000))
+  }));
+  
   return c.json({ codes });
 });
 
@@ -222,10 +228,23 @@ app.get('/products', async (c) => {
 
   if (status) { sql += ' AND status = ?'; params.push(status); }
   if (category && category !== 'All') {
-    const maps = { 'Men': ['Men', 'ছেলেদের'], 'Women': ['Women', 'মেয়েদের'], 'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] };
-    const cats = maps[category] || [category];
-    sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
-    params.push(...cats);
+    if (category === 'New') {
+      sql += ' AND is_new = 1';
+    } else if (category === 'Sale') {
+      sql += ' AND is_sale = 1';
+    } else if (category === 'Premium') {
+      sql += ' AND is_exclusive = 1';
+    } else {
+      const maps = { 
+        'Men': ['Men', 'ছেলেদের'], 
+        'Women': ['Women', 'মেয়েদের'], 
+        'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 
+        'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] 
+      };
+      const cats = maps[category] || [category];
+      sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
+      params.push(...cats);
+    }
   }
   if (search) {
     sql += ' AND (name LIKE ? OR description LIKE ?)';
