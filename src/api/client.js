@@ -69,7 +69,8 @@ export const auth = {
             });
             const json = await res.json();
             if (!res.ok) return { data: {}, error: { message: json.error || 'Login failed' } };
-            
+            if (json.step === 2) return { data: json, error: null }; // Admin 2FA — caller handles step 2
+
             setToken(json.session.access_token);
             _authListeners.forEach(fn => fn('SIGNED_IN', json.session));
             return { data: json, error: null };
@@ -170,7 +171,7 @@ class QueryBuilder {
     single() { this._single = true; return this; }
 
     // Execute SELECT or other queued action
-    async then(resolve, reject) {
+    async then(resolve, _reject) {
         try {
             let result;
             if (this._action === 'update') result = await this._executeUpdate();
@@ -328,9 +329,9 @@ class QueryBuilder {
 // Storage API (replaces supabase.storage)
 // ============================================
 export const storage = {
-    from(bucket) {
+    from(_bucket) {
         return {
-            async upload(filePath, file) {
+            async upload(_filePath, file) {
                 const formData = new FormData();
                 formData.append('file', file);
                 

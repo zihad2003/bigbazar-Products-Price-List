@@ -4,7 +4,7 @@ import { Home, Search, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucid
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../CartContext';
 
-const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCategory }) => {
+const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCategory, onOpenAuth }) => {
     const { language, toggleLanguage, t } = useLanguage();
     const { cartCount } = useCart();
     const navigate = useNavigate();
@@ -61,8 +61,8 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
             id: 'account',
             icon: <User size={22} />,
             label: language === 'bn' ? 'অ্যাকাউন্ট' : 'Account',
-            onClick: () => navigate('/admin'),
-            active: location.pathname === '/admin'
+            onClick: () => onOpenAuth?.(),
+            active: false
         }
     ];
 

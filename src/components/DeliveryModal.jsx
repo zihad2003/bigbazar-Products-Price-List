@@ -148,7 +148,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                     customer_name: formData.name,
                     customer_phone: formData.phone,
                     customer_address: `${formData.address} | ${locationStr}`,
-                    delivery_area: deliveryInfo.area,
+                    delivery_area: deliveryInfo?.area || null,
                     delivery_charge: deliveryCharge,
                     total_amount: calculateTotal(),
                     last_four_digits: formData.senderNumber || (formData.paymentMethod === 'cod' ? 'COD' : ''),

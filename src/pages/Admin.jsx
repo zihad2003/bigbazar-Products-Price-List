@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { setToken } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
@@ -19,6 +20,10 @@ export default function Admin() {
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loginStep, setLoginStep] = useState(1); // 1 = credentials, 2 = code
+  const [loginId, setLoginId] = useState('');
+  const [codeValue, setCodeValue] = useState('');
+  const [pendingCodes, setPendingCodes] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
@@ -303,6 +308,18 @@ export default function Admin() {
     setSiteSettings(settings);
   };
 
+  const fetchPendingCodes = async () => {
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const token = localStorage.getItem('bb_auth_token');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/pending-codes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const json = await res.json();
+      setPendingCodes(json.codes || []);
+    } catch { setPendingCodes([]); }
+  };
+
   const handleVideoBlur = async () => {
     if (!form.video_url || (!form.video_url.includes('instagram.com') && !form.video_url.includes('instagr.am'))) return;
     setLoading(true);
@@ -563,46 +580,118 @@ export default function Admin() {
 
   if (!session) return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6 font-sans">
-      <form onSubmit={async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          setAlertModal({
-            isOpen: true,
-            title: "Login Failed",
-            message: error.message || "Invalid login credentials. Please try again.",
-            type: "error"
-          });
-        }
-      }} className="w-full max-w-md space-y-8 bg-zinc-900 p-10 rounded-[32px] border border-white/5 shadow-2xl">
+      <div className="w-full max-w-md space-y-8 bg-zinc-900 p-10 rounded-[32px] border border-white/5 shadow-2xl">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-white uppercase">Admin <span className="text-[#ce112d]">Login</span></h2>
-          <p className="text-sm text-zinc-500 font-medium">Enter your credentials to access the dashboard</p>
+          <p className="text-sm text-zinc-500 font-medium">
+            {loginStep === 1 ? 'Enter your credentials to access the dashboard' : 'Enter the 4-digit code shown in the admin panel'}
+          </p>
         </div>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Email Address</label>
-            <input 
-              type="email" 
-              placeholder="admin@bigbazar.com" 
-              className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all" 
-              onChange={e => setEmail(e.target.value)} 
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all" 
-              onChange={e => setPassword(e.target.value)} 
-            />
-          </div>
-          <button className="w-full bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-sm mt-4">
-            Enter Dashboard
-          </button>
+
+        {/* Step indicator */}
+        <div className="flex items-center gap-3">
+          <div className={`flex-1 h-1 rounded-full ${loginStep >= 1 ? 'bg-[#ce112d]' : 'bg-zinc-800'}`} />
+          <div className={`flex-1 h-1 rounded-full ${loginStep >= 2 ? 'bg-[#ce112d]' : 'bg-zinc-800'}`} />
         </div>
-      </form>
+
+        {loginStep === 1 ? (
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            try {
+              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+              const res = await fetch(`${API_BASE}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json.error || 'Login failed');
+              if (json.step === 2) {
+                setLoginId(json.login_id);
+                setLoginStep(2);
+              } else {
+                // Fallback: direct login (no 2FA configured)
+                setToken(json.session.access_token);
+                setSession(json.session);
+              }
+            } catch (err) {
+              setAlertModal({ isOpen: true, title: 'Login Failed', message: err.message, type: 'error' });
+            } finally {
+              setLoading(false);
+            }
+          }} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Email Address</label>
+              <input
+                type="email"
+                placeholder="admin@bigbazar.com"
+                className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </div>
+            <button disabled={loading} className="w-full bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-sm mt-4 disabled:opacity-50">
+              {loading ? 'Verifying...' : 'Continue →'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            try {
+              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+              const res = await fetch(`${API_BASE}/api/auth/verify-code`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login_id: loginId, code: codeValue })
+              });
+              const json = await res.json();
+              if (!res.ok) throw new Error(json.error || 'Invalid code');
+              setToken(json.session.access_token);
+              setSession(json.session);
+            } catch (err) {
+              setAlertModal({ isOpen: true, title: 'Wrong Code', message: err.message, type: 'error' });
+              setCodeValue('');
+            } finally {
+              setLoading(false);
+            }
+          }} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">4-Digit Security Code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="0000"
+                autoFocus
+                className="w-full bg-black border border-zinc-800 h-16 px-4 rounded-2xl text-3xl font-black tracking-[0.5em] text-center focus:border-[#ce112d]/50 focus:ring-1 focus:ring-[#ce112d]/30 outline-none transition-all text-white"
+                value={codeValue}
+                onChange={e => setCodeValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              />
+              <p className="text-[11px] text-zinc-600 text-center mt-1">Check the code in Admin Panel → Settings → Security</p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => { setLoginStep(1); setCodeValue(''); setLoginId(''); }} className="flex-1 h-14 rounded-2xl border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest text-xs hover:bg-zinc-800 transition-all">
+                ← Back
+              </button>
+              <button disabled={loading || codeValue.length < 4} className="flex-1 bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-xs disabled:opacity-50">
+                {loading ? 'Checking...' : 'Enter Dashboard'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       <AlertModal
         isOpen={alertModal.isOpen}
@@ -662,6 +751,7 @@ export default function Admin() {
                 onClick={() => {
                   setActiveTab(tab.id);
                   setIsMobileMenuOpen(false);
+                  if (tab.id === 'settings') fetchPendingCodes();
                 }}
                 className={`w-full flex items-center gap-3.5 p-3.5 rounded-2xl text-[11px] font-bold tracking-wider transition-all duration-200 ${tab.special && activeTab !== tab.id ? 'border-2 border-dashed border-[#ce112d]/40 text-[#ce112d] hover:bg-[#ce112d]/10 hover:border-[#ce112d]' : activeTab === tab.id ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/30' : 'hover:bg-white/5 text-zinc-500 hover:text-white'}`}
               >
@@ -1010,6 +1100,50 @@ export default function Admin() {
                 {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
                 <span>{loading ? 'Saving...' : 'Save Theme'}</span>
               </button>
+            </div>
+
+            {/* Security — Pending Admin Login Codes */}
+            <div className="space-y-6 pt-12 border-t border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Security <span className="text-[#ce112d]">Codes</span></h3>
+                  <p className="text-zinc-500 text-xs mt-1 font-medium">Active 2FA codes for pending admin logins (expire in 5 min)</p>
+                </div>
+                <button
+                  onClick={fetchPendingCodes}
+                  className="flex items-center gap-2 px-4 h-10 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all"
+                >
+                  <RotateCcw size={14} /> Refresh
+                </button>
+              </div>
+
+              {pendingCodes.length === 0 ? (
+                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-8 text-center">
+                  <ShieldCheck size={32} className="text-zinc-700 mx-auto mb-3" />
+                  <p className="text-zinc-600 text-sm font-bold">No pending login attempts</p>
+                  <p className="text-zinc-700 text-xs mt-1">Codes appear here when someone tries to log in</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingCodes.map(entry => (
+                    <div key={entry.login_id} className="bg-zinc-900 border border-[#ce112d]/20 rounded-2xl p-5 flex items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{entry.email}</p>
+                        <p className="text-xs text-zinc-600">Expires in {entry.expires_in}s</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-4xl font-black tracking-[0.25em] text-[#ce112d] font-mono">{entry.code}</div>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(entry.code); }}
+                          className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition-all"
+                        >
+                          <Copy size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -2424,13 +2558,8 @@ export default function Admin() {
                 return false;
               }).map(p => {
                 let displayImage = getOptimizedUrl(p.image_url || p.images?.[0], mediaSizes.thumbnail);
-                if (!displayImage && p.video_url) {
-                  const match = p.video_url.match(/\/(reels|reel|p)\/([a-zA-Z0-9_-]+)/);
-                  const id = match ? match[2] : null;
-                  if (id) displayImage = `https://images.weserv.nl/?url=instagram.com/p/${id}/media/?size=l`;
-                }
                 if (!displayImage || displayImage.includes('via.placeholder')) {
-                  displayImage = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1000';
+                  displayImage = null;
                 }
 
                 return (
@@ -2444,7 +2573,13 @@ export default function Admin() {
                         className="w-24 h-32 sm:w-28 sm:h-36 rounded-2xl overflow-hidden shrink-0 bg-black relative cursor-pointer border border-white/5 shadow-lg group-hover:scale-[1.02] transition-transform"
                         onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}
                       >
-                        <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
+                        {displayImage ? (
+                          <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
+                            {p.video_url ? <Play size={24} /> : <ImageIcon size={24} />}
+                          </div>
+                        )}
                         {p.is_sold_out && (
                           <div className="absolute inset-0 bg-red-600/60 backdrop-blur-[2px] flex items-center justify-center">
                             <span className="text-[10px] font-bold text-white uppercase tracking-widest">Sold Out</span>

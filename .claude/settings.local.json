@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm list:*)",
+      "Bash(node \"C:\\\\Users\\\\oc\\\\.claude\\\\skills\\\\playwright\\\\run.js\" \"C:/tmp/playwright-compare.js\")"
+    ]
+  }
+}
