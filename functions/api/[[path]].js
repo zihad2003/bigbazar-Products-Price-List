@@ -4,13 +4,14 @@ import { connect } from '@tidbcloud/serverless';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+// Cloudflare Serverless API
 const app = new Hono().basePath('/api');
 
 // Helper to get connection to TiDB
 const getConn = (env) => {
-  return connect({
-    url: `mysql://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}?ssl={"rejectUnauthorized":true}`
-  });
+  // Use the prioritized DATABASE_URL secret
+  const url = env.DATABASE_URL || `mysql://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}?ssl={"rejectUnauthorized":true}`;
+  return connect({ url });
 };
 
 // ============================================
