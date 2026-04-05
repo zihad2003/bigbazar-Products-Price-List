@@ -17,8 +17,11 @@ import { connect } from '@tidbcloud/serverless';
 export const getDb = (env = {}) => {
   // Prefer process.env (local Node dev with dotenv) over Cloudflare bindings
   const getVar = (key) => {
-    if (typeof process !== 'undefined' && process.env[key]) return process.env[key];
-    return env[key];
+    // Priority 1: Cloudflare Environment Bindings
+    if (env && env[key]) return env[key];
+    // Priority 2: Node.js process.env (for local development)
+    if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
+    return undefined;
   };
 
   const user = encodeURIComponent(getVar('DB_USER') || '');
@@ -28,7 +31,11 @@ export const getDb = (env = {}) => {
   const name = getVar('DB_NAME') || 'test';
 
   if (!host || !user) {
-    console.error('❌ DB_HOST or DB_USER is missing in environment!');
+    const missing = [];
+    if (!host) missing.push('DB_HOST');
+    if (!user) missing.push('DB_USER');
+    if (!pass) missing.push('DB_PASSWORD');
+    throw new Error(`Cloudflare Environment Variables Missing: ${missing.join(', ')}. Please add them to your Pages Dashboard.`);
   }
 
   const url = `mysql://${user}:${pass}@${host}:${port}/${name}?ssl={"rejectUnauthorized":true}`;

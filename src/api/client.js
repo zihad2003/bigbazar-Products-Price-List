@@ -4,13 +4,13 @@
  * auth, database queries, and storage — imported everywhere via supabaseClient.js.
  */
 
-const IS_PROD = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
+const IS_PROD = import.meta.env.PROD;
 
 // Production: empty string = same-origin Cloudflare Pages Function (/api/...)
 // Local dev:  VITE_API_URL=http://localhost:3001 (set in .env.local)
-export const API_URL = (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '/')
-    ? import.meta.env.VITE_API_URL
-    : (IS_PROD ? '' : `http://${window.location.hostname}:3001`);
+export const API_URL = IS_PROD 
+    ? '' 
+    : (import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`).replace(/\/$/, '');
 const API_BASE = API_URL;
 
 // ============================================
