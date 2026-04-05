@@ -1,8 +1,8 @@
-import React from 'react';
+import React from 'react'; 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useCart } from '../CartContext';
+import { useCart } from '../contexts/CartContext';
 
 const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCategory, onOpenAuth }) => {
     const { language, toggleLanguage, t } = useLanguage();

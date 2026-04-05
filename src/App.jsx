@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { ThemeProvider } from './ThemeContext';
-import { CartProvider } from './CartContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
 import ErrorBoundary from './components/ErrorBoundary';
-import TrackOrderModal from './components/TrackOrderModal';
+import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
-import CategoryModal from './components/CategoryModal';
-import LoginModal from './components/LoginModal';
-import { supabase } from './supabaseClient';
+import CategoryModal from './components/modals/CategoryModal';
+import LoginModal from './components/modals/LoginModal';
+import { bigBazarApi } from './api/client';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -66,10 +66,9 @@ function PublicLayout() {
   useEffect(() => {
     // Increment visitor count only once per session
     if (!sessionStorage.getItem('visited')) {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      fetch(`${apiBase}/api/settings/visitor_count/increment`, { method: 'POST' })
-        .then(() => sessionStorage.setItem('visited', 'true'))
-        .catch(err => console.log('Visitor tracking failed', err));
+      bigBazarApi.auth.onAuthStateChange((_event, session) => {
+        sessionStorage.setItem('visited', 'true');
+      });
     }
   }, []);
 

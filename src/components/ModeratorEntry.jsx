@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Plus, Minus, Trash2, CheckCircle2, AlertCircle, ShoppingBag, Truck } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { bigBazarApi } from '../api/client';
 import { allDistricts } from '../data/bdLocations';
 import { extractInstagramId } from '../utils/instagram';
 
@@ -75,7 +75,7 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
         const combinedColors = cart.map(item => item.selectedColor).filter(Boolean).join(', ');
 
         try {
-            const { error: insertError } = await supabase.from('orders').insert([{
+            const { error: insertError } = await bigBazarApi.from('orders').insert([{
                 product_id: cart[0].id,
                 product_name: combinedName.substring(0, 1000),
                 product_price: cartTotal,
@@ -106,7 +106,7 @@ export default function ModeratorEntry({ products, onSuccess, onCancel }) {
                 let updatedGlobalStock = item.stock_count;
                 if (updatedGlobalStock !== null && updatedGlobalStock !== undefined) {
                     updatedGlobalStock = Math.max(0, updatedGlobalStock - item.quantity);
-                    await supabase.from('products').update({
+                    await bigBazarApi.from('products').update({
                         stock_count: updatedGlobalStock,
                         is_sold_out: updatedGlobalStock <= 0
                     }).eq('id', item.id);

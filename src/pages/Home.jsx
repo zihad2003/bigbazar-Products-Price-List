@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ArrowRight, Award, Play, Instagram, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import HeroSlider from '../components/HeroSlider';
-import ProductModal from '../components/ProductModal';
-import { supabase } from '../supabaseClient';
+import HeroSlider from '../components/sliders/HeroSlider';
+import ProductModal from '../components/modals/ProductModal';
+import { bigBazarApi } from '../api/client';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -206,7 +206,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data } = await supabase.from('site_settings').select('*');
+        const { data } = await bigBazarApi.from('site_settings').select('*');
         if (data && Array.isArray(data)) {
           const settingsMap = {};
           data.forEach(item => {
@@ -231,7 +231,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       const start = page * PAGE_SIZE;
       const end = start + PAGE_SIZE - 1;
 
-      let query = supabase
+      let query = bigBazarApi
         .from('products')
         .select('*', { count: 'exact' })
         .eq('status', 'published')

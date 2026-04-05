@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
-import { useCart } from '../CartContext';
+import { useCart } from '../contexts/CartContext';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import MultiOrderModal from './MultiOrderModal';
+import MultiOrderModal from './modals/MultiOrderModal';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function CartDrawer({ isOpen, onClose }) {
