@@ -4,25 +4,29 @@
  * auth, database queries, and storage — imported everywhere via supabaseClient.js.
  */
 
-const IS_PROD = import.meta.env.PROD;
+const IS_NODE = typeof process !== 'undefined' && process.env && !process.env.VITE;
+const IS_PROD = !IS_NODE && import.meta.env.PROD;
 
 // Production: empty string = same-origin Cloudflare Pages Function (/api/...)
 // Local dev:  VITE_API_URL=http://localhost:3001 (set in .env.local)
+const devBase = (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
 export const API_URL = IS_PROD 
     ? '' 
-    : (import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`).replace(/\/$/, '');
+    : (typeof process !== 'undefined' && process.env.VITE_API_URL ? process.env.VITE_API_URL : (typeof import.meta.env !== 'undefined' && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : devBase)).replace(/\/$/, '');
 const API_BASE = API_URL;
 
 // ============================================
 // Token Management
 // ============================================
-let _token = localStorage.getItem('bb_auth_token') || null;
+let _token = (typeof localStorage !== 'undefined' ? localStorage.getItem('bb_auth_token') : null) || null;
 let _authListeners = [];
 
 export function setToken(token) {
     _token = token;
-    if (token) localStorage.setItem('bb_auth_token', token);
-    else localStorage.removeItem('bb_auth_token');
+    if (typeof localStorage !== 'undefined') {
+        if (token) localStorage.setItem('bb_auth_token', token);
+        else localStorage.removeItem('bb_auth_token');
+    }
 }
 
 export function getToken() {
@@ -36,7 +40,7 @@ function headers() {
 }
 
 // ============================================
-// Auth API (replaces supabase.auth)
+// Auth API (replaces bigBazarApi.auth)
 // ============================================
 export const auth = {
     async signUp({ name, email, mobile, password }) {
@@ -113,7 +117,7 @@ export const auth = {
 };
 
 // ============================================
-// Database Query Builder (replaces supabase.from())
+// Database Query Builder (replaces bigBazarApi.from())
 // ============================================
 export function from(table) {
     return new QueryBuilder(table);
@@ -323,7 +327,7 @@ class QueryBuilder {
 }
 
 // ============================================
-// Storage API (replaces supabase.storage)
+// Storage API (replaces bigBazarApi.storage)
 // ============================================
 export const storage = {
     from(_bucket) {
@@ -353,6 +357,6 @@ export const storage = {
 // ============================================
 // Single export — all traffic goes through the Cloudflare / TiDB backend
 // ============================================
-export const supabase = { auth, from, storage };
+export const bigBazarApi = { auth, from, storage };
 
-export default supabase;
+export default bigBazarApi;

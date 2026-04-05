@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../supabaseClient';
+import { bigBazarApi } from '../api/client';
 import { setToken, API_URL } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
@@ -11,8 +11,8 @@ import {
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP } from '../utils/colorNames';
-import ConfirmationModal from '../components/ConfirmationModal';
-import AlertModal from '../components/AlertModal';
+import ConfirmationModal from '../components/modals/ConfirmationModal';
+import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import ModeratorEntry from '../components/ModeratorEntry';
 
@@ -77,22 +77,22 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    bigBazarApi.auth.getSession().then(({ data: { session } }) => setSession(session));
+    bigBazarApi.auth.onAuthStateChange((_event, session) => setSession(session));
     fetchProducts();
     fetchOrders();
     fetchReviews();
     fetchSiteSettings();
 
-    // Fetch total site visitor count from Supabase
-    supabase.from('site_settings').select('value').eq('key', 'visitor_count').single()
+    // Fetch total site visitor count from bigBazarApi
+    bigBazarApi.from('site_settings').select('value').eq('key', 'visitor_count').single()
       .then(({ data }) => setVisitorCount(data?.value || 0))
       .catch(() => 0);
   }, []);
 
   const fetchProducts = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await bigBazarApi
       .from('products')
       .select('*')
       .order('created_at', { ascending: false })
@@ -103,7 +103,7 @@ export default function Admin() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await bigBazarApi
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
@@ -113,7 +113,7 @@ export default function Admin() {
   };
 
   const fetchReviews = async () => {
-    const { data } = await supabase
+    const { data } = await bigBazarApi
       .from('reviews')
       .select('*')
       .order('created_at', { ascending: false })
@@ -128,7 +128,7 @@ export default function Admin() {
       message: `আপনি কি পরিবর্তন করে "${status}" করতে চান?`,
       confirmText: 'Update Status',
       onConfirm: async () => {
-        const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+        const { error } = await bigBazarApi.from('orders').update({ status }).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else {
           fetchOrders();
@@ -143,7 +143,7 @@ export default function Admin() {
   const updateOrderNote = async (id, currentNote) => {
     const newNote = prompt('অর্ডার নোট আপডেট করুন:', currentNote || '');
     if (newNote !== null) {
-      const { error } = await supabase.from('orders').update({ customer_note: newNote }).eq('id', id);
+      const { error } = await bigBazarApi.from('orders').update({ customer_note: newNote }).eq('id', id);
       if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
       else {
         fetchOrders();
@@ -164,7 +164,7 @@ export default function Admin() {
       message: `পেমেন্ট স্ট্যাটাস "${nextStatus}" করতে চান?`,
       confirmText: 'Update Payment',
       onConfirm: async () => {
-        const { error } = await supabase
+        const { error } = await bigBazarApi
           .from('orders')
           .update({
             payment_status: nextStatus,
@@ -174,7 +174,7 @@ export default function Admin() {
 
         if (error) {
           // Fallback for older schemas without payment_status column
-          const { error: fallbackError } = await supabase
+          const { error: fallbackError } = await bigBazarApi
             .from('orders')
             .update({ is_advance_paid: nextStatus !== 'Unpaid' })
             .eq('id', order.id);
@@ -211,7 +211,7 @@ export default function Admin() {
       message: 'অর্ডারটি ডিলিটেড সেকশনে সরানো হবে। পরে Undo করা যাবে।',
       confirmText: 'Trash',
       onConfirm: async () => {
-        const { error } = await supabase.from('orders').update({ status: 'Deleted' }).eq('id', id);
+        const { error } = await bigBazarApi.from('orders').update({ status: 'Deleted' }).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else {
           fetchOrders();
@@ -231,7 +231,7 @@ export default function Admin() {
       message: 'আপনি কি এই অর্ডারটি পুনরুদ্ধার করতে চান?',
       confirmText: 'Restore Order',
       onConfirm: async () => {
-        const { error } = await supabase.from('orders').update({ status: 'Pending' }).eq('id', id);
+        const { error } = await bigBazarApi.from('orders').update({ status: 'Pending' }).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else {
           fetchOrders();
@@ -249,7 +249,7 @@ export default function Admin() {
       message: 'এই অর্ডারটি চিরতরে মুছে ফেলা হবে। এটি আর ফেরানো যাবে না!',
       confirmText: 'Delete Forever',
       onConfirm: async () => {
-        const { error } = await supabase.from('orders').delete().eq('id', id);
+        const { error } = await bigBazarApi.from('orders').delete().eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else fetchOrders();
       }
@@ -263,7 +263,7 @@ export default function Admin() {
       message: 'আপনি কি নিশ্চিত যে আপনি সবগুলি ডিলিটেড অর্ডার চিরতরে মুছে ফেলতে চান?',
       confirmText: 'Empty All',
       onConfirm: async () => {
-        const { error } = await supabase.from('orders').delete().eq('status', 'Deleted');
+        const { error } = await bigBazarApi.from('orders').delete().eq('status', 'Deleted');
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else fetchOrders();
       }
@@ -271,7 +271,7 @@ export default function Admin() {
   };
 
   const fetchSiteSettings = async () => {
-    const { data } = await supabase.from('site_settings').select('*');
+    const { data } = await bigBazarApi.from('site_settings').select('*');
     const settings = {
       hero_banner: { title: '5% FLAT DISCOUNT', subtitle: 'FOR THE 10K FAMILY ON FACEBOOK PAGE', image_url: null },
       contact_info: { whatsapp: '', facebook: '', instagram: '' },
@@ -340,7 +340,7 @@ export default function Admin() {
     // Auto-increment Serial Number Calculation
     let finalSerialNo = form.serial_no;
     if (!editingProduct) {
-      const { data: maxSerialData } = await supabase
+      const { data: maxSerialData } = await bigBazarApi
         .from('products')
         .select('serial_no')
         .order('serial_no', { ascending: false })
@@ -367,10 +367,10 @@ export default function Admin() {
 
     let error;
     if (editingProduct) {
-      const { error: err } = await supabase.from('products').update(productData).eq('id', editingProduct.id);
+      const { error: err } = await bigBazarApi.from('products').update(productData).eq('id', editingProduct.id);
       error = err;
     } else {
-      const { error: err } = await supabase.from('products').insert([productData]);
+      const { error: err } = await bigBazarApi.from('products').insert([productData]);
       error = err;
     }
 
@@ -412,7 +412,7 @@ export default function Admin() {
   const handleBannerUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('site_settings').upsert({ key: 'hero_banner', value: siteSettings.hero_banner }, { onConflict: 'key' });
+    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'hero_banner', value: siteSettings.hero_banner }, { onConflict: 'key' });
     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
     else setAlertModal({ isOpen: true, title: 'Success', message: "Hero Banner Updated!", type: 'success' });
     setLoading(false);
@@ -425,7 +425,7 @@ export default function Admin() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `assets/${fileName}`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage.from('assets').upload(filePath, file, {
+    const { data: uploadData, error: uploadError } = await bigBazarApi.storage.from('assets').upload(filePath, file, {
       cacheControl: '31536000',
       upsert: false
     });
@@ -440,7 +440,7 @@ export default function Admin() {
       return uploadData.fullPath;
     }
 
-    const { data } = supabase.storage.from('assets').getPublicUrl(uploadData?.path || filePath);
+    const { data } = bigBazarApi.storage.from('assets').getPublicUrl(uploadData?.path || filePath);
     return data.publicUrl;
   };
 
@@ -503,7 +503,7 @@ export default function Admin() {
       message: 'Are you sure you want to permanently delete this product from the inventory?',
       confirmText: 'Delete',
       onConfirm: async () => {
-        const { error } = await supabase.from('products').delete().eq('id', id);
+        const { error } = await bigBazarApi.from('products').delete().eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else fetchProducts();
       }
@@ -720,7 +720,7 @@ export default function Admin() {
 
           <button
             onClick={() => {
-              supabase.auth.signOut();
+              bigBazarApi.auth.signOut();
               setIsMobileMenuOpen(false);
             }}
             className="w-full flex items-center gap-3 p-4 text-zinc-700 hover:text-red-500 transition-all rounded-2xl hover:bg-white/5 text-xs font-semibold"
@@ -818,7 +818,7 @@ export default function Admin() {
                   disabled={loading}
                   onClick={async () => {
                     setLoading(true);
-                    const { error } = await supabase.from('site_settings').upsert({ key: 'main_slides', value: siteSettings.main_slides }, { onConflict: 'key' });
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'main_slides', value: siteSettings.main_slides }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
                     else setAlertModal({ isOpen: true, title: 'Success', message: "Slider Updated Successfully!", type: 'success' });
                     setLoading(false);
@@ -938,7 +938,7 @@ export default function Admin() {
                   disabled={loading}
                   onClick={async () => {
                     setLoading(true);
-                    const { error } = await supabase.from('site_settings').upsert({ key: 'announcement', value: siteSettings.announcement }, { onConflict: 'key' });
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'announcement', value: siteSettings.announcement }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
                     else setAlertModal({ isOpen: true, title: 'Success', message: "Announcement Updated Successfully!", type: 'success' });
                     setLoading(false);
@@ -991,7 +991,7 @@ export default function Admin() {
                   disabled={loading}
                   onClick={async () => {
                     setLoading(true);
-                    const { error } = await supabase.from('site_settings').upsert({ key: 'category_visibility', value: siteSettings.category_visibility || {} }, { onConflict: 'key' });
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'category_visibility', value: siteSettings.category_visibility || {} }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
                     else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Category visibility updated.', type: 'success' });
                     setLoading(false);
@@ -2552,7 +2552,7 @@ export default function Admin() {
                             title: 'Publish Product',
                             message: 'Are you sure you want to Publish this product to the main site?',
                             confirmText: 'Publish',
-                            onConfirm: () => supabase.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
+                            onConfirm: () => bigBazarApi.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-green-500 hover:bg-green-500/10 transition-all group/btn"
                         >
@@ -2568,7 +2568,7 @@ export default function Admin() {
                             title: 'Unpublish Product',
                             message: 'Are you sure you want to move this product back to Pending/Drafts?',
                             confirmText: 'Unpublish',
-                            onConfirm: () => supabase.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
+                            onConfirm: () => bigBazarApi.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-yellow-500 hover:bg-yellow-500/10 transition-all group/btn"
                         >
@@ -2583,7 +2583,7 @@ export default function Admin() {
                           title: p.is_exclusive ? 'Remove Exclusive Status' : 'Mark as Exclusive/Premium',
                           message: p.is_exclusive ? 'আপনি কি নিশ্চিত যে পণ্যটি আর এক্সক্লুসিভ নয়?' : 'আপনি কি এই পণ্যটিকে Exclusive/Premium হিসেবে চিহ্নিত করতে চান?',
                           confirmText: 'Confirm',
-                          onConfirm: () => supabase.from('products').update({ is_exclusive: !p.is_exclusive }).eq('id', p.id).then(fetchProducts)
+                          onConfirm: () => bigBazarApi.from('products').update({ is_exclusive: !p.is_exclusive }).eq('id', p.id).then(fetchProducts)
                         })}
                         className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_exclusive ? 'bg-orange-500/10 text-orange-400' : 'text-neutral-500 hover:text-orange-400 hover:bg-orange-500/10'}`}
                       >
@@ -2597,7 +2597,7 @@ export default function Admin() {
                           title: p.is_sold_out ? 'Mark as Available' : 'Mark as Sold Out',
                           message: p.is_sold_out ? 'আপনি কি নিশ্চিত যে পণ্যটি স্টকে আছে?' : 'আপনি কি এই পণ্যটিকে Sold Out হিসেবে চিহ্নিত করতে চান?',
                           confirmText: 'Confirm',
-                          onConfirm: () => supabase.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)
+                          onConfirm: () => bigBazarApi.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)
                         })}
                         className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'}`}
                       >
