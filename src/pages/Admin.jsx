@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { setToken } from '../api/client';
+import { setToken, API_URL } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
@@ -20,10 +20,6 @@ export default function Admin() {
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginStep, setLoginStep] = useState(1); // 1 = credentials, 2 = code
-  const [loginId, setLoginId] = useState('');
-  const [codeValue, setCodeValue] = useState('');
-  const [pendingCodes, setPendingCodes] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
@@ -39,6 +35,7 @@ export default function Admin() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [pendingCodes, setPendingCodes] = useState([]);
 
   const copyToClipboard = (text, label) => {
     if (!text) return;
@@ -309,10 +306,9 @@ export default function Admin() {
   };
 
   const fetchPendingCodes = async () => {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     const token = localStorage.getItem('bb_auth_token');
     try {
-      const res = await fetch(`${API_BASE}/api/auth/pending-codes`, {
+      const res = await fetch(`${API_URL}/api/auth/pending-codes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const json = await res.json();
@@ -584,113 +580,57 @@ export default function Admin() {
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-white uppercase">Admin <span className="text-[#ce112d]">Login</span></h2>
           <p className="text-sm text-zinc-500 font-medium">
-            {loginStep === 1 ? 'Enter your credentials to access the dashboard' : 'Enter the 4-digit code shown in the admin panel'}
+            Enter your credentials to access the dashboard
           </p>
         </div>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-3">
-          <div className={`flex-1 h-1 rounded-full ${loginStep >= 1 ? 'bg-[#ce112d]' : 'bg-zinc-800'}`} />
-          <div className={`flex-1 h-1 rounded-full ${loginStep >= 2 ? 'bg-[#ce112d]' : 'bg-zinc-800'}`} />
-        </div>
 
-        {loginStep === 1 ? (
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            setLoading(true);
-            try {
-              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-              const res = await fetch(`${API_BASE}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-              });
-              const json = await res.json();
-              if (!res.ok) throw new Error(json.error || 'Login failed');
-              if (json.step === 2) {
-                setLoginId(json.login_id);
-                setLoginStep(2);
-              } else {
-                // Fallback: direct login (no 2FA configured)
-                setToken(json.session.access_token);
-                setSession(json.session);
-              }
-            } catch (err) {
-              setAlertModal({ isOpen: true, title: 'Login Failed', message: err.message, type: 'error' });
-            } finally {
-              setLoading(false);
-            }
-          }} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Email Address</label>
-              <input
-                type="email"
-                placeholder="admin@bigbazar.com"
-                className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-            <button disabled={loading} className="w-full bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-sm mt-4 disabled:opacity-50">
-              {loading ? 'Verifying...' : 'Continue →'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            setLoading(true);
-            try {
-              const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-              const res = await fetch(`${API_BASE}/api/auth/verify-2fa`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ login_id: loginId, code: codeValue })
-              });
-              const json = await res.json();
-              if (!res.ok) throw new Error(json.error || 'Invalid code');
-              setToken(json.session.access_token);
-              setSession(json.session);
-            } catch (err) {
-              setAlertModal({ isOpen: true, title: 'Wrong Code', message: err.message, type: 'error' });
-              setCodeValue('');
-            } finally {
-              setLoading(false);
-            }
-          }} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">4-Digit Security Code</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="0000"
-                autoFocus
-                className="w-full bg-black border border-zinc-800 h-16 px-4 rounded-2xl text-3xl font-black tracking-[0.5em] text-center focus:border-[#ce112d]/50 focus:ring-1 focus:ring-[#ce112d]/30 outline-none transition-all text-white"
-                value={codeValue}
-                onChange={e => setCodeValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              />
-              <p className="text-[11px] text-zinc-600 text-center mt-1">Check the code in Admin Panel → Settings → Security</p>
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => { setLoginStep(1); setCodeValue(''); setLoginId(''); }} className="flex-1 h-14 rounded-2xl border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest text-xs hover:bg-zinc-800 transition-all">
-                ← Back
-              </button>
-              <button disabled={loading || codeValue.length < 4} className="flex-1 bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-xs disabled:opacity-50">
-                {loading ? 'Checking...' : 'Enter Dashboard'}
-              </button>
-            </div>
-          </form>
-        )}
+
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setLoading(true);
+          try {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Login failed');
+            
+            // Direct login
+            setToken(json.session.access_token);
+            setSession(json.session);
+          } catch (err) {
+            setAlertModal({ isOpen: true, title: 'Login Failed', message: err.message, type: 'error' });
+          } finally {
+            setLoading(false);
+          }
+        }} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Email Address</label>
+            <input
+              type="email"
+              placeholder="admin@bigbazar.com"
+              className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </div>
+          <button disabled={loading} className="w-full bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-sm mt-4 disabled:opacity-50">
+            {loading ? 'Verifying...' : 'Continue →'}
+          </button>
+        </form>
       </div>
 
       <AlertModal
@@ -1062,44 +1002,6 @@ export default function Admin() {
                   <span>{loading ? 'Saving...' : 'Save Visibility'}</span>
                 </button>
               </div>
-            </div>
-
-            <div className="space-y-8 pt-12 border-t border-white/5">
-              <div>
-                <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Site <span className="text-[#ce112d]">Theme</span></h3>
-                <p className="text-zinc-500 text-xs mt-1 font-medium">Choose color scheme for customers</p>
-              </div>
-              <div className="flex gap-6">
-                <button type="button" onClick={() => setSiteTheme('dark')}
-                  className={`flex-1 flex flex-col items-center gap-4 p-8 rounded-[32px] border-2 transition-all shadow-xl ${siteTheme === 'dark' ? 'border-[#ce112d] bg-[#ce112d]/5 ring-4 ring-[#ce112d]/10' : 'border-white/5 bg-zinc-900 hover:border-white/10 opacity-60'}`}
-                >
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${siteTheme === 'dark' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
-                    <Moon size={32} />
-                  </div>
-                  <span className={`text-xs font-bold uppercase tracking-widest ${siteTheme === 'dark' ? 'text-white' : 'text-zinc-500'}`}>Dark Theme</span>
-                </button>
-                <button type="button" onClick={() => setSiteTheme('light')}
-                  className={`flex-1 flex flex-col items-center gap-4 p-8 rounded-[32px] border-2 transition-all shadow-xl ${siteTheme === 'light' ? 'border-[#ce112d] bg-[#ce112d]/5 ring-4 ring-[#ce112d]/10' : 'border-white/5 bg-zinc-900 hover:border-white/10 opacity-60'}`}
-                >
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${siteTheme === 'light' ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
-                    <Sun size={32} />
-                  </div>
-                  <span className={`text-xs font-bold uppercase tracking-widest ${siteTheme === 'light' ? 'text-white' : 'text-zinc-500'}`}>Light Theme</span>
-                </button>
-              </div>
-              <button type="button" disabled={loading}
-                onClick={async () => {
-                  setLoading(true);
-                  const { error } = await supabase.from('site_settings').upsert({ key: 'site_theme', value: { mode: siteTheme } }, { onConflict: 'key' });
-                  if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                  else setAlertModal({ isOpen: true, title: 'Success', message: `Theme set to ${siteTheme === 'dark' ? 'Dark' : 'Light'} Mode!`, type: 'success' });
-                  setLoading(false);
-                }}
-                className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
-              >
-                {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                <span>{loading ? 'Saving...' : 'Save Theme'}</span>
-              </button>
             </div>
 
             {/* Security — Pending Admin Login Codes */}

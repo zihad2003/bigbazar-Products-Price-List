@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award, Play, Instagram } from 'lucide-react';
+import { Search, ArrowRight, Award, Play, Instagram, Video } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/HeroSlider';
 import ProductModal from '../components/ProductModal';
-import VideoPlayer from '../components/VideoPlayer';
 import { supabase } from '../supabaseClient';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -82,26 +81,14 @@ const IconPremium = ({ size = 24 }) => (
 const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  let displayImage = product.image_url || product.images?.[0];
-
-  // Weserv Instagram thumbnail URLs are deprecated — attempt to recover the direct URL
-  if (displayImage && displayImage.includes('weserv.nl') && displayImage.includes('instagram.com')) {
-    const id = extractInstagramId(displayImage);
-    displayImage = id ? `https://www.instagram.com/p/${id}/media/?size=l` : null;
-  }
-
-  // Handle local uploads from the Admin panel
-  if (displayImage && (displayImage.startsWith('uploads/') || displayImage.startsWith('/uploads/'))) {
-    const cleanPath = displayImage.startsWith('/') ? displayImage : `/${displayImage}`;
-    displayImage = `${API_URL}${cleanPath}`;
-  }
-
   const hasVideo = !!product.video_url;
-
-  // High Priority: If there's a video url but no image, use the Instagram thumbnail as display image
-  if (hasVideo && !displayImage) {
-    const id = extractInstagramId(product.video_url);
-    if (id) displayImage = `https://www.instagram.com/p/${id}/media/?size=l`;
+  
+  // Choose the best candidate for the display image
+  let sourceImage = product.image_url || product.images?.[0];
+  
+  // If no image but has video, use video (normalization happens in getOptimizedUrl)
+  if (!sourceImage && hasVideo) {
+    sourceImage = product.video_url;
   }
 
   const { language } = useLanguage();
@@ -115,24 +102,19 @@ const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {hasVideo ? (
-          <VideoPlayer src={product.video_url} poster={displayImage} priority={false} />
-        ) : displayImage ? (
-          <img
-            src={getOptimizedUrl(displayImage, mediaSizes.thumbnail)}
-            className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-1000"
-            alt={product.name}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
+        {sourceImage ? (
+          <div className="relative w-full h-full">
+            <img
+              src={getOptimizedUrl(sourceImage, mediaSizes.thumbnail)}
+              className="w-full h-auto object-cover object-top group-hover:scale-110 transition-transform duration-1000"
+              alt={product.name}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
         ) : (
-          <div className="w-full h-full bg-neutral-900 flex flex-col items-center justify-center gap-3 group-hover:bg-neutral-800 transition-colors">
-            <div className="w-14 h-14 rounded-full bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center">
-              <Instagram size={22} className="text-neutral-500" />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
-              {language === 'bn' ? 'ছবি নেই' : 'No Preview'}
-            </span>
+          <div className="w-full h-full bg-neutral-50 flex items-center justify-center">
+             <Instagram size={22} className="text-zinc-200" />
           </div>
         )}
         {hasDiscount && (
@@ -314,12 +296,12 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-16">
-      {/* Elite Hero Section - Guaranteed Visibility */}
-      <section className="w-full h-[55vh] md:h-[75vh] relative px-4 md:px-12 pt-4 md:pt-10">
-        <div className="w-full h-full rounded-[32px] md:rounded-[54px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative">
+      {/* Elite Hero Section - Precision "Perfect Fit" Logic */}
+      <section className="w-full relative px-4 md:px-12 pt-4 md:pt-10 flex flex-col items-center">
+        <div className="w-[60%] md:w-[70%] aspect-square md:aspect-video rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative border-8 border-white">
           {settingsLoading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
-              <div className="w-24 h-24 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
+              <div className="w-16 h-16 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
             </div>
           ) : (
             <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />

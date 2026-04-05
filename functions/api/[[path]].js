@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { connect } from '@tidbcloud/serverless';
+import { getDb } from './db.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
@@ -22,20 +22,14 @@ app.onError((err, c) => {
   }, 500);
 });
 
-// Helper to get connection to TiDB
-const getConn = (env) => {
-  // Use the prioritized DATABASE_URL secret
-  const url = env.DATABASE_URL || `mysql://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_HOST}:${env.DB_PORT}/${env.DB_NAME}?ssl={"rejectUnauthorized":true}`;
-  return connect({ url });
-};
+/**
+ * Logic previously using local getConn now uses import { getDb } from './db.js'
+ */
 
 // ============================================
-// Auth Logic — Uses TiDB pending_2fa table for persistent 2FA codes
 // ============================================
-
-function generateCode() {
-  return String(Math.floor(1000 + Math.random() * 9000));
-}
+// Auth Logic
+// ============================================
 
 // ============================================
 // Middleware
@@ -63,7 +57,9 @@ const requireAuth = async (c, next) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'No token provided' }, 401);
   try {
-    c.set('user', jwt.verify(token, c.env.JWT_SECRET));
+    // Use same fallback as sign — so tokens still verify when JWT_SECRET is not yet configured
+    const secret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+    c.set('user', jwt.verify(token, secret));
     await next();
   } catch (err) {
     return c.json({ error: 'Invalid token' }, 401);
@@ -78,7 +74,7 @@ app.post('/auth/register', async (c) => {
   const { name, email, mobile, password } = await c.req.json();
   if (!mobile || !password) return c.json({ error: 'Mobile and Password are required' }, 400);
 
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const id = crypto.randomUUID();
   const hash = await bcrypt.hash(password, 10);
 
@@ -88,7 +84,8 @@ app.post('/auth/register', async (c) => {
       [id, name || null, email || null, mobile, hash]
     );
 
-    const token = jwt.sign({ id, mobile, type: 'customer' }, c.env.JWT_SECRET, { expiresIn: '30d' });
+    const regSecret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+    const token = jwt.sign({ id, mobile, type: 'customer' }, regSecret, { expiresIn: '30d' });
     return c.json({
       session: { access_token: token, user: { id, name, email, mobile } },
       user: { id, name, email, mobile }
@@ -104,38 +101,55 @@ app.post('/auth/login', async (c) => {
   const identifier = email || mobile;
   if (!identifier || !password) return c.json({ error: 'Identifier and Password are required' }, 400);
 
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   
+  // Resolve JWT secret once — same source used for both sign and verify
+  const jwtSecret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+
   // Check Admin
   const admins = await conn.execute('SELECT * FROM admin_users WHERE email = ?', [identifier]);
   if (admins.length > 0) {
     const user = admins[0];
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
+    const cleanInput = password.trim();
+    const cleanHash = (user.password_hash || '').trim();
 
-    const loginId = crypto.randomUUID();
-    const code = generateCode();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    
-    // Store in TiDB for persistence across Worker restarts
-    await conn.execute(
-      'INSERT INTO pending_2fa (login_id, code, email, admin_id, expires_at) VALUES (?, ?, ?, ?, ?)',
-      [loginId, code, user.email, user.id, expiresAt]
+    // Use async compare — bcrypt.compareSync blocks the event loop and can
+    // exceed Cloudflare Workers' 50 ms CPU budget on cold starts.
+    const valid = await bcrypt.compare(cleanInput, cleanHash);
+    if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, type: 'admin' },
+      jwtSecret,
+      { expiresIn: '30d' }
     );
     
-    console.log(`\n🔐 ADMIN LOGIN CODE: ${code}\n`);
-    return c.json({ step: 2, login_id: loginId });
+    return c.json({
+      session: { 
+        access_token: token, 
+        user: { id: user.id, name: 'Admin', email: user.email, type: 'admin' } 
+      },
+      user: { id: user.id, name: 'Admin', email: user.email, type: 'admin' }
+    });
   }
 
-  // Check Customer
-  const customers = await conn.execute('SELECT * FROM customers WHERE email = ? OR mobile = ?', [identifier, identifier]);
-  if (customers.length === 0) return c.json({ error: 'Invalid credentials' }, 401);
+  // Check Customer — guard against missing table (customers table may not be created yet)
+  let customers = [];
+  try {
+    customers = await conn.execute('SELECT * FROM customers WHERE email = ? OR mobile = ?', [identifier, identifier]);
+  } catch (dbErr) {
+    if (dbErr.message.includes("doesn't exist") || dbErr.message.includes('Table')) {
+      return c.json({ error: 'No account found with this email or mobile.' }, 401);
+    }
+    throw dbErr; // re-throw unexpected DB errors
+  }
+  if (customers.length === 0) return c.json({ error: 'No account found with this email or mobile.' }, 401);
 
   const user = customers[0];
   const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return c.json({ error: 'Invalid credentials' }, 401);
+  if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
 
-  const token = jwt.sign({ id: user.id, mobile: user.mobile, type: 'customer' }, c.env.JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ id: user.id, mobile: user.mobile, type: 'customer' }, jwtSecret, { expiresIn: '30d' });
   return c.json({
     session: { access_token: token, user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile } },
     user: { id: user.id, name: user.name, email: user.email, mobile: user.mobile }
@@ -147,38 +161,9 @@ app.get('/auth/session', requireAuth, async (c) => {
   return c.json({ session: { user, access_token: c.req.header('Authorization')?.replace('Bearer ', '') } });
 });
 
-app.post('/auth/verify-2fa', async (c) => {
-  const { login_id, code } = await c.req.json();
-  const conn = getConn(c.env);
-  
-  const entries = await conn.execute('SELECT * FROM pending_2fa WHERE login_id = ?', [login_id]);
-  const entry = entries[0];
-
-  if (!entry || entry.expires_at < Date.now()) return c.json({ error: 'Code expired or invalid' }, 401);
-  if (entry.code !== code) return c.json({ error: 'Incorrect code' }, 401);
-
-  const token = jwt.sign({ id: entry.admin_id, email: entry.email, type: 'admin' }, c.env.JWT_SECRET, { expiresIn: '24h' });
-  await conn.execute('DELETE FROM pending_2fa WHERE login_id = ?', [login_id]);
-
-  return c.json({
-    session: { access_token: token, user: { id: entry.admin_id, email: entry.email, type: 'admin' } },
-    user: { id: entry.admin_id, email: entry.email }
-  });
-});
-
-// Admin list codes (Public temporarily to help with login)
-app.get('/auth/pending-codes', async (c) => {
-  const conn = getConn(c.env);
-  const entries = await conn.execute('SELECT * FROM pending_2fa WHERE expires_at > ?', [Date.now()]);
-  
-  const codes = entries.map(entry => ({
-    login_id: entry.login_id,
-    email: entry.email,
-    code: entry.code,
-    expires_in: Math.max(0, Math.round((entry.expires_at - Date.now()) / 1000))
-  }));
-  
-  return c.json({ codes });
+// Stub — 2FA pending codes (feature removed; kept so Admin.jsx doesn't 404)
+app.get('/auth/pending-codes', requireAuth, async (c) => {
+  return c.json({ codes: [] });
 });
 
 // ============================================
@@ -206,7 +191,7 @@ const parseProductRow = (row) => {
 
 app.get('/products', async (c) => {
   const { status, category, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
 
   let sql = 'SELECT * FROM products WHERE 1=1';
   const params = [];
@@ -264,7 +249,7 @@ app.get('/products', async (c) => {
 });
 
 app.get('/products/:id', async (c) => {
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const res = await conn.execute('SELECT * FROM products WHERE id = ?', [c.req.param('id')]);
   if (!res.length) return c.json({ error: 'Not found' }, 404);
   return c.json({ data: parseProductRow(res[0]) });
@@ -272,7 +257,7 @@ app.get('/products/:id', async (c) => {
 
 app.post('/products', requireAuth, async (c) => {
   const p = await c.req.json();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const id = p.id || crypto.randomUUID();
   try {
     await conn.execute(
@@ -294,7 +279,7 @@ app.post('/products', requireAuth, async (c) => {
 app.put('/products/:id', requireAuth, async (c) => {
   const p = await c.req.json();
   const id = c.req.param('id');
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const setClauses = [];
   const params = [];
   
@@ -321,7 +306,7 @@ app.put('/products/:id', requireAuth, async (c) => {
 });
 
 app.delete('/products/:id', requireAuth, async (c) => {
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   await conn.execute('DELETE FROM products WHERE id = ?', [c.req.param('id')]);
   return c.json({ success: true });
 });
@@ -332,7 +317,7 @@ app.delete('/products/:id', requireAuth, async (c) => {
 
 app.get('/orders', requireAuth, async (c) => {
   const { status, search, page = 0, limit = 20, ascending = 'false' } = c.req.query();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   let sql = 'SELECT * FROM orders WHERE 1=1';
   const params = [];
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -351,7 +336,7 @@ app.get('/orders', requireAuth, async (c) => {
 
 app.post('/orders', async (c) => {
   const o = await c.req.json();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const id = crypto.randomUUID();
 
   try {
@@ -373,7 +358,7 @@ app.post('/orders', async (c) => {
 app.put('/orders/:id', requireAuth, async (c) => {
   const o = await c.req.json();
   const id = c.req.param('id');
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const setClauses = [];
   const params = [];
   const fields = { status: o.status, is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined, payment_status: o.payment_status, delivery_charge: o.delivery_charge, total_amount: o.total_amount };
@@ -386,8 +371,17 @@ app.put('/orders/:id', requireAuth, async (c) => {
   return c.json({ success: true });
 });
 
+// Bulk delete by status — used by Admin "Empty Bin" feature
+app.delete('/orders', requireAuth, async (c) => {
+  const status = c.req.query('status');
+  if (!status) return c.json({ error: 'status query param required' }, 400);
+  const conn = getDb(c.env);
+  await conn.execute('DELETE FROM orders WHERE status = ?', [status]);
+  return c.json({ success: true });
+});
+
 app.delete('/orders/:id', requireAuth, async (c) => {
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   await conn.execute('DELETE FROM orders WHERE id = ?', [c.req.param('id')]);
   return c.json({ success: true });
 });
@@ -395,7 +389,7 @@ app.delete('/orders/:id', requireAuth, async (c) => {
 app.get('/orders/track', async (c) => {
   const query = c.req.query('query');
   if (!query) return c.json({ data: [] });
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const res = await conn.execute(
     'SELECT * FROM orders WHERE customer_phone = ? OR id = ? ORDER BY created_at DESC',
     [query, query]
@@ -408,14 +402,14 @@ app.get('/orders/track', async (c) => {
 // ============================================
 app.get('/reviews', async (c) => {
   const pid = c.req.query('product_id');
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const res = await conn.execute('SELECT * FROM reviews' + (pid ? ' WHERE product_id = ?' : '') + ' ORDER BY created_at DESC', pid ? [pid] : []);
   return c.json({ data: res });
 });
 
 app.post('/reviews', async (c) => {
   const r = await c.req.json();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const id = crypto.randomUUID();
   await conn.execute(
     'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name) VALUES (?, ?, ?, ?, ?, ?)',
@@ -428,7 +422,7 @@ app.post('/reviews', async (c) => {
 // SETTINGS
 // ============================================
 app.get('/settings', async (c) => {
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   const res = await conn.execute('SELECT * FROM site_settings');
   const settings = {};
   res.forEach(r => {
@@ -439,7 +433,7 @@ app.get('/settings', async (c) => {
 
 app.post('/settings', requireAuth, async (c) => {
   const s = await c.req.json();
-  const conn = getConn(c.env);
+  const conn = getDb(c.env);
   await conn.execute(
     'INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)',
     [s.key, JSON.stringify(s.value)]
@@ -455,8 +449,10 @@ app.post('/upload', requireAuth, async (c) => {
 });
 
 // ============================================
-// EXPORT FOR CLOUDFLARE PAGES
+// EXPORT FOR CLOUDFLARE PAGES AND LOCAL SERVER
 // ============================================
 export const onRequest = (context) => {
   return app.fetch(context.request, context.env, context);
 };
+
+export default app;
