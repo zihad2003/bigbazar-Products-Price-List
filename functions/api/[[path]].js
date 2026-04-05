@@ -15,9 +15,12 @@ app.onError((err, c) => {
     message: err.message,
     stack: err.stack,
     env_check: {
-      has_db_url: !!c.env.DATABASE_URL,
       has_db_host: !!c.env.DB_HOST,
-      jwt_secret_set: !!c.env.JWT_SECRET
+      has_db_user: !!c.env.DB_USER,
+      has_db_pass: !!c.env.DB_PASSWORD,
+      has_db_name: !!c.env.DB_NAME,
+      has_db_port: !!c.env.DB_PORT,
+      has_jwt: !!c.env.JWT_SECRET
     }
   }, 500);
 });
