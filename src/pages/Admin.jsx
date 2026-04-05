@@ -59,7 +59,7 @@ export default function Admin() {
     name: '', price: '', original_price: '', description: '',
     images: [], video_url: '', is_sale: false, is_hot: false,
     is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
-    status: 'pending', platform_id: '', serial_no: '',
+    status: 'published', platform_id: '', serial_no: '',
     available_sizes: [], available_colors: [], stock_count: ''
   });
 
@@ -565,7 +565,7 @@ export default function Admin() {
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
       is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
-      status: 'pending', platform_id: '', serial_no: '',
+      status: 'published', platform_id: '', serial_no: '',
       available_sizes: [], available_colors: [], stock_count: ''
     });
     setFormStep(1);
@@ -651,7 +651,7 @@ export default function Admin() {
             setLoading(true);
             try {
               const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-              const res = await fetch(`${API_BASE}/api/auth/verify-code`, {
+              const res = await fetch(`${API_BASE}/api/auth/verify-2fa`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ login_id: loginId, code: codeValue })
