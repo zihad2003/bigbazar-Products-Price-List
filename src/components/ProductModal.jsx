@@ -172,6 +172,33 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
 
             {/* Selection & Actions */}
             <div className="space-y-8">
+               {hasValidColors && (
+                 <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                      {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                       {product.available_colors?.filter(c => {
+                         const name = typeof c === 'object' ? c.name : c;
+                         return name && String(name).trim() !== '';
+                       }).map((c, i) => {
+                         const name = typeof c === 'object' ? c.name : c;
+                         const hex = typeof c === 'object' ? c.hex : null;
+                         return (
+                           <button key={i} onClick={() => { setSelectedColor(name); setValidationError(''); }}
+                             className={`group relative flex items-center gap-3 px-4 py-2 border-[2px] rounded-xl transition-all ${selectedColor === name ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-100 hover:border-neutral-200'}`}>
+                             {hex && (
+                               <span className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
+                             )}
+                             <span className="text-[10px] font-black uppercase tracking-widest">{name}</span>
+                             {selectedColor === name && <Check size={12} className="ml-1" />}
+                           </button>
+                         );
+                       })}
+                    </div>
+                 </div>
+               )}
+
                {hasValidSizes && (
                  <div className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
@@ -198,7 +225,11 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                  <AnimatePresence>
                    {validationError && (
                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#ce112d] text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                       <AlertCircle size={14} /> {language === 'bn' ? 'দয়া করে সাইজ বেছে নিন' : 'Please select size first'}
+                       <AlertCircle size={14} /> {
+                          validationError === 'size' 
+                            ? (language === 'bn' ? 'দয়া করে সাইজ বেছে নিন' : 'Please select size first')
+                            : (language === 'bn' ? 'দয়া করে কালার বেছে নিন' : 'Please select color first')
+                        }
                      </motion.div>
                    )}
                  </AnimatePresence>
