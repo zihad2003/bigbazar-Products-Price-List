@@ -1,22 +1,17 @@
 /**
- * API Client - Drop-in replacement for supabaseClient.js
- * All frontend components import from this file instead of supabaseClient.
+ * API Client — all data goes through the Cloudflare Pages Function / TiDB backend.
+ * Supabase has been fully removed. This file is the single source of truth for
+ * auth, database queries, and storage — imported everywhere via supabaseClient.js.
  */
 
 const IS_PROD = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
 
-// Detect if we should use the local MySQL API or the real Supabase
-// In production (.pages.dev), we default to Supabase unless a public VITE_API_URL is provided
-const API_BASE = (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '/') 
-    ? import.meta.env.VITE_API_URL 
-    : (IS_PROD ? '' : 'http://localhost:3001');
-const USE_MYSQL = true; // Always use MySQL/TiDB Cloud now that Render is removed
-
-// Real Supabase fallback for production
-import { createClient } from '@supabase/supabase-js';
-const realSupabase = (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) 
-    ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
-    : null;
+// Production: empty string = same-origin Cloudflare Pages Function (/api/...)
+// Local dev:  VITE_API_URL=http://localhost:3001 (set in .env.local)
+export const API_URL = (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '/')
+    ? import.meta.env.VITE_API_URL
+    : (IS_PROD ? '' : `http://${window.location.hostname}:3001`);
+const API_BASE = API_URL;
 
 // ============================================
 // Token Management
@@ -356,13 +351,8 @@ export const storage = {
 };
 
 // ============================================
-// Backward-compatible export (matches supabase import pattern)
+// Single export — all traffic goes through the Cloudflare / TiDB backend
 // ============================================
-// On dev environments (localhost), we use our custom MySQL logic.
-// On production (pages.dev), we fall back to the real Supabase client
-// so the live site continues to work even if the local API is unreachable.
-export const supabase = (USE_MYSQL || !realSupabase) 
-    ? { auth, from, storage } 
-    : realSupabase;
+export const supabase = { auth, from, storage };
 
 export default supabase;

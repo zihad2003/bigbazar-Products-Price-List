@@ -1,2 +1,0 @@
-id,created_at,product_id,product_name,product_price,customer_name,customer_phone,customer_address,delivery_area,delivery_charge,total_amount,last_four_digits,status,size,color,customer_note,is_advance_paid,payment_status,is_exclusive_order,moderator_reference
-11,2026-02-27 13:37:03.291939+00,dc67a7a4-0a3a-4639-83d4-b3c6aff91ce2,"Rampant ",650,আফছানা,01849412334,"নাজির পাড়া, মিরসরাই,চট্টগ্রাম ",mirsarai,0,650,COD,Deleted,,,২ বছর,false,Unpaid,false,

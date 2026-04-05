@@ -1,0 +1,22 @@
+# BigBazar Project Rules & Governance
+
+This file contains strict rules for AI assistants and developers working on the BigBazar project.
+
+## 🟢 Database & Storage Rules
+- **NEVER** revert to JSON-based storage (`all_products.json`, `product_data.json`).
+- **PROHIBITED**: Creation of local data files for product or order storage.
+- **MANDATORY**: All data must be fetched from the MySQL/TiDB API.
+- **DATABASE MODULE**: Always use `functions/api/db.js` for database connectivity. Do NOT reimplement connection logic or `connect()` calls in individual endpoints.
+- **POOLING**: The `getDb(env)` function implements instance caching (singleton) to simulate pooling for serverless workers. Do NOT modify this without a performance audit.
+
+## 🎨 Frontend Architecture Rules
+- **FRONTEND INTEGRITY**: Do NOT modify visual components or Tailwind processing in the `src/` directory unless specifically asked to change the UI design.
+- **STYLING**: Maintain the premium, minimalist high-end aesthetic (dark mode, glassmorphism, Outfit/Inter typography).
+- **API COMPATIBILITY**: Ensure all API responses maintain the structure expected by the frontend:
+  - Products: `id`, `name`, `price`, `images`, `status`, `category`, etc.
+  - Orders: `id`, `customer_name`, `status`, `total_amount`, etc.
+
+## 📂 Project Structure
+- **/scripts**: Store all management, migration, and diagnostic scripts here. Root directory must remain clean.
+- **/functions/api**: Core backend logic following the Hono framework.
+- **/src/api/client.js**: Main bridge between Frontend (Supabase syntax) and MySQL Backend.

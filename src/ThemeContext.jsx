@@ -4,28 +4,16 @@ import { supabase } from './supabaseClient';
 const ThemeContext = createContext({ theme: 'light' });
 
 export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState(() => {
-        try {
-            return localStorage.getItem('site_theme') || 'light';
-        } catch (e) {
-            return 'light';
-        }
-    });
-
+    const [theme, setTheme] = useState('light');
+    
     useEffect(() => {
-        supabase.from('site_settings').select('value').eq('key', 'site_theme').single()
-            .then(({ data }) => {
-                if (data?.value?.mode && data.value.mode !== theme) {
-                    setTheme(data.value.mode);
-                    localStorage.setItem('site_theme', data.value.mode);
-                }
-            });
+        setTheme('light');
     }, []);
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('site_theme', theme);
-    }, [theme]);
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('site_theme', 'light');
+    }, []);
 
     return (
         <ThemeContext.Provider value={{ theme, setTheme }}>

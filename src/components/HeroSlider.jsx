@@ -82,11 +82,11 @@ export default function HeroSlider({ slides = [] }) {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-0"
         >
-          {/* Edge-to-Edge Image */}
+          {/* Image specifically set to contain to show full banner */}
           <img
             src={getOptimizedUrl(slide.image, mediaSizes.banner)}
             alt={slide.title || 'Collection Banner'}
-            className="w-full h-full object-cover select-none"
+            className="w-full h-full object-contain select-none bg-neutral-50"
             loading={current === 0 ? 'eager' : 'lazy'}
             draggable={false}
           />

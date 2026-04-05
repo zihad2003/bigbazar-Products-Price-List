@@ -7,7 +7,7 @@
   line-height: 1.6;
   letter-spacing: -0.01em;
 
-  /* Light Mode (Default) */
+  /* Force Light Mode Only */
   --bg-primary: #f5f5f0;
   --bg-secondary: #eeeee8;
   --bg-card: #ffffff;
@@ -27,28 +27,6 @@
   --modal-bg: #ffffff;
   --accent-color: #c8102e;
   --bg-panel: #fbfbfb;
-}
-
-[data-theme="dark"] {
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
-  --bg-card: #0a0a0a;
-  --bg-input: #0a0a0a;
-  --bg-overlay: rgba(0, 0, 0, 0.95);
-  --bg-hover: rgba(255, 255, 255, 0.05);
-  --bg-badge: rgba(255, 255, 255, 0.05);
-  --border-color: rgba(255, 255, 255, 0.05);
-  --border-hover: rgba(255, 255, 255, 0.2);
-  --text-primary: #ffffff;
-  --text-secondary: #a3a3a3;
-  --text-muted: #525252;
-  --text-faint: #404040;
-  --shadow-card: 0 0 0 transparent;
-  --gradient-overlay: linear-gradient(to top, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.6), transparent);
-  --navbar-bg: rgba(0, 0, 0, 0.95);
-  --modal-bg: #111111;
-  --accent-color: #c8102e;
-  --bg-panel: #0a0a0a;
 }
 
 h1,
