@@ -8,25 +8,25 @@
   letter-spacing: -0.01em;
 
   /* Force Light Mode Only */
-  --bg-primary: #f5f5f0;
-  --bg-secondary: #eeeee8;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f5; /* zinc-100 fallback */
   --bg-card: #ffffff;
-  --bg-input: #ffffff;
-  --bg-overlay: rgba(245, 245, 240, 0.98);
+  --bg-input: #f4f4f5;
+  --bg-overlay: rgba(255, 255, 255, 0.98);
   --bg-hover: rgba(0, 0, 0, 0.04);
   --bg-badge: rgba(0, 0, 0, 0.05);
   --border-color: rgba(0, 0, 0, 0.08);
   --border-hover: rgba(0, 0, 0, 0.15);
-  --text-primary: #1a1a1a;
-  --text-secondary: #555555;
-  --text-muted: #888888;
-  --text-faint: #bbbbbb;
-  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.06);
+  --text-primary: #09090b; /* zinc-950 */
+  --text-secondary: #52525b; /* zinc-600 */
+  --text-muted: #a1a1aa; /* zinc-400 */
+  --text-faint: #e4e4e7; /* zinc-200 */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.04);
   --gradient-overlay: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.6), transparent);
-  --navbar-bg: rgba(245, 245, 240, 0.95);
+  --navbar-bg: rgba(255, 255, 255, 0.95);
   --modal-bg: #ffffff;
-  --accent-color: #c8102e;
-  --bg-panel: #fbfbfb;
+  --accent-color: #ce112d;
+  --bg-panel: #fafafa;
 }
 
 h1,

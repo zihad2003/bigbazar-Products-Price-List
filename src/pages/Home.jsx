@@ -167,22 +167,7 @@ const ProductSkeleton = () => (
   </div>
 );
 
-const DEFAULT_SLIDES = [
-  {
-    id: 'default-1',
-    title: 'Elite Panjabi Collection',
-    subtitle: 'Curated Elegance 2026',
-    image: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=1600',
-    cta: 'Explore Collection'
-  },
-  {
-    id: 'default-2',
-    title: 'Selective Premium Sari',
-    subtitle: 'Signature Styles',
-    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=1600',
-    cta: 'Shop Selective'
-  }
-];
+const DEFAULT_SLIDES = [];
 
 const PAGE_SIZE = 12;
 
@@ -295,7 +280,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-16">
-      {/* Elite Hero Section - Precision "Perfect Fit" Logic */}
+      {/* Elite Hero Section */}
+      {((siteSettings.main_slides?.length > 0) || (DEFAULT_SLIDES.length > 0)) && (
       <section className="w-full relative px-4 md:px-12 pt-4 md:pt-10 flex flex-col items-center">
         <div className="w-[60%] md:w-[70%] aspect-square md:aspect-video rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative border-8 border-white">
           {settingsLoading ? (
@@ -307,6 +293,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           )}
         </div>
       </section>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Maintenance Notice */}

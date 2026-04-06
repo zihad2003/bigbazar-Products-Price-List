@@ -63,13 +63,7 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                             <span className="text-[10px] font-black">{language === 'bn' ? 'EN' : 'বাং'}</span>
                         </button>
 
-                        {/* Profile */}
-                        <button 
-                           onClick={onOpenAuth}
-                           className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-900 active:scale-95 transition-all"
-                        >
-                            <User size={18} />
-                        </button>
+
 
                         {/* Cart */}
                         <button
