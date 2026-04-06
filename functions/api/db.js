@@ -2,28 +2,24 @@ import { connect } from '@tidbcloud/serverless';
 
 /**
  * Returns a TiDB serverless connection for the given environment.
- *
- * We intentionally do NOT cache the connection object at module scope.
- * TiDB serverless uses HTTP under the hood — each call to connect() is cheap
- * and lightweight.  Caching was causing a silent failure mode: if the first
- * request arrived before env vars were injected (e.g. on Cloudflare cold-start
- * with missing secrets) the broken connection object got cached and ALL
- * subsequent requests failed with "DB_HOST missing" even after the env was
- * correctly configured.
+ * Prefers DATABASE_URL if set; falls back to individual DB_* vars.
  *
  * @param {object} env - Cloudflare env bindings or node process.env
  * @returns {object} TiDB Connection instance
  */
 export const getDb = (env = {}) => {
-  // Prefer process.env (local Node dev with dotenv) over Cloudflare bindings
   const getVar = (key) => {
-    // Priority 1: Cloudflare Environment Bindings
     if (env && env[key]) return env[key];
-    // Priority 2: Node.js process.env (for local development)
     if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
     return undefined;
   };
 
+  const databaseUrl = getVar('DATABASE_URL');
+  if (databaseUrl) {
+    return connect({ url: databaseUrl });
+  }
+
+  // Fall back to individual vars
   const user = encodeURIComponent(getVar('DB_USER') || '');
   const pass = encodeURIComponent(getVar('DB_PASSWORD') || '');
   const host = getVar('DB_HOST');
@@ -34,16 +30,9 @@ export const getDb = (env = {}) => {
     const missing = [];
     if (!host) missing.push('DB_HOST');
     if (!user) missing.push('DB_USER');
-    if (!pass) missing.push('DB_PASSWORD');
-    throw new Error(`Cloudflare Environment Variables Missing: ${missing.join(', ')}. Please add them to your Pages Dashboard.`);
+    throw new Error(`Missing env vars: ${missing.join(', ')}. Set DATABASE_URL or individual DB_* vars in Cloudflare Pages dashboard.`);
   }
 
   const url = `mysql://${user}:${pass}@${host}:${port}/${name}?ssl={"rejectUnauthorized":true}`;
-
-  try {
-    return connect({ url });
-  } catch (err) {
-    console.error('❌ Failed to initialize TiDB connection:', err.message);
-    throw err;
-  }
+  return connect({ url });
 };

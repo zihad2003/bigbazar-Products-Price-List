@@ -8,7 +8,7 @@
  * - Supabase storage URLs → proxy via images.weserv.nl (handles CORS & ORB)
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { API_URL as API_BASE } from '../api/client';
 
 // Domains that serve images fine without a proxy
 const TRUSTED_DOMAINS = [
