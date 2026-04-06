@@ -32,7 +32,7 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
             id: 'offers',
             icon: <Tag size={22} />,
             label: language === 'bn' ? 'অফার' : 'Offers',
-            onClick: () => { if (onSelectCategory) onSelectCategory('Offers'); navigate('/'); },
+            onClick: () => { if (onSelectCategory) onSelectCategory('Sale'); navigate('/'); },
             active: false
         },
         {
@@ -53,15 +53,15 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
         {
             id: 'tracking',
             icon: <ClipboardList size={22} />,
-            label: language === 'bn' ? 'ট্র্যাকিং' : 'Orders',
+            label: language === 'bn' ? 'অর্ডার' : 'Orders',
             onClick: onTrackOrder,
             active: false
         },
         {
-            id: 'account',
-            icon: <User size={22} />,
-            label: language === 'bn' ? 'অ্যাকাউন্ট' : 'Account',
-            onClick: () => onOpenAuth?.(),
+            id: 'language',
+            icon: <Globe size={22} />,
+            label: language === 'bn' ? 'English' : 'বাং',
+            onClick: toggleLanguage,
             active: false
         }
     ];
