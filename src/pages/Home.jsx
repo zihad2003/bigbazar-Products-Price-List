@@ -4,7 +4,7 @@ import { Search, ArrowRight, Award, Play, Instagram, Video } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import ProductModal from '../components/modals/ProductModal';
-import { bigBazarApi } from '../api/client';
+import { bigBazarApi, API_URL } from '../api/client';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -80,7 +80,6 @@ const IconPremium = ({ size = 24 }) => (
 
 const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   const hasVideo = !!product.video_url;
   
   // Choose the best candidate for the display image
@@ -311,25 +310,22 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Maintenance Notice */}
+        {/* No Products Found */}
         {!loading && products.length === 0 && (
           <section className="px-4">
-            <div className="bg-[#ce112d]/5 border border-[#ce112d]/20 rounded-3xl p-6 md:p-10 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 bg-[#ce112d]/10 rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 bg-[#ce112d] rounded-full animate-ping" />
+            <div className="bg-zinc-50 border border-zinc-100 rounded-3xl p-6 md:p-10 flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center">
+                <ShoppingBag size={24} className="text-zinc-400" />
               </div>
               <div className="space-y-4 max-w-2xl">
                 <h2 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">
-                  {language === 'bn' ? 'সিস্টেম আপগ্রেড চলছে' : 'System Upgrade in Progress'}
+                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Found'}
                 </h2>
                 <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
                   {language === 'bn'
-                    ? 'আমরা আন্তরিকভাবে দুঃখিত। সার্ভার আপগ্রেড এবং ডেটা শিফটিং এর কাজ চলায় পণ্য প্রদর্শনে সাময়িক সমস্যা হচ্ছে। আমরা অত্যন্ত দ্রুত এটি ঠিক করার কাজ করছি। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।'
-                    : 'We are sincerely sorry. A temporary issue is occurring with product display due to ongoing server upgrades. we are working to fix this as quickly as possible. Please check back shortly.'}
+                    ? 'দুঃখিত, এই ক্যাটাগরিতে বর্তমানে কোনো পণ্য নেই। অনুগ্রহ করে অন্য কোনো ক্যাটাগরি বা ফিল্টার চেক করুন।'
+                    : 'Sorry, we couldn\'t find any products in this category right now. Please check back later or try another filter.'}
                 </p>
-                <div className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#ce112d]">
-                  <span className="w-2 h-2 bg-[#ce112d] rounded-full" />
-                  Live Migration in Progress
-                </div>
               </div>
             </div>
           </section>

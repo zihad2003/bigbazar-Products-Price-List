@@ -4,15 +4,15 @@
  * auth, database queries, and storage — imported everywhere via supabaseClient.js.
  */
 
-const IS_NODE = typeof process !== 'undefined' && process.env && !process.env.VITE;
-const IS_PROD = !IS_NODE && import.meta.env.PROD;
-
-// Production: empty string = same-origin Cloudflare Pages Function (/api/...)
-// Local dev:  VITE_API_URL=http://localhost:3001 (set in .env.local)
-const devBase = (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001');
-export const API_URL = IS_PROD 
+// Smart API URL: Relative in production, explicit in local dev/Node.js
+export const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.PROD)
     ? '' 
-    : (typeof process !== 'undefined' && process.env.VITE_API_URL ? process.env.VITE_API_URL : (typeof import.meta.env !== 'undefined' && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : devBase)).replace(/\/$/, '');
+    : (typeof process !== 'undefined' && process.env?.VITE_API_URL 
+        ? process.env.VITE_API_URL 
+        : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL 
+            ? import.meta.env.VITE_API_URL 
+            : 'http://localhost:8788')).replace(/\/$/, '');
+
 const API_BASE = API_URL;
 
 // ============================================
