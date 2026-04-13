@@ -43,11 +43,12 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
     const deliveryCharge = deliveryInfo?.charge ?? 0;
     const isExclusiveOrder = product?.is_exclusive || false;
-    const advanceAmount = isExclusiveOrder ? 500 : deliveryCharge;
+    const advanceAmount = isExclusiveOrder ? 500 : (deliveryInfo?.advance ?? deliveryCharge);
+    const isConfirmationFee = !isExclusiveOrder && deliveryCharge === 0 && advanceAmount > 0;
 
     const calculateTotal = () => {
-        if (!deliveryInfo) return Number(product.price);
-        return Number(product.price) + deliveryInfo.charge;
+        if (!deliveryInfo) return Number(product.price) * (product.quantity || 1);
+        return (Number(product.price) * (product.quantity || 1)) + deliveryInfo.charge;
     };
 
     const handleInputChange = (e) => {
@@ -97,8 +98,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             return;
         }
         if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
-            const prefix = isExclusiveOrder ? 'অগ্রিম' : 'ডেলিভারি চার্জ';
-            setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Send advance ৳${advanceAmount} via bKash and provide sender number.`);
+            const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
+                          (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
+            setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Send ${prefix} ৳${advanceAmount} via bKash and provide sender number.`);
             return;
         }
 
@@ -136,7 +138,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
             if (selectedColor) name += ` (Color: ${selectedColor})`;
             if (selectedSize) name += ` (Size: ${selectedSize})`;
             if (variantSKU) name += ` (SKU: ${variantSKU})`;
-            name += ` (Qty: 1)`;
+            name += ` (Qty: ${product.quantity || 1})`;
             const productSummary = name;
 
             const { data: insertedData, error: insertError } = await bigBazarApi
@@ -173,7 +175,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
 
             // 1. Decrement global stock only if it was a real number
             if (hadRealStock) {
-                updatedGlobalStock = Math.max(0, product.stock_count - 1);
+                updatedGlobalStock = Math.max(0, product.stock_count - (product.quantity || 1));
             }
 
             // 2. Decrement Variant Stock (Size within Color)
@@ -184,7 +186,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         const updatedSizes = color.sizes.map(sz => {
                             const szName = typeof sz === 'object' ? sz.name : sz;
                             if (szName === selectedSize) {
-                                return { ...sz, stock: Math.max(0, (sz.stock || 0) - 1) };
+                                return { ...sz, stock: Math.max(0, (sz.stock || 0) - (product.quantity || 1)) };
                             }
                             return sz;
                         });
@@ -579,7 +581,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                                 <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-3 space-y-3">
                                     <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                         {formData.paymentMethod === 'cod' && advanceAmount > 0
-                                            ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge')} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? `বিকাশে সেন্ড মানি করুন। বাকি ৳${calculateTotal() - advanceAmount} হাতে পেয়ে দিবেন।` : `Send money via bKash. Pay due ৳${calculateTotal() - advanceAmount} on delivery.`}</>
+                                            ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (isConfirmationFee ? (language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'))} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? `বিকাশে সেন্ড মানি করুন। বাকি ৳${calculateTotal() - advanceAmount} হাতে পেয়ে দিবেন।` : `Send money via bKash. Pay due ৳${calculateTotal() - advanceAmount} on delivery.`}</>
                                             : <>{language === 'bn' ? 'সম্পূর্ণ টাকা' : 'Total Amount'} <strong className="text-[#ce112d]">৳{calculateTotal()}</strong> {language === 'bn' ? 'বিকাশে সেন্ড মানি করুন।' : 'Send money via bKash.'}</>}
                                     </p>
                                     <div className="flex items-center gap-2">
@@ -600,7 +602,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, se
                         )}
 
                         {/* COD free delivery message */}
-                        {formData.paymentMethod === 'cod' && !isExclusiveOrder && deliveryInfo?.charge === 0 && (
+                        {formData.paymentMethod === 'cod' && !isExclusiveOrder && advanceAmount === 0 && (
                             <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                 <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
                                 <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>

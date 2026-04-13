@@ -108,7 +108,7 @@ export const allDistricts = [
  */
 export function getDeliveryInfo(district, upazila) {
     if (district === CHATTOGRAM_DISTRICT && upazila === FREE_UPAZILA) {
-        return { area: 'mirsarai', charge: 0, label: 'ফ্রি ডেলিভারি!' };
+        return { area: 'mirsarai', charge: 0, advance: 100, label: 'ফ্রি ডেলিভারি!' };
     }
     if (district === CHATTOGRAM_DISTRICT) {
         return { area: 'chattogram', charge: 100, label: 'ডেলিভারি চার্জ: ৳১০০' };

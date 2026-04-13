@@ -368,7 +368,12 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     <div className="flex justify-between items-center mt-2 pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#ce112d]">{language === 'bn' ? 'ডেলিভারির সময় প্রদেয়' : 'Due on Delivery'}</span>
                                                         <span className="text-sm md:text-base font-black italic" style={{ color: 'var(--text-primary)' }}>
-                                                        ৳{order.payment_status === 'Fully Paid' ? 0 : (order.is_advance_paid ? order.total_amount - (order.is_exclusive_order ? 500 : (order.delivery_charge || 0)) : order.total_amount)}
+                                                        ৳{(() => {
+                                                            if (order.payment_status === 'Fully Paid') return 0;
+                                                            if (!order.is_advance_paid) return order.total_amount;
+                                                            const advance = order.is_exclusive_order ? 500 : (order.delivery_area === 'mirsarai' && order.delivery_charge === 0 ? 100 : (order.delivery_charge || 0));
+                                                            return order.total_amount - advance;
+                                                        })()}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -383,7 +388,9 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         <p className="text-[8px] md:text-[9px] font-medium text-green-500/70">
                                                             {order.is_exclusive_order
                                                                 ? (language === 'bn' ? 'আপনার ৳৫০০ অগ্রিম (Premium) পেমেন্ট পেয়েছি।' : 'We have received your ৳500 advance (Premium) payment.')
-                                                                : (language === 'bn' ? 'আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।' : 'We have received your advance payment.')
+                                                                : (order.delivery_area === 'mirsarai' && order.delivery_charge === 0 
+                                                                    ? (language === 'bn' ? 'আপনার ৳১০০ কনফার্মেশন ফি আমরা পেয়েছি।' : 'We have received your ৳100 confirmation fee.')
+                                                                    : (language === 'bn' ? 'আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।' : 'We have received your advance payment.'))
                                                             }
                                                         </p>
                                                     </div>

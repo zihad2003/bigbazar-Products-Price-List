@@ -20,6 +20,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
   const [validationError, setValidationError] = useState('');
   const [showVideo, setShowVideo] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     if (isOpen && product) {
@@ -40,6 +41,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
       setValidationError('');
       setCurrentImageIndex(0);
       setShowVideo(false);
+      setQuantity(1);
 
       // Back button support: Push state when opening
       window.history.pushState({ modal: 'product' }, '');
@@ -75,7 +77,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     if (product.is_sold_out) return;
     if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
     if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
-    addToCart({ ...product, price }, selectedColor, selectedSize);
+    addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
     setShowCartSuccess(true);
     setTimeout(() => setShowCartSuccess(false), 2000);
     setValidationError('');
@@ -239,16 +241,40 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                      {language === 'bn' ? 'স্টক নেই' : 'Currently Out of Stock'}
                    </div>
                  ) : (
-                   <div className="flex flex-col gap-3">
-                      <button onClick={handleMainOrder}
-                        className="w-full py-5 bg-[#ce112d] text-white text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.15)] active:scale-95 transition-all">
-                        {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
-                      </button>
-                      <button onClick={handleAddToCart}
-                        className={`w-full py-5 border-2 text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}>
-                        {isInCart ? <Check size={18} /> : <ShoppingCart size={18} />}
-                        {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
-                      </button>
+                   <div className="flex flex-col gap-5">
+                     {/* Quantity Selector */}
+                     <div className="flex items-center justify-between p-2 bg-neutral-50 rounded-2xl border border-neutral-100">
+                       <p className="pl-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                         {language === 'bn' ? 'পরিমাণ' : 'Quantity'}
+                       </p>
+                       <div className="flex items-center gap-6 pr-2">
+                         <button 
+                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                           className="w-10 h-10 rounded-xl bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                         >
+                           <span className="text-xl font-bold">-</span>
+                         </button>
+                         <span className="text-base font-black text-neutral-900 w-4 text-center">{quantity}</span>
+                         <button 
+                           onClick={() => setQuantity(quantity + 1)}
+                           className="w-10 h-10 rounded-xl bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                         >
+                           <span className="text-xl font-bold">+</span>
+                         </button>
+                       </div>
+                     </div>
+
+                     <div className="flex flex-col gap-3">
+                       <button onClick={handleMainOrder}
+                         className="w-full py-5 bg-[#ce112d] text-white text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.15)] active:scale-95 transition-all">
+                         {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
+                       </button>
+                       <button onClick={handleAddToCart}
+                         className={`w-full py-5 border-2 text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}>
+                         {isInCart ? <Check size={18} /> : <ShoppingCart size={18} />}
+                         {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
+                       </button>
+                     </div>
                    </div>
                  )}
                </div>
@@ -283,7 +309,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         </motion.div>
       </motion.div>
 
-      <DeliveryModal isOpen={showDeliveryModal} onClose={() => setShowDeliveryModal(false)} product={{ ...product, price, selectedColor, selectedSize }} />
+      <DeliveryModal isOpen={showDeliveryModal} onClose={() => setShowDeliveryModal(false)} product={{ ...product, price, selectedColor, selectedSize, quantity }} />
       <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />
       
       <AnimatePresence>
