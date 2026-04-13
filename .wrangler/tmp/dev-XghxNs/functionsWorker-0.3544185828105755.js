@@ -1,9 +1,4 @@
-var __create = Object.create;
 var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
@@ -13,62 +8,38 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
     return require.apply(this, arguments);
   throw new Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-};
-var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __publicField = (obj, key, value) => {
   __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
   return value;
 };
 
-// ../.wrangler/tmp/bundle-s2ldP6/strip-cf-connecting-ip-header.js
+// .wrangler/tmp/bundle-mE2Kxt/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
   return request;
 }
-var init_strip_cf_connecting_ip_header = __esm({
-  "../.wrangler/tmp/bundle-s2ldP6/strip-cf-connecting-ip-header.js"() {
-    __name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
-    globalThis.fetch = new Proxy(globalThis.fetch, {
-      apply(target, thisArg, argArray) {
-        return Reflect.apply(target, thisArg, [
-          stripCfConnectingIPHeader.apply(null, argArray)
-        ]);
-      }
-    });
+__name(stripCfConnectingIPHeader, "stripCfConnectingIPHeader");
+globalThis.fetch = new Proxy(globalThis.fetch, {
+  apply(target, thisArg, argArray) {
+    return Reflect.apply(target, thisArg, [
+      stripCfConnectingIPHeader.apply(null, argArray)
+    ]);
   }
 });
 
-// ../node_modules/unenv/dist/runtime/_internal/utils.mjs
+// node_modules/unenv/dist/runtime/_internal/utils.mjs
 function createNotImplementedError(name) {
   return new Error(`[unenv] ${name} is not implemented yet!`);
 }
+__name(createNotImplementedError, "createNotImplementedError");
 function notImplemented(name) {
   const fn = /* @__PURE__ */ __name(() => {
     throw createNotImplementedError(name);
   }, "fn");
   return Object.assign(fn, { __unenv__: true });
 }
+__name(notImplemented, "notImplemented");
 function notImplementedClass(name) {
   return class {
     __unenv__ = true;
@@ -77,32 +48,978 @@ function notImplementedClass(name) {
     }
   };
 }
+__name(notImplementedClass, "notImplementedClass");
+
+// node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs
+var _timeOrigin = globalThis.performance?.timeOrigin ?? Date.now();
+var _performanceNow = globalThis.performance?.now ? globalThis.performance.now.bind(globalThis.performance) : () => Date.now() - _timeOrigin;
+var nodeTiming = {
+  name: "node",
+  entryType: "node",
+  startTime: 0,
+  duration: 0,
+  nodeStart: 0,
+  v8Start: 0,
+  bootstrapComplete: 0,
+  environment: 0,
+  loopStart: 0,
+  loopExit: 0,
+  idleTime: 0,
+  uvMetricsInfo: {
+    loopCount: 0,
+    events: 0,
+    eventsWaiting: 0
+  },
+  detail: void 0,
+  toJSON() {
+    return this;
+  }
+};
+var PerformanceEntry = class {
+  __unenv__ = true;
+  detail;
+  entryType = "event";
+  name;
+  startTime;
+  constructor(name, options) {
+    this.name = name;
+    this.startTime = options?.startTime || _performanceNow();
+    this.detail = options?.detail;
+  }
+  get duration() {
+    return _performanceNow() - this.startTime;
+  }
+  toJSON() {
+    return {
+      name: this.name,
+      entryType: this.entryType,
+      startTime: this.startTime,
+      duration: this.duration,
+      detail: this.detail
+    };
+  }
+};
+__name(PerformanceEntry, "PerformanceEntry");
+var PerformanceMark = /* @__PURE__ */ __name(class PerformanceMark2 extends PerformanceEntry {
+  entryType = "mark";
+  constructor() {
+    super(...arguments);
+  }
+  get duration() {
+    return 0;
+  }
+}, "PerformanceMark");
+var PerformanceMeasure = class extends PerformanceEntry {
+  entryType = "measure";
+};
+__name(PerformanceMeasure, "PerformanceMeasure");
+var PerformanceResourceTiming = class extends PerformanceEntry {
+  entryType = "resource";
+  serverTiming = [];
+  connectEnd = 0;
+  connectStart = 0;
+  decodedBodySize = 0;
+  domainLookupEnd = 0;
+  domainLookupStart = 0;
+  encodedBodySize = 0;
+  fetchStart = 0;
+  initiatorType = "";
+  name = "";
+  nextHopProtocol = "";
+  redirectEnd = 0;
+  redirectStart = 0;
+  requestStart = 0;
+  responseEnd = 0;
+  responseStart = 0;
+  secureConnectionStart = 0;
+  startTime = 0;
+  transferSize = 0;
+  workerStart = 0;
+  responseStatus = 0;
+};
+__name(PerformanceResourceTiming, "PerformanceResourceTiming");
+var PerformanceObserverEntryList = class {
+  __unenv__ = true;
+  getEntries() {
+    return [];
+  }
+  getEntriesByName(_name, _type) {
+    return [];
+  }
+  getEntriesByType(type) {
+    return [];
+  }
+};
+__name(PerformanceObserverEntryList, "PerformanceObserverEntryList");
+var Performance = class {
+  __unenv__ = true;
+  timeOrigin = _timeOrigin;
+  eventCounts = /* @__PURE__ */ new Map();
+  _entries = [];
+  _resourceTimingBufferSize = 0;
+  navigation = void 0;
+  timing = void 0;
+  timerify(_fn, _options) {
+    throw createNotImplementedError("Performance.timerify");
+  }
+  get nodeTiming() {
+    return nodeTiming;
+  }
+  eventLoopUtilization() {
+    return {};
+  }
+  markResourceTiming() {
+    return new PerformanceResourceTiming("");
+  }
+  onresourcetimingbufferfull = null;
+  now() {
+    if (this.timeOrigin === _timeOrigin) {
+      return _performanceNow();
+    }
+    return Date.now() - this.timeOrigin;
+  }
+  clearMarks(markName) {
+    this._entries = markName ? this._entries.filter((e) => e.name !== markName) : this._entries.filter((e) => e.entryType !== "mark");
+  }
+  clearMeasures(measureName) {
+    this._entries = measureName ? this._entries.filter((e) => e.name !== measureName) : this._entries.filter((e) => e.entryType !== "measure");
+  }
+  clearResourceTimings() {
+    this._entries = this._entries.filter((e) => e.entryType !== "resource" || e.entryType !== "navigation");
+  }
+  getEntries() {
+    return this._entries;
+  }
+  getEntriesByName(name, type) {
+    return this._entries.filter((e) => e.name === name && (!type || e.entryType === type));
+  }
+  getEntriesByType(type) {
+    return this._entries.filter((e) => e.entryType === type);
+  }
+  mark(name, options) {
+    const entry = new PerformanceMark(name, options);
+    this._entries.push(entry);
+    return entry;
+  }
+  measure(measureName, startOrMeasureOptions, endMark) {
+    let start;
+    let end;
+    if (typeof startOrMeasureOptions === "string") {
+      start = this.getEntriesByName(startOrMeasureOptions, "mark")[0]?.startTime;
+      end = this.getEntriesByName(endMark, "mark")[0]?.startTime;
+    } else {
+      start = Number.parseFloat(startOrMeasureOptions?.start) || this.now();
+      end = Number.parseFloat(startOrMeasureOptions?.end) || this.now();
+    }
+    const entry = new PerformanceMeasure(measureName, {
+      startTime: start,
+      detail: {
+        start,
+        end
+      }
+    });
+    this._entries.push(entry);
+    return entry;
+  }
+  setResourceTimingBufferSize(maxSize) {
+    this._resourceTimingBufferSize = maxSize;
+  }
+  addEventListener(type, listener, options) {
+    throw createNotImplementedError("Performance.addEventListener");
+  }
+  removeEventListener(type, listener, options) {
+    throw createNotImplementedError("Performance.removeEventListener");
+  }
+  dispatchEvent(event) {
+    throw createNotImplementedError("Performance.dispatchEvent");
+  }
+  toJSON() {
+    return this;
+  }
+};
+__name(Performance, "Performance");
+var PerformanceObserver = class {
+  __unenv__ = true;
+  _callback = null;
+  constructor(callback) {
+    this._callback = callback;
+  }
+  takeRecords() {
+    return [];
+  }
+  disconnect() {
+    throw createNotImplementedError("PerformanceObserver.disconnect");
+  }
+  observe(options) {
+    throw createNotImplementedError("PerformanceObserver.observe");
+  }
+  bind(fn) {
+    return fn;
+  }
+  runInAsyncScope(fn, thisArg, ...args) {
+    return fn.call(thisArg, ...args);
+  }
+  asyncId() {
+    return 0;
+  }
+  triggerAsyncId() {
+    return 0;
+  }
+  emitDestroy() {
+    return this;
+  }
+};
+__name(PerformanceObserver, "PerformanceObserver");
+__publicField(PerformanceObserver, "supportedEntryTypes", []);
+var performance = globalThis.performance && "addEventListener" in globalThis.performance ? globalThis.performance : new Performance();
+
+// node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs
+globalThis.performance = performance;
+globalThis.Performance = Performance;
+globalThis.PerformanceEntry = PerformanceEntry;
+globalThis.PerformanceMark = PerformanceMark;
+globalThis.PerformanceMeasure = PerformanceMeasure;
+globalThis.PerformanceObserver = PerformanceObserver;
+globalThis.PerformanceObserverEntryList = PerformanceObserverEntryList;
+globalThis.PerformanceResourceTiming = PerformanceResourceTiming;
+
+// node_modules/unenv/dist/runtime/node/console.mjs
+import { Writable } from "node:stream";
+
+// node_modules/unenv/dist/runtime/mock/noop.mjs
+var noop_default = Object.assign(() => {
+}, { __unenv__: true });
+
+// node_modules/unenv/dist/runtime/node/console.mjs
+var _console = globalThis.console;
+var _ignoreErrors = true;
+var _stderr = new Writable();
+var _stdout = new Writable();
+var log = _console?.log ?? noop_default;
+var info = _console?.info ?? log;
+var trace = _console?.trace ?? info;
+var debug = _console?.debug ?? log;
+var table = _console?.table ?? log;
+var error = _console?.error ?? log;
+var warn = _console?.warn ?? error;
+var createTask = _console?.createTask ?? /* @__PURE__ */ notImplemented("console.createTask");
+var clear = _console?.clear ?? noop_default;
+var count = _console?.count ?? noop_default;
+var countReset = _console?.countReset ?? noop_default;
+var dir = _console?.dir ?? noop_default;
+var dirxml = _console?.dirxml ?? noop_default;
+var group = _console?.group ?? noop_default;
+var groupEnd = _console?.groupEnd ?? noop_default;
+var groupCollapsed = _console?.groupCollapsed ?? noop_default;
+var profile = _console?.profile ?? noop_default;
+var profileEnd = _console?.profileEnd ?? noop_default;
+var time = _console?.time ?? noop_default;
+var timeEnd = _console?.timeEnd ?? noop_default;
+var timeLog = _console?.timeLog ?? noop_default;
+var timeStamp = _console?.timeStamp ?? noop_default;
+var Console = _console?.Console ?? /* @__PURE__ */ notImplementedClass("console.Console");
+var _times = /* @__PURE__ */ new Map();
+var _stdoutErrorHandler = noop_default;
+var _stderrErrorHandler = noop_default;
+
+// node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs
+var workerdConsole = globalThis["console"];
+var {
+  assert,
+  clear: clear2,
+  // @ts-expect-error undocumented public API
+  context,
+  count: count2,
+  countReset: countReset2,
+  // @ts-expect-error undocumented public API
+  createTask: createTask2,
+  debug: debug2,
+  dir: dir2,
+  dirxml: dirxml2,
+  error: error2,
+  group: group2,
+  groupCollapsed: groupCollapsed2,
+  groupEnd: groupEnd2,
+  info: info2,
+  log: log2,
+  profile: profile2,
+  profileEnd: profileEnd2,
+  table: table2,
+  time: time2,
+  timeEnd: timeEnd2,
+  timeLog: timeLog2,
+  timeStamp: timeStamp2,
+  trace: trace2,
+  warn: warn2
+} = workerdConsole;
+Object.assign(workerdConsole, {
+  Console,
+  _ignoreErrors,
+  _stderr,
+  _stderrErrorHandler,
+  _stdout,
+  _stdoutErrorHandler,
+  _times
+});
+var console_default = workerdConsole;
+
+// node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console
+globalThis.console = console_default;
+
+// node_modules/unenv/dist/runtime/node/internal/process/hrtime.mjs
+var hrtime = /* @__PURE__ */ Object.assign(/* @__PURE__ */ __name(function hrtime2(startTime) {
+  const now = Date.now();
+  const seconds = Math.trunc(now / 1e3);
+  const nanos = now % 1e3 * 1e6;
+  if (startTime) {
+    let diffSeconds = seconds - startTime[0];
+    let diffNanos = nanos - startTime[0];
+    if (diffNanos < 0) {
+      diffSeconds = diffSeconds - 1;
+      diffNanos = 1e9 + diffNanos;
+    }
+    return [diffSeconds, diffNanos];
+  }
+  return [seconds, nanos];
+}, "hrtime"), { bigint: /* @__PURE__ */ __name(function bigint() {
+  return BigInt(Date.now() * 1e6);
+}, "bigint") });
+
+// node_modules/unenv/dist/runtime/node/internal/process/process.mjs
+import { EventEmitter } from "node:events";
+
+// node_modules/unenv/dist/runtime/node/internal/tty/read-stream.mjs
+import { Socket } from "node:net";
+var ReadStream = class extends Socket {
+  fd;
+  constructor(fd) {
+    super();
+    this.fd = fd;
+  }
+  isRaw = false;
+  setRawMode(mode) {
+    this.isRaw = mode;
+    return this;
+  }
+  isTTY = false;
+};
+__name(ReadStream, "ReadStream");
+
+// node_modules/unenv/dist/runtime/node/internal/tty/write-stream.mjs
+import { Socket as Socket2 } from "node:net";
+var WriteStream = class extends Socket2 {
+  fd;
+  constructor(fd) {
+    super();
+    this.fd = fd;
+  }
+  clearLine(dir4, callback) {
+    callback && callback();
+    return false;
+  }
+  clearScreenDown(callback) {
+    callback && callback();
+    return false;
+  }
+  cursorTo(x, y, callback) {
+    callback && typeof callback === "function" && callback();
+    return false;
+  }
+  moveCursor(dx, dy, callback) {
+    callback && callback();
+    return false;
+  }
+  getColorDepth(env3) {
+    return 1;
+  }
+  hasColors(count4, env3) {
+    return false;
+  }
+  getWindowSize() {
+    return [this.columns, this.rows];
+  }
+  columns = 80;
+  rows = 24;
+  isTTY = false;
+};
+__name(WriteStream, "WriteStream");
+
+// node_modules/unenv/dist/runtime/node/internal/process/process.mjs
+var Process = class extends EventEmitter {
+  env;
+  hrtime;
+  nextTick;
+  constructor(impl) {
+    super();
+    this.env = impl.env;
+    this.hrtime = impl.hrtime;
+    this.nextTick = impl.nextTick;
+    for (const prop of [...Object.getOwnPropertyNames(Process.prototype), ...Object.getOwnPropertyNames(EventEmitter.prototype)]) {
+      const value = this[prop];
+      if (typeof value === "function") {
+        this[prop] = value.bind(this);
+      }
+    }
+  }
+  emitWarning(warning, type, code) {
+    console.warn(`${code ? `[${code}] ` : ""}${type ? `${type}: ` : ""}${warning}`);
+  }
+  emit(...args) {
+    return super.emit(...args);
+  }
+  listeners(eventName) {
+    return super.listeners(eventName);
+  }
+  #stdin;
+  #stdout;
+  #stderr;
+  get stdin() {
+    return this.#stdin ??= new ReadStream(0);
+  }
+  get stdout() {
+    return this.#stdout ??= new WriteStream(1);
+  }
+  get stderr() {
+    return this.#stderr ??= new WriteStream(2);
+  }
+  #cwd = "/";
+  chdir(cwd3) {
+    this.#cwd = cwd3;
+  }
+  cwd() {
+    return this.#cwd;
+  }
+  arch = "";
+  platform = "";
+  argv = [];
+  argv0 = "";
+  execArgv = [];
+  execPath = "";
+  title = "";
+  pid = 200;
+  ppid = 100;
+  get version() {
+    return "";
+  }
+  get versions() {
+    return {};
+  }
+  get allowedNodeEnvironmentFlags() {
+    return /* @__PURE__ */ new Set();
+  }
+  get sourceMapsEnabled() {
+    return false;
+  }
+  get debugPort() {
+    return 0;
+  }
+  get throwDeprecation() {
+    return false;
+  }
+  get traceDeprecation() {
+    return false;
+  }
+  get features() {
+    return {};
+  }
+  get release() {
+    return {};
+  }
+  get connected() {
+    return false;
+  }
+  get config() {
+    return {};
+  }
+  get moduleLoadList() {
+    return [];
+  }
+  constrainedMemory() {
+    return 0;
+  }
+  availableMemory() {
+    return 0;
+  }
+  uptime() {
+    return 0;
+  }
+  resourceUsage() {
+    return {};
+  }
+  ref() {
+  }
+  unref() {
+  }
+  umask() {
+    throw createNotImplementedError("process.umask");
+  }
+  getBuiltinModule() {
+    return void 0;
+  }
+  getActiveResourcesInfo() {
+    throw createNotImplementedError("process.getActiveResourcesInfo");
+  }
+  exit() {
+    throw createNotImplementedError("process.exit");
+  }
+  reallyExit() {
+    throw createNotImplementedError("process.reallyExit");
+  }
+  kill() {
+    throw createNotImplementedError("process.kill");
+  }
+  abort() {
+    throw createNotImplementedError("process.abort");
+  }
+  dlopen() {
+    throw createNotImplementedError("process.dlopen");
+  }
+  setSourceMapsEnabled() {
+    throw createNotImplementedError("process.setSourceMapsEnabled");
+  }
+  loadEnvFile() {
+    throw createNotImplementedError("process.loadEnvFile");
+  }
+  disconnect() {
+    throw createNotImplementedError("process.disconnect");
+  }
+  cpuUsage() {
+    throw createNotImplementedError("process.cpuUsage");
+  }
+  setUncaughtExceptionCaptureCallback() {
+    throw createNotImplementedError("process.setUncaughtExceptionCaptureCallback");
+  }
+  hasUncaughtExceptionCaptureCallback() {
+    throw createNotImplementedError("process.hasUncaughtExceptionCaptureCallback");
+  }
+  initgroups() {
+    throw createNotImplementedError("process.initgroups");
+  }
+  openStdin() {
+    throw createNotImplementedError("process.openStdin");
+  }
+  assert() {
+    throw createNotImplementedError("process.assert");
+  }
+  binding() {
+    throw createNotImplementedError("process.binding");
+  }
+  permission = { has: /* @__PURE__ */ notImplemented("process.permission.has") };
+  report = {
+    directory: "",
+    filename: "",
+    signal: "SIGUSR2",
+    compact: false,
+    reportOnFatalError: false,
+    reportOnSignal: false,
+    reportOnUncaughtException: false,
+    getReport: /* @__PURE__ */ notImplemented("process.report.getReport"),
+    writeReport: /* @__PURE__ */ notImplemented("process.report.writeReport")
+  };
+  finalization = {
+    register: /* @__PURE__ */ notImplemented("process.finalization.register"),
+    unregister: /* @__PURE__ */ notImplemented("process.finalization.unregister"),
+    registerBeforeExit: /* @__PURE__ */ notImplemented("process.finalization.registerBeforeExit")
+  };
+  memoryUsage = Object.assign(() => ({
+    arrayBuffers: 0,
+    rss: 0,
+    external: 0,
+    heapTotal: 0,
+    heapUsed: 0
+  }), { rss: () => 0 });
+  mainModule = void 0;
+  domain = void 0;
+  send = void 0;
+  exitCode = void 0;
+  channel = void 0;
+  getegid = void 0;
+  geteuid = void 0;
+  getgid = void 0;
+  getgroups = void 0;
+  getuid = void 0;
+  setegid = void 0;
+  seteuid = void 0;
+  setgid = void 0;
+  setgroups = void 0;
+  setuid = void 0;
+  _events = void 0;
+  _eventsCount = void 0;
+  _exiting = void 0;
+  _maxListeners = void 0;
+  _debugEnd = void 0;
+  _debugProcess = void 0;
+  _fatalException = void 0;
+  _getActiveHandles = void 0;
+  _getActiveRequests = void 0;
+  _kill = void 0;
+  _preload_modules = void 0;
+  _rawDebug = void 0;
+  _startProfilerIdleNotifier = void 0;
+  _stopProfilerIdleNotifier = void 0;
+  _tickCallback = void 0;
+  _disconnect = void 0;
+  _handleQueue = void 0;
+  _pendingMessage = void 0;
+  _channel = void 0;
+  _send = void 0;
+  _linkedBinding = void 0;
+};
+__name(Process, "Process");
+
+// node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs
+var globalProcess = globalThis["process"];
+var getBuiltinModule = globalProcess.getBuiltinModule;
+var { exit, platform, nextTick } = getBuiltinModule(
+  "node:process"
+);
+var unenvProcess = new Process({
+  env: globalProcess.env,
+  hrtime,
+  nextTick
+});
+var {
+  abort,
+  addListener,
+  allowedNodeEnvironmentFlags,
+  hasUncaughtExceptionCaptureCallback,
+  setUncaughtExceptionCaptureCallback,
+  loadEnvFile,
+  sourceMapsEnabled,
+  arch,
+  argv,
+  argv0,
+  chdir,
+  config,
+  connected,
+  constrainedMemory,
+  availableMemory,
+  cpuUsage,
+  cwd,
+  debugPort,
+  dlopen,
+  disconnect,
+  emit,
+  emitWarning,
+  env,
+  eventNames,
+  execArgv,
+  execPath,
+  finalization,
+  features,
+  getActiveResourcesInfo,
+  getMaxListeners,
+  hrtime: hrtime3,
+  kill,
+  listeners,
+  listenerCount,
+  memoryUsage,
+  on,
+  off,
+  once,
+  pid,
+  ppid,
+  prependListener,
+  prependOnceListener,
+  rawListeners,
+  release,
+  removeAllListeners,
+  removeListener,
+  report,
+  resourceUsage,
+  setMaxListeners,
+  setSourceMapsEnabled,
+  stderr,
+  stdin,
+  stdout,
+  title,
+  throwDeprecation,
+  traceDeprecation,
+  umask,
+  uptime,
+  version,
+  versions,
+  domain,
+  initgroups,
+  moduleLoadList,
+  reallyExit,
+  openStdin,
+  assert: assert2,
+  binding,
+  send,
+  exitCode,
+  channel,
+  getegid,
+  geteuid,
+  getgid,
+  getgroups,
+  getuid,
+  setegid,
+  seteuid,
+  setgid,
+  setgroups,
+  setuid,
+  permission,
+  mainModule,
+  _events,
+  _eventsCount,
+  _exiting,
+  _maxListeners,
+  _debugEnd,
+  _debugProcess,
+  _fatalException,
+  _getActiveHandles,
+  _getActiveRequests,
+  _kill,
+  _preload_modules,
+  _rawDebug,
+  _startProfilerIdleNotifier,
+  _stopProfilerIdleNotifier,
+  _tickCallback,
+  _disconnect,
+  _handleQueue,
+  _pendingMessage,
+  _channel,
+  _send,
+  _linkedBinding
+} = unenvProcess;
+var _process = {
+  abort,
+  addListener,
+  allowedNodeEnvironmentFlags,
+  hasUncaughtExceptionCaptureCallback,
+  setUncaughtExceptionCaptureCallback,
+  loadEnvFile,
+  sourceMapsEnabled,
+  arch,
+  argv,
+  argv0,
+  chdir,
+  config,
+  connected,
+  constrainedMemory,
+  availableMemory,
+  cpuUsage,
+  cwd,
+  debugPort,
+  dlopen,
+  disconnect,
+  emit,
+  emitWarning,
+  env,
+  eventNames,
+  execArgv,
+  execPath,
+  exit,
+  finalization,
+  features,
+  getBuiltinModule,
+  getActiveResourcesInfo,
+  getMaxListeners,
+  hrtime: hrtime3,
+  kill,
+  listeners,
+  listenerCount,
+  memoryUsage,
+  nextTick,
+  on,
+  off,
+  once,
+  pid,
+  platform,
+  ppid,
+  prependListener,
+  prependOnceListener,
+  rawListeners,
+  release,
+  removeAllListeners,
+  removeListener,
+  report,
+  resourceUsage,
+  setMaxListeners,
+  setSourceMapsEnabled,
+  stderr,
+  stdin,
+  stdout,
+  title,
+  throwDeprecation,
+  traceDeprecation,
+  umask,
+  uptime,
+  version,
+  versions,
+  // @ts-expect-error old API
+  domain,
+  initgroups,
+  moduleLoadList,
+  reallyExit,
+  openStdin,
+  assert: assert2,
+  binding,
+  send,
+  exitCode,
+  channel,
+  getegid,
+  geteuid,
+  getgid,
+  getgroups,
+  getuid,
+  setegid,
+  seteuid,
+  setgid,
+  setgroups,
+  setuid,
+  permission,
+  mainModule,
+  _events,
+  _eventsCount,
+  _exiting,
+  _maxListeners,
+  _debugEnd,
+  _debugProcess,
+  _fatalException,
+  _getActiveHandles,
+  _getActiveRequests,
+  _kill,
+  _preload_modules,
+  _rawDebug,
+  _startProfilerIdleNotifier,
+  _stopProfilerIdleNotifier,
+  _tickCallback,
+  _disconnect,
+  _handleQueue,
+  _pendingMessage,
+  _channel,
+  _send,
+  _linkedBinding
+};
+var process_default = _process;
+
+// node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process
+globalThis.process = process_default;
+
+// .wrangler/tmp/pages-jlcwY5/functionsWorker-0.3544185828105755.mjs
+import { Writable as Writable2 } from "node:stream";
+import { Socket as Socket3 } from "node:net";
+import { Socket as Socket22 } from "node:net";
+import { EventEmitter as EventEmitter2 } from "node:events";
+import libDefault from "buffer";
+import libDefault2 from "stream";
+import types from "node:util/types";
+import { default as default2 } from "node:util/types";
+var __create = Object.create;
+var __defProp2 = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __defNormalProp2 = /* @__PURE__ */ __name((obj, key, value) => key in obj ? __defProp2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value, "__defNormalProp");
+var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
+var __require2 = /* @__PURE__ */ ((x) => typeof __require !== "undefined" ? __require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof __require !== "undefined" ? __require : a)[b]
+}) : x)(function(x) {
+  if (typeof __require !== "undefined")
+    return __require.apply(this, arguments);
+  throw new Error('Dynamic require of "' + x + '" is not supported');
+});
+var __esm = /* @__PURE__ */ __name((fn, res) => /* @__PURE__ */ __name(function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+}, "__init"), "__esm");
+var __commonJS = /* @__PURE__ */ __name((cb, mod) => /* @__PURE__ */ __name(function __require22() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+}, "__require2"), "__commonJS");
+var __copyProps = /* @__PURE__ */ __name((to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp2(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+}, "__copyProps");
+var __toESM = /* @__PURE__ */ __name((mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp2(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+)), "__toESM");
+var __publicField2 = /* @__PURE__ */ __name((obj, key, value) => {
+  __defNormalProp2(obj, typeof key !== "symbol" ? key + "" : key, value);
+  return value;
+}, "__publicField");
+function stripCfConnectingIPHeader2(input, init) {
+  const request = new Request(input, init);
+  request.headers.delete("CF-Connecting-IP");
+  return request;
+}
+__name(stripCfConnectingIPHeader2, "stripCfConnectingIPHeader");
+var init_strip_cf_connecting_ip_header = __esm({
+  "../.wrangler/tmp/bundle-p6CMAD/strip-cf-connecting-ip-header.js"() {
+    __name2(stripCfConnectingIPHeader2, "stripCfConnectingIPHeader");
+    globalThis.fetch = new Proxy(globalThis.fetch, {
+      apply(target, thisArg, argArray) {
+        return Reflect.apply(target, thisArg, [
+          stripCfConnectingIPHeader2.apply(null, argArray)
+        ]);
+      }
+    });
+  }
+});
+function createNotImplementedError2(name) {
+  return new Error(`[unenv] ${name} is not implemented yet!`);
+}
+__name(createNotImplementedError2, "createNotImplementedError");
+function notImplemented2(name) {
+  const fn = /* @__PURE__ */ __name2(() => {
+    throw createNotImplementedError2(name);
+  }, "fn");
+  return Object.assign(fn, { __unenv__: true });
+}
+__name(notImplemented2, "notImplemented");
+function notImplementedClass2(name) {
+  return class {
+    __unenv__ = true;
+    constructor() {
+      throw new Error(`[unenv] ${name} is not implemented yet!`);
+    }
+  };
+}
+__name(notImplementedClass2, "notImplementedClass");
 var init_utils = __esm({
   "../node_modules/unenv/dist/runtime/_internal/utils.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    __name(createNotImplementedError, "createNotImplementedError");
-    __name(notImplemented, "notImplemented");
-    __name(notImplementedClass, "notImplementedClass");
+    __name2(createNotImplementedError2, "createNotImplementedError");
+    __name2(notImplemented2, "notImplemented");
+    __name2(notImplementedClass2, "notImplementedClass");
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs
-var _timeOrigin, _performanceNow, nodeTiming, PerformanceEntry, PerformanceMark, PerformanceMeasure, PerformanceResourceTiming, PerformanceObserverEntryList, Performance, PerformanceObserver, performance;
+var _timeOrigin2;
+var _performanceNow2;
+var nodeTiming2;
+var PerformanceEntry2;
+var PerformanceMark3;
+var PerformanceMeasure2;
+var PerformanceResourceTiming2;
+var PerformanceObserverEntryList2;
+var Performance2;
+var PerformanceObserver2;
+var performance2;
 var init_performance = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/perf_hooks/performance.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_utils();
-    _timeOrigin = globalThis.performance?.timeOrigin ?? Date.now();
-    _performanceNow = globalThis.performance?.now ? globalThis.performance.now.bind(globalThis.performance) : () => Date.now() - _timeOrigin;
-    nodeTiming = {
+    _timeOrigin2 = globalThis.performance?.timeOrigin ?? Date.now();
+    _performanceNow2 = globalThis.performance?.now ? globalThis.performance.now.bind(globalThis.performance) : () => Date.now() - _timeOrigin2;
+    nodeTiming2 = {
       name: "node",
       entryType: "node",
       startTime: 0,
@@ -124,7 +1041,7 @@ var init_performance = __esm({
         return this;
       }
     };
-    PerformanceEntry = class {
+    PerformanceEntry2 = /* @__PURE__ */ __name(class {
       __unenv__ = true;
       detail;
       entryType = "event";
@@ -132,11 +1049,11 @@ var init_performance = __esm({
       startTime;
       constructor(name, options) {
         this.name = name;
-        this.startTime = options?.startTime || _performanceNow();
+        this.startTime = options?.startTime || _performanceNow2();
         this.detail = options?.detail;
       }
       get duration() {
-        return _performanceNow() - this.startTime;
+        return _performanceNow2() - this.startTime;
       }
       toJSON() {
         return {
@@ -147,9 +1064,9 @@ var init_performance = __esm({
           detail: this.detail
         };
       }
-    };
-    __name(PerformanceEntry, "PerformanceEntry");
-    PerformanceMark = /* @__PURE__ */ __name(class PerformanceMark2 extends PerformanceEntry {
+    }, "PerformanceEntry");
+    __name2(PerformanceEntry2, "PerformanceEntry");
+    PerformanceMark3 = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(class PerformanceMark2 extends PerformanceEntry2 {
       entryType = "mark";
       constructor() {
         super(...arguments);
@@ -157,12 +1074,12 @@ var init_performance = __esm({
       get duration() {
         return 0;
       }
-    }, "PerformanceMark");
-    PerformanceMeasure = class extends PerformanceEntry {
+    }, "PerformanceMark2"), "PerformanceMark");
+    PerformanceMeasure2 = /* @__PURE__ */ __name(class extends PerformanceEntry2 {
       entryType = "measure";
-    };
-    __name(PerformanceMeasure, "PerformanceMeasure");
-    PerformanceResourceTiming = class extends PerformanceEntry {
+    }, "PerformanceMeasure");
+    __name2(PerformanceMeasure2, "PerformanceMeasure");
+    PerformanceResourceTiming2 = /* @__PURE__ */ __name(class extends PerformanceEntry2 {
       entryType = "resource";
       serverTiming = [];
       connectEnd = 0;
@@ -185,9 +1102,9 @@ var init_performance = __esm({
       transferSize = 0;
       workerStart = 0;
       responseStatus = 0;
-    };
-    __name(PerformanceResourceTiming, "PerformanceResourceTiming");
-    PerformanceObserverEntryList = class {
+    }, "PerformanceResourceTiming");
+    __name2(PerformanceResourceTiming2, "PerformanceResourceTiming");
+    PerformanceObserverEntryList2 = /* @__PURE__ */ __name(class {
       __unenv__ = true;
       getEntries() {
         return [];
@@ -198,32 +1115,32 @@ var init_performance = __esm({
       getEntriesByType(type) {
         return [];
       }
-    };
-    __name(PerformanceObserverEntryList, "PerformanceObserverEntryList");
-    Performance = class {
+    }, "PerformanceObserverEntryList");
+    __name2(PerformanceObserverEntryList2, "PerformanceObserverEntryList");
+    Performance2 = /* @__PURE__ */ __name(class {
       __unenv__ = true;
-      timeOrigin = _timeOrigin;
+      timeOrigin = _timeOrigin2;
       eventCounts = /* @__PURE__ */ new Map();
       _entries = [];
       _resourceTimingBufferSize = 0;
       navigation = void 0;
       timing = void 0;
       timerify(_fn, _options) {
-        throw createNotImplementedError("Performance.timerify");
+        throw createNotImplementedError2("Performance.timerify");
       }
       get nodeTiming() {
-        return nodeTiming;
+        return nodeTiming2;
       }
       eventLoopUtilization() {
         return {};
       }
       markResourceTiming() {
-        return new PerformanceResourceTiming("");
+        return new PerformanceResourceTiming2("");
       }
       onresourcetimingbufferfull = null;
       now() {
-        if (this.timeOrigin === _timeOrigin) {
-          return _performanceNow();
+        if (this.timeOrigin === _timeOrigin2) {
+          return _performanceNow2();
         }
         return Date.now() - this.timeOrigin;
       }
@@ -246,7 +1163,7 @@ var init_performance = __esm({
         return this._entries.filter((e) => e.entryType === type);
       }
       mark(name, options) {
-        const entry = new PerformanceMark(name, options);
+        const entry = new PerformanceMark3(name, options);
         this._entries.push(entry);
         return entry;
       }
@@ -260,7 +1177,7 @@ var init_performance = __esm({
           start = Number.parseFloat(startOrMeasureOptions?.start) || this.now();
           end = Number.parseFloat(startOrMeasureOptions?.end) || this.now();
         }
-        const entry = new PerformanceMeasure(measureName, {
+        const entry = new PerformanceMeasure2(measureName, {
           startTime: start,
           detail: {
             start,
@@ -274,20 +1191,20 @@ var init_performance = __esm({
         this._resourceTimingBufferSize = maxSize;
       }
       addEventListener(type, listener, options) {
-        throw createNotImplementedError("Performance.addEventListener");
+        throw createNotImplementedError2("Performance.addEventListener");
       }
       removeEventListener(type, listener, options) {
-        throw createNotImplementedError("Performance.removeEventListener");
+        throw createNotImplementedError2("Performance.removeEventListener");
       }
       dispatchEvent(event) {
-        throw createNotImplementedError("Performance.dispatchEvent");
+        throw createNotImplementedError2("Performance.dispatchEvent");
       }
       toJSON() {
         return this;
       }
-    };
-    __name(Performance, "Performance");
-    PerformanceObserver = class {
+    }, "Performance");
+    __name2(Performance2, "Performance");
+    PerformanceObserver2 = /* @__PURE__ */ __name(class {
       __unenv__ = true;
       _callback = null;
       constructor(callback) {
@@ -297,10 +1214,10 @@ var init_performance = __esm({
         return [];
       }
       disconnect() {
-        throw createNotImplementedError("PerformanceObserver.disconnect");
+        throw createNotImplementedError2("PerformanceObserver.disconnect");
       }
       observe(options) {
-        throw createNotImplementedError("PerformanceObserver.observe");
+        throw createNotImplementedError2("PerformanceObserver.observe");
       }
       bind(fn) {
         return fn;
@@ -317,17 +1234,15 @@ var init_performance = __esm({
       emitDestroy() {
         return this;
       }
-    };
-    __name(PerformanceObserver, "PerformanceObserver");
-    __publicField(PerformanceObserver, "supportedEntryTypes", []);
-    performance = globalThis.performance && "addEventListener" in globalThis.performance ? globalThis.performance : new Performance();
+    }, "PerformanceObserver");
+    __name2(PerformanceObserver2, "PerformanceObserver");
+    __publicField2(PerformanceObserver2, "supportedEntryTypes", []);
+    performance2 = globalThis.performance && "addEventListener" in globalThis.performance ? globalThis.performance : new Performance2();
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/perf_hooks.mjs
 var init_perf_hooks = __esm({
   "../node_modules/unenv/dist/runtime/node/perf_hooks.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -335,155 +1250,196 @@ var init_perf_hooks = __esm({
     init_performance();
   }
 });
-
-// ../node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs
 var init_performance2 = __esm({
   "../node_modules/@cloudflare/unenv-preset/dist/runtime/polyfill/performance.mjs"() {
     init_perf_hooks();
-    globalThis.performance = performance;
-    globalThis.Performance = Performance;
-    globalThis.PerformanceEntry = PerformanceEntry;
-    globalThis.PerformanceMark = PerformanceMark;
-    globalThis.PerformanceMeasure = PerformanceMeasure;
-    globalThis.PerformanceObserver = PerformanceObserver;
-    globalThis.PerformanceObserverEntryList = PerformanceObserverEntryList;
-    globalThis.PerformanceResourceTiming = PerformanceResourceTiming;
+    globalThis.performance = performance2;
+    globalThis.Performance = Performance2;
+    globalThis.PerformanceEntry = PerformanceEntry2;
+    globalThis.PerformanceMark = PerformanceMark3;
+    globalThis.PerformanceMeasure = PerformanceMeasure2;
+    globalThis.PerformanceObserver = PerformanceObserver2;
+    globalThis.PerformanceObserverEntryList = PerformanceObserverEntryList2;
+    globalThis.PerformanceResourceTiming = PerformanceResourceTiming2;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/mock/noop.mjs
-var noop_default;
+var noop_default2;
 var init_noop = __esm({
   "../node_modules/unenv/dist/runtime/mock/noop.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    noop_default = Object.assign(() => {
+    noop_default2 = Object.assign(() => {
     }, { __unenv__: true });
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/console.mjs
-import { Writable } from "node:stream";
-var _console, _ignoreErrors, _stderr, _stdout, log, info, trace, debug, table, error, warn, createTask, clear, count, countReset, dir, dirxml, group, groupEnd, groupCollapsed, profile, profileEnd, time, timeEnd, timeLog, timeStamp, Console, _times, _stdoutErrorHandler, _stderrErrorHandler;
+var _console2;
+var _ignoreErrors2;
+var _stderr2;
+var _stdout2;
+var log3;
+var info3;
+var trace3;
+var debug3;
+var table3;
+var error3;
+var warn3;
+var createTask3;
+var clear3;
+var count3;
+var countReset3;
+var dir3;
+var dirxml3;
+var group3;
+var groupEnd3;
+var groupCollapsed3;
+var profile3;
+var profileEnd3;
+var time3;
+var timeEnd3;
+var timeLog3;
+var timeStamp3;
+var Console2;
+var _times2;
+var _stdoutErrorHandler2;
+var _stderrErrorHandler2;
 var init_console = __esm({
   "../node_modules/unenv/dist/runtime/node/console.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_noop();
     init_utils();
-    _console = globalThis.console;
-    _ignoreErrors = true;
-    _stderr = new Writable();
-    _stdout = new Writable();
-    log = _console?.log ?? noop_default;
-    info = _console?.info ?? log;
-    trace = _console?.trace ?? info;
-    debug = _console?.debug ?? log;
-    table = _console?.table ?? log;
-    error = _console?.error ?? log;
-    warn = _console?.warn ?? error;
-    createTask = _console?.createTask ?? /* @__PURE__ */ notImplemented("console.createTask");
-    clear = _console?.clear ?? noop_default;
-    count = _console?.count ?? noop_default;
-    countReset = _console?.countReset ?? noop_default;
-    dir = _console?.dir ?? noop_default;
-    dirxml = _console?.dirxml ?? noop_default;
-    group = _console?.group ?? noop_default;
-    groupEnd = _console?.groupEnd ?? noop_default;
-    groupCollapsed = _console?.groupCollapsed ?? noop_default;
-    profile = _console?.profile ?? noop_default;
-    profileEnd = _console?.profileEnd ?? noop_default;
-    time = _console?.time ?? noop_default;
-    timeEnd = _console?.timeEnd ?? noop_default;
-    timeLog = _console?.timeLog ?? noop_default;
-    timeStamp = _console?.timeStamp ?? noop_default;
-    Console = _console?.Console ?? /* @__PURE__ */ notImplementedClass("console.Console");
-    _times = /* @__PURE__ */ new Map();
-    _stdoutErrorHandler = noop_default;
-    _stderrErrorHandler = noop_default;
+    _console2 = globalThis.console;
+    _ignoreErrors2 = true;
+    _stderr2 = new Writable2();
+    _stdout2 = new Writable2();
+    log3 = _console2?.log ?? noop_default2;
+    info3 = _console2?.info ?? log3;
+    trace3 = _console2?.trace ?? info3;
+    debug3 = _console2?.debug ?? log3;
+    table3 = _console2?.table ?? log3;
+    error3 = _console2?.error ?? log3;
+    warn3 = _console2?.warn ?? error3;
+    createTask3 = _console2?.createTask ?? /* @__PURE__ */ notImplemented2("console.createTask");
+    clear3 = _console2?.clear ?? noop_default2;
+    count3 = _console2?.count ?? noop_default2;
+    countReset3 = _console2?.countReset ?? noop_default2;
+    dir3 = _console2?.dir ?? noop_default2;
+    dirxml3 = _console2?.dirxml ?? noop_default2;
+    group3 = _console2?.group ?? noop_default2;
+    groupEnd3 = _console2?.groupEnd ?? noop_default2;
+    groupCollapsed3 = _console2?.groupCollapsed ?? noop_default2;
+    profile3 = _console2?.profile ?? noop_default2;
+    profileEnd3 = _console2?.profileEnd ?? noop_default2;
+    time3 = _console2?.time ?? noop_default2;
+    timeEnd3 = _console2?.timeEnd ?? noop_default2;
+    timeLog3 = _console2?.timeLog ?? noop_default2;
+    timeStamp3 = _console2?.timeStamp ?? noop_default2;
+    Console2 = _console2?.Console ?? /* @__PURE__ */ notImplementedClass2("console.Console");
+    _times2 = /* @__PURE__ */ new Map();
+    _stdoutErrorHandler2 = noop_default2;
+    _stderrErrorHandler2 = noop_default2;
   }
 });
-
-// ../node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs
-var workerdConsole, assert, clear2, context, count2, countReset2, createTask2, debug2, dir2, dirxml2, error2, group2, groupCollapsed2, groupEnd2, info2, log2, profile2, profileEnd2, table2, time2, timeEnd2, timeLog2, timeStamp2, trace2, warn2, console_default;
+var workerdConsole2;
+var assert3;
+var clear22;
+var context2;
+var count22;
+var countReset22;
+var createTask22;
+var debug22;
+var dir22;
+var dirxml22;
+var error22;
+var group22;
+var groupCollapsed22;
+var groupEnd22;
+var info22;
+var log22;
+var profile22;
+var profileEnd22;
+var table22;
+var time22;
+var timeEnd22;
+var timeLog22;
+var timeStamp22;
+var trace22;
+var warn22;
+var console_default2;
 var init_console2 = __esm({
   "../node_modules/@cloudflare/unenv-preset/dist/runtime/node/console.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_console();
-    workerdConsole = globalThis["console"];
+    workerdConsole2 = globalThis["console"];
     ({
-      assert,
-      clear: clear2,
+      assert: assert3,
+      clear: clear22,
       context: (
         // @ts-expect-error undocumented public API
-        context
+        context2
       ),
-      count: count2,
-      countReset: countReset2,
+      count: count22,
+      countReset: countReset22,
       createTask: (
         // @ts-expect-error undocumented public API
-        createTask2
+        createTask22
       ),
-      debug: debug2,
-      dir: dir2,
-      dirxml: dirxml2,
-      error: error2,
-      group: group2,
-      groupCollapsed: groupCollapsed2,
-      groupEnd: groupEnd2,
-      info: info2,
-      log: log2,
-      profile: profile2,
-      profileEnd: profileEnd2,
-      table: table2,
-      time: time2,
-      timeEnd: timeEnd2,
-      timeLog: timeLog2,
-      timeStamp: timeStamp2,
-      trace: trace2,
-      warn: warn2
-    } = workerdConsole);
-    Object.assign(workerdConsole, {
-      Console,
-      _ignoreErrors,
-      _stderr,
-      _stderrErrorHandler,
-      _stdout,
-      _stdoutErrorHandler,
-      _times
+      debug: debug22,
+      dir: dir22,
+      dirxml: dirxml22,
+      error: error22,
+      group: group22,
+      groupCollapsed: groupCollapsed22,
+      groupEnd: groupEnd22,
+      info: info22,
+      log: log22,
+      profile: profile22,
+      profileEnd: profileEnd22,
+      table: table22,
+      time: time22,
+      timeEnd: timeEnd22,
+      timeLog: timeLog22,
+      timeStamp: timeStamp22,
+      trace: trace22,
+      warn: warn22
+    } = workerdConsole2);
+    Object.assign(workerdConsole2, {
+      Console: Console2,
+      _ignoreErrors: _ignoreErrors2,
+      _stderr: _stderr2,
+      _stderrErrorHandler: _stderrErrorHandler2,
+      _stdout: _stdout2,
+      _stdoutErrorHandler: _stdoutErrorHandler2,
+      _times: _times2
     });
-    console_default = workerdConsole;
+    console_default2 = workerdConsole2;
   }
 });
-
-// ../node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console
 var init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console = __esm({
   "../node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-console"() {
     init_console2();
-    globalThis.console = console_default;
+    globalThis.console = console_default2;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/process/hrtime.mjs
-var hrtime;
+var hrtime4;
 var init_hrtime = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/process/hrtime.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    hrtime = /* @__PURE__ */ Object.assign(/* @__PURE__ */ __name(function hrtime2(startTime) {
+    hrtime4 = /* @__PURE__ */ Object.assign(/* @__PURE__ */ __name2(/* @__PURE__ */ __name(function hrtime22(startTime) {
       const now = Date.now();
       const seconds = Math.trunc(now / 1e3);
       const nanos = now % 1e3 * 1e6;
@@ -497,23 +1453,20 @@ var init_hrtime = __esm({
         return [diffSeconds, diffNanos];
       }
       return [seconds, nanos];
-    }, "hrtime"), { bigint: /* @__PURE__ */ __name(function bigint() {
+    }, "hrtime2"), "hrtime"), { bigint: /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function bigint2() {
       return BigInt(Date.now() * 1e6);
-    }, "bigint") });
+    }, "bigint"), "bigint") });
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/tty/read-stream.mjs
-import { Socket } from "node:net";
-var ReadStream;
+var ReadStream2;
 var init_read_stream = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/tty/read-stream.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    ReadStream = class extends Socket {
+    ReadStream2 = /* @__PURE__ */ __name(class extends Socket3 {
       fd;
       constructor(fd) {
         super();
@@ -525,28 +1478,25 @@ var init_read_stream = __esm({
         return this;
       }
       isTTY = false;
-    };
-    __name(ReadStream, "ReadStream");
+    }, "ReadStream");
+    __name2(ReadStream2, "ReadStream");
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/tty/write-stream.mjs
-import { Socket as Socket2 } from "node:net";
-var WriteStream;
+var WriteStream2;
 var init_write_stream = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/tty/write-stream.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    WriteStream = class extends Socket2 {
+    WriteStream2 = /* @__PURE__ */ __name(class extends Socket22 {
       fd;
       constructor(fd) {
         super();
         this.fd = fd;
       }
-      clearLine(dir3, callback) {
+      clearLine(dir32, callback) {
         callback && callback();
         return false;
       }
@@ -562,10 +1512,10 @@ var init_write_stream = __esm({
         callback && callback();
         return false;
       }
-      getColorDepth(env2) {
+      getColorDepth(env22) {
         return 1;
       }
-      hasColors(count3, env2) {
+      hasColors(count32, env22) {
         return false;
       }
       getWindowSize() {
@@ -574,15 +1524,13 @@ var init_write_stream = __esm({
       columns = 80;
       rows = 24;
       isTTY = false;
-    };
-    __name(WriteStream, "WriteStream");
+    }, "WriteStream");
+    __name2(WriteStream2, "WriteStream");
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/tty.mjs
 var init_tty = __esm({
   "../node_modules/unenv/dist/runtime/node/tty.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -591,20 +1539,17 @@ var init_tty = __esm({
     init_write_stream();
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/process/process.mjs
-import { EventEmitter } from "node:events";
-var Process;
+var Process2;
 var init_process = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/process/process.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_tty();
     init_utils();
-    Process = class extends EventEmitter {
+    Process2 = /* @__PURE__ */ __name(class extends EventEmitter2 {
       env;
       hrtime;
       nextTick;
@@ -613,7 +1558,7 @@ var init_process = __esm({
         this.env = impl.env;
         this.hrtime = impl.hrtime;
         this.nextTick = impl.nextTick;
-        for (const prop of [...Object.getOwnPropertyNames(Process.prototype), ...Object.getOwnPropertyNames(EventEmitter.prototype)]) {
+        for (const prop of [...Object.getOwnPropertyNames(Process2.prototype), ...Object.getOwnPropertyNames(EventEmitter2.prototype)]) {
           const value = this[prop];
           if (typeof value === "function") {
             this[prop] = value.bind(this);
@@ -633,17 +1578,17 @@ var init_process = __esm({
       #stdout;
       #stderr;
       get stdin() {
-        return this.#stdin ??= new ReadStream(0);
+        return this.#stdin ??= new ReadStream2(0);
       }
       get stdout() {
-        return this.#stdout ??= new WriteStream(1);
+        return this.#stdout ??= new WriteStream2(1);
       }
       get stderr() {
-        return this.#stderr ??= new WriteStream(2);
+        return this.#stderr ??= new WriteStream2(2);
       }
       #cwd = "/";
-      chdir(cwd2) {
-        this.#cwd = cwd2;
+      chdir(cwd22) {
+        this.#cwd = cwd22;
       }
       cwd() {
         return this.#cwd;
@@ -710,60 +1655,60 @@ var init_process = __esm({
       unref() {
       }
       umask() {
-        throw createNotImplementedError("process.umask");
+        throw createNotImplementedError2("process.umask");
       }
       getBuiltinModule() {
         return void 0;
       }
       getActiveResourcesInfo() {
-        throw createNotImplementedError("process.getActiveResourcesInfo");
+        throw createNotImplementedError2("process.getActiveResourcesInfo");
       }
       exit() {
-        throw createNotImplementedError("process.exit");
+        throw createNotImplementedError2("process.exit");
       }
       reallyExit() {
-        throw createNotImplementedError("process.reallyExit");
+        throw createNotImplementedError2("process.reallyExit");
       }
       kill() {
-        throw createNotImplementedError("process.kill");
+        throw createNotImplementedError2("process.kill");
       }
       abort() {
-        throw createNotImplementedError("process.abort");
+        throw createNotImplementedError2("process.abort");
       }
       dlopen() {
-        throw createNotImplementedError("process.dlopen");
+        throw createNotImplementedError2("process.dlopen");
       }
       setSourceMapsEnabled() {
-        throw createNotImplementedError("process.setSourceMapsEnabled");
+        throw createNotImplementedError2("process.setSourceMapsEnabled");
       }
       loadEnvFile() {
-        throw createNotImplementedError("process.loadEnvFile");
+        throw createNotImplementedError2("process.loadEnvFile");
       }
       disconnect() {
-        throw createNotImplementedError("process.disconnect");
+        throw createNotImplementedError2("process.disconnect");
       }
       cpuUsage() {
-        throw createNotImplementedError("process.cpuUsage");
+        throw createNotImplementedError2("process.cpuUsage");
       }
       setUncaughtExceptionCaptureCallback() {
-        throw createNotImplementedError("process.setUncaughtExceptionCaptureCallback");
+        throw createNotImplementedError2("process.setUncaughtExceptionCaptureCallback");
       }
       hasUncaughtExceptionCaptureCallback() {
-        throw createNotImplementedError("process.hasUncaughtExceptionCaptureCallback");
+        throw createNotImplementedError2("process.hasUncaughtExceptionCaptureCallback");
       }
       initgroups() {
-        throw createNotImplementedError("process.initgroups");
+        throw createNotImplementedError2("process.initgroups");
       }
       openStdin() {
-        throw createNotImplementedError("process.openStdin");
+        throw createNotImplementedError2("process.openStdin");
       }
       assert() {
-        throw createNotImplementedError("process.assert");
+        throw createNotImplementedError2("process.assert");
       }
       binding() {
-        throw createNotImplementedError("process.binding");
+        throw createNotImplementedError2("process.binding");
       }
-      permission = { has: /* @__PURE__ */ notImplemented("process.permission.has") };
+      permission = { has: /* @__PURE__ */ notImplemented2("process.permission.has") };
       report = {
         directory: "",
         filename: "",
@@ -772,13 +1717,13 @@ var init_process = __esm({
         reportOnFatalError: false,
         reportOnSignal: false,
         reportOnUncaughtException: false,
-        getReport: /* @__PURE__ */ notImplemented("process.report.getReport"),
-        writeReport: /* @__PURE__ */ notImplemented("process.report.writeReport")
+        getReport: /* @__PURE__ */ notImplemented2("process.report.getReport"),
+        writeReport: /* @__PURE__ */ notImplemented2("process.report.writeReport")
       };
       finalization = {
-        register: /* @__PURE__ */ notImplemented("process.finalization.register"),
-        unregister: /* @__PURE__ */ notImplemented("process.finalization.unregister"),
-        registerBeforeExit: /* @__PURE__ */ notImplemented("process.finalization.registerBeforeExit")
+        register: /* @__PURE__ */ notImplemented2("process.finalization.register"),
+        unregister: /* @__PURE__ */ notImplemented2("process.finalization.unregister"),
+        registerBeforeExit: /* @__PURE__ */ notImplemented2("process.finalization.registerBeforeExit")
       };
       memoryUsage = Object.assign(() => ({
         arrayBuffers: 0,
@@ -823,270 +1768,374 @@ var init_process = __esm({
       _channel = void 0;
       _send = void 0;
       _linkedBinding = void 0;
-    };
-    __name(Process, "Process");
+    }, "Process");
+    __name2(Process2, "Process");
   }
 });
-
-// ../node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs
-var globalProcess, getBuiltinModule, exit, platform, nextTick, unenvProcess, abort, addListener, allowedNodeEnvironmentFlags, hasUncaughtExceptionCaptureCallback, setUncaughtExceptionCaptureCallback, loadEnvFile, sourceMapsEnabled, arch, argv, argv0, chdir, config, connected, constrainedMemory, availableMemory, cpuUsage, cwd, debugPort, dlopen, disconnect, emit, emitWarning, env, eventNames, execArgv, execPath, finalization, features, getActiveResourcesInfo, getMaxListeners, hrtime3, kill, listeners, listenerCount, memoryUsage, on, off, once, pid, ppid, prependListener, prependOnceListener, rawListeners, release, removeAllListeners, removeListener, report, resourceUsage, setMaxListeners, setSourceMapsEnabled, stderr, stdin, stdout, title, throwDeprecation, traceDeprecation, umask, uptime, version, versions, domain, initgroups, moduleLoadList, reallyExit, openStdin, assert2, binding, send, exitCode, channel, getegid, geteuid, getgid, getgroups, getuid, setegid, seteuid, setgid, setgroups, setuid, permission, mainModule, _events, _eventsCount, _exiting, _maxListeners, _debugEnd, _debugProcess, _fatalException, _getActiveHandles, _getActiveRequests, _kill, _preload_modules, _rawDebug, _startProfilerIdleNotifier, _stopProfilerIdleNotifier, _tickCallback, _disconnect, _handleQueue, _pendingMessage, _channel, _send, _linkedBinding, _process, process_default;
+var globalProcess2;
+var getBuiltinModule2;
+var exit2;
+var platform2;
+var nextTick2;
+var unenvProcess2;
+var abort2;
+var addListener2;
+var allowedNodeEnvironmentFlags2;
+var hasUncaughtExceptionCaptureCallback2;
+var setUncaughtExceptionCaptureCallback2;
+var loadEnvFile2;
+var sourceMapsEnabled2;
+var arch2;
+var argv2;
+var argv02;
+var chdir2;
+var config2;
+var connected2;
+var constrainedMemory2;
+var availableMemory2;
+var cpuUsage2;
+var cwd2;
+var debugPort2;
+var dlopen2;
+var disconnect2;
+var emit2;
+var emitWarning2;
+var env2;
+var eventNames2;
+var execArgv2;
+var execPath2;
+var finalization2;
+var features2;
+var getActiveResourcesInfo2;
+var getMaxListeners2;
+var hrtime32;
+var kill2;
+var listeners2;
+var listenerCount2;
+var memoryUsage2;
+var on2;
+var off2;
+var once2;
+var pid2;
+var ppid2;
+var prependListener2;
+var prependOnceListener2;
+var rawListeners2;
+var release2;
+var removeAllListeners2;
+var removeListener2;
+var report2;
+var resourceUsage2;
+var setMaxListeners2;
+var setSourceMapsEnabled2;
+var stderr2;
+var stdin2;
+var stdout2;
+var title2;
+var throwDeprecation2;
+var traceDeprecation2;
+var umask2;
+var uptime2;
+var version2;
+var versions2;
+var domain2;
+var initgroups2;
+var moduleLoadList2;
+var reallyExit2;
+var openStdin2;
+var assert22;
+var binding2;
+var send2;
+var exitCode2;
+var channel2;
+var getegid2;
+var geteuid2;
+var getgid2;
+var getgroups2;
+var getuid2;
+var setegid2;
+var seteuid2;
+var setgid2;
+var setgroups2;
+var setuid2;
+var permission2;
+var mainModule2;
+var _events2;
+var _eventsCount2;
+var _exiting2;
+var _maxListeners2;
+var _debugEnd2;
+var _debugProcess2;
+var _fatalException2;
+var _getActiveHandles2;
+var _getActiveRequests2;
+var _kill2;
+var _preload_modules2;
+var _rawDebug2;
+var _startProfilerIdleNotifier2;
+var _stopProfilerIdleNotifier2;
+var _tickCallback2;
+var _disconnect2;
+var _handleQueue2;
+var _pendingMessage2;
+var _channel2;
+var _send2;
+var _linkedBinding2;
+var _process2;
+var process_default2;
 var init_process2 = __esm({
   "../node_modules/@cloudflare/unenv-preset/dist/runtime/node/process.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_hrtime();
     init_process();
-    globalProcess = globalThis["process"];
-    getBuiltinModule = globalProcess.getBuiltinModule;
-    ({ exit, platform, nextTick } = getBuiltinModule(
+    globalProcess2 = globalThis["process"];
+    getBuiltinModule2 = globalProcess2.getBuiltinModule;
+    ({ exit: exit2, platform: platform2, nextTick: nextTick2 } = getBuiltinModule2(
       "node:process"
     ));
-    unenvProcess = new Process({
-      env: globalProcess.env,
-      hrtime,
-      nextTick
+    unenvProcess2 = new Process2({
+      env: globalProcess2.env,
+      hrtime: hrtime4,
+      nextTick: nextTick2
     });
     ({
-      abort,
-      addListener,
-      allowedNodeEnvironmentFlags,
-      hasUncaughtExceptionCaptureCallback,
-      setUncaughtExceptionCaptureCallback,
-      loadEnvFile,
-      sourceMapsEnabled,
-      arch,
-      argv,
-      argv0,
-      chdir,
-      config,
-      connected,
-      constrainedMemory,
-      availableMemory,
-      cpuUsage,
-      cwd,
-      debugPort,
-      dlopen,
-      disconnect,
-      emit,
-      emitWarning,
-      env,
-      eventNames,
-      execArgv,
-      execPath,
-      finalization,
-      features,
-      getActiveResourcesInfo,
-      getMaxListeners,
-      hrtime: hrtime3,
-      kill,
-      listeners,
-      listenerCount,
-      memoryUsage,
-      on,
-      off,
-      once,
-      pid,
-      ppid,
-      prependListener,
-      prependOnceListener,
-      rawListeners,
-      release,
-      removeAllListeners,
-      removeListener,
-      report,
-      resourceUsage,
-      setMaxListeners,
-      setSourceMapsEnabled,
-      stderr,
-      stdin,
-      stdout,
-      title,
-      throwDeprecation,
-      traceDeprecation,
-      umask,
-      uptime,
-      version,
-      versions,
-      domain,
-      initgroups,
-      moduleLoadList,
-      reallyExit,
-      openStdin,
-      assert: assert2,
-      binding,
-      send,
-      exitCode,
-      channel,
-      getegid,
-      geteuid,
-      getgid,
-      getgroups,
-      getuid,
-      setegid,
-      seteuid,
-      setgid,
-      setgroups,
-      setuid,
-      permission,
-      mainModule,
-      _events,
-      _eventsCount,
-      _exiting,
-      _maxListeners,
-      _debugEnd,
-      _debugProcess,
-      _fatalException,
-      _getActiveHandles,
-      _getActiveRequests,
-      _kill,
-      _preload_modules,
-      _rawDebug,
-      _startProfilerIdleNotifier,
-      _stopProfilerIdleNotifier,
-      _tickCallback,
-      _disconnect,
-      _handleQueue,
-      _pendingMessage,
-      _channel,
-      _send,
-      _linkedBinding
-    } = unenvProcess);
-    _process = {
-      abort,
-      addListener,
-      allowedNodeEnvironmentFlags,
-      hasUncaughtExceptionCaptureCallback,
-      setUncaughtExceptionCaptureCallback,
-      loadEnvFile,
-      sourceMapsEnabled,
-      arch,
-      argv,
-      argv0,
-      chdir,
-      config,
-      connected,
-      constrainedMemory,
-      availableMemory,
-      cpuUsage,
-      cwd,
-      debugPort,
-      dlopen,
-      disconnect,
-      emit,
-      emitWarning,
-      env,
-      eventNames,
-      execArgv,
-      execPath,
-      exit,
-      finalization,
-      features,
-      getBuiltinModule,
-      getActiveResourcesInfo,
-      getMaxListeners,
-      hrtime: hrtime3,
-      kill,
-      listeners,
-      listenerCount,
-      memoryUsage,
-      nextTick,
-      on,
-      off,
-      once,
-      pid,
-      platform,
-      ppid,
-      prependListener,
-      prependOnceListener,
-      rawListeners,
-      release,
-      removeAllListeners,
-      removeListener,
-      report,
-      resourceUsage,
-      setMaxListeners,
-      setSourceMapsEnabled,
-      stderr,
-      stdin,
-      stdout,
-      title,
-      throwDeprecation,
-      traceDeprecation,
-      umask,
-      uptime,
-      version,
-      versions,
+      abort: abort2,
+      addListener: addListener2,
+      allowedNodeEnvironmentFlags: allowedNodeEnvironmentFlags2,
+      hasUncaughtExceptionCaptureCallback: hasUncaughtExceptionCaptureCallback2,
+      setUncaughtExceptionCaptureCallback: setUncaughtExceptionCaptureCallback2,
+      loadEnvFile: loadEnvFile2,
+      sourceMapsEnabled: sourceMapsEnabled2,
+      arch: arch2,
+      argv: argv2,
+      argv0: argv02,
+      chdir: chdir2,
+      config: config2,
+      connected: connected2,
+      constrainedMemory: constrainedMemory2,
+      availableMemory: availableMemory2,
+      cpuUsage: cpuUsage2,
+      cwd: cwd2,
+      debugPort: debugPort2,
+      dlopen: dlopen2,
+      disconnect: disconnect2,
+      emit: emit2,
+      emitWarning: emitWarning2,
+      env: env2,
+      eventNames: eventNames2,
+      execArgv: execArgv2,
+      execPath: execPath2,
+      finalization: finalization2,
+      features: features2,
+      getActiveResourcesInfo: getActiveResourcesInfo2,
+      getMaxListeners: getMaxListeners2,
+      hrtime: hrtime32,
+      kill: kill2,
+      listeners: listeners2,
+      listenerCount: listenerCount2,
+      memoryUsage: memoryUsage2,
+      on: on2,
+      off: off2,
+      once: once2,
+      pid: pid2,
+      ppid: ppid2,
+      prependListener: prependListener2,
+      prependOnceListener: prependOnceListener2,
+      rawListeners: rawListeners2,
+      release: release2,
+      removeAllListeners: removeAllListeners2,
+      removeListener: removeListener2,
+      report: report2,
+      resourceUsage: resourceUsage2,
+      setMaxListeners: setMaxListeners2,
+      setSourceMapsEnabled: setSourceMapsEnabled2,
+      stderr: stderr2,
+      stdin: stdin2,
+      stdout: stdout2,
+      title: title2,
+      throwDeprecation: throwDeprecation2,
+      traceDeprecation: traceDeprecation2,
+      umask: umask2,
+      uptime: uptime2,
+      version: version2,
+      versions: versions2,
+      domain: domain2,
+      initgroups: initgroups2,
+      moduleLoadList: moduleLoadList2,
+      reallyExit: reallyExit2,
+      openStdin: openStdin2,
+      assert: assert22,
+      binding: binding2,
+      send: send2,
+      exitCode: exitCode2,
+      channel: channel2,
+      getegid: getegid2,
+      geteuid: geteuid2,
+      getgid: getgid2,
+      getgroups: getgroups2,
+      getuid: getuid2,
+      setegid: setegid2,
+      seteuid: seteuid2,
+      setgid: setgid2,
+      setgroups: setgroups2,
+      setuid: setuid2,
+      permission: permission2,
+      mainModule: mainModule2,
+      _events: _events2,
+      _eventsCount: _eventsCount2,
+      _exiting: _exiting2,
+      _maxListeners: _maxListeners2,
+      _debugEnd: _debugEnd2,
+      _debugProcess: _debugProcess2,
+      _fatalException: _fatalException2,
+      _getActiveHandles: _getActiveHandles2,
+      _getActiveRequests: _getActiveRequests2,
+      _kill: _kill2,
+      _preload_modules: _preload_modules2,
+      _rawDebug: _rawDebug2,
+      _startProfilerIdleNotifier: _startProfilerIdleNotifier2,
+      _stopProfilerIdleNotifier: _stopProfilerIdleNotifier2,
+      _tickCallback: _tickCallback2,
+      _disconnect: _disconnect2,
+      _handleQueue: _handleQueue2,
+      _pendingMessage: _pendingMessage2,
+      _channel: _channel2,
+      _send: _send2,
+      _linkedBinding: _linkedBinding2
+    } = unenvProcess2);
+    _process2 = {
+      abort: abort2,
+      addListener: addListener2,
+      allowedNodeEnvironmentFlags: allowedNodeEnvironmentFlags2,
+      hasUncaughtExceptionCaptureCallback: hasUncaughtExceptionCaptureCallback2,
+      setUncaughtExceptionCaptureCallback: setUncaughtExceptionCaptureCallback2,
+      loadEnvFile: loadEnvFile2,
+      sourceMapsEnabled: sourceMapsEnabled2,
+      arch: arch2,
+      argv: argv2,
+      argv0: argv02,
+      chdir: chdir2,
+      config: config2,
+      connected: connected2,
+      constrainedMemory: constrainedMemory2,
+      availableMemory: availableMemory2,
+      cpuUsage: cpuUsage2,
+      cwd: cwd2,
+      debugPort: debugPort2,
+      dlopen: dlopen2,
+      disconnect: disconnect2,
+      emit: emit2,
+      emitWarning: emitWarning2,
+      env: env2,
+      eventNames: eventNames2,
+      execArgv: execArgv2,
+      execPath: execPath2,
+      exit: exit2,
+      finalization: finalization2,
+      features: features2,
+      getBuiltinModule: getBuiltinModule2,
+      getActiveResourcesInfo: getActiveResourcesInfo2,
+      getMaxListeners: getMaxListeners2,
+      hrtime: hrtime32,
+      kill: kill2,
+      listeners: listeners2,
+      listenerCount: listenerCount2,
+      memoryUsage: memoryUsage2,
+      nextTick: nextTick2,
+      on: on2,
+      off: off2,
+      once: once2,
+      pid: pid2,
+      platform: platform2,
+      ppid: ppid2,
+      prependListener: prependListener2,
+      prependOnceListener: prependOnceListener2,
+      rawListeners: rawListeners2,
+      release: release2,
+      removeAllListeners: removeAllListeners2,
+      removeListener: removeListener2,
+      report: report2,
+      resourceUsage: resourceUsage2,
+      setMaxListeners: setMaxListeners2,
+      setSourceMapsEnabled: setSourceMapsEnabled2,
+      stderr: stderr2,
+      stdin: stdin2,
+      stdout: stdout2,
+      title: title2,
+      throwDeprecation: throwDeprecation2,
+      traceDeprecation: traceDeprecation2,
+      umask: umask2,
+      uptime: uptime2,
+      version: version2,
+      versions: versions2,
       // @ts-expect-error old API
-      domain,
-      initgroups,
-      moduleLoadList,
-      reallyExit,
-      openStdin,
-      assert: assert2,
-      binding,
-      send,
-      exitCode,
-      channel,
-      getegid,
-      geteuid,
-      getgid,
-      getgroups,
-      getuid,
-      setegid,
-      seteuid,
-      setgid,
-      setgroups,
-      setuid,
-      permission,
-      mainModule,
-      _events,
-      _eventsCount,
-      _exiting,
-      _maxListeners,
-      _debugEnd,
-      _debugProcess,
-      _fatalException,
-      _getActiveHandles,
-      _getActiveRequests,
-      _kill,
-      _preload_modules,
-      _rawDebug,
-      _startProfilerIdleNotifier,
-      _stopProfilerIdleNotifier,
-      _tickCallback,
-      _disconnect,
-      _handleQueue,
-      _pendingMessage,
-      _channel,
-      _send,
-      _linkedBinding
+      domain: domain2,
+      initgroups: initgroups2,
+      moduleLoadList: moduleLoadList2,
+      reallyExit: reallyExit2,
+      openStdin: openStdin2,
+      assert: assert22,
+      binding: binding2,
+      send: send2,
+      exitCode: exitCode2,
+      channel: channel2,
+      getegid: getegid2,
+      geteuid: geteuid2,
+      getgid: getgid2,
+      getgroups: getgroups2,
+      getuid: getuid2,
+      setegid: setegid2,
+      seteuid: seteuid2,
+      setgid: setgid2,
+      setgroups: setgroups2,
+      setuid: setuid2,
+      permission: permission2,
+      mainModule: mainModule2,
+      _events: _events2,
+      _eventsCount: _eventsCount2,
+      _exiting: _exiting2,
+      _maxListeners: _maxListeners2,
+      _debugEnd: _debugEnd2,
+      _debugProcess: _debugProcess2,
+      _fatalException: _fatalException2,
+      _getActiveHandles: _getActiveHandles2,
+      _getActiveRequests: _getActiveRequests2,
+      _kill: _kill2,
+      _preload_modules: _preload_modules2,
+      _rawDebug: _rawDebug2,
+      _startProfilerIdleNotifier: _startProfilerIdleNotifier2,
+      _stopProfilerIdleNotifier: _stopProfilerIdleNotifier2,
+      _tickCallback: _tickCallback2,
+      _disconnect: _disconnect2,
+      _handleQueue: _handleQueue2,
+      _pendingMessage: _pendingMessage2,
+      _channel: _channel2,
+      _send: _send2,
+      _linkedBinding: _linkedBinding2
     };
-    process_default = _process;
+    process_default2 = _process2;
   }
 });
-
-// ../node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process
 var init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process = __esm({
   "../node_modules/wrangler/_virtual_unenv_global_polyfill-@cloudflare-unenv-preset-node-process"() {
     init_process2();
-    globalThis.process = process_default;
+    globalThis.process = process_default2;
   }
 });
-
-// ../node_modules/hono/dist/compose.js
 var compose;
 var init_compose = __esm({
   "../node_modules/hono/dist/compose.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    compose = /* @__PURE__ */ __name((middleware, onError, onNotFound) => {
-      return (context2, next) => {
+    compose = /* @__PURE__ */ __name2((middleware, onError, onNotFound) => {
+      return (context22, next) => {
         let index = -1;
         return dispatch(0);
         async function dispatch(i) {
@@ -1099,54 +2148,51 @@ var init_compose = __esm({
           let handler;
           if (middleware[i]) {
             handler = middleware[i][0][0];
-            context2.req.routeIndex = i;
+            context22.req.routeIndex = i;
           } else {
             handler = i === middleware.length && next || void 0;
           }
           if (handler) {
             try {
-              res = await handler(context2, () => dispatch(i + 1));
+              res = await handler(context22, () => dispatch(i + 1));
             } catch (err) {
               if (err instanceof Error && onError) {
-                context2.error = err;
-                res = await onError(err, context2);
+                context22.error = err;
+                res = await onError(err, context22);
                 isError2 = true;
               } else {
                 throw err;
               }
             }
           } else {
-            if (context2.finalized === false && onNotFound) {
-              res = await onNotFound(context2);
+            if (context22.finalized === false && onNotFound) {
+              res = await onNotFound(context22);
             }
           }
-          if (res && (context2.finalized === false || isError2)) {
-            context2.res = res;
+          if (res && (context22.finalized === false || isError2)) {
+            context22.res = res;
           }
-          return context2;
+          return context22;
         }
         __name(dispatch, "dispatch");
+        __name2(dispatch, "dispatch");
       };
     }, "compose");
   }
 });
-
-// ../node_modules/hono/dist/http-exception.js
 var init_http_exception = __esm({
   "../node_modules/hono/dist/http-exception.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
   }
 });
-
-// ../node_modules/hono/dist/request/constants.js
 var GET_MATCH_RESULT;
 var init_constants = __esm({
   "../node_modules/hono/dist/request/constants.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -1154,8 +2200,6 @@ var init_constants = __esm({
     GET_MATCH_RESULT = /* @__PURE__ */ Symbol();
   }
 });
-
-// ../node_modules/hono/dist/utils/body.js
 async function parseFormData(request, options) {
   const formData = await request.formData();
   if (formData) {
@@ -1163,6 +2207,7 @@ async function parseFormData(request, options) {
   }
   return {};
 }
+__name(parseFormData, "parseFormData");
 function convertFormDataToBodyData(formData, options) {
   const form = /* @__PURE__ */ Object.create(null);
   formData.forEach((value, key) => {
@@ -1184,16 +2229,19 @@ function convertFormDataToBodyData(formData, options) {
   }
   return form;
 }
-var parseBody, handleParsingAllValues, handleParsingNestedValues;
+__name(convertFormDataToBodyData, "convertFormDataToBodyData");
+var parseBody;
+var handleParsingAllValues;
+var handleParsingNestedValues;
 var init_body = __esm({
   "../node_modules/hono/dist/utils/body.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_request();
-    parseBody = /* @__PURE__ */ __name(async (request, options = /* @__PURE__ */ Object.create(null)) => {
+    parseBody = /* @__PURE__ */ __name2(async (request, options = /* @__PURE__ */ Object.create(null)) => {
       const { all = false, dot = false } = options;
       const headers = request instanceof HonoRequest ? request.raw.headers : request.headers;
       const contentType = headers.get("Content-Type");
@@ -1202,9 +2250,9 @@ var init_body = __esm({
       }
       return {};
     }, "parseBody");
-    __name(parseFormData, "parseFormData");
-    __name(convertFormDataToBodyData, "convertFormDataToBodyData");
-    handleParsingAllValues = /* @__PURE__ */ __name((form, key, value) => {
+    __name2(parseFormData, "parseFormData");
+    __name2(convertFormDataToBodyData, "convertFormDataToBodyData");
+    handleParsingAllValues = /* @__PURE__ */ __name2((form, key, value) => {
       if (form[key] !== void 0) {
         if (Array.isArray(form[key])) {
           ;
@@ -1220,7 +2268,7 @@ var init_body = __esm({
         }
       }
     }, "handleParsingAllValues");
-    handleParsingNestedValues = /* @__PURE__ */ __name((form, key, value) => {
+    handleParsingNestedValues = /* @__PURE__ */ __name2((form, key, value) => {
       if (/(?:^|\.)__proto__\./.test(key)) {
         return;
       }
@@ -1239,29 +2287,43 @@ var init_body = __esm({
     }, "handleParsingNestedValues");
   }
 });
-
-// ../node_modules/hono/dist/utils/url.js
-var splitPath, splitRoutingPath, extractGroupsFromPath, replaceGroupMarks, patternCache, getPattern, tryDecode, tryDecodeURI, getPath, getPathNoStrict, mergePath, checkOptionalParameter, _decodeURI, _getQueryParam, getQueryParam, getQueryParams, decodeURIComponent_;
+var splitPath;
+var splitRoutingPath;
+var extractGroupsFromPath;
+var replaceGroupMarks;
+var patternCache;
+var getPattern;
+var tryDecode;
+var tryDecodeURI;
+var getPath;
+var getPathNoStrict;
+var mergePath;
+var checkOptionalParameter;
+var _decodeURI;
+var _getQueryParam;
+var getQueryParam;
+var getQueryParams;
+var decodeURIComponent_;
 var init_url = __esm({
   "../node_modules/hono/dist/utils/url.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    splitPath = /* @__PURE__ */ __name((path) => {
+    splitPath = /* @__PURE__ */ __name2((path) => {
       const paths = path.split("/");
       if (paths[0] === "") {
         paths.shift();
       }
       return paths;
     }, "splitPath");
-    splitRoutingPath = /* @__PURE__ */ __name((routePath) => {
+    splitRoutingPath = /* @__PURE__ */ __name2((routePath) => {
       const { groups, path } = extractGroupsFromPath(routePath);
       const paths = splitPath(path);
       return replaceGroupMarks(paths, groups);
     }, "splitRoutingPath");
-    extractGroupsFromPath = /* @__PURE__ */ __name((path) => {
+    extractGroupsFromPath = /* @__PURE__ */ __name2((path) => {
       const groups = [];
       path = path.replace(/\{[^}]+\}/g, (match3, index) => {
         const mark = `@${index}`;
@@ -1270,7 +2332,7 @@ var init_url = __esm({
       });
       return { groups, path };
     }, "extractGroupsFromPath");
-    replaceGroupMarks = /* @__PURE__ */ __name((paths, groups) => {
+    replaceGroupMarks = /* @__PURE__ */ __name2((paths, groups) => {
       for (let i = groups.length - 1; i >= 0; i--) {
         const [mark] = groups[i];
         for (let j = paths.length - 1; j >= 0; j--) {
@@ -1283,7 +2345,7 @@ var init_url = __esm({
       return paths;
     }, "replaceGroupMarks");
     patternCache = {};
-    getPattern = /* @__PURE__ */ __name((label, next) => {
+    getPattern = /* @__PURE__ */ __name2((label, next) => {
       if (label === "*") {
         return "*";
       }
@@ -1301,7 +2363,7 @@ var init_url = __esm({
       }
       return null;
     }, "getPattern");
-    tryDecode = /* @__PURE__ */ __name((str, decoder) => {
+    tryDecode = /* @__PURE__ */ __name2((str, decoder) => {
       try {
         return decoder(str);
       } catch {
@@ -1314,8 +2376,8 @@ var init_url = __esm({
         });
       }
     }, "tryDecode");
-    tryDecodeURI = /* @__PURE__ */ __name((str) => tryDecode(str, decodeURI), "tryDecodeURI");
-    getPath = /* @__PURE__ */ __name((request) => {
+    tryDecodeURI = /* @__PURE__ */ __name2((str) => tryDecode(str, decodeURI), "tryDecodeURI");
+    getPath = /* @__PURE__ */ __name2((request) => {
       const url = request.url;
       const start = url.indexOf("/", url.indexOf(":") + 4);
       let i = start;
@@ -1333,17 +2395,17 @@ var init_url = __esm({
       }
       return url.slice(start, i);
     }, "getPath");
-    getPathNoStrict = /* @__PURE__ */ __name((request) => {
+    getPathNoStrict = /* @__PURE__ */ __name2((request) => {
       const result = getPath(request);
       return result.length > 1 && result.at(-1) === "/" ? result.slice(0, -1) : result;
     }, "getPathNoStrict");
-    mergePath = /* @__PURE__ */ __name((base, sub, ...rest) => {
+    mergePath = /* @__PURE__ */ __name2((base, sub, ...rest) => {
       if (rest.length) {
         sub = mergePath(sub, ...rest);
       }
       return `${base?.[0] === "/" ? "" : "/"}${base}${sub === "/" ? "" : `${base?.at(-1) === "/" ? "" : "/"}${sub?.[0] === "/" ? sub.slice(1) : sub}`}`;
     }, "mergePath");
-    checkOptionalParameter = /* @__PURE__ */ __name((path) => {
+    checkOptionalParameter = /* @__PURE__ */ __name2((path) => {
       if (path.charCodeAt(path.length - 1) !== 63 || !path.includes(":")) {
         return null;
       }
@@ -1370,7 +2432,7 @@ var init_url = __esm({
       });
       return results.filter((v, i, a) => a.indexOf(v) === i);
     }, "checkOptionalParameter");
-    _decodeURI = /* @__PURE__ */ __name((value) => {
+    _decodeURI = /* @__PURE__ */ __name2((value) => {
       if (!/[%+]/.test(value)) {
         return value;
       }
@@ -1379,7 +2441,7 @@ var init_url = __esm({
       }
       return value.indexOf("%") !== -1 ? tryDecode(value, decodeURIComponent_) : value;
     }, "_decodeURI");
-    _getQueryParam = /* @__PURE__ */ __name((url, key, multiple) => {
+    _getQueryParam = /* @__PURE__ */ __name2((url, key, multiple) => {
       let encoded;
       if (!multiple && key && !/[%+]/.test(key)) {
         let keyIndex2 = url.indexOf("?", 8);
@@ -1447,18 +2509,17 @@ var init_url = __esm({
       return key ? results[key] : results;
     }, "_getQueryParam");
     getQueryParam = _getQueryParam;
-    getQueryParams = /* @__PURE__ */ __name((url, key) => {
+    getQueryParams = /* @__PURE__ */ __name2((url, key) => {
       return _getQueryParam(url, key, true);
     }, "getQueryParams");
     decodeURIComponent_ = decodeURIComponent;
   }
 });
-
-// ../node_modules/hono/dist/request.js
-var tryDecodeURIComponent, HonoRequest;
+var tryDecodeURIComponent;
+var HonoRequest;
 var init_request = __esm({
   "../node_modules/hono/dist/request.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -1467,8 +2528,8 @@ var init_request = __esm({
     init_constants();
     init_body();
     init_url();
-    tryDecodeURIComponent = /* @__PURE__ */ __name((str) => tryDecode(str, decodeURIComponent_), "tryDecodeURIComponent");
-    HonoRequest = /* @__PURE__ */ __name(class {
+    tryDecodeURIComponent = /* @__PURE__ */ __name2((str) => tryDecode(str, decodeURIComponent_), "tryDecodeURIComponent");
+    HonoRequest = /* @__PURE__ */ __name2(class {
       /**
        * `.raw` can get the raw Request object.
        *
@@ -1735,12 +2796,12 @@ var init_request = __esm({
     }, "HonoRequest");
   }
 });
-
-// ../node_modules/hono/dist/utils/html.js
-var HtmlEscapedCallbackPhase, raw, resolveCallback;
+var HtmlEscapedCallbackPhase;
+var raw;
+var resolveCallback;
 var init_html = __esm({
   "../node_modules/hono/dist/utils/html.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -1750,13 +2811,13 @@ var init_html = __esm({
       BeforeStream: 2,
       Stream: 3
     };
-    raw = /* @__PURE__ */ __name((value, callbacks) => {
+    raw = /* @__PURE__ */ __name2((value, callbacks) => {
       const escapedString = new String(value);
       escapedString.isEscaped = true;
       escapedString.callbacks = callbacks;
       return escapedString;
     }, "raw");
-    resolveCallback = /* @__PURE__ */ __name(async (str, phase, preserveCallbacks, context2, buffer) => {
+    resolveCallback = /* @__PURE__ */ __name2(async (str, phase, preserveCallbacks, context22, buffer) => {
       if (typeof str === "object" && !(str instanceof String)) {
         if (!(str instanceof Promise)) {
           str = str.toString();
@@ -1774,9 +2835,9 @@ var init_html = __esm({
       } else {
         buffer = [str];
       }
-      const resStr = Promise.all(callbacks.map((c) => c({ phase, buffer, context: context2 }))).then(
+      const resStr = Promise.all(callbacks.map((c) => c({ phase, buffer, context: context22 }))).then(
         (res) => Promise.all(
-          res.filter(Boolean).map((str2) => resolveCallback(str2, phase, false, context2, buffer))
+          res.filter(Boolean).map((str2) => resolveCallback(str2, phase, false, context22, buffer))
         ).then(() => buffer[0])
       );
       if (preserveCallbacks) {
@@ -1787,12 +2848,13 @@ var init_html = __esm({
     }, "resolveCallback");
   }
 });
-
-// ../node_modules/hono/dist/context.js
-var TEXT_PLAIN, setDefaultContentType, createResponseInstance, Context;
+var TEXT_PLAIN;
+var setDefaultContentType;
+var createResponseInstance;
+var Context;
 var init_context = __esm({
   "../node_modules/hono/dist/context.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -1800,14 +2862,14 @@ var init_context = __esm({
     init_request();
     init_html();
     TEXT_PLAIN = "text/plain; charset=UTF-8";
-    setDefaultContentType = /* @__PURE__ */ __name((contentType, headers) => {
+    setDefaultContentType = /* @__PURE__ */ __name2((contentType, headers) => {
       return {
         "Content-Type": contentType,
         ...headers
       };
     }, "setDefaultContentType");
-    createResponseInstance = /* @__PURE__ */ __name((body, init) => new Response(body, init), "createResponseInstance");
-    Context = /* @__PURE__ */ __name(class {
+    createResponseInstance = /* @__PURE__ */ __name2((body, init) => new Response(body, init), "createResponseInstance");
+    Context = /* @__PURE__ */ __name2(class {
       #rawRequest;
       #req;
       /**
@@ -2159,7 +3221,7 @@ var init_context = __esm({
         );
       };
       html = (html, arg, headers) => {
-        const res = /* @__PURE__ */ __name((html2) => this.#newResponse(html2, arg, setDefaultContentType("text/html; charset=UTF-8", headers)), "res");
+        const res = /* @__PURE__ */ __name2((html2) => this.#newResponse(html2, arg, setDefaultContentType("text/html; charset=UTF-8", headers)), "res");
         return typeof html === "object" ? resolveCallback(html, HtmlEscapedCallbackPhase.Stringify, false, {}).then(res) : res(html);
       };
       /**
@@ -2206,12 +3268,14 @@ var init_context = __esm({
     }, "Context");
   }
 });
-
-// ../node_modules/hono/dist/router.js
-var METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE, METHODS, MESSAGE_MATCHER_IS_ALREADY_BUILT, UnsupportedPathError;
+var METHOD_NAME_ALL;
+var METHOD_NAME_ALL_LOWERCASE;
+var METHODS;
+var MESSAGE_MATCHER_IS_ALREADY_BUILT;
+var UnsupportedPathError;
 var init_router = __esm({
   "../node_modules/hono/dist/router.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -2220,16 +3284,14 @@ var init_router = __esm({
     METHOD_NAME_ALL_LOWERCASE = "all";
     METHODS = ["get", "post", "put", "delete", "options", "patch"];
     MESSAGE_MATCHER_IS_ALREADY_BUILT = "Can not add a route since the matcher is already built.";
-    UnsupportedPathError = /* @__PURE__ */ __name(class extends Error {
+    UnsupportedPathError = /* @__PURE__ */ __name2(class extends Error {
     }, "UnsupportedPathError");
   }
 });
-
-// ../node_modules/hono/dist/utils/constants.js
 var COMPOSED_HANDLER;
 var init_constants2 = __esm({
   "../node_modules/hono/dist/utils/constants.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -2237,12 +3299,12 @@ var init_constants2 = __esm({
     COMPOSED_HANDLER = "__COMPOSED_HANDLER";
   }
 });
-
-// ../node_modules/hono/dist/hono-base.js
-var notFoundHandler, errorHandler, Hono;
+var notFoundHandler;
+var errorHandler;
+var Hono;
 var init_hono_base = __esm({
   "../node_modules/hono/dist/hono-base.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -2252,10 +3314,10 @@ var init_hono_base = __esm({
     init_router();
     init_constants2();
     init_url();
-    notFoundHandler = /* @__PURE__ */ __name((c) => {
+    notFoundHandler = /* @__PURE__ */ __name2((c) => {
       return c.text("404 Not Found", 404);
     }, "notFoundHandler");
-    errorHandler = /* @__PURE__ */ __name((err, c) => {
+    errorHandler = /* @__PURE__ */ __name2((err, c) => {
       if ("getResponse" in err) {
         const res = err.getResponse();
         return c.newResponse(res.body, res);
@@ -2263,7 +3325,7 @@ var init_hono_base = __esm({
       console.error(err);
       return c.text("Internal Server Error", 500);
     }, "errorHandler");
-    Hono = /* @__PURE__ */ __name(class _Hono {
+    Hono = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(class _Hono {
       get;
       post;
       put;
@@ -2363,7 +3425,7 @@ var init_hono_base = __esm({
           if (app2.errorHandler === errorHandler) {
             handler = r.handler;
           } else {
-            handler = /* @__PURE__ */ __name(async (c, next) => (await compose([], app2.errorHandler)(c, () => r.handler(c, next))).res, "handler");
+            handler = /* @__PURE__ */ __name2(async (c, next) => (await compose([], app2.errorHandler)(c, () => r.handler(c, next))).res, "handler");
             handler[COMPOSED_HANDLER] = r.handler;
           }
           subApp.#addRoute(r.method, r.path, handler);
@@ -2468,7 +3530,7 @@ var init_hono_base = __esm({
           } else {
             optionHandler = options.optionHandler;
             if (options.replaceRequest === false) {
-              replaceRequest = /* @__PURE__ */ __name((request) => request, "replaceRequest");
+              replaceRequest = /* @__PURE__ */ __name2((request) => request, "replaceRequest");
             } else {
               replaceRequest = options.replaceRequest;
             }
@@ -2494,7 +3556,7 @@ var init_hono_base = __esm({
             return new Request(url, request);
           };
         })();
-        const handler = /* @__PURE__ */ __name(async (c, next) => {
+        const handler = /* @__PURE__ */ __name2(async (c, next) => {
           const res = await applicationHandler(replaceRequest(c.req.raw), ...getOptions(c));
           if (res) {
             return res;
@@ -2517,16 +3579,16 @@ var init_hono_base = __esm({
         }
         throw err;
       }
-      #dispatch(request, executionCtx, env2, method) {
+      #dispatch(request, executionCtx, env22, method) {
         if (method === "HEAD") {
-          return (async () => new Response(null, await this.#dispatch(request, executionCtx, env2, "GET")))();
+          return (async () => new Response(null, await this.#dispatch(request, executionCtx, env22, "GET")))();
         }
-        const path = this.getPath(request, { env: env2 });
+        const path = this.getPath(request, { env: env22 });
         const matchResult = this.router.match(method, path);
         const c = new Context(request, {
           path,
           matchResult,
-          env: env2,
+          env: env22,
           executionCtx,
           notFoundHandler: this.#notFoundHandler
         });
@@ -2546,13 +3608,13 @@ var init_hono_base = __esm({
         const composed = compose(matchResult[0], this.errorHandler, this.#notFoundHandler);
         return (async () => {
           try {
-            const context2 = await composed(c);
-            if (!context2.finalized) {
+            const context22 = await composed(c);
+            if (!context22.finalized) {
               throw new Error(
                 "Context is not finalized. Did you forget to return a Response object or `await next()`?"
               );
             }
-            return context2.res;
+            return context22.res;
           } catch (err) {
             return this.#handleError(err, c);
           }
@@ -2620,14 +3682,12 @@ var init_hono_base = __esm({
           event.respondWith(this.#dispatch(event.request, event, void 0, event.request.method));
         });
       };
-    }, "_Hono");
+    }, "_Hono"), "_Hono");
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/matcher.js
 function match(method, path) {
   const matchers = this.buildAllMatchers();
-  const match22 = /* @__PURE__ */ __name((method2, path2) => {
+  const match22 = /* @__PURE__ */ __name2((method2, path2) => {
     const matcher = matchers[method2] || matchers[METHOD_NAME_ALL];
     const staticMatch = matcher[2][path2];
     if (staticMatch) {
@@ -2643,21 +3703,20 @@ function match(method, path) {
   this.match = match22;
   return match22(method, path);
 }
+__name(match, "match");
 var emptyParam;
 var init_matcher = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/matcher.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_router();
     emptyParam = [];
-    __name(match, "match");
+    __name2(match, "match");
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/node.js
 function compareKey(a, b) {
   if (a.length === 1) {
     return b.length === 1 ? a < b ? -1 : 1 : -1;
@@ -2677,10 +3736,16 @@ function compareKey(a, b) {
   }
   return a.length === b.length ? a < b ? -1 : 1 : b.length - a.length;
 }
-var LABEL_REG_EXP_STR, ONLY_WILDCARD_REG_EXP_STR, TAIL_WILDCARD_REG_EXP_STR, PATH_ERROR, regExpMetaChars, Node;
+__name(compareKey, "compareKey");
+var LABEL_REG_EXP_STR;
+var ONLY_WILDCARD_REG_EXP_STR;
+var TAIL_WILDCARD_REG_EXP_STR;
+var PATH_ERROR;
+var regExpMetaChars;
+var Node;
 var init_node = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/node.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -2690,12 +3755,12 @@ var init_node = __esm({
     TAIL_WILDCARD_REG_EXP_STR = "(?:|/.*)";
     PATH_ERROR = /* @__PURE__ */ Symbol();
     regExpMetaChars = new Set(".\\+*[^]$()");
-    __name(compareKey, "compareKey");
-    Node = /* @__PURE__ */ __name(class _Node {
+    __name2(compareKey, "compareKey");
+    Node = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(class _Node {
       #index;
       #varIndex;
       #children = /* @__PURE__ */ Object.create(null);
-      insert(tokens, index, paramMap, context2, pathErrorCheckOnly) {
+      insert(tokens, index, paramMap, context22, pathErrorCheckOnly) {
         if (tokens.length === 0) {
           if (this.#index !== void 0) {
             throw PATH_ERROR;
@@ -2733,7 +3798,7 @@ var init_node = __esm({
             }
             node = this.#children[regexpStr] = new _Node();
             if (name !== "") {
-              node.#varIndex = context2.varIndex++;
+              node.#varIndex = context22.varIndex++;
             }
           }
           if (!pathErrorCheckOnly && name !== "") {
@@ -2753,7 +3818,7 @@ var init_node = __esm({
             node = this.#children[token] = new _Node();
           }
         }
-        node.insert(restTokens, index, paramMap, context2, pathErrorCheckOnly);
+        node.insert(restTokens, index, paramMap, context22, pathErrorCheckOnly);
       }
       buildRegExpStr() {
         const childKeys = Object.keys(this.#children).sort(compareKey);
@@ -2772,21 +3837,19 @@ var init_node = __esm({
         }
         return "(?:" + strList.join("|") + ")";
       }
-    }, "_Node");
+    }, "_Node"), "_Node");
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/trie.js
 var Trie;
 var init_trie = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/trie.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_node();
-    Trie = /* @__PURE__ */ __name(class {
+    Trie = /* @__PURE__ */ __name2(class {
       #context = { varIndex: 0 };
       #root = new Node();
       insert(path, index, pathErrorCheckOnly) {
@@ -2842,8 +3905,6 @@ var init_trie = __esm({
     }, "Trie");
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/router.js
 function buildWildcardRegExp(path) {
   return wildcardRegExpCache[path] ??= new RegExp(
     path === "*" ? "" : `^${path.replace(
@@ -2852,9 +3913,11 @@ function buildWildcardRegExp(path) {
     )}$`
   );
 }
+__name(buildWildcardRegExp, "buildWildcardRegExp");
 function clearWildcardRegExpCache() {
   wildcardRegExpCache = /* @__PURE__ */ Object.create(null);
 }
+__name(clearWildcardRegExpCache, "clearWildcardRegExpCache");
 function buildMatcherFromPreprocessedRoutes(routes2) {
   const trie = new Trie();
   const handlerData = [];
@@ -2912,6 +3975,7 @@ function buildMatcherFromPreprocessedRoutes(routes2) {
   }
   return [regexp, handlerMap, staticMap];
 }
+__name(buildMatcherFromPreprocessedRoutes, "buildMatcherFromPreprocessedRoutes");
 function findMiddleware(middleware, path) {
   if (!middleware) {
     return void 0;
@@ -2923,10 +3987,13 @@ function findMiddleware(middleware, path) {
   }
   return void 0;
 }
-var nullMatcher, wildcardRegExpCache, RegExpRouter;
+__name(findMiddleware, "findMiddleware");
+var nullMatcher;
+var wildcardRegExpCache;
+var RegExpRouter;
 var init_router2 = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/router.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -2938,11 +4005,11 @@ var init_router2 = __esm({
     init_trie();
     nullMatcher = [/^$/, [], /* @__PURE__ */ Object.create(null)];
     wildcardRegExpCache = /* @__PURE__ */ Object.create(null);
-    __name(buildWildcardRegExp, "buildWildcardRegExp");
-    __name(clearWildcardRegExpCache, "clearWildcardRegExpCache");
-    __name(buildMatcherFromPreprocessedRoutes, "buildMatcherFromPreprocessedRoutes");
-    __name(findMiddleware, "findMiddleware");
-    RegExpRouter = /* @__PURE__ */ __name(class {
+    __name2(buildWildcardRegExp, "buildWildcardRegExp");
+    __name2(clearWildcardRegExpCache, "clearWildcardRegExpCache");
+    __name2(buildMatcherFromPreprocessedRoutes, "buildMatcherFromPreprocessedRoutes");
+    __name2(findMiddleware, "findMiddleware");
+    RegExpRouter = /* @__PURE__ */ __name2(class {
       name = "RegExpRouter";
       #middleware;
       #routes;
@@ -3040,11 +4107,9 @@ var init_router2 = __esm({
     }, "RegExpRouter");
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/prepared-router.js
 var init_prepared_router = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/prepared-router.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3054,11 +4119,9 @@ var init_prepared_router = __esm({
     init_router2();
   }
 });
-
-// ../node_modules/hono/dist/router/reg-exp-router/index.js
 var init_reg_exp_router = __esm({
   "../node_modules/hono/dist/router/reg-exp-router/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3067,18 +4130,16 @@ var init_reg_exp_router = __esm({
     init_prepared_router();
   }
 });
-
-// ../node_modules/hono/dist/router/smart-router/router.js
 var SmartRouter;
 var init_router3 = __esm({
   "../node_modules/hono/dist/router/smart-router/router.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_router();
-    SmartRouter = /* @__PURE__ */ __name(class {
+    SmartRouter = /* @__PURE__ */ __name2(class {
       name = "SmartRouter";
       #routers = [];
       #routes = [];
@@ -3133,11 +4194,9 @@ var init_router3 = __esm({
     }, "SmartRouter");
   }
 });
-
-// ../node_modules/hono/dist/router/smart-router/index.js
 var init_smart_router = __esm({
   "../node_modules/hono/dist/router/smart-router/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3145,12 +4204,12 @@ var init_smart_router = __esm({
     init_router3();
   }
 });
-
-// ../node_modules/hono/dist/router/trie-router/node.js
-var emptyParams, hasChildren, Node2;
+var emptyParams;
+var hasChildren;
+var Node2;
 var init_node2 = __esm({
   "../node_modules/hono/dist/router/trie-router/node.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3158,13 +4217,13 @@ var init_node2 = __esm({
     init_router();
     init_url();
     emptyParams = /* @__PURE__ */ Object.create(null);
-    hasChildren = /* @__PURE__ */ __name((children) => {
+    hasChildren = /* @__PURE__ */ __name2((children) => {
       for (const _ in children) {
         return true;
       }
       return false;
     }, "hasChildren");
-    Node2 = /* @__PURE__ */ __name(class _Node2 {
+    Node2 = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(class _Node2 {
       #methods;
       #children;
       #patterns;
@@ -3329,22 +4388,20 @@ var init_node2 = __esm({
         }
         return [handlerSets.map(({ handler, params }) => [handler, params])];
       }
-    }, "_Node");
+    }, "_Node2"), "_Node");
   }
 });
-
-// ../node_modules/hono/dist/router/trie-router/router.js
 var TrieRouter;
 var init_router4 = __esm({
   "../node_modules/hono/dist/router/trie-router/router.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_url();
     init_node2();
-    TrieRouter = /* @__PURE__ */ __name(class {
+    TrieRouter = /* @__PURE__ */ __name2(class {
       name = "TrieRouter";
       #node;
       constructor() {
@@ -3366,11 +4423,9 @@ var init_router4 = __esm({
     }, "TrieRouter");
   }
 });
-
-// ../node_modules/hono/dist/router/trie-router/index.js
 var init_trie_router = __esm({
   "../node_modules/hono/dist/router/trie-router/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3378,12 +4433,10 @@ var init_trie_router = __esm({
     init_router4();
   }
 });
-
-// ../node_modules/hono/dist/hono.js
 var Hono2;
 var init_hono = __esm({
   "../node_modules/hono/dist/hono.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3392,7 +4445,7 @@ var init_hono = __esm({
     init_reg_exp_router();
     init_smart_router();
     init_trie_router();
-    Hono2 = /* @__PURE__ */ __name(class extends Hono {
+    Hono2 = /* @__PURE__ */ __name2(class extends Hono {
       /**
        * Creates an instance of the Hono class.
        *
@@ -3407,11 +4460,9 @@ var init_hono = __esm({
     }, "Hono");
   }
 });
-
-// ../node_modules/hono/dist/index.js
 var init_dist = __esm({
   "../node_modules/hono/dist/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3419,17 +4470,15 @@ var init_dist = __esm({
     init_hono();
   }
 });
-
-// ../node_modules/hono/dist/middleware/cors/index.js
 var cors;
 var init_cors = __esm({
   "../node_modules/hono/dist/middleware/cors/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    cors = /* @__PURE__ */ __name((options) => {
+    cors = /* @__PURE__ */ __name2((options) => {
       const defaults = {
         origin: "*",
         allowMethods: ["GET", "HEAD", "PUT", "POST", "DELETE", "PATCH"],
@@ -3465,11 +4514,12 @@ var init_cors = __esm({
           return () => [];
         }
       })(opts.allowMethods);
-      return /* @__PURE__ */ __name(async function cors2(c, next) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(async function cors2(c, next) {
         function set(key, value) {
           c.res.headers.set(key, value);
         }
         __name(set, "set");
+        __name2(set, "set");
         const allowOrigin = await findAllowOrigin(c.req.header("origin") || "", c);
         if (allowOrigin) {
           set("Access-Control-Allow-Origin", allowOrigin);
@@ -3514,29 +4564,31 @@ var init_cors = __esm({
         if (opts.origin !== "*" || opts.credentials) {
           c.header("Vary", "Origin", { append: true });
         }
-      }, "cors2");
+      }, "cors2"), "cors2");
     }, "cors");
   }
 });
-
-// ../node_modules/@tidbcloud/serverless/dist/index.js
 function format(query, values) {
   return Array.isArray(values) ? replacePosition(query, values) : replaceNamed(query, values);
 }
+__name(format, "format");
 function replacePosition(query, values) {
   let index = 0;
   return query.replace(/\?/g, (match3) => {
     return index < values.length ? sanitize(values[index++]) : match3;
   });
 }
+__name(replacePosition, "replacePosition");
 function replaceNamed(query, values) {
   return query.replace(/:(\w+)/g, (match3, name) => {
     return hasOwn(values, name) ? sanitize(values[name]) : match3;
   });
 }
+__name(replaceNamed, "replaceNamed");
 function hasOwn(obj, name) {
   return Object.prototype.hasOwnProperty.call(obj, name);
 }
+__name(hasOwn, "hasOwn");
 function sanitize(value) {
   if (value == null) {
     return "null";
@@ -3561,12 +4613,15 @@ function sanitize(value) {
   }
   return quote(value.toString());
 }
+__name(sanitize, "sanitize");
 function quote(text) {
   return `'${escape(text)}'`;
 }
+__name(quote, "quote");
 function escape(text) {
   return text.replace(re, replacement);
 }
+__name(escape, "escape");
 function replacement(text) {
   switch (text) {
     case '"':
@@ -3591,10 +4646,12 @@ function replacement(text) {
       return "";
   }
 }
+__name(replacement, "replacement");
 function uint8ArrayToHex(uint8) {
   const digits = Array.from(uint8).map((i) => i.toString(16).padStart(2, "0"));
   return `0x${digits.join("")}`;
 }
+__name(uint8ArrayToHex, "uint8ArrayToHex");
 function cast(field, value, decoder) {
   if (value === null) {
     return null;
@@ -3646,6 +4703,7 @@ function cast(field, value, decoder) {
       return value;
   }
 }
+__name(cast, "cast");
 function hexToUint8Array(hexString) {
   const uint8Array = new Uint8Array(hexString.length / 2);
   for (let i = 0; i < hexString.length; i += 2) {
@@ -3653,7 +4711,8 @@ function hexToUint8Array(hexString) {
   }
   return uint8Array;
 }
-async function postQuery(config2, body, session = "", isolationLevel = null, debug4, statefulAction) {
+__name(hexToUint8Array, "hexToUint8Array");
+async function postQuery(config22, body, session = "", isolationLevel = null, debug4, statefulAction) {
   let fetchCacheOption = { cache: "no-store" };
   try {
     new Request("x:", fetchCacheOption);
@@ -3664,10 +4723,10 @@ async function postQuery(config2, body, session = "", isolationLevel = null, deb
   if (debug4) {
     console.log(`[serverless-js debug] request id: ${requestId}`);
   }
-  const url = new URL("/v1beta/sql", `https://http-${config2.host}`);
-  const auth = btoa(`${config2.username}:${config2.password}`);
-  const { fetch: fetch2 } = config2;
-  const database = config2.database ?? "";
+  const url = new URL("/v1beta/sql", `https://http-${config22.host}`);
+  const auth = btoa(`${config22.username}:${config22.password}`);
+  const { fetch: fetch2 } = config22;
+  const database = config22.database ?? "";
   const headers = {
     "Content-Type": "application/json",
     "User-Agent": `serverless-js/${Version}`,
@@ -3701,20 +4760,22 @@ async function postQuery(config2, body, session = "", isolationLevel = null, deb
     resp.session = session2 ?? "";
     return resp;
   } else {
-    let error3;
+    let error32;
     try {
       const e = await response.json();
-      error3 = new DatabaseError(e.message, response.status, e);
+      error32 = new DatabaseError(e.message, response.status, e);
     } catch {
-      error3 = new DatabaseError(response.statusText, response.status, null);
+      error32 = new DatabaseError(response.statusText, response.status, null);
     }
-    throw error3;
+    throw error32;
   }
 }
+__name(postQuery, "postQuery");
 function generateUniqueId() {
   const datetime = (/* @__PURE__ */ new Date()).toISOString().replace(/[^\d]/g, "").slice(0, 14);
   return `${datetime}${randomString(20)}`;
 }
+__name(generateUniqueId, "generateUniqueId");
 function randomString(n) {
   let result = "";
   const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -3724,44 +4785,55 @@ function randomString(n) {
   }
   return result;
 }
-function connect(config2) {
-  return new Connection(config2);
+__name(randomString, "randomString");
+function connect(config22) {
+  return new Connection(config22);
 }
+__name(connect, "connect");
 function parseArrayRow(fields, rawRow, cast2, decoders) {
   return fields.map((field, ix) => {
     return cast2(field, rawRow[ix], decoders);
   });
 }
+__name(parseArrayRow, "parseArrayRow");
 function parseObjectRow(fields, rawRow, cast2, decoders) {
   return fields.reduce((acc, field, ix) => {
     acc[field.name] = cast2(field, rawRow[ix], decoders);
     return acc;
   }, {});
 }
+__name(parseObjectRow, "parseObjectRow");
 function parse(fields, rows, cast2, arrayMode, decode) {
   return rows.map((row) => arrayMode === true ? parseArrayRow(fields, row, cast2, decode) : parseObjectRow(fields, row, cast2, decode));
 }
-var re, DatabaseError, Version, defaultExecuteOptions, Tx, Connection, StatefulConnection;
+__name(parse, "parse");
+var re;
+var DatabaseError;
+var Version;
+var defaultExecuteOptions;
+var Tx;
+var Connection;
+var StatefulConnection;
 var init_dist2 = __esm({
   "../node_modules/@tidbcloud/serverless/dist/index.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    __name(format, "format");
-    __name(replacePosition, "replacePosition");
-    __name(replaceNamed, "replaceNamed");
-    __name(hasOwn, "hasOwn");
-    __name(sanitize, "sanitize");
-    __name(quote, "quote");
+    __name2(format, "format");
+    __name2(replacePosition, "replacePosition");
+    __name2(replaceNamed, "replaceNamed");
+    __name2(hasOwn, "hasOwn");
+    __name2(sanitize, "sanitize");
+    __name2(quote, "quote");
     re = /[\0\b\n\r\t\x1a\\"']/g;
-    __name(escape, "escape");
-    __name(replacement, "replacement");
-    __name(uint8ArrayToHex, "uint8ArrayToHex");
-    __name(cast, "cast");
-    __name(hexToUint8Array, "hexToUint8Array");
-    DatabaseError = /* @__PURE__ */ __name(class extends Error {
+    __name2(escape, "escape");
+    __name2(replacement, "replacement");
+    __name2(uint8ArrayToHex, "uint8ArrayToHex");
+    __name2(cast, "cast");
+    __name2(hexToUint8Array, "hexToUint8Array");
+    DatabaseError = /* @__PURE__ */ __name2(class extends Error {
       constructor(message, status, details) {
         super(message);
         this.status = status;
@@ -3769,11 +4841,11 @@ var init_dist2 = __esm({
       }
     }, "DatabaseError");
     Version = "0.3.0";
-    __name(postQuery, "postQuery");
-    __name(generateUniqueId, "generateUniqueId");
-    __name(randomString, "randomString");
+    __name2(postQuery, "postQuery");
+    __name2(generateUniqueId, "generateUniqueId");
+    __name2(randomString, "randomString");
     defaultExecuteOptions = {};
-    Tx = /* @__PURE__ */ __name(class {
+    Tx = /* @__PURE__ */ __name2(class {
       constructor(conn) {
         this.conn = conn;
       }
@@ -3787,16 +4859,16 @@ var init_dist2 = __esm({
         return this.conn.execute("ROLLBACK");
       }
     }, "Tx");
-    Connection = /* @__PURE__ */ __name(class _Connection {
-      constructor(config2) {
+    Connection = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(class _Connection {
+      constructor(config22) {
         var _a;
         this.session = null;
-        this.config = { ...config2 };
+        this.config = { ...config22 };
         if (typeof fetch !== "undefined") {
           (_a = this.config).fetch || (_a.fetch = fetch);
         }
-        if (config2.url) {
-          const url = new URL(config2.url);
+        if (config22.url) {
+          const url = new URL(config22.url);
           if (!this.config.username) {
             this.config.username = decodeURIComponent(url.username);
           }
@@ -3853,7 +4925,7 @@ var init_dist2 = __esm({
         if (fullResult) {
           const rowsAffected = resp?.rowsAffected ?? null;
           const lastInsertId = resp?.sLastInsertID ?? null;
-          const typeByName = /* @__PURE__ */ __name((acc, { name, type }) => ({ ...acc, [name]: type }), "typeByName");
+          const typeByName = /* @__PURE__ */ __name2((acc, { name, type }) => ({ ...acc, [name]: type }), "typeByName");
           const types3 = fields.reduce(typeByName, {});
           return {
             statement: sql,
@@ -3866,8 +4938,8 @@ var init_dist2 = __esm({
         }
         return rows;
       }
-    }, "_Connection");
-    StatefulConnection = /* @__PURE__ */ __name(class {
+    }, "_Connection"), "_Connection");
+    StatefulConnection = /* @__PURE__ */ __name2(class {
       constructor(conn) {
         this.conn = conn;
       }
@@ -3878,27 +4950,25 @@ var init_dist2 = __esm({
         await this.conn.execute("", null, defaultExecuteOptions, {}, "close");
       }
     }, "StatefulConnection");
-    __name(connect, "connect");
-    __name(parseArrayRow, "parseArrayRow");
-    __name(parseObjectRow, "parseObjectRow");
-    __name(parse, "parse");
+    __name2(connect, "connect");
+    __name2(parseArrayRow, "parseArrayRow");
+    __name2(parseObjectRow, "parseObjectRow");
+    __name2(parse, "parse");
   }
 });
-
-// api/db.js
 var getDb;
 var init_db = __esm({
   "api/db.js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     init_dist2();
-    getDb = /* @__PURE__ */ __name((env2 = {}) => {
-      const getVar = /* @__PURE__ */ __name((key) => {
-        if (env2 && env2[key])
-          return env2[key];
+    getDb = /* @__PURE__ */ __name2((env22 = {}) => {
+      const getVar = /* @__PURE__ */ __name2((key) => {
+        if (env22 && env22[key])
+          return env22[key];
         if (typeof process !== "undefined" && process.env && process.env[key])
           return process.env[key];
         return void 0;
@@ -3925,12 +4995,9 @@ var init_db = __esm({
     }, "getDb");
   }
 });
-
-// node-built-in-modules:buffer
-import libDefault from "buffer";
 var require_buffer = __commonJS({
   "node-built-in-modules:buffer"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3938,11 +5005,9 @@ var require_buffer = __commonJS({
     module.exports = libDefault;
   }
 });
-
-// ../node_modules/safe-buffer/index.js
 var require_safe_buffer = __commonJS({
   "../node_modules/safe-buffer/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -3955,6 +5020,7 @@ var require_safe_buffer = __commonJS({
       }
     }
     __name(copyProps, "copyProps");
+    __name2(copyProps, "copyProps");
     if (Buffer2.from && Buffer2.alloc && Buffer2.allocUnsafe && Buffer2.allocUnsafeSlow) {
       module.exports = buffer;
     } else {
@@ -3965,6 +5031,7 @@ var require_safe_buffer = __commonJS({
       return Buffer2(arg, encodingOrOffset, length);
     }
     __name(SafeBuffer, "SafeBuffer");
+    __name2(SafeBuffer, "SafeBuffer");
     SafeBuffer.prototype = Object.create(Buffer2.prototype);
     copyProps(Buffer2, SafeBuffer);
     SafeBuffer.from = function(arg, encodingOrOffset, length) {
@@ -4003,12 +5070,9 @@ var require_safe_buffer = __commonJS({
     };
   }
 });
-
-// node-built-in-modules:stream
-import libDefault2 from "stream";
 var require_stream = __commonJS({
   "node-built-in-modules:stream"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4016,32 +5080,43 @@ var require_stream = __commonJS({
     module.exports = libDefault2;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/util/legacy-types.mjs
-var isRegExp, isDate, isBoolean, isNull, isNullOrUndefined, isNumber, isString, isSymbol, isUndefined, isFunction, isBuffer, isObject, isError, isPrimitive;
+var isRegExp;
+var isDate;
+var isBoolean;
+var isNull;
+var isNullOrUndefined;
+var isNumber;
+var isString;
+var isSymbol;
+var isUndefined;
+var isFunction;
+var isBuffer;
+var isObject;
+var isError;
+var isPrimitive;
 var init_legacy_types = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/util/legacy-types.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    isRegExp = /* @__PURE__ */ __name((val) => val instanceof RegExp, "isRegExp");
-    isDate = /* @__PURE__ */ __name((val) => val instanceof Date, "isDate");
-    isBoolean = /* @__PURE__ */ __name((val) => typeof val === "boolean", "isBoolean");
-    isNull = /* @__PURE__ */ __name((val) => val === null, "isNull");
-    isNullOrUndefined = /* @__PURE__ */ __name((val) => val === null || val === void 0, "isNullOrUndefined");
-    isNumber = /* @__PURE__ */ __name((val) => typeof val === "number", "isNumber");
-    isString = /* @__PURE__ */ __name((val) => typeof val === "string", "isString");
-    isSymbol = /* @__PURE__ */ __name((val) => typeof val === "symbol", "isSymbol");
-    isUndefined = /* @__PURE__ */ __name((val) => val === void 0, "isUndefined");
-    isFunction = /* @__PURE__ */ __name((val) => typeof val === "function", "isFunction");
-    isBuffer = /* @__PURE__ */ __name((val) => {
+    isRegExp = /* @__PURE__ */ __name2((val) => val instanceof RegExp, "isRegExp");
+    isDate = /* @__PURE__ */ __name2((val) => val instanceof Date, "isDate");
+    isBoolean = /* @__PURE__ */ __name2((val) => typeof val === "boolean", "isBoolean");
+    isNull = /* @__PURE__ */ __name2((val) => val === null, "isNull");
+    isNullOrUndefined = /* @__PURE__ */ __name2((val) => val === null || val === void 0, "isNullOrUndefined");
+    isNumber = /* @__PURE__ */ __name2((val) => typeof val === "number", "isNumber");
+    isString = /* @__PURE__ */ __name2((val) => typeof val === "string", "isString");
+    isSymbol = /* @__PURE__ */ __name2((val) => typeof val === "symbol", "isSymbol");
+    isUndefined = /* @__PURE__ */ __name2((val) => val === void 0, "isUndefined");
+    isFunction = /* @__PURE__ */ __name2((val) => typeof val === "function", "isFunction");
+    isBuffer = /* @__PURE__ */ __name2((val) => {
       return val && typeof val === "object" && typeof val.copy === "function" && typeof val.fill === "function" && typeof val.readUInt8 === "function";
     }, "isBuffer");
-    isObject = /* @__PURE__ */ __name((val) => val !== null && typeof val === "object" && Object.getPrototypeOf(val).isPrototypeOf(Object), "isObject");
-    isError = /* @__PURE__ */ __name((val) => val instanceof Error, "isError");
-    isPrimitive = /* @__PURE__ */ __name((val) => {
+    isObject = /* @__PURE__ */ __name2((val) => val !== null && typeof val === "object" && Object.getPrototypeOf(val).isPrototypeOf(Object), "isObject");
+    isError = /* @__PURE__ */ __name2((val) => val instanceof Error, "isError");
+    isPrimitive = /* @__PURE__ */ __name2((val) => {
       if (typeof val === "object") {
         return val === null;
       }
@@ -4049,25 +5124,26 @@ var init_legacy_types = __esm({
     }, "isPrimitive");
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/util/log.mjs
 var init_log = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/util/log.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/util.mjs
-import types from "node:util/types";
-import { default as default2 } from "node:util/types";
-var TextDecoder, TextEncoder, _errnoException, _exceptionWithHostPort, getSystemErrorMap, getSystemErrorName, parseEnv, styleText;
+var TextDecoder;
+var TextEncoder;
+var _errnoException;
+var _exceptionWithHostPort;
+var getSystemErrorMap;
+var getSystemErrorName;
+var parseEnv;
+var styleText;
 var init_util = __esm({
   "../node_modules/unenv/dist/runtime/node/util.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4077,20 +5153,44 @@ var init_util = __esm({
     init_log();
     TextDecoder = globalThis.TextDecoder;
     TextEncoder = globalThis.TextEncoder;
-    _errnoException = /* @__PURE__ */ notImplemented("util._errnoException");
-    _exceptionWithHostPort = /* @__PURE__ */ notImplemented("util._exceptionWithHostPort");
-    getSystemErrorMap = /* @__PURE__ */ notImplemented("util.getSystemErrorMap");
-    getSystemErrorName = /* @__PURE__ */ notImplemented("util.getSystemErrorName");
-    parseEnv = /* @__PURE__ */ notImplemented("util.parseEnv");
-    styleText = /* @__PURE__ */ notImplemented("util.styleText");
+    _errnoException = /* @__PURE__ */ notImplemented2("util._errnoException");
+    _exceptionWithHostPort = /* @__PURE__ */ notImplemented2("util._exceptionWithHostPort");
+    getSystemErrorMap = /* @__PURE__ */ notImplemented2("util.getSystemErrorMap");
+    getSystemErrorName = /* @__PURE__ */ notImplemented2("util.getSystemErrorName");
+    parseEnv = /* @__PURE__ */ notImplemented2("util.parseEnv");
+    styleText = /* @__PURE__ */ notImplemented2("util.styleText");
   }
 });
-
-// ../node_modules/@cloudflare/unenv-preset/dist/runtime/node/util.mjs
-var workerdUtil, MIMEParams, MIMEType, TextDecoder2, TextEncoder2, _extend, aborted, callbackify, debug3, debuglog, deprecate, format2, formatWithOptions, getCallSite, inherits, inspect, isArray, isDeepStrictEqual, log3, parseArgs, promisify, stripVTControlCharacters, toUSVString, transferableAbortController, transferableAbortSignal, types2, util_default;
+var workerdUtil;
+var MIMEParams;
+var MIMEType;
+var TextDecoder2;
+var TextEncoder2;
+var _extend;
+var aborted;
+var callbackify;
+var debug32;
+var debuglog;
+var deprecate;
+var format2;
+var formatWithOptions;
+var getCallSite;
+var inherits;
+var inspect;
+var isArray;
+var isDeepStrictEqual;
+var log32;
+var parseArgs;
+var promisify;
+var stripVTControlCharacters;
+var toUSVString;
+var transferableAbortController;
+var transferableAbortSignal;
+var types2;
+var util_default;
 var init_util2 = __esm({
   "../node_modules/@cloudflare/unenv-preset/dist/runtime/node/util.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4108,7 +5208,7 @@ var init_util2 = __esm({
       ),
       aborted,
       callbackify,
-      debug: debug3,
+      debug: debug32,
       debuglog,
       deprecate,
       format: format2,
@@ -4121,7 +5221,7 @@ var init_util2 = __esm({
       inspect,
       isArray,
       isDeepStrictEqual,
-      log: log3,
+      log: log32,
       parseArgs,
       promisify,
       stripVTControlCharacters,
@@ -4164,7 +5264,7 @@ var init_util2 = __esm({
       _extend,
       aborted,
       callbackify,
-      debug: debug3,
+      debug: debug32,
       debuglog,
       deprecate,
       format: format2,
@@ -4174,7 +5274,7 @@ var init_util2 = __esm({
       inspect,
       isArray,
       isDeepStrictEqual,
-      log: log3,
+      log: log32,
       MIMEParams,
       MIMEType,
       parseArgs,
@@ -4190,11 +5290,9 @@ var init_util2 = __esm({
     };
   }
 });
-
-// node-built-in-modules:util
 var require_util = __commonJS({
   "node-built-in-modules:util"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4203,11 +5301,9 @@ var require_util = __commonJS({
     module.exports = util_default;
   }
 });
-
-// ../node_modules/jws/lib/data-stream.js
 var require_data_stream = __commonJS({
   "../node_modules/jws/lib/data-stream.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4241,28 +5337,27 @@ var require_data_stream = __commonJS({
       throw new TypeError("Unexpected data type (" + typeof data + ")");
     }
     __name(DataStream, "DataStream");
+    __name2(DataStream, "DataStream");
     util.inherits(DataStream, Stream);
-    DataStream.prototype.write = /* @__PURE__ */ __name(function write(data) {
+    DataStream.prototype.write = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function write(data) {
       this.buffer = Buffer2.concat([this.buffer, Buffer2.from(data)]);
       this.emit("data", data);
-    }, "write");
-    DataStream.prototype.end = /* @__PURE__ */ __name(function end(data) {
+    }, "write"), "write");
+    DataStream.prototype.end = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function end(data) {
       if (data)
         this.write(data);
       this.emit("end", data);
       this.emit("close");
       this.writable = false;
       this.readable = false;
-    }, "end");
+    }, "end"), "end");
     module.exports = DataStream;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/crypto/web.mjs
 var subtle;
 var init_web = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/crypto/web.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4270,12 +5365,34 @@ var init_web = __esm({
     subtle = globalThis.crypto?.subtle;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/crypto/node.mjs
-var webcrypto, createCipher, createDecipher, pseudoRandomBytes, createCipheriv, createDecipheriv, createECDH, createSign, createVerify, diffieHellman, getCipherInfo, privateDecrypt, privateEncrypt, publicDecrypt, publicEncrypt, sign, verify, hash, Cipher, Cipheriv, Decipher, Decipheriv, ECDH, Sign, Verify;
+var webcrypto;
+var createCipher;
+var createDecipher;
+var pseudoRandomBytes;
+var createCipheriv;
+var createDecipheriv;
+var createECDH;
+var createSign;
+var createVerify;
+var diffieHellman;
+var getCipherInfo;
+var privateDecrypt;
+var privateEncrypt;
+var publicDecrypt;
+var publicEncrypt;
+var sign;
+var verify;
+var hash;
+var Cipher;
+var Cipheriv;
+var Decipher;
+var Decipheriv;
+var ECDH;
+var Sign;
+var Verify;
 var init_node3 = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/crypto/node.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4290,44 +5407,97 @@ var init_node3 = __esm({
       }
       return globalThis.crypto[key];
     } });
-    createCipher = /* @__PURE__ */ notImplemented("crypto.createCipher");
-    createDecipher = /* @__PURE__ */ notImplemented("crypto.createDecipher");
-    pseudoRandomBytes = /* @__PURE__ */ notImplemented("crypto.pseudoRandomBytes");
-    createCipheriv = /* @__PURE__ */ notImplemented("crypto.createCipheriv");
-    createDecipheriv = /* @__PURE__ */ notImplemented("crypto.createDecipheriv");
-    createECDH = /* @__PURE__ */ notImplemented("crypto.createECDH");
-    createSign = /* @__PURE__ */ notImplemented("crypto.createSign");
-    createVerify = /* @__PURE__ */ notImplemented("crypto.createVerify");
-    diffieHellman = /* @__PURE__ */ notImplemented("crypto.diffieHellman");
-    getCipherInfo = /* @__PURE__ */ notImplemented("crypto.getCipherInfo");
-    privateDecrypt = /* @__PURE__ */ notImplemented("crypto.privateDecrypt");
-    privateEncrypt = /* @__PURE__ */ notImplemented("crypto.privateEncrypt");
-    publicDecrypt = /* @__PURE__ */ notImplemented("crypto.publicDecrypt");
-    publicEncrypt = /* @__PURE__ */ notImplemented("crypto.publicEncrypt");
-    sign = /* @__PURE__ */ notImplemented("crypto.sign");
-    verify = /* @__PURE__ */ notImplemented("crypto.verify");
-    hash = /* @__PURE__ */ notImplemented("crypto.hash");
-    Cipher = /* @__PURE__ */ notImplementedClass("crypto.Cipher");
-    Cipheriv = /* @__PURE__ */ notImplementedClass(
+    createCipher = /* @__PURE__ */ notImplemented2("crypto.createCipher");
+    createDecipher = /* @__PURE__ */ notImplemented2("crypto.createDecipher");
+    pseudoRandomBytes = /* @__PURE__ */ notImplemented2("crypto.pseudoRandomBytes");
+    createCipheriv = /* @__PURE__ */ notImplemented2("crypto.createCipheriv");
+    createDecipheriv = /* @__PURE__ */ notImplemented2("crypto.createDecipheriv");
+    createECDH = /* @__PURE__ */ notImplemented2("crypto.createECDH");
+    createSign = /* @__PURE__ */ notImplemented2("crypto.createSign");
+    createVerify = /* @__PURE__ */ notImplemented2("crypto.createVerify");
+    diffieHellman = /* @__PURE__ */ notImplemented2("crypto.diffieHellman");
+    getCipherInfo = /* @__PURE__ */ notImplemented2("crypto.getCipherInfo");
+    privateDecrypt = /* @__PURE__ */ notImplemented2("crypto.privateDecrypt");
+    privateEncrypt = /* @__PURE__ */ notImplemented2("crypto.privateEncrypt");
+    publicDecrypt = /* @__PURE__ */ notImplemented2("crypto.publicDecrypt");
+    publicEncrypt = /* @__PURE__ */ notImplemented2("crypto.publicEncrypt");
+    sign = /* @__PURE__ */ notImplemented2("crypto.sign");
+    verify = /* @__PURE__ */ notImplemented2("crypto.verify");
+    hash = /* @__PURE__ */ notImplemented2("crypto.hash");
+    Cipher = /* @__PURE__ */ notImplementedClass2("crypto.Cipher");
+    Cipheriv = /* @__PURE__ */ notImplementedClass2(
       "crypto.Cipheriv"
       // @ts-expect-error not typed yet
     );
-    Decipher = /* @__PURE__ */ notImplementedClass("crypto.Decipher");
-    Decipheriv = /* @__PURE__ */ notImplementedClass(
+    Decipher = /* @__PURE__ */ notImplementedClass2("crypto.Decipher");
+    Decipheriv = /* @__PURE__ */ notImplementedClass2(
       "crypto.Decipheriv"
       // @ts-expect-error not typed yet
     );
-    ECDH = /* @__PURE__ */ notImplementedClass("crypto.ECDH");
-    Sign = /* @__PURE__ */ notImplementedClass("crypto.Sign");
-    Verify = /* @__PURE__ */ notImplementedClass("crypto.Verify");
+    ECDH = /* @__PURE__ */ notImplementedClass2("crypto.ECDH");
+    Sign = /* @__PURE__ */ notImplementedClass2("crypto.Sign");
+    Verify = /* @__PURE__ */ notImplementedClass2("crypto.Verify");
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/internal/crypto/constants.mjs
-var SSL_OP_ALL, SSL_OP_ALLOW_NO_DHE_KEX, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION, SSL_OP_CIPHER_SERVER_PREFERENCE, SSL_OP_CISCO_ANYCONNECT, SSL_OP_COOKIE_EXCHANGE, SSL_OP_CRYPTOPRO_TLSEXT_BUG, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS, SSL_OP_LEGACY_SERVER_CONNECT, SSL_OP_NO_COMPRESSION, SSL_OP_NO_ENCRYPT_THEN_MAC, SSL_OP_NO_QUERY_MTU, SSL_OP_NO_RENEGOTIATION, SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION, SSL_OP_NO_SSLv2, SSL_OP_NO_SSLv3, SSL_OP_NO_TICKET, SSL_OP_NO_TLSv1, SSL_OP_NO_TLSv1_1, SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_3, SSL_OP_PRIORITIZE_CHACHA, SSL_OP_TLS_ROLLBACK_BUG, ENGINE_METHOD_RSA, ENGINE_METHOD_DSA, ENGINE_METHOD_DH, ENGINE_METHOD_RAND, ENGINE_METHOD_EC, ENGINE_METHOD_CIPHERS, ENGINE_METHOD_DIGESTS, ENGINE_METHOD_PKEY_METHS, ENGINE_METHOD_PKEY_ASN1_METHS, ENGINE_METHOD_ALL, ENGINE_METHOD_NONE, DH_CHECK_P_NOT_SAFE_PRIME, DH_CHECK_P_NOT_PRIME, DH_UNABLE_TO_CHECK_GENERATOR, DH_NOT_SUITABLE_GENERATOR, RSA_PKCS1_PADDING, RSA_NO_PADDING, RSA_PKCS1_OAEP_PADDING, RSA_X931_PADDING, RSA_PKCS1_PSS_PADDING, RSA_PSS_SALTLEN_DIGEST, RSA_PSS_SALTLEN_MAX_SIGN, RSA_PSS_SALTLEN_AUTO, POINT_CONVERSION_COMPRESSED, POINT_CONVERSION_UNCOMPRESSED, POINT_CONVERSION_HYBRID, defaultCoreCipherList, defaultCipherList, OPENSSL_VERSION_NUMBER, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_VERSION, TLS1_3_VERSION;
+var SSL_OP_ALL;
+var SSL_OP_ALLOW_NO_DHE_KEX;
+var SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+var SSL_OP_CIPHER_SERVER_PREFERENCE;
+var SSL_OP_CISCO_ANYCONNECT;
+var SSL_OP_COOKIE_EXCHANGE;
+var SSL_OP_CRYPTOPRO_TLSEXT_BUG;
+var SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+var SSL_OP_LEGACY_SERVER_CONNECT;
+var SSL_OP_NO_COMPRESSION;
+var SSL_OP_NO_ENCRYPT_THEN_MAC;
+var SSL_OP_NO_QUERY_MTU;
+var SSL_OP_NO_RENEGOTIATION;
+var SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
+var SSL_OP_NO_SSLv2;
+var SSL_OP_NO_SSLv3;
+var SSL_OP_NO_TICKET;
+var SSL_OP_NO_TLSv1;
+var SSL_OP_NO_TLSv1_1;
+var SSL_OP_NO_TLSv1_2;
+var SSL_OP_NO_TLSv1_3;
+var SSL_OP_PRIORITIZE_CHACHA;
+var SSL_OP_TLS_ROLLBACK_BUG;
+var ENGINE_METHOD_RSA;
+var ENGINE_METHOD_DSA;
+var ENGINE_METHOD_DH;
+var ENGINE_METHOD_RAND;
+var ENGINE_METHOD_EC;
+var ENGINE_METHOD_CIPHERS;
+var ENGINE_METHOD_DIGESTS;
+var ENGINE_METHOD_PKEY_METHS;
+var ENGINE_METHOD_PKEY_ASN1_METHS;
+var ENGINE_METHOD_ALL;
+var ENGINE_METHOD_NONE;
+var DH_CHECK_P_NOT_SAFE_PRIME;
+var DH_CHECK_P_NOT_PRIME;
+var DH_UNABLE_TO_CHECK_GENERATOR;
+var DH_NOT_SUITABLE_GENERATOR;
+var RSA_PKCS1_PADDING;
+var RSA_NO_PADDING;
+var RSA_PKCS1_OAEP_PADDING;
+var RSA_X931_PADDING;
+var RSA_PKCS1_PSS_PADDING;
+var RSA_PSS_SALTLEN_DIGEST;
+var RSA_PSS_SALTLEN_MAX_SIGN;
+var RSA_PSS_SALTLEN_AUTO;
+var POINT_CONVERSION_COMPRESSED;
+var POINT_CONVERSION_UNCOMPRESSED;
+var POINT_CONVERSION_HYBRID;
+var defaultCoreCipherList;
+var defaultCipherList;
+var OPENSSL_VERSION_NUMBER;
+var TLS1_VERSION;
+var TLS1_1_VERSION;
+var TLS1_2_VERSION;
+var TLS1_3_VERSION;
 var init_constants3 = __esm({
   "../node_modules/unenv/dist/runtime/node/internal/crypto/constants.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4390,12 +5560,10 @@ var init_constants3 = __esm({
     TLS1_3_VERSION = 0;
   }
 });
-
-// ../node_modules/unenv/dist/runtime/node/crypto.mjs
 var constants;
 var init_crypto = __esm({
   "../node_modules/unenv/dist/runtime/node/crypto.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4463,12 +5631,57 @@ var init_crypto = __esm({
     };
   }
 });
-
-// ../node_modules/@cloudflare/unenv-preset/dist/runtime/node/crypto.mjs
-var workerdCrypto, Certificate, DiffieHellman, DiffieHellmanGroup, Hash, Hmac, KeyObject, X509Certificate, checkPrime, checkPrimeSync, createDiffieHellman, createDiffieHellmanGroup, createHash, createHmac, createPrivateKey, createPublicKey, createSecretKey, generateKey, generateKeyPair, generateKeyPairSync, generateKeySync, generatePrime, generatePrimeSync, getCiphers, getCurves, getDiffieHellman, getFips, getHashes, hkdf, hkdfSync, pbkdf2, pbkdf2Sync, randomBytes, randomFill, randomFillSync, randomInt, randomUUID, scrypt, scryptSync, secureHeapUsed, setEngine, setFips, subtle2, timingSafeEqual, getRandomValues, webcrypto2, fips, crypto_default;
+var workerdCrypto;
+var Certificate;
+var DiffieHellman;
+var DiffieHellmanGroup;
+var Hash;
+var Hmac;
+var KeyObject;
+var X509Certificate;
+var checkPrime;
+var checkPrimeSync;
+var createDiffieHellman;
+var createDiffieHellmanGroup;
+var createHash;
+var createHmac;
+var createPrivateKey;
+var createPublicKey;
+var createSecretKey;
+var generateKey;
+var generateKeyPair;
+var generateKeyPairSync;
+var generateKeySync;
+var generatePrime;
+var generatePrimeSync;
+var getCiphers;
+var getCurves;
+var getDiffieHellman;
+var getFips;
+var getHashes;
+var hkdf;
+var hkdfSync;
+var pbkdf2;
+var pbkdf2Sync;
+var randomBytes;
+var randomFill;
+var randomFillSync;
+var randomInt;
+var randomUUID;
+var scrypt;
+var scryptSync;
+var secureHeapUsed;
+var setEngine;
+var setFips;
+var subtle2;
+var timingSafeEqual;
+var getRandomValues;
+var webcrypto2;
+var fips;
+var crypto_default;
 var init_crypto2 = __esm({
   "../node_modules/@cloudflare/unenv-preset/dist/runtime/node/crypto.mjs"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4633,11 +5846,9 @@ var init_crypto2 = __esm({
     };
   }
 });
-
-// node-built-in-modules:crypto
 var require_crypto = __commonJS({
   "node-built-in-modules:crypto"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4646,12 +5857,10 @@ var require_crypto = __commonJS({
     module.exports = crypto_default;
   }
 });
-
-// ../node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js
 var require_param_bytes_for_alg = __commonJS({
   "../node_modules/ecdsa-sig-formatter/src/param-bytes-for-alg.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4661,6 +5870,7 @@ var require_param_bytes_for_alg = __commonJS({
       return result;
     }
     __name(getParamSize, "getParamSize");
+    __name2(getParamSize, "getParamSize");
     var paramBytesForAlg = {
       ES256: getParamSize(256),
       ES384: getParamSize(384),
@@ -4674,15 +5884,14 @@ var require_param_bytes_for_alg = __commonJS({
       throw new Error('Unknown algorithm "' + alg + '"');
     }
     __name(getParamBytesForAlg, "getParamBytesForAlg");
+    __name2(getParamBytesForAlg, "getParamBytesForAlg");
     module.exports = getParamBytesForAlg;
   }
 });
-
-// ../node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js
 var require_ecdsa_sig_formatter = __commonJS({
   "../node_modules/ecdsa-sig-formatter/src/ecdsa-sig-formatter.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4700,6 +5909,7 @@ var require_ecdsa_sig_formatter = __commonJS({
       return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
     }
     __name(base64Url, "base64Url");
+    __name2(base64Url, "base64Url");
     function signatureAsBuffer(signature) {
       if (Buffer2.isBuffer(signature)) {
         return signature;
@@ -4709,6 +5919,7 @@ var require_ecdsa_sig_formatter = __commonJS({
       throw new TypeError("ECDSA signature must be a Base64 string or a Buffer");
     }
     __name(signatureAsBuffer, "signatureAsBuffer");
+    __name2(signatureAsBuffer, "signatureAsBuffer");
     function derToJose(signature, alg) {
       signature = signatureAsBuffer(signature);
       var paramBytes = getParamBytesForAlg(alg);
@@ -4768,6 +5979,7 @@ var require_ecdsa_sig_formatter = __commonJS({
       return dst;
     }
     __name(derToJose, "derToJose");
+    __name2(derToJose, "derToJose");
     function countPadding(buf, start, stop) {
       var padding = 0;
       while (start + padding < stop && buf[start + padding] === 0) {
@@ -4780,6 +5992,7 @@ var require_ecdsa_sig_formatter = __commonJS({
       return padding;
     }
     __name(countPadding, "countPadding");
+    __name2(countPadding, "countPadding");
     function joseToDer(signature, alg) {
       signature = signatureAsBuffer(signature);
       var paramBytes = getParamBytesForAlg(alg);
@@ -4821,18 +6034,17 @@ var require_ecdsa_sig_formatter = __commonJS({
       return dst;
     }
     __name(joseToDer, "joseToDer");
+    __name2(joseToDer, "joseToDer");
     module.exports = {
       derToJose,
       joseToDer
     };
   }
 });
-
-// ../node_modules/buffer-equal-constant-time/index.js
 var require_buffer_equal_constant_time = __commonJS({
   "../node_modules/buffer-equal-constant-time/index.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4854,10 +6066,11 @@ var require_buffer_equal_constant_time = __commonJS({
       return c === 0;
     }
     __name(bufferEq, "bufferEq");
+    __name2(bufferEq, "bufferEq");
     bufferEq.install = function() {
-      Buffer2.prototype.equal = SlowBuffer.prototype.equal = /* @__PURE__ */ __name(function equal(that) {
+      Buffer2.prototype.equal = SlowBuffer.prototype.equal = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function equal(that) {
         return bufferEq(this, that);
-      }, "equal");
+      }, "equal"), "equal");
     };
     var origBufEqual = Buffer2.prototype.equal;
     var origSlowBufEqual = SlowBuffer.prototype.equal;
@@ -4867,11 +6080,9 @@ var require_buffer_equal_constant_time = __commonJS({
     };
   }
 });
-
-// ../node_modules/jwa/index.js
 var require_jwa = __commonJS({
   "../node_modules/jwa/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -4913,6 +6124,7 @@ var require_jwa = __commonJS({
       }
     }
     __name(checkIsPublicKey, "checkIsPublicKey");
+    __name2(checkIsPublicKey, "checkIsPublicKey");
     function checkIsPrivateKey(key) {
       if (Buffer2.isBuffer(key)) {
         return;
@@ -4926,6 +6138,7 @@ var require_jwa = __commonJS({
       throw typeError(MSG_INVALID_SIGNER_KEY);
     }
     __name(checkIsPrivateKey, "checkIsPrivateKey");
+    __name2(checkIsPrivateKey, "checkIsPrivateKey");
     function checkIsSecretKey(key) {
       if (Buffer2.isBuffer(key)) {
         return;
@@ -4947,10 +6160,12 @@ var require_jwa = __commonJS({
       }
     }
     __name(checkIsSecretKey, "checkIsSecretKey");
+    __name2(checkIsSecretKey, "checkIsSecretKey");
     function fromBase64(base64) {
       return base64.replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
     }
     __name(fromBase64, "fromBase64");
+    __name2(fromBase64, "fromBase64");
     function toBase64(base64url) {
       base64url = base64url.toString();
       var padding = 4 - base64url.length % 4;
@@ -4962,74 +6177,82 @@ var require_jwa = __commonJS({
       return base64url.replace(/\-/g, "+").replace(/_/g, "/");
     }
     __name(toBase64, "toBase64");
+    __name2(toBase64, "toBase64");
     function typeError(template) {
       var args = [].slice.call(arguments, 1);
       var errMsg = util.format.bind(util, template).apply(null, args);
       return new TypeError(errMsg);
     }
     __name(typeError, "typeError");
+    __name2(typeError, "typeError");
     function bufferOrString(obj) {
       return Buffer2.isBuffer(obj) || typeof obj === "string";
     }
     __name(bufferOrString, "bufferOrString");
+    __name2(bufferOrString, "bufferOrString");
     function normalizeInput(thing) {
       if (!bufferOrString(thing))
         thing = JSON.stringify(thing);
       return thing;
     }
     __name(normalizeInput, "normalizeInput");
+    __name2(normalizeInput, "normalizeInput");
     function createHmacSigner(bits) {
-      return /* @__PURE__ */ __name(function sign2(thing, secret) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
         var hmac = crypto2.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
-      }, "sign");
+      }, "sign2"), "sign");
     }
     __name(createHmacSigner, "createHmacSigner");
+    __name2(createHmacSigner, "createHmacSigner");
     var bufferEqual;
-    var timingSafeEqual2 = "timingSafeEqual" in crypto2 ? /* @__PURE__ */ __name(function timingSafeEqual3(a, b) {
+    var timingSafeEqual2 = "timingSafeEqual" in crypto2 ? /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function timingSafeEqual3(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
       return crypto2.timingSafeEqual(a, b);
-    }, "timingSafeEqual") : /* @__PURE__ */ __name(function timingSafeEqual3(a, b) {
+    }, "timingSafeEqual3"), "timingSafeEqual") : /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function timingSafeEqual3(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
       }
       return bufferEqual(a, b);
-    }, "timingSafeEqual");
+    }, "timingSafeEqual3"), "timingSafeEqual");
     function createHmacVerifier(bits) {
-      return /* @__PURE__ */ __name(function verify2(thing, signature, secret) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2(thing, signature, secret) {
         var computedSig = createHmacSigner(bits)(thing, secret);
         return timingSafeEqual2(Buffer2.from(signature), Buffer2.from(computedSig));
-      }, "verify");
+      }, "verify2"), "verify");
     }
     __name(createHmacVerifier, "createHmacVerifier");
+    __name2(createHmacVerifier, "createHmacVerifier");
     function createKeySigner(bits) {
-      return /* @__PURE__ */ __name(function sign2(thing, privateKey) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
         var signer = crypto2.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
-      }, "sign");
+      }, "sign2"), "sign");
     }
     __name(createKeySigner, "createKeySigner");
+    __name2(createKeySigner, "createKeySigner");
     function createKeyVerifier(bits) {
-      return /* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
         var verifier = crypto2.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
-      }, "verify");
+      }, "verify2"), "verify");
     }
     __name(createKeyVerifier, "createKeyVerifier");
+    __name2(createKeyVerifier, "createKeyVerifier");
     function createPSSKeySigner(bits) {
-      return /* @__PURE__ */ __name(function sign2(thing, privateKey) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
         var signer = crypto2.createSign("RSA-SHA" + bits);
@@ -5039,11 +6262,12 @@ var require_jwa = __commonJS({
           saltLength: crypto2.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
-      }, "sign");
+      }, "sign2"), "sign");
     }
     __name(createPSSKeySigner, "createPSSKeySigner");
+    __name2(createPSSKeySigner, "createPSSKeySigner");
     function createPSSKeyVerifier(bits) {
-      return /* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
@@ -5054,40 +6278,45 @@ var require_jwa = __commonJS({
           padding: crypto2.constants.RSA_PKCS1_PSS_PADDING,
           saltLength: crypto2.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
-      }, "verify");
+      }, "verify2"), "verify");
     }
     __name(createPSSKeyVerifier, "createPSSKeyVerifier");
+    __name2(createPSSKeyVerifier, "createPSSKeyVerifier");
     function createECDSASigner(bits) {
       var inner = createKeySigner(bits);
-      return /* @__PURE__ */ __name(function sign2() {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2() {
         var signature = inner.apply(null, arguments);
         signature = formatEcdsa.derToJose(signature, "ES" + bits);
         return signature;
-      }, "sign");
+      }, "sign2"), "sign");
     }
     __name(createECDSASigner, "createECDSASigner");
+    __name2(createECDSASigner, "createECDSASigner");
     function createECDSAVerifer(bits) {
       var inner = createKeyVerifier(bits);
-      return /* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2(thing, signature, publicKey) {
         signature = formatEcdsa.joseToDer(signature, "ES" + bits).toString("base64");
         var result = inner(thing, signature, publicKey);
         return result;
-      }, "verify");
+      }, "verify2"), "verify");
     }
     __name(createECDSAVerifer, "createECDSAVerifer");
+    __name2(createECDSAVerifer, "createECDSAVerifer");
     function createNoneSigner() {
-      return /* @__PURE__ */ __name(function sign2() {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2() {
         return "";
-      }, "sign");
+      }, "sign2"), "sign");
     }
     __name(createNoneSigner, "createNoneSigner");
+    __name2(createNoneSigner, "createNoneSigner");
     function createNoneVerifier() {
-      return /* @__PURE__ */ __name(function verify2(thing, signature) {
+      return /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2(thing, signature) {
         return signature === "";
-      }, "verify");
+      }, "verify2"), "verify");
     }
     __name(createNoneVerifier, "createNoneVerifier");
-    module.exports = /* @__PURE__ */ __name(function jwa(algorithm) {
+    __name2(createNoneVerifier, "createNoneVerifier");
+    module.exports = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function jwa(algorithm) {
       var signerFactories = {
         hs: createHmacSigner,
         rs: createKeySigner,
@@ -5111,33 +6340,29 @@ var require_jwa = __commonJS({
         sign: signerFactories[algo](bits),
         verify: verifierFactories[algo](bits)
       };
-    }, "jwa");
+    }, "jwa"), "jwa");
   }
 });
-
-// ../node_modules/jws/lib/tostring.js
 var require_tostring = __commonJS({
   "../node_modules/jws/lib/tostring.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var Buffer2 = require_buffer().Buffer;
-    module.exports = /* @__PURE__ */ __name(function toString(obj) {
+    module.exports = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function toString(obj) {
       if (typeof obj === "string")
         return obj;
       if (typeof obj === "number" || Buffer2.isBuffer(obj))
         return obj.toString();
       return JSON.stringify(obj);
-    }, "toString");
+    }, "toString"), "toString");
   }
 });
-
-// ../node_modules/jws/lib/sign-stream.js
 var require_sign_stream = __commonJS({
   "../node_modules/jws/lib/sign-stream.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5152,6 +6377,7 @@ var require_sign_stream = __commonJS({
       return Buffer2.from(string, encoding).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
     }
     __name(base64url, "base64url");
+    __name2(base64url, "base64url");
     function jwsSecuredInput(header, payload, encoding) {
       encoding = encoding || "utf8";
       var encodedHeader = base64url(toString(header), "binary");
@@ -5159,6 +6385,7 @@ var require_sign_stream = __commonJS({
       return util.format("%s.%s", encodedHeader, encodedPayload);
     }
     __name(jwsSecuredInput, "jwsSecuredInput");
+    __name2(jwsSecuredInput, "jwsSecuredInput");
     function jwsSign(opts) {
       var header = opts.header;
       var payload = opts.payload;
@@ -5170,6 +6397,7 @@ var require_sign_stream = __commonJS({
       return util.format("%s.%s", securedInput, signature);
     }
     __name(jwsSign, "jwsSign");
+    __name2(jwsSign, "jwsSign");
     function SignStream(opts) {
       var secret = opts.secret;
       secret = secret == null ? opts.privateKey : secret;
@@ -5193,8 +6421,9 @@ var require_sign_stream = __commonJS({
       }.bind(this));
     }
     __name(SignStream, "SignStream");
+    __name2(SignStream, "SignStream");
     util.inherits(SignStream, Stream);
-    SignStream.prototype.sign = /* @__PURE__ */ __name(function sign2() {
+    SignStream.prototype.sign = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function sign2() {
       try {
         var signature = jwsSign({
           header: this.header,
@@ -5212,16 +6441,14 @@ var require_sign_stream = __commonJS({
         this.emit("error", e);
         this.emit("close");
       }
-    }, "sign");
+    }, "sign2"), "sign");
     SignStream.sign = jwsSign;
     module.exports = SignStream;
   }
 });
-
-// ../node_modules/jws/lib/verify-stream.js
 var require_verify_stream = __commonJS({
   "../node_modules/jws/lib/verify-stream.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5236,7 +6463,8 @@ var require_verify_stream = __commonJS({
     function isObject2(thing) {
       return Object.prototype.toString.call(thing) === "[object Object]";
     }
-    __name(isObject2, "isObject");
+    __name(isObject2, "isObject2");
+    __name2(isObject2, "isObject");
     function safeJsonParse(thing) {
       if (isObject2(thing))
         return thing;
@@ -5247,29 +6475,35 @@ var require_verify_stream = __commonJS({
       }
     }
     __name(safeJsonParse, "safeJsonParse");
+    __name2(safeJsonParse, "safeJsonParse");
     function headerFromJWS(jwsSig) {
       var encodedHeader = jwsSig.split(".", 1)[0];
       return safeJsonParse(Buffer2.from(encodedHeader, "base64").toString("binary"));
     }
     __name(headerFromJWS, "headerFromJWS");
+    __name2(headerFromJWS, "headerFromJWS");
     function securedInputFromJWS(jwsSig) {
       return jwsSig.split(".", 2).join(".");
     }
     __name(securedInputFromJWS, "securedInputFromJWS");
+    __name2(securedInputFromJWS, "securedInputFromJWS");
     function signatureFromJWS(jwsSig) {
       return jwsSig.split(".")[2];
     }
     __name(signatureFromJWS, "signatureFromJWS");
+    __name2(signatureFromJWS, "signatureFromJWS");
     function payloadFromJWS(jwsSig, encoding) {
       encoding = encoding || "utf8";
       var payload = jwsSig.split(".")[1];
       return Buffer2.from(payload, "base64").toString(encoding);
     }
     __name(payloadFromJWS, "payloadFromJWS");
+    __name2(payloadFromJWS, "payloadFromJWS");
     function isValidJws(string) {
       return JWS_REGEX.test(string) && !!headerFromJWS(string);
     }
     __name(isValidJws, "isValidJws");
+    __name2(isValidJws, "isValidJws");
     function jwsVerify(jwsSig, algorithm, secretOrKey) {
       if (!algorithm) {
         var err = new Error("Missing algorithm parameter for jws.verify");
@@ -5283,6 +6517,7 @@ var require_verify_stream = __commonJS({
       return algo.verify(securedInput, signature, secretOrKey);
     }
     __name(jwsVerify, "jwsVerify");
+    __name2(jwsVerify, "jwsVerify");
     function jwsDecode(jwsSig, opts) {
       opts = opts || {};
       jwsSig = toString(jwsSig);
@@ -5301,6 +6536,7 @@ var require_verify_stream = __commonJS({
       };
     }
     __name(jwsDecode, "jwsDecode");
+    __name2(jwsDecode, "jwsDecode");
     function VerifyStream(opts) {
       opts = opts || {};
       var secretOrKey = opts.secret;
@@ -5325,8 +6561,9 @@ var require_verify_stream = __commonJS({
       }.bind(this));
     }
     __name(VerifyStream, "VerifyStream");
+    __name2(VerifyStream, "VerifyStream");
     util.inherits(VerifyStream, Stream);
-    VerifyStream.prototype.verify = /* @__PURE__ */ __name(function verify2() {
+    VerifyStream.prototype.verify = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function verify2() {
       try {
         var valid = jwsVerify(this.signature.buffer, this.algorithm, this.key.buffer);
         var obj = jwsDecode(this.signature.buffer, this.encoding);
@@ -5340,18 +6577,16 @@ var require_verify_stream = __commonJS({
         this.emit("error", e);
         this.emit("close");
       }
-    }, "verify");
+    }, "verify2"), "verify");
     VerifyStream.decode = jwsDecode;
     VerifyStream.isValid = isValidJws;
     VerifyStream.verify = jwsVerify;
     module.exports = VerifyStream;
   }
 });
-
-// ../node_modules/jws/index.js
 var require_jws = __commonJS({
   "../node_modules/jws/index.js"(exports) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5377,19 +6612,17 @@ var require_jws = __commonJS({
     exports.verify = VerifyStream.verify;
     exports.decode = VerifyStream.decode;
     exports.isValid = VerifyStream.isValid;
-    exports.createSign = /* @__PURE__ */ __name(function createSign2(opts) {
+    exports.createSign = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function createSign2(opts) {
       return new SignStream(opts);
-    }, "createSign");
-    exports.createVerify = /* @__PURE__ */ __name(function createVerify2(opts) {
+    }, "createSign2"), "createSign");
+    exports.createVerify = /* @__PURE__ */ __name2(/* @__PURE__ */ __name(function createVerify2(opts) {
       return new VerifyStream(opts);
-    }, "createVerify");
+    }, "createVerify2"), "createVerify");
   }
 });
-
-// ../node_modules/jsonwebtoken/decode.js
 var require_decode = __commonJS({
   "../node_modules/jsonwebtoken/decode.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5422,41 +6655,37 @@ var require_decode = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/JsonWebTokenError.js
 var require_JsonWebTokenError = __commonJS({
   "../node_modules/jsonwebtoken/lib/JsonWebTokenError.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    var JsonWebTokenError = /* @__PURE__ */ __name(function(message, error3) {
+    var JsonWebTokenError = /* @__PURE__ */ __name2(function(message, error32) {
       Error.call(this, message);
       if (Error.captureStackTrace) {
         Error.captureStackTrace(this, this.constructor);
       }
       this.name = "JsonWebTokenError";
       this.message = message;
-      if (error3)
-        this.inner = error3;
+      if (error32)
+        this.inner = error32;
     }, "JsonWebTokenError");
     JsonWebTokenError.prototype = Object.create(Error.prototype);
     JsonWebTokenError.prototype.constructor = JsonWebTokenError;
     module.exports = JsonWebTokenError;
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/NotBeforeError.js
 var require_NotBeforeError = __commonJS({
   "../node_modules/jsonwebtoken/lib/NotBeforeError.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var JsonWebTokenError = require_JsonWebTokenError();
-    var NotBeforeError = /* @__PURE__ */ __name(function(message, date) {
+    var NotBeforeError = /* @__PURE__ */ __name2(function(message, date) {
       JsonWebTokenError.call(this, message);
       this.name = "NotBeforeError";
       this.date = date;
@@ -5466,17 +6695,15 @@ var require_NotBeforeError = __commonJS({
     module.exports = NotBeforeError;
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/TokenExpiredError.js
 var require_TokenExpiredError = __commonJS({
   "../node_modules/jsonwebtoken/lib/TokenExpiredError.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var JsonWebTokenError = require_JsonWebTokenError();
-    var TokenExpiredError = /* @__PURE__ */ __name(function(message, expiredAt) {
+    var TokenExpiredError = /* @__PURE__ */ __name2(function(message, expiredAt) {
       JsonWebTokenError.call(this, message);
       this.name = "TokenExpiredError";
       this.expiredAt = expiredAt;
@@ -5486,11 +6713,9 @@ var require_TokenExpiredError = __commonJS({
     module.exports = TokenExpiredError;
   }
 });
-
-// ../node_modules/ms/index.js
 var require_ms = __commonJS({
   "../node_modules/ms/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5569,7 +6794,8 @@ var require_ms = __commonJS({
           return void 0;
       }
     }
-    __name(parse3, "parse");
+    __name(parse3, "parse3");
+    __name2(parse3, "parse");
     function fmtShort(ms) {
       var msAbs = Math.abs(ms);
       if (msAbs >= d) {
@@ -5587,6 +6813,7 @@ var require_ms = __commonJS({
       return ms + "ms";
     }
     __name(fmtShort, "fmtShort");
+    __name2(fmtShort, "fmtShort");
     function fmtLong(ms) {
       var msAbs = Math.abs(ms);
       if (msAbs >= d) {
@@ -5604,45 +6831,43 @@ var require_ms = __commonJS({
       return ms + " ms";
     }
     __name(fmtLong, "fmtLong");
+    __name2(fmtLong, "fmtLong");
     function plural(ms, msAbs, n, name) {
       var isPlural = msAbs >= n * 1.5;
       return Math.round(ms / n) + " " + name + (isPlural ? "s" : "");
     }
     __name(plural, "plural");
+    __name2(plural, "plural");
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/timespan.js
 var require_timespan = __commonJS({
   "../node_modules/jsonwebtoken/lib/timespan.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var ms = require_ms();
-    module.exports = function(time3, iat) {
+    module.exports = function(time32, iat) {
       var timestamp = iat || Math.floor(Date.now() / 1e3);
-      if (typeof time3 === "string") {
-        var milliseconds = ms(time3);
+      if (typeof time32 === "string") {
+        var milliseconds = ms(time32);
         if (typeof milliseconds === "undefined") {
           return;
         }
         return Math.floor(timestamp + milliseconds / 1e3);
-      } else if (typeof time3 === "number") {
-        return timestamp + time3;
+      } else if (typeof time32 === "number") {
+        return timestamp + time32;
       } else {
         return;
       }
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/constants.js
 var require_constants = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/constants.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5674,12 +6899,10 @@ var require_constants = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/debug.js
 var require_debug = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/debug.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5689,12 +6912,10 @@ var require_debug = __commonJS({
     module.exports = debug4;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/re.js
 var require_re = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/re.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5718,13 +6939,13 @@ var require_re = __commonJS({
       ["\\d", MAX_LENGTH],
       [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH]
     ];
-    var makeSafeRegex = /* @__PURE__ */ __name((value) => {
+    var makeSafeRegex = /* @__PURE__ */ __name2((value) => {
       for (const [token, max] of safeRegexReplacements) {
         value = value.split(`${token}*`).join(`${token}{0,${max}}`).split(`${token}+`).join(`${token}{1,${max}}`);
       }
       return value;
     }, "makeSafeRegex");
-    var createToken = /* @__PURE__ */ __name((name, value, isGlobal) => {
+    var createToken = /* @__PURE__ */ __name2((name, value, isGlobal) => {
       const safe = makeSafeRegex(value);
       const index = R++;
       debug4(name, index, value);
@@ -5782,19 +7003,17 @@ var require_re = __commonJS({
     createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/parse-options.js
 var require_parse_options = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/parse-options.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var looseOption = Object.freeze({ loose: true });
     var emptyOpts = Object.freeze({});
-    var parseOptions = /* @__PURE__ */ __name((options) => {
+    var parseOptions = /* @__PURE__ */ __name2((options) => {
       if (!options) {
         return emptyOpts;
       }
@@ -5806,18 +7025,16 @@ var require_parse_options = __commonJS({
     module.exports = parseOptions;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/identifiers.js
 var require_identifiers = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/identifiers.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var numeric = /^[0-9]+$/;
-    var compareIdentifiers = /* @__PURE__ */ __name((a, b) => {
+    var compareIdentifiers = /* @__PURE__ */ __name2((a, b) => {
       if (typeof a === "number" && typeof b === "number") {
         return a === b ? 0 : a < b ? -1 : 1;
       }
@@ -5829,19 +7046,17 @@ var require_identifiers = __commonJS({
       }
       return a === b ? 0 : anum && !bnum ? -1 : bnum && !anum ? 1 : a < b ? -1 : 1;
     }, "compareIdentifiers");
-    var rcompareIdentifiers = /* @__PURE__ */ __name((a, b) => compareIdentifiers(b, a), "rcompareIdentifiers");
+    var rcompareIdentifiers = /* @__PURE__ */ __name2((a, b) => compareIdentifiers(b, a), "rcompareIdentifiers");
     module.exports = {
       compareIdentifiers,
       rcompareIdentifiers
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/classes/semver.js
 var require_semver = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/classes/semver.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -5851,32 +7066,32 @@ var require_semver = __commonJS({
     var { safeRe: re2, t } = require_re();
     var parseOptions = require_parse_options();
     var { compareIdentifiers } = require_identifiers();
-    var SemVer = class {
-      constructor(version2, options) {
+    var SemVer = /* @__PURE__ */ __name(class {
+      constructor(version22, options) {
         options = parseOptions(options);
-        if (version2 instanceof SemVer) {
-          if (version2.loose === !!options.loose && version2.includePrerelease === !!options.includePrerelease) {
-            return version2;
+        if (version22 instanceof SemVer) {
+          if (version22.loose === !!options.loose && version22.includePrerelease === !!options.includePrerelease) {
+            return version22;
           } else {
-            version2 = version2.version;
+            version22 = version22.version;
           }
-        } else if (typeof version2 !== "string") {
-          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version2}".`);
+        } else if (typeof version22 !== "string") {
+          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version22}".`);
         }
-        if (version2.length > MAX_LENGTH) {
+        if (version22.length > MAX_LENGTH) {
           throw new TypeError(
             `version is longer than ${MAX_LENGTH} characters`
           );
         }
-        debug4("SemVer", version2, options);
+        debug4("SemVer", version22, options);
         this.options = options;
         this.loose = !!options.loose;
         this.includePrerelease = !!options.includePrerelease;
-        const m = version2.trim().match(options.loose ? re2[t.LOOSE] : re2[t.FULL]);
+        const m = version22.trim().match(options.loose ? re2[t.LOOSE] : re2[t.FULL]);
         if (!m) {
-          throw new TypeError(`Invalid Version: ${version2}`);
+          throw new TypeError(`Invalid Version: ${version22}`);
         }
-        this.raw = version2;
+        this.raw = version22;
         this.major = +m[1];
         this.minor = +m[2];
         this.patch = +m[3];
@@ -6005,8 +7220,8 @@ var require_semver = __commonJS({
       }
       // preminor will bump the version up to the next minor release, and immediately
       // down to pre-release. premajor and prepatch work the same way.
-      inc(release2, identifier, identifierBase) {
-        if (release2.startsWith("pre")) {
+      inc(release22, identifier, identifierBase) {
+        if (release22.startsWith("pre")) {
           if (!identifier && identifierBase === false) {
             throw new Error("invalid increment argument: identifier is empty");
           }
@@ -6017,7 +7232,7 @@ var require_semver = __commonJS({
             }
           }
         }
-        switch (release2) {
+        switch (release22) {
           case "premajor":
             this.prerelease.length = 0;
             this.patch = 0;
@@ -6104,7 +7319,7 @@ var require_semver = __commonJS({
             break;
           }
           default:
-            throw new Error(`invalid increment argument: ${release2}`);
+            throw new Error(`invalid increment argument: ${release22}`);
         }
         this.raw = this.format();
         if (this.build.length) {
@@ -6112,28 +7327,26 @@ var require_semver = __commonJS({
         }
         return this;
       }
-    };
-    __name(SemVer, "SemVer");
+    }, "SemVer");
+    __name2(SemVer, "SemVer");
     module.exports = SemVer;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/parse.js
 var require_parse = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/parse.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var parse3 = /* @__PURE__ */ __name((version2, options, throwErrors = false) => {
-      if (version2 instanceof SemVer) {
-        return version2;
+    var parse3 = /* @__PURE__ */ __name2((version22, options, throwErrors = false) => {
+      if (version22 instanceof SemVer) {
+        return version22;
       }
       try {
-        return new SemVer(version2, options);
+        return new SemVer(version22, options);
       } catch (er) {
         if (!throwErrors) {
           return null;
@@ -6144,54 +7357,48 @@ var require_parse = __commonJS({
     module.exports = parse3;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/valid.js
 var require_valid = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/valid.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var parse3 = require_parse();
-    var valid = /* @__PURE__ */ __name((version2, options) => {
-      const v = parse3(version2, options);
+    var valid = /* @__PURE__ */ __name2((version22, options) => {
+      const v = parse3(version22, options);
       return v ? v.version : null;
     }, "valid");
     module.exports = valid;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/clean.js
 var require_clean = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/clean.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var parse3 = require_parse();
-    var clean = /* @__PURE__ */ __name((version2, options) => {
-      const s = parse3(version2.trim().replace(/^[=v]+/, ""), options);
+    var clean = /* @__PURE__ */ __name2((version22, options) => {
+      const s = parse3(version22.trim().replace(/^[=v]+/, ""), options);
       return s ? s.version : null;
     }, "clean");
     module.exports = clean;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/inc.js
 var require_inc = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/inc.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var inc = /* @__PURE__ */ __name((version2, release2, options, identifier, identifierBase) => {
+    var inc = /* @__PURE__ */ __name2((version22, release22, options, identifier, identifierBase) => {
       if (typeof options === "string") {
         identifierBase = identifier;
         identifier = options;
@@ -6199,9 +7406,9 @@ var require_inc = __commonJS({
       }
       try {
         return new SemVer(
-          version2 instanceof SemVer ? version2.version : version2,
+          version22 instanceof SemVer ? version22.version : version22,
           options
-        ).inc(release2, identifier, identifierBase).version;
+        ).inc(release22, identifier, identifierBase).version;
       } catch (er) {
         return null;
       }
@@ -6209,20 +7416,18 @@ var require_inc = __commonJS({
     module.exports = inc;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/diff.js
 var require_diff = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/diff.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var parse3 = require_parse();
-    var diff = /* @__PURE__ */ __name((version1, version2) => {
+    var diff = /* @__PURE__ */ __name2((version1, version22) => {
       const v1 = parse3(version1, null, true);
-      const v2 = parse3(version2, null, true);
+      const v2 = parse3(version22, null, true);
       const comparison = v1.compare(v2);
       if (comparison === 0) {
         return null;
@@ -6258,126 +7463,110 @@ var require_diff = __commonJS({
     module.exports = diff;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/major.js
 var require_major = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/major.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var major = /* @__PURE__ */ __name((a, loose) => new SemVer(a, loose).major, "major");
+    var major = /* @__PURE__ */ __name2((a, loose) => new SemVer(a, loose).major, "major");
     module.exports = major;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/minor.js
 var require_minor = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/minor.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var minor = /* @__PURE__ */ __name((a, loose) => new SemVer(a, loose).minor, "minor");
+    var minor = /* @__PURE__ */ __name2((a, loose) => new SemVer(a, loose).minor, "minor");
     module.exports = minor;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/patch.js
 var require_patch = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/patch.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var patch = /* @__PURE__ */ __name((a, loose) => new SemVer(a, loose).patch, "patch");
+    var patch = /* @__PURE__ */ __name2((a, loose) => new SemVer(a, loose).patch, "patch");
     module.exports = patch;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/prerelease.js
 var require_prerelease = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/prerelease.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var parse3 = require_parse();
-    var prerelease = /* @__PURE__ */ __name((version2, options) => {
-      const parsed = parse3(version2, options);
+    var prerelease = /* @__PURE__ */ __name2((version22, options) => {
+      const parsed = parse3(version22, options);
       return parsed && parsed.prerelease.length ? parsed.prerelease : null;
     }, "prerelease");
     module.exports = prerelease;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/compare.js
 var require_compare = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/compare.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var compare = /* @__PURE__ */ __name((a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose)), "compare");
+    var compare = /* @__PURE__ */ __name2((a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose)), "compare");
     module.exports = compare;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/rcompare.js
 var require_rcompare = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/rcompare.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var rcompare = /* @__PURE__ */ __name((a, b, loose) => compare(b, a, loose), "rcompare");
+    var rcompare = /* @__PURE__ */ __name2((a, b, loose) => compare(b, a, loose), "rcompare");
     module.exports = rcompare;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/compare-loose.js
 var require_compare_loose = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/compare-loose.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var compareLoose = /* @__PURE__ */ __name((a, b) => compare(a, b, true), "compareLoose");
+    var compareLoose = /* @__PURE__ */ __name2((a, b) => compare(a, b, true), "compareLoose");
     module.exports = compareLoose;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/compare-build.js
 var require_compare_build = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/compare-build.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
-    var compareBuild = /* @__PURE__ */ __name((a, b, loose) => {
+    var compareBuild = /* @__PURE__ */ __name2((a, b, loose) => {
       const versionA = new SemVer(a, loose);
       const versionB = new SemVer(b, loose);
       return versionA.compare(versionB) || versionA.compareBuild(versionB);
@@ -6385,132 +7574,114 @@ var require_compare_build = __commonJS({
     module.exports = compareBuild;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/sort.js
 var require_sort = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/sort.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compareBuild = require_compare_build();
-    var sort = /* @__PURE__ */ __name((list, loose) => list.sort((a, b) => compareBuild(a, b, loose)), "sort");
+    var sort = /* @__PURE__ */ __name2((list, loose) => list.sort((a, b) => compareBuild(a, b, loose)), "sort");
     module.exports = sort;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/rsort.js
 var require_rsort = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/rsort.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compareBuild = require_compare_build();
-    var rsort = /* @__PURE__ */ __name((list, loose) => list.sort((a, b) => compareBuild(b, a, loose)), "rsort");
+    var rsort = /* @__PURE__ */ __name2((list, loose) => list.sort((a, b) => compareBuild(b, a, loose)), "rsort");
     module.exports = rsort;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/gt.js
 var require_gt = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/gt.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var gt = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) > 0, "gt");
+    var gt = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) > 0, "gt");
     module.exports = gt;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/lt.js
 var require_lt = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/lt.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var lt = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) < 0, "lt");
+    var lt = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) < 0, "lt");
     module.exports = lt;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/eq.js
 var require_eq = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/eq.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var eq = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) === 0, "eq");
+    var eq = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) === 0, "eq");
     module.exports = eq;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/neq.js
 var require_neq = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/neq.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var neq = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) !== 0, "neq");
+    var neq = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) !== 0, "neq");
     module.exports = neq;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/gte.js
 var require_gte = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/gte.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var gte = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) >= 0, "gte");
+    var gte = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) >= 0, "gte");
     module.exports = gte;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/lte.js
 var require_lte = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/lte.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var compare = require_compare();
-    var lte = /* @__PURE__ */ __name((a, b, loose) => compare(a, b, loose) <= 0, "lte");
+    var lte = /* @__PURE__ */ __name2((a, b, loose) => compare(a, b, loose) <= 0, "lte");
     module.exports = lte;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/cmp.js
 var require_cmp = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/cmp.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -6521,7 +7692,7 @@ var require_cmp = __commonJS({
     var gte = require_gte();
     var lt = require_lt();
     var lte = require_lte();
-    var cmp = /* @__PURE__ */ __name((a, op, b, loose) => {
+    var cmp = /* @__PURE__ */ __name2((a, op, b, loose) => {
       switch (op) {
         case "===":
           if (typeof a === "object") {
@@ -6560,12 +7731,10 @@ var require_cmp = __commonJS({
     module.exports = cmp;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/coerce.js
 var require_coerce = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/coerce.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -6573,24 +7742,24 @@ var require_coerce = __commonJS({
     var SemVer = require_semver();
     var parse3 = require_parse();
     var { safeRe: re2, t } = require_re();
-    var coerce = /* @__PURE__ */ __name((version2, options) => {
-      if (version2 instanceof SemVer) {
-        return version2;
+    var coerce = /* @__PURE__ */ __name2((version22, options) => {
+      if (version22 instanceof SemVer) {
+        return version22;
       }
-      if (typeof version2 === "number") {
-        version2 = String(version2);
+      if (typeof version22 === "number") {
+        version22 = String(version22);
       }
-      if (typeof version2 !== "string") {
+      if (typeof version22 !== "string") {
         return null;
       }
       options = options || {};
       let match3 = null;
       if (!options.rtl) {
-        match3 = version2.match(options.includePrerelease ? re2[t.COERCEFULL] : re2[t.COERCE]);
+        match3 = version22.match(options.includePrerelease ? re2[t.COERCEFULL] : re2[t.COERCE]);
       } else {
         const coerceRtlRegex = options.includePrerelease ? re2[t.COERCERTLFULL] : re2[t.COERCERTL];
         let next;
-        while ((next = coerceRtlRegex.exec(version2)) && (!match3 || match3.index + match3[0].length !== version2.length)) {
+        while ((next = coerceRtlRegex.exec(version22)) && (!match3 || match3.index + match3[0].length !== version22.length)) {
           if (!match3 || next.index + next[0].length !== match3.index + match3[0].length) {
             match3 = next;
           }
@@ -6611,17 +7780,15 @@ var require_coerce = __commonJS({
     module.exports = coerce;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/internal/lrucache.js
 var require_lrucache = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/internal/lrucache.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
-    var LRUCache = class {
+    var LRUCache = /* @__PURE__ */ __name(class {
       constructor() {
         this.max = 1e3;
         this.map = /* @__PURE__ */ new Map();
@@ -6650,23 +7817,21 @@ var require_lrucache = __commonJS({
         }
         return this;
       }
-    };
-    __name(LRUCache, "LRUCache");
+    }, "LRUCache");
+    __name2(LRUCache, "LRUCache");
     module.exports = LRUCache;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/classes/range.js
 var require_range = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/classes/range.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SPACE_CHARACTERS = /\s+/g;
-    var Range = class {
+    var Range = /* @__PURE__ */ __name(class {
       constructor(range, options) {
         options = parseOptions(options);
         if (range instanceof Range) {
@@ -6785,26 +7950,26 @@ var require_range = __commonJS({
         });
       }
       // if ANY of the sets match ALL of its comparators, then pass
-      test(version2) {
-        if (!version2) {
+      test(version22) {
+        if (!version22) {
           return false;
         }
-        if (typeof version2 === "string") {
+        if (typeof version22 === "string") {
           try {
-            version2 = new SemVer(version2, this.options);
+            version22 = new SemVer(version22, this.options);
           } catch (er) {
             return false;
           }
         }
         for (let i = 0; i < this.set.length; i++) {
-          if (testSet(this.set[i], version2, this.options)) {
+          if (testSet(this.set[i], version22, this.options)) {
             return true;
           }
         }
         return false;
       }
-    };
-    __name(Range, "Range");
+    }, "Range");
+    __name2(Range, "Range");
     module.exports = Range;
     var LRU = require_lrucache();
     var cache = new LRU();
@@ -6820,9 +7985,9 @@ var require_range = __commonJS({
       caretTrimReplace
     } = require_re();
     var { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants();
-    var isNullSet = /* @__PURE__ */ __name((c) => c.value === "<0.0.0-0", "isNullSet");
-    var isAny = /* @__PURE__ */ __name((c) => c.value === "", "isAny");
-    var isSatisfiable = /* @__PURE__ */ __name((comparators, options) => {
+    var isNullSet = /* @__PURE__ */ __name2((c) => c.value === "<0.0.0-0", "isNullSet");
+    var isAny = /* @__PURE__ */ __name2((c) => c.value === "", "isAny");
+    var isSatisfiable = /* @__PURE__ */ __name2((comparators, options) => {
       let result = true;
       const remainingComparators = comparators.slice();
       let testComparator = remainingComparators.pop();
@@ -6834,7 +7999,7 @@ var require_range = __commonJS({
       }
       return result;
     }, "isSatisfiable");
-    var parseComparator = /* @__PURE__ */ __name((comp, options) => {
+    var parseComparator = /* @__PURE__ */ __name2((comp, options) => {
       comp = comp.replace(re2[t.BUILD], "");
       debug4("comp", comp, options);
       comp = replaceCarets(comp, options);
@@ -6847,11 +8012,11 @@ var require_range = __commonJS({
       debug4("stars", comp);
       return comp;
     }, "parseComparator");
-    var isX = /* @__PURE__ */ __name((id) => !id || id.toLowerCase() === "x" || id === "*", "isX");
-    var replaceTildes = /* @__PURE__ */ __name((comp, options) => {
+    var isX = /* @__PURE__ */ __name2((id) => !id || id.toLowerCase() === "x" || id === "*", "isX");
+    var replaceTildes = /* @__PURE__ */ __name2((comp, options) => {
       return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
     }, "replaceTildes");
-    var replaceTilde = /* @__PURE__ */ __name((comp, options) => {
+    var replaceTilde = /* @__PURE__ */ __name2((comp, options) => {
       const r = options.loose ? re2[t.TILDELOOSE] : re2[t.TILDE];
       return comp.replace(r, (_, M, m, p, pr) => {
         debug4("tilde", comp, _, M, m, p, pr);
@@ -6872,10 +8037,10 @@ var require_range = __commonJS({
         return ret;
       });
     }, "replaceTilde");
-    var replaceCarets = /* @__PURE__ */ __name((comp, options) => {
+    var replaceCarets = /* @__PURE__ */ __name2((comp, options) => {
       return comp.trim().split(/\s+/).map((c) => replaceCaret(c, options)).join(" ");
     }, "replaceCarets");
-    var replaceCaret = /* @__PURE__ */ __name((comp, options) => {
+    var replaceCaret = /* @__PURE__ */ __name2((comp, options) => {
       debug4("caret", comp, options);
       const r = options.loose ? re2[t.CARETLOOSE] : re2[t.CARET];
       const z = options.includePrerelease ? "-0" : "";
@@ -6919,11 +8084,11 @@ var require_range = __commonJS({
         return ret;
       });
     }, "replaceCaret");
-    var replaceXRanges = /* @__PURE__ */ __name((comp, options) => {
+    var replaceXRanges = /* @__PURE__ */ __name2((comp, options) => {
       debug4("replaceXRanges", comp, options);
       return comp.split(/\s+/).map((c) => replaceXRange(c, options)).join(" ");
     }, "replaceXRanges");
-    var replaceXRange = /* @__PURE__ */ __name((comp, options) => {
+    var replaceXRange = /* @__PURE__ */ __name2((comp, options) => {
       comp = comp.trim();
       const r = options.loose ? re2[t.XRANGELOOSE] : re2[t.XRANGE];
       return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
@@ -6978,15 +8143,15 @@ var require_range = __commonJS({
         return ret;
       });
     }, "replaceXRange");
-    var replaceStars = /* @__PURE__ */ __name((comp, options) => {
+    var replaceStars = /* @__PURE__ */ __name2((comp, options) => {
       debug4("replaceStars", comp, options);
       return comp.trim().replace(re2[t.STAR], "");
     }, "replaceStars");
-    var replaceGTE0 = /* @__PURE__ */ __name((comp, options) => {
+    var replaceGTE0 = /* @__PURE__ */ __name2((comp, options) => {
       debug4("replaceGTE0", comp, options);
       return comp.trim().replace(re2[options.includePrerelease ? t.GTE0PRE : t.GTE0], "");
     }, "replaceGTE0");
-    var hyphenReplace = /* @__PURE__ */ __name((incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
+    var hyphenReplace = /* @__PURE__ */ __name2((incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
       if (isX(fM)) {
         from = "";
       } else if (isX(fm)) {
@@ -7013,13 +8178,13 @@ var require_range = __commonJS({
       }
       return `${from} ${to}`.trim();
     }, "hyphenReplace");
-    var testSet = /* @__PURE__ */ __name((set, version2, options) => {
+    var testSet = /* @__PURE__ */ __name2((set, version22, options) => {
       for (let i = 0; i < set.length; i++) {
-        if (!set[i].test(version2)) {
+        if (!set[i].test(version22)) {
           return false;
         }
       }
-      if (version2.prerelease.length && !options.includePrerelease) {
+      if (version22.prerelease.length && !options.includePrerelease) {
         for (let i = 0; i < set.length; i++) {
           debug4(set[i].semver);
           if (set[i].semver === Comparator.ANY) {
@@ -7027,7 +8192,7 @@ var require_range = __commonJS({
           }
           if (set[i].semver.prerelease.length > 0) {
             const allowed = set[i].semver;
-            if (allowed.major === version2.major && allowed.minor === version2.minor && allowed.patch === version2.patch) {
+            if (allowed.major === version22.major && allowed.minor === version22.minor && allowed.patch === version22.patch) {
               return true;
             }
           }
@@ -7038,18 +8203,16 @@ var require_range = __commonJS({
     }, "testSet");
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/classes/comparator.js
 var require_comparator = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/classes/comparator.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var ANY = Symbol("SemVer ANY");
-    var Comparator = class {
+    var Comparator = /* @__PURE__ */ __name(class {
       static get ANY() {
         return ANY;
       }
@@ -7093,19 +8256,19 @@ var require_comparator = __commonJS({
       toString() {
         return this.value;
       }
-      test(version2) {
-        debug4("Comparator.test", version2, this.options.loose);
-        if (this.semver === ANY || version2 === ANY) {
+      test(version22) {
+        debug4("Comparator.test", version22, this.options.loose);
+        if (this.semver === ANY || version22 === ANY) {
           return true;
         }
-        if (typeof version2 === "string") {
+        if (typeof version22 === "string") {
           try {
-            version2 = new SemVer(version2, this.options);
+            version22 = new SemVer(version22, this.options);
           } catch (er) {
             return false;
           }
         }
-        return cmp(version2, this.operator, this.semver, this.options);
+        return cmp(version22, this.operator, this.semver, this.options);
       }
       intersects(comp, options) {
         if (!(comp instanceof Comparator)) {
@@ -7146,8 +8309,8 @@ var require_comparator = __commonJS({
         }
         return false;
       }
-    };
-    __name(Comparator, "Comparator");
+    }, "Comparator");
+    __name2(Comparator, "Comparator");
     module.exports = Comparator;
     var parseOptions = require_parse_options();
     var { safeRe: re2, t } = require_re();
@@ -7157,56 +8320,50 @@ var require_comparator = __commonJS({
     var Range = require_range();
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/functions/satisfies.js
 var require_satisfies = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/functions/satisfies.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var Range = require_range();
-    var satisfies = /* @__PURE__ */ __name((version2, range, options) => {
+    var satisfies = /* @__PURE__ */ __name2((version22, range, options) => {
       try {
         range = new Range(range, options);
       } catch (er) {
         return false;
       }
-      return range.test(version2);
+      return range.test(version22);
     }, "satisfies");
     module.exports = satisfies;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/to-comparators.js
 var require_to_comparators = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/to-comparators.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var Range = require_range();
-    var toComparators = /* @__PURE__ */ __name((range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" ")), "toComparators");
+    var toComparators = /* @__PURE__ */ __name2((range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" ")), "toComparators");
     module.exports = toComparators;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/max-satisfying.js
 var require_max_satisfying = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
     var Range = require_range();
-    var maxSatisfying = /* @__PURE__ */ __name((versions2, range, options) => {
+    var maxSatisfying = /* @__PURE__ */ __name2((versions22, range, options) => {
       let max = null;
       let maxSV = null;
       let rangeObj = null;
@@ -7215,7 +8372,7 @@ var require_max_satisfying = __commonJS({
       } catch (er) {
         return null;
       }
-      versions2.forEach((v) => {
+      versions22.forEach((v) => {
         if (rangeObj.test(v)) {
           if (!max || maxSV.compare(v) === -1) {
             max = v;
@@ -7228,19 +8385,17 @@ var require_max_satisfying = __commonJS({
     module.exports = maxSatisfying;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/min-satisfying.js
 var require_min_satisfying = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var SemVer = require_semver();
     var Range = require_range();
-    var minSatisfying = /* @__PURE__ */ __name((versions2, range, options) => {
+    var minSatisfying = /* @__PURE__ */ __name2((versions22, range, options) => {
       let min = null;
       let minSV = null;
       let rangeObj = null;
@@ -7249,7 +8404,7 @@ var require_min_satisfying = __commonJS({
       } catch (er) {
         return null;
       }
-      versions2.forEach((v) => {
+      versions22.forEach((v) => {
         if (rangeObj.test(v)) {
           if (!min || minSV.compare(v) === 1) {
             min = v;
@@ -7262,12 +8417,10 @@ var require_min_satisfying = __commonJS({
     module.exports = minSatisfying;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/min-version.js
 var require_min_version = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/min-version.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7275,7 +8428,7 @@ var require_min_version = __commonJS({
     var SemVer = require_semver();
     var Range = require_range();
     var gt = require_gt();
-    var minVersion = /* @__PURE__ */ __name((range, loose) => {
+    var minVersion = /* @__PURE__ */ __name2((range, loose) => {
       range = new Range(range, loose);
       let minver = new SemVer("0.0.0");
       if (range.test(minver)) {
@@ -7324,18 +8477,16 @@ var require_min_version = __commonJS({
     module.exports = minVersion;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/valid.js
 var require_valid2 = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/valid.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var Range = require_range();
-    var validRange = /* @__PURE__ */ __name((range, options) => {
+    var validRange = /* @__PURE__ */ __name2((range, options) => {
       try {
         return new Range(range, options).range || "*";
       } catch (er) {
@@ -7345,12 +8496,10 @@ var require_valid2 = __commonJS({
     module.exports = validRange;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/outside.js
 var require_outside = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/outside.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7364,8 +8513,8 @@ var require_outside = __commonJS({
     var lt = require_lt();
     var lte = require_lte();
     var gte = require_gte();
-    var outside = /* @__PURE__ */ __name((version2, range, hilo, options) => {
-      version2 = new SemVer(version2, options);
+    var outside = /* @__PURE__ */ __name2((version22, range, hilo, options) => {
+      version22 = new SemVer(version22, options);
       range = new Range(range, options);
       let gtfn, ltefn, ltfn, comp, ecomp;
       switch (hilo) {
@@ -7386,7 +8535,7 @@ var require_outside = __commonJS({
         default:
           throw new TypeError('Must provide a hilo val of "<" or ">"');
       }
-      if (satisfies(version2, range, options)) {
+      if (satisfies(version22, range, options)) {
         return false;
       }
       for (let i = 0; i < range.set.length; ++i) {
@@ -7408,9 +8557,9 @@ var require_outside = __commonJS({
         if (high.operator === comp || high.operator === ecomp) {
           return false;
         }
-        if ((!low.operator || low.operator === comp) && ltefn(version2, low.semver)) {
+        if ((!low.operator || low.operator === comp) && ltefn(version22, low.semver)) {
           return false;
-        } else if (low.operator === ecomp && ltfn(version2, low.semver)) {
+        } else if (low.operator === ecomp && ltfn(version22, low.semver)) {
           return false;
         }
       }
@@ -7419,48 +8568,42 @@ var require_outside = __commonJS({
     module.exports = outside;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/gtr.js
 var require_gtr = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/gtr.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var outside = require_outside();
-    var gtr = /* @__PURE__ */ __name((version2, range, options) => outside(version2, range, ">", options), "gtr");
+    var gtr = /* @__PURE__ */ __name2((version22, range, options) => outside(version22, range, ">", options), "gtr");
     module.exports = gtr;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/ltr.js
 var require_ltr = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/ltr.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var outside = require_outside();
-    var ltr = /* @__PURE__ */ __name((version2, range, options) => outside(version2, range, "<", options), "ltr");
+    var ltr = /* @__PURE__ */ __name2((version22, range, options) => outside(version22, range, "<", options), "ltr");
     module.exports = ltr;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/intersects.js
 var require_intersects = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/intersects.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var Range = require_range();
-    var intersects = /* @__PURE__ */ __name((r1, r2, options) => {
+    var intersects = /* @__PURE__ */ __name2((r1, r2, options) => {
       r1 = new Range(r1, options);
       r2 = new Range(r2, options);
       return r1.intersects(r2, options);
@@ -7468,29 +8611,27 @@ var require_intersects = __commonJS({
     module.exports = intersects;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/simplify.js
 var require_simplify = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/simplify.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
     init_performance2();
     var satisfies = require_satisfies();
     var compare = require_compare();
-    module.exports = (versions2, range, options) => {
+    module.exports = (versions22, range, options) => {
       const set = [];
       let first = null;
       let prev = null;
-      const v = versions2.sort((a, b) => compare(a, b, options));
-      for (const version2 of v) {
-        const included = satisfies(version2, range, options);
+      const v = versions22.sort((a, b) => compare(a, b, options));
+      for (const version22 of v) {
+        const included = satisfies(version22, range, options);
         if (included) {
-          prev = version2;
+          prev = version22;
           if (!first) {
-            first = version2;
+            first = version22;
           }
         } else {
           if (prev) {
@@ -7523,12 +8664,10 @@ var require_simplify = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/ranges/subset.js
 var require_subset = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/ranges/subset.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7538,7 +8677,7 @@ var require_subset = __commonJS({
     var { ANY } = Comparator;
     var satisfies = require_satisfies();
     var compare = require_compare();
-    var subset = /* @__PURE__ */ __name((sub, dom, options = {}) => {
+    var subset = /* @__PURE__ */ __name2((sub, dom, options = {}) => {
       if (sub === dom) {
         return true;
       }
@@ -7562,7 +8701,7 @@ var require_subset = __commonJS({
     }, "subset");
     var minimumVersionWithPreRelease = [new Comparator(">=0.0.0-0")];
     var minimumVersion = [new Comparator(">=0.0.0")];
-    var simpleSubset = /* @__PURE__ */ __name((sub, dom, options) => {
+    var simpleSubset = /* @__PURE__ */ __name2((sub, dom, options) => {
       if (sub === dom) {
         return true;
       }
@@ -7674,14 +8813,14 @@ var require_subset = __commonJS({
       }
       return true;
     }, "simpleSubset");
-    var higherGT = /* @__PURE__ */ __name((a, b, options) => {
+    var higherGT = /* @__PURE__ */ __name2((a, b, options) => {
       if (!a) {
         return b;
       }
       const comp = compare(a.semver, b.semver, options);
       return comp > 0 ? a : comp < 0 ? b : b.operator === ">" && a.operator === ">=" ? b : a;
     }, "higherGT");
-    var lowerLT = /* @__PURE__ */ __name((a, b, options) => {
+    var lowerLT = /* @__PURE__ */ __name2((a, b, options) => {
       if (!a) {
         return b;
       }
@@ -7691,12 +8830,10 @@ var require_subset = __commonJS({
     module.exports = subset;
   }
 });
-
-// ../node_modules/jsonwebtoken/node_modules/semver/index.js
 var require_semver2 = __commonJS({
   "../node_modules/jsonwebtoken/node_modules/semver/index.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7791,11 +8928,9 @@ var require_semver2 = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js
 var require_asymmetricKeyDetailsSupported = __commonJS({
   "../node_modules/jsonwebtoken/lib/asymmetricKeyDetailsSupported.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7804,11 +8939,9 @@ var require_asymmetricKeyDetailsSupported = __commonJS({
     module.exports = semver.satisfies(process.version, ">=15.7.0");
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js
 var require_rsaPssKeyDetailsSupported = __commonJS({
   "../node_modules/jsonwebtoken/lib/rsaPssKeyDetailsSupported.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7817,11 +8950,9 @@ var require_rsaPssKeyDetailsSupported = __commonJS({
     module.exports = semver.satisfies(process.version, ">=16.9.0");
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/validateAsymmetricKey.js
 var require_validateAsymmetricKey = __commonJS({
   "../node_modules/jsonwebtoken/lib/validateAsymmetricKey.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7877,11 +9008,9 @@ var require_validateAsymmetricKey = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/lib/psSupported.js
 var require_psSupported = __commonJS({
   "../node_modules/jsonwebtoken/lib/psSupported.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7890,11 +9019,9 @@ var require_psSupported = __commonJS({
     module.exports = semver.satisfies(process.version, "^6.12.0 || >=8.0.0");
   }
 });
-
-// ../node_modules/jsonwebtoken/verify.js
 var require_verify = __commonJS({
   "../node_modules/jsonwebtoken/verify.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -7929,7 +9056,7 @@ var require_verify = __commonJS({
       if (callback) {
         done = callback;
       } else {
-        done = /* @__PURE__ */ __name(function(err, data) {
+        done = /* @__PURE__ */ __name2(function(err, data) {
           if (err)
             throw err;
           return data;
@@ -7972,7 +9099,7 @@ var require_verify = __commonJS({
         }
         getSecret = secretOrPublicKey;
       } else {
-        getSecret = /* @__PURE__ */ __name(function(header2, secretCallback) {
+        getSecret = /* @__PURE__ */ __name2(function(header2, secretCallback) {
           return secretCallback(null, secretOrPublicKey);
         }, "getSecret");
       }
@@ -8111,11 +9238,9 @@ var require_verify = __commonJS({
     };
   }
 });
-
-// ../node_modules/lodash.includes/index.js
 var require_lodash = __commonJS({
   "../node_modules/lodash.includes/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8143,6 +9268,7 @@ var require_lodash = __commonJS({
       return result;
     }
     __name(arrayMap, "arrayMap");
+    __name2(arrayMap, "arrayMap");
     function baseFindIndex(array, predicate, fromIndex, fromRight) {
       var length = array.length, index = fromIndex + (fromRight ? 1 : -1);
       while (fromRight ? index-- : ++index < length) {
@@ -8153,6 +9279,7 @@ var require_lodash = __commonJS({
       return -1;
     }
     __name(baseFindIndex, "baseFindIndex");
+    __name2(baseFindIndex, "baseFindIndex");
     function baseIndexOf(array, value, fromIndex) {
       if (value !== value) {
         return baseFindIndex(array, baseIsNaN, fromIndex);
@@ -8166,10 +9293,12 @@ var require_lodash = __commonJS({
       return -1;
     }
     __name(baseIndexOf, "baseIndexOf");
+    __name2(baseIndexOf, "baseIndexOf");
     function baseIsNaN(value) {
       return value !== value;
     }
     __name(baseIsNaN, "baseIsNaN");
+    __name2(baseIsNaN, "baseIsNaN");
     function baseTimes(n, iteratee) {
       var index = -1, result = Array(n);
       while (++index < n) {
@@ -8178,18 +9307,21 @@ var require_lodash = __commonJS({
       return result;
     }
     __name(baseTimes, "baseTimes");
+    __name2(baseTimes, "baseTimes");
     function baseValues(object, props) {
       return arrayMap(props, function(key) {
         return object[key];
       });
     }
     __name(baseValues, "baseValues");
+    __name2(baseValues, "baseValues");
     function overArg(func, transform) {
       return function(arg) {
         return func(transform(arg));
       };
     }
     __name(overArg, "overArg");
+    __name2(overArg, "overArg");
     var objectProto = Object.prototype;
     var hasOwnProperty = objectProto.hasOwnProperty;
     var objectToString = objectProto.toString;
@@ -8207,6 +9339,7 @@ var require_lodash = __commonJS({
       return result;
     }
     __name(arrayLikeKeys, "arrayLikeKeys");
+    __name2(arrayLikeKeys, "arrayLikeKeys");
     function baseKeys(object) {
       if (!isPrototype(object)) {
         return nativeKeys(object);
@@ -8220,16 +9353,19 @@ var require_lodash = __commonJS({
       return result;
     }
     __name(baseKeys, "baseKeys");
+    __name2(baseKeys, "baseKeys");
     function isIndex(value, length) {
       length = length == null ? MAX_SAFE_INTEGER : length;
       return !!length && (typeof value == "number" || reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
     }
     __name(isIndex, "isIndex");
+    __name2(isIndex, "isIndex");
     function isPrototype(value) {
       var Ctor = value && value.constructor, proto = typeof Ctor == "function" && Ctor.prototype || objectProto;
       return value === proto;
     }
     __name(isPrototype, "isPrototype");
+    __name2(isPrototype, "isPrototype");
     function includes(collection, value, fromIndex, guard) {
       collection = isArrayLike(collection) ? collection : values(collection);
       fromIndex = fromIndex && !guard ? toInteger(fromIndex) : 0;
@@ -8240,45 +9376,55 @@ var require_lodash = __commonJS({
       return isString2(collection) ? fromIndex <= length && collection.indexOf(value, fromIndex) > -1 : !!length && baseIndexOf(collection, value, fromIndex) > -1;
     }
     __name(includes, "includes");
+    __name2(includes, "includes");
     function isArguments(value) {
       return isArrayLikeObject(value) && hasOwnProperty.call(value, "callee") && (!propertyIsEnumerable.call(value, "callee") || objectToString.call(value) == argsTag);
     }
     __name(isArguments, "isArguments");
+    __name2(isArguments, "isArguments");
     var isArray2 = Array.isArray;
     function isArrayLike(value) {
       return value != null && isLength(value.length) && !isFunction2(value);
     }
     __name(isArrayLike, "isArrayLike");
+    __name2(isArrayLike, "isArrayLike");
     function isArrayLikeObject(value) {
       return isObjectLike(value) && isArrayLike(value);
     }
     __name(isArrayLikeObject, "isArrayLikeObject");
+    __name2(isArrayLikeObject, "isArrayLikeObject");
     function isFunction2(value) {
       var tag = isObject2(value) ? objectToString.call(value) : "";
       return tag == funcTag || tag == genTag;
     }
-    __name(isFunction2, "isFunction");
+    __name(isFunction2, "isFunction2");
+    __name2(isFunction2, "isFunction");
     function isLength(value) {
       return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
     }
     __name(isLength, "isLength");
+    __name2(isLength, "isLength");
     function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
-    __name(isObject2, "isObject");
+    __name(isObject2, "isObject2");
+    __name2(isObject2, "isObject");
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isString2(value) {
       return typeof value == "string" || !isArray2(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
     }
-    __name(isString2, "isString");
+    __name(isString2, "isString2");
+    __name2(isString2, "isString");
     function isSymbol2(value) {
       return typeof value == "symbol" || isObjectLike(value) && objectToString.call(value) == symbolTag;
     }
-    __name(isSymbol2, "isSymbol");
+    __name(isSymbol2, "isSymbol2");
+    __name2(isSymbol2, "isSymbol");
     function toFinite(value) {
       if (!value) {
         return value === 0 ? value : 0;
@@ -8291,11 +9437,13 @@ var require_lodash = __commonJS({
       return value === value ? value : 0;
     }
     __name(toFinite, "toFinite");
+    __name2(toFinite, "toFinite");
     function toInteger(value) {
       var result = toFinite(value), remainder = result % 1;
       return result === result ? remainder ? result - remainder : result : 0;
     }
     __name(toInteger, "toInteger");
+    __name2(toInteger, "toInteger");
     function toNumber(value) {
       if (typeof value == "number") {
         return value;
@@ -8315,22 +9463,23 @@ var require_lodash = __commonJS({
       return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
     }
     __name(toNumber, "toNumber");
+    __name2(toNumber, "toNumber");
     function keys(object) {
       return isArrayLike(object) ? arrayLikeKeys(object) : baseKeys(object);
     }
     __name(keys, "keys");
+    __name2(keys, "keys");
     function values(object) {
       return object ? baseValues(object, keys(object)) : [];
     }
     __name(values, "values");
+    __name2(values, "values");
     module.exports = includes;
   }
 });
-
-// ../node_modules/lodash.isboolean/index.js
 var require_lodash2 = __commonJS({
   "../node_modules/lodash.isboolean/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8341,19 +9490,19 @@ var require_lodash2 = __commonJS({
     function isBoolean2(value) {
       return value === true || value === false || isObjectLike(value) && objectToString.call(value) == boolTag;
     }
-    __name(isBoolean2, "isBoolean");
+    __name(isBoolean2, "isBoolean2");
+    __name2(isBoolean2, "isBoolean");
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     module.exports = isBoolean2;
   }
 });
-
-// ../node_modules/lodash.isinteger/index.js
 var require_lodash3 = __commonJS({
   "../node_modules/lodash.isinteger/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8373,19 +9522,23 @@ var require_lodash3 = __commonJS({
       return typeof value == "number" && value == toInteger(value);
     }
     __name(isInteger, "isInteger");
+    __name2(isInteger, "isInteger");
     function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
-    __name(isObject2, "isObject");
+    __name(isObject2, "isObject2");
+    __name2(isObject2, "isObject");
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isSymbol2(value) {
       return typeof value == "symbol" || isObjectLike(value) && objectToString.call(value) == symbolTag;
     }
-    __name(isSymbol2, "isSymbol");
+    __name(isSymbol2, "isSymbol2");
+    __name2(isSymbol2, "isSymbol");
     function toFinite(value) {
       if (!value) {
         return value === 0 ? value : 0;
@@ -8398,11 +9551,13 @@ var require_lodash3 = __commonJS({
       return value === value ? value : 0;
     }
     __name(toFinite, "toFinite");
+    __name2(toFinite, "toFinite");
     function toInteger(value) {
       var result = toFinite(value), remainder = result % 1;
       return result === result ? remainder ? result - remainder : result : 0;
     }
     __name(toInteger, "toInteger");
+    __name2(toInteger, "toInteger");
     function toNumber(value) {
       if (typeof value == "number") {
         return value;
@@ -8422,14 +9577,13 @@ var require_lodash3 = __commonJS({
       return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
     }
     __name(toNumber, "toNumber");
+    __name2(toNumber, "toNumber");
     module.exports = isInteger;
   }
 });
-
-// ../node_modules/lodash.isnumber/index.js
 var require_lodash4 = __commonJS({
   "../node_modules/lodash.isnumber/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8441,18 +9595,18 @@ var require_lodash4 = __commonJS({
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isNumber2(value) {
       return typeof value == "number" || isObjectLike(value) && objectToString.call(value) == numberTag;
     }
-    __name(isNumber2, "isNumber");
+    __name(isNumber2, "isNumber2");
+    __name2(isNumber2, "isNumber");
     module.exports = isNumber2;
   }
 });
-
-// ../node_modules/lodash.isplainobject/index.js
 var require_lodash5 = __commonJS({
   "../node_modules/lodash.isplainobject/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8469,12 +9623,14 @@ var require_lodash5 = __commonJS({
       return result;
     }
     __name(isHostObject, "isHostObject");
+    __name2(isHostObject, "isHostObject");
     function overArg(func, transform) {
       return function(arg) {
         return func(transform(arg));
       };
     }
     __name(overArg, "overArg");
+    __name2(overArg, "overArg");
     var funcProto = Function.prototype;
     var objectProto = Object.prototype;
     var funcToString = funcProto.toString;
@@ -8486,6 +9642,7 @@ var require_lodash5 = __commonJS({
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isPlainObject(value) {
       if (!isObjectLike(value) || objectToString.call(value) != objectTag || isHostObject(value)) {
         return false;
@@ -8498,14 +9655,13 @@ var require_lodash5 = __commonJS({
       return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
     }
     __name(isPlainObject, "isPlainObject");
+    __name2(isPlainObject, "isPlainObject");
     module.exports = isPlainObject;
   }
 });
-
-// ../node_modules/lodash.isstring/index.js
 var require_lodash6 = __commonJS({
   "../node_modules/lodash.isstring/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8518,18 +9674,18 @@ var require_lodash6 = __commonJS({
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isString2(value) {
       return typeof value == "string" || !isArray2(value) && isObjectLike(value) && objectToString.call(value) == stringTag;
     }
-    __name(isString2, "isString");
+    __name(isString2, "isString2");
+    __name2(isString2, "isString");
     module.exports = isString2;
   }
 });
-
-// ../node_modules/lodash.once/index.js
 var require_lodash7 = __commonJS({
   "../node_modules/lodash.once/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8563,23 +9719,28 @@ var require_lodash7 = __commonJS({
       };
     }
     __name(before, "before");
-    function once2(func) {
+    __name2(before, "before");
+    function once22(func) {
       return before(2, func);
     }
-    __name(once2, "once");
+    __name(once22, "once2");
+    __name2(once22, "once");
     function isObject2(value) {
       var type = typeof value;
       return !!value && (type == "object" || type == "function");
     }
-    __name(isObject2, "isObject");
+    __name(isObject2, "isObject2");
+    __name2(isObject2, "isObject");
     function isObjectLike(value) {
       return !!value && typeof value == "object";
     }
     __name(isObjectLike, "isObjectLike");
+    __name2(isObjectLike, "isObjectLike");
     function isSymbol2(value) {
       return typeof value == "symbol" || isObjectLike(value) && objectToString.call(value) == symbolTag;
     }
-    __name(isSymbol2, "isSymbol");
+    __name(isSymbol2, "isSymbol2");
+    __name2(isSymbol2, "isSymbol");
     function toFinite(value) {
       if (!value) {
         return value === 0 ? value : 0;
@@ -8592,11 +9753,13 @@ var require_lodash7 = __commonJS({
       return value === value ? value : 0;
     }
     __name(toFinite, "toFinite");
+    __name2(toFinite, "toFinite");
     function toInteger(value) {
       var result = toFinite(value), remainder = result % 1;
       return result === result ? remainder ? result - remainder : result : 0;
     }
     __name(toInteger, "toInteger");
+    __name2(toInteger, "toInteger");
     function toNumber(value) {
       if (typeof value == "number") {
         return value;
@@ -8616,14 +9779,13 @@ var require_lodash7 = __commonJS({
       return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
     }
     __name(toNumber, "toNumber");
-    module.exports = once2;
+    __name2(toNumber, "toNumber");
+    module.exports = once22;
   }
 });
-
-// ../node_modules/jsonwebtoken/sign.js
 var require_sign = __commonJS({
   "../node_modules/jsonwebtoken/sign.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8638,7 +9800,7 @@ var require_sign = __commonJS({
     var isNumber2 = require_lodash4();
     var isPlainObject = require_lodash5();
     var isString2 = require_lodash6();
-    var once2 = require_lodash7();
+    var once22 = require_lodash7();
     var { KeyObject: KeyObject2, createSecretKey: createSecretKey2, createPrivateKey: createPrivateKey2 } = require_crypto();
     var SUPPORTED_ALGS = ["RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "HS256", "HS384", "HS512", "none"];
     if (PS_SUPPORTED) {
@@ -8689,14 +9851,17 @@ var require_sign = __commonJS({
       });
     }
     __name(validate, "validate");
+    __name2(validate, "validate");
     function validateOptions(options) {
       return validate(sign_options_schema, false, options, "options");
     }
     __name(validateOptions, "validateOptions");
+    __name2(validateOptions, "validateOptions");
     function validatePayload(payload) {
       return validate(registered_claims_schema, true, payload, "payload");
     }
     __name(validatePayload, "validatePayload");
+    __name2(validatePayload, "validatePayload");
     var options_to_payload = {
       "audience": "aud",
       "issuer": "iss",
@@ -8732,6 +9897,7 @@ var require_sign = __commonJS({
         throw err;
       }
       __name(failure, "failure");
+      __name2(failure, "failure");
       if (!secretOrPrivateKey && options.algorithm !== "none") {
         return failure(new Error("secretOrPrivateKey must have a value"));
       }
@@ -8762,8 +9928,8 @@ var require_sign = __commonJS({
       } else if (isObjectPayload) {
         try {
           validatePayload(payload);
-        } catch (error3) {
-          return failure(error3);
+        } catch (error32) {
+          return failure(error32);
         }
         if (!options.mutatePayload) {
           payload = Object.assign({}, payload);
@@ -8784,14 +9950,14 @@ var require_sign = __commonJS({
       }
       try {
         validateOptions(options);
-      } catch (error3) {
-        return failure(error3);
+      } catch (error32) {
+        return failure(error32);
       }
       if (!options.allowInvalidAsymmetricKeyTypes) {
         try {
           validateAsymmetricKey(header.alg, secretOrPrivateKey);
-        } catch (error3) {
-          return failure(error3);
+        } catch (error32) {
+          return failure(error32);
         }
       }
       const timestamp = payload.iat || Math.floor(Date.now() / 1e3);
@@ -8831,7 +9997,7 @@ var require_sign = __commonJS({
       });
       const encoding = options.encoding || "utf8";
       if (typeof callback === "function") {
-        callback = callback && once2(callback);
+        callback = callback && once22(callback);
         jws.createSign({
           header,
           privateKey: secretOrPrivateKey,
@@ -8853,11 +10019,9 @@ var require_sign = __commonJS({
     };
   }
 });
-
-// ../node_modules/jsonwebtoken/index.js
 var require_jsonwebtoken = __commonJS({
   "../node_modules/jsonwebtoken/index.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8872,11 +10036,9 @@ var require_jsonwebtoken = __commonJS({
     };
   }
 });
-
-// ../node_modules/bcryptjs/dist/bcrypt.js
 var require_bcrypt = __commonJS({
   "../node_modules/bcryptjs/dist/bcrypt.js"(exports, module) {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -8884,7 +10046,7 @@ var require_bcrypt = __commonJS({
     (function(global, factory) {
       if (typeof define === "function" && define["amd"])
         define([], factory);
-      else if (typeof __require === "function" && typeof module === "object" && module && module["exports"])
+      else if (typeof __require2 === "function" && typeof module === "object" && module && module["exports"])
         module["exports"] = factory();
       else
         (global["dcodeIO"] = global["dcodeIO"] || {})["bcrypt"] = factory();
@@ -8909,6 +10071,7 @@ var require_bcrypt = __commonJS({
         return randomFallback(len);
       }
       __name(random, "random");
+      __name2(random, "random");
       var randomAvailable = false;
       try {
         random(1);
@@ -8946,7 +10109,7 @@ var require_bcrypt = __commonJS({
         else if (typeof rounds !== "number")
           throw Error("illegal arguments: " + typeof rounds);
         function _async(callback2) {
-          nextTick2(function() {
+          nextTick22(function() {
             try {
               callback2(null, bcrypt2.genSaltSync(rounds));
             } catch (err) {
@@ -8955,6 +10118,7 @@ var require_bcrypt = __commonJS({
           });
         }
         __name(_async, "_async");
+        __name2(_async, "_async");
         if (callback) {
           if (typeof callback !== "function")
             throw Error("Illegal callback: " + typeof callback);
@@ -8988,9 +10152,10 @@ var require_bcrypt = __commonJS({
           else if (typeof s === "string" && typeof salt === "string")
             _hash(s, salt, callback2, progressCallback);
           else
-            nextTick2(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof salt)));
+            nextTick22(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof salt)));
         }
         __name(_async, "_async");
+        __name2(_async, "_async");
         if (callback) {
           if (typeof callback !== "function")
             throw Error("Illegal callback: " + typeof callback);
@@ -9019,6 +10184,7 @@ var require_bcrypt = __commonJS({
         return wrong === 0;
       }
       __name(safeStringCompare, "safeStringCompare");
+      __name2(safeStringCompare, "safeStringCompare");
       bcrypt2.compareSync = function(s, hash2) {
         if (typeof s !== "string" || typeof hash2 !== "string")
           throw Error("Illegal arguments: " + typeof s + ", " + typeof hash2);
@@ -9029,11 +10195,11 @@ var require_bcrypt = __commonJS({
       bcrypt2.compare = function(s, hash2, callback, progressCallback) {
         function _async(callback2) {
           if (typeof s !== "string" || typeof hash2 !== "string") {
-            nextTick2(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof hash2)));
+            nextTick22(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof hash2)));
             return;
           }
           if (hash2.length !== 60) {
-            nextTick2(callback2.bind(this, null, false));
+            nextTick22(callback2.bind(this, null, false));
             return;
           }
           bcrypt2.hash(s, hash2.substr(0, 29), function(err, comp) {
@@ -9044,6 +10210,7 @@ var require_bcrypt = __commonJS({
           }, progressCallback);
         }
         __name(_async, "_async");
+        __name2(_async, "_async");
         if (callback) {
           if (typeof callback !== "function")
             throw Error("Illegal callback: " + typeof callback);
@@ -9071,7 +10238,7 @@ var require_bcrypt = __commonJS({
           throw Error("Illegal hash length: " + hash2.length + " != 60");
         return hash2.substring(0, 29);
       };
-      var nextTick2 = typeof process !== "undefined" && process && typeof process.nextTick === "function" ? typeof setImmediate === "function" ? setImmediate : process.nextTick : setTimeout;
+      var nextTick22 = typeof process !== "undefined" && process && typeof process.nextTick === "function" ? typeof setImmediate === "function" ? setImmediate : process.nextTick : setTimeout;
       function stringToBytes(str) {
         var out = [], i = 0;
         utfx.encodeUTF16toUTF8(function() {
@@ -9084,6 +10251,7 @@ var require_bcrypt = __commonJS({
         return out;
       }
       __name(stringToBytes, "stringToBytes");
+      __name2(stringToBytes, "stringToBytes");
       var BASE64_CODE = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".split("");
       var BASE64_INDEX = [
         -1,
@@ -9217,26 +10385,26 @@ var require_bcrypt = __commonJS({
       ];
       var stringFromCharCode = String.fromCharCode;
       function base64_encode(b, len) {
-        var off2 = 0, rs = [], c1, c2;
+        var off22 = 0, rs = [], c1, c2;
         if (len <= 0 || len > b.length)
           throw Error("Illegal len: " + len);
-        while (off2 < len) {
-          c1 = b[off2++] & 255;
+        while (off22 < len) {
+          c1 = b[off22++] & 255;
           rs.push(BASE64_CODE[c1 >> 2 & 63]);
           c1 = (c1 & 3) << 4;
-          if (off2 >= len) {
+          if (off22 >= len) {
             rs.push(BASE64_CODE[c1 & 63]);
             break;
           }
-          c2 = b[off2++] & 255;
+          c2 = b[off22++] & 255;
           c1 |= c2 >> 4 & 15;
           rs.push(BASE64_CODE[c1 & 63]);
           c1 = (c2 & 15) << 2;
-          if (off2 >= len) {
+          if (off22 >= len) {
             rs.push(BASE64_CODE[c1 & 63]);
             break;
           }
-          c2 = b[off2++] & 255;
+          c2 = b[off22++] & 255;
           c1 |= c2 >> 6 & 3;
           rs.push(BASE64_CODE[c1 & 63]);
           rs.push(BASE64_CODE[c2 & 63]);
@@ -9244,32 +10412,33 @@ var require_bcrypt = __commonJS({
         return rs.join("");
       }
       __name(base64_encode, "base64_encode");
+      __name2(base64_encode, "base64_encode");
       function base64_decode(s, len) {
-        var off2 = 0, slen = s.length, olen = 0, rs = [], c1, c2, c3, c4, o, code;
+        var off22 = 0, slen = s.length, olen = 0, rs = [], c1, c2, c3, c4, o, code;
         if (len <= 0)
           throw Error("Illegal len: " + len);
-        while (off2 < slen - 1 && olen < len) {
-          code = s.charCodeAt(off2++);
+        while (off22 < slen - 1 && olen < len) {
+          code = s.charCodeAt(off22++);
           c1 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
-          code = s.charCodeAt(off2++);
+          code = s.charCodeAt(off22++);
           c2 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
           if (c1 == -1 || c2 == -1)
             break;
           o = c1 << 2 >>> 0;
           o |= (c2 & 48) >> 4;
           rs.push(stringFromCharCode(o));
-          if (++olen >= len || off2 >= slen)
+          if (++olen >= len || off22 >= slen)
             break;
-          code = s.charCodeAt(off2++);
+          code = s.charCodeAt(off22++);
           c3 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
           if (c3 == -1)
             break;
           o = (c2 & 15) << 4 >>> 0;
           o |= (c3 & 60) >> 2;
           rs.push(stringFromCharCode(o));
-          if (++olen >= len || off2 >= slen)
+          if (++olen >= len || off22 >= slen)
             break;
-          code = s.charCodeAt(off2++);
+          code = s.charCodeAt(off22++);
           c4 = code < BASE64_INDEX.length ? BASE64_INDEX[code] : -1;
           o = (c3 & 3) << 6 >>> 0;
           o |= c4;
@@ -9277,11 +10446,12 @@ var require_bcrypt = __commonJS({
           ++olen;
         }
         var res = [];
-        for (off2 = 0; off2 < olen; off2++)
-          res.push(rs[off2].charCodeAt(0));
+        for (off22 = 0; off22 < olen; off22++)
+          res.push(rs[off22].charCodeAt(0));
         return res;
       }
       __name(base64_decode, "base64_decode");
+      __name2(base64_decode, "base64_decode");
       var utfx = function() {
         "use strict";
         var utfx2 = {};
@@ -9289,7 +10459,7 @@ var require_bcrypt = __commonJS({
         utfx2.encodeUTF8 = function(src, dst) {
           var cp = null;
           if (typeof src === "number")
-            cp = src, src = /* @__PURE__ */ __name(function() {
+            cp = src, src = /* @__PURE__ */ __name2(function() {
               return null;
             }, "src");
           while (cp !== null || (cp = src()) !== null) {
@@ -9305,7 +10475,7 @@ var require_bcrypt = __commonJS({
           }
         };
         utfx2.decodeUTF8 = function(src, dst) {
-          var a, b, c, d, fail = /* @__PURE__ */ __name(function(b2) {
+          var a, b, c, d, fail = /* @__PURE__ */ __name2(function(b2) {
             b2 = b2.slice(0, b2.indexOf(null));
             var err = Error(b2.toString());
             err.name = "TruncatedError";
@@ -9347,7 +10517,7 @@ var require_bcrypt = __commonJS({
         utfx2.UTF8toUTF16 = function(src, dst) {
           var cp = null;
           if (typeof src === "number")
-            cp = src, src = /* @__PURE__ */ __name(function() {
+            cp = src, src = /* @__PURE__ */ __name2(function() {
               return null;
             }, "src");
           while (cp !== null || (cp = src()) !== null) {
@@ -10448,8 +11618,8 @@ var require_bcrypt = __commonJS({
         1668446532,
         1869963892
       ];
-      function _encipher(lr, off2, P, S) {
-        var n, l = lr[off2], r = lr[off2 + 1];
+      function _encipher(lr, off22, P, S) {
+        var n, l = lr[off22], r = lr[off22 + 1];
         l ^= P[0];
         n = S[l >>> 24];
         n += S[256 | l >> 16 & 255];
@@ -10531,17 +11701,19 @@ var require_bcrypt = __commonJS({
         n ^= S[512 | r >> 8 & 255];
         n += S[768 | r & 255];
         l ^= n ^ P[16];
-        lr[off2] = r ^ P[BLOWFISH_NUM_ROUNDS + 1];
-        lr[off2 + 1] = l;
+        lr[off22] = r ^ P[BLOWFISH_NUM_ROUNDS + 1];
+        lr[off22 + 1] = l;
         return lr;
       }
       __name(_encipher, "_encipher");
+      __name2(_encipher, "_encipher");
       function _streamtoword(data, offp) {
         for (var i = 0, word = 0; i < 4; ++i)
           word = word << 8 | data[offp] & 255, offp = (offp + 1) % data.length;
         return { key: word, offp };
       }
       __name(_streamtoword, "_streamtoword");
+      __name2(_streamtoword, "_streamtoword");
       function _key(key, P, S) {
         var offset = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
         for (var i = 0; i < plen; i++)
@@ -10552,6 +11724,7 @@ var require_bcrypt = __commonJS({
           lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
       }
       __name(_key, "_key");
+      __name2(_key, "_key");
       function _ekskey(data, key, P, S) {
         var offp = 0, lr = [0, 0], plen = P.length, slen = S.length, sw;
         for (var i = 0; i < plen; i++)
@@ -10563,12 +11736,13 @@ var require_bcrypt = __commonJS({
           sw = _streamtoword(data, offp), offp = sw.offp, lr[0] ^= sw.key, sw = _streamtoword(data, offp), offp = sw.offp, lr[1] ^= sw.key, lr = _encipher(lr, 0, P, S), S[i] = lr[0], S[i + 1] = lr[1];
       }
       __name(_ekskey, "_ekskey");
+      __name2(_ekskey, "_ekskey");
       function _crypt(b, salt, rounds, callback, progressCallback) {
         var cdata = C_ORIG.slice(), clen = cdata.length, err;
         if (rounds < 4 || rounds > 31) {
           err = Error("Illegal number of rounds (4-31): " + rounds);
           if (callback) {
-            nextTick2(callback.bind(this, err));
+            nextTick22(callback.bind(this, err));
             return;
           } else
             throw err;
@@ -10576,7 +11750,7 @@ var require_bcrypt = __commonJS({
         if (salt.length !== BCRYPT_SALT_LEN) {
           err = Error("Illegal salt length: " + salt.length + " != " + BCRYPT_SALT_LEN);
           if (callback) {
-            nextTick2(callback.bind(this, err));
+            nextTick22(callback.bind(this, err));
             return;
           } else
             throw err;
@@ -10617,9 +11791,10 @@ var require_bcrypt = __commonJS({
               return ret;
           }
           if (callback)
-            nextTick2(next);
+            nextTick22(next);
         }
         __name(next, "next");
+        __name2(next, "next");
         if (typeof callback !== "undefined") {
           next();
         } else {
@@ -10630,12 +11805,13 @@ var require_bcrypt = __commonJS({
         }
       }
       __name(_crypt, "_crypt");
+      __name2(_crypt, "_crypt");
       function _hash(s, salt, callback, progressCallback) {
         var err;
         if (typeof s !== "string" || typeof salt !== "string") {
           err = Error("Invalid string / salt: Not a string");
           if (callback) {
-            nextTick2(callback.bind(this, err));
+            nextTick22(callback.bind(this, err));
             return;
           } else
             throw err;
@@ -10644,7 +11820,7 @@ var require_bcrypt = __commonJS({
         if (salt.charAt(0) !== "$" || salt.charAt(1) !== "2") {
           err = Error("Invalid salt version: " + salt.substring(0, 2));
           if (callback) {
-            nextTick2(callback.bind(this, err));
+            nextTick22(callback.bind(this, err));
             return;
           } else
             throw err;
@@ -10656,7 +11832,7 @@ var require_bcrypt = __commonJS({
           if (minor !== "a" && minor !== "b" && minor !== "y" || salt.charAt(3) !== "$") {
             err = Error("Invalid salt revision: " + salt.substring(2, 4));
             if (callback) {
-              nextTick2(callback.bind(this, err));
+              nextTick22(callback.bind(this, err));
               return;
             } else
               throw err;
@@ -10666,7 +11842,7 @@ var require_bcrypt = __commonJS({
         if (salt.charAt(offset + 2) > "$") {
           err = Error("Missing salt rounds");
           if (callback) {
-            nextTick2(callback.bind(this, err));
+            nextTick22(callback.bind(this, err));
             return;
           } else
             throw err;
@@ -10689,6 +11865,7 @@ var require_bcrypt = __commonJS({
           return res.join("");
         }
         __name(finish, "finish");
+        __name2(finish, "finish");
         if (typeof callback == "undefined")
           return finish(_crypt(passwordb, saltb, rounds));
         else {
@@ -10701,18 +11878,22 @@ var require_bcrypt = __commonJS({
         }
       }
       __name(_hash, "_hash");
+      __name2(_hash, "_hash");
       bcrypt2.encodeBase64 = base64_encode;
       bcrypt2.decodeBase64 = base64_decode;
       return bcrypt2;
     });
   }
 });
-
-// api/[[path]].js
-var import_jsonwebtoken, import_bcryptjs, app, requireAuth, parseProductRow, onRequest;
+var import_jsonwebtoken;
+var import_bcryptjs;
+var app;
+var requireAuth;
+var parseProductRow;
+var onRequest;
 var init_path = __esm({
   "api/[[path]].js"() {
-    init_functionsRoutes_0_9640866121596416();
+    init_functionsRoutes_0_2756035471849174();
     init_strip_cf_connecting_ip_header();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
     init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -10752,7 +11933,7 @@ var init_path = __esm({
       }
       await next();
     });
-    requireAuth = /* @__PURE__ */ __name(async (c, next) => {
+    requireAuth = /* @__PURE__ */ __name2(async (c, next) => {
       const token = c.req.header("Authorization")?.replace("Bearer ", "");
       if (!token)
         return c.json({ error: "No token provided" }, 401);
@@ -10844,10 +12025,10 @@ var init_path = __esm({
     app.get("/auth/pending-codes", requireAuth, async (c) => {
       return c.json({ codes: [] });
     });
-    parseProductRow = /* @__PURE__ */ __name((row) => {
+    parseProductRow = /* @__PURE__ */ __name2((row) => {
       if (!row)
         return null;
-      const tryParse = /* @__PURE__ */ __name((val) => {
+      const tryParse = /* @__PURE__ */ __name2((val) => {
         try {
           return typeof val === "string" ? JSON.parse(val) : val;
         } catch (e) {
@@ -10895,13 +12076,22 @@ var init_path = __esm({
         } else if (category === "Premium") {
           sql += " AND is_exclusive = 1";
         } else {
+          const catList = category.split(",").map((c2) => c2.trim()).filter(Boolean);
           const maps = {
             "Men": ["Men", "\u099B\u09C7\u09B2\u09C7\u09A6\u09C7\u09B0"],
             "Women": ["Women", "\u09AE\u09C7\u09AF\u09BC\u09C7\u09A6\u09C7\u09B0"],
             "Kids (Boys)": ["Kids (Boys)", "\u09AC\u09BE\u099A\u09CD\u099A\u09BE\u09A6\u09C7\u09B0 (\u099B\u09C7\u09B2\u09C7)"],
             "Kids (Girls)": ["Kids (Girls)", "\u09AC\u09BE\u099A\u09CD\u099A\u09BE\u09A6\u09C7\u09B0 (\u09AE\u09C7\u09AF\u09BC\u09C7)"]
           };
-          const cats = maps[category] || [category];
+          const allCats = /* @__PURE__ */ new Set();
+          catList.forEach((c2) => {
+            const mapped = maps[c2];
+            if (mapped)
+              mapped.forEach((m) => allCats.add(m));
+            else
+              allCats.add(c2);
+          });
+          const cats = [...allCats];
           sql += ` AND category IN (${cats.map(() => "?").join(",")})`;
           params.push(...cats);
         }
@@ -10913,8 +12103,8 @@ var init_path = __esm({
       const countSQL = sql.replace("SELECT *", "SELECT COUNT(*) as total");
       const countRes = await conn.execute(countSQL, params);
       const total = countRes[0].total;
-      const dir3 = ascending === "true" ? "ASC" : "DESC";
-      sql += ` ORDER BY ${order_by === "created_at" ? "created_at" : "serial_no"} ${dir3}`;
+      const dir32 = ascending === "true" ? "ASC" : "DESC";
+      sql += ` ORDER BY ${order_by === "created_at" ? "created_at" : "serial_no"} ${dir32}`;
       sql += " LIMIT ? OFFSET ?";
       params.push(parseInt(limit), parseInt(page) * parseInt(limit));
       const res = await conn.execute(sql, params);
@@ -10945,7 +12135,7 @@ var init_path = __esm({
             p.category || "Women",
             JSON.stringify(p.images || []),
             p.image_url || null,
-            p.video_url || null,
+            p.video_url || "",
             p.status || "published",
             p.platform_id || null,
             p.is_sale ? 1 : 0,
@@ -10959,8 +12149,9 @@ var init_path = __esm({
             p.is_exclusive ? 1 : 0
           ]
         );
-        return c.json({ success: true, id });
+        return c.json({ success: true, data: { id }, id });
       } catch (err) {
+        console.error("Product insert error:", err);
         return c.json({ error: err.message }, 500);
       }
     });
@@ -11109,9 +12300,9 @@ var init_path = __esm({
       return c.json({ data: res });
     });
     app.get("/reviews", async (c) => {
-      const pid2 = c.req.query("product_id");
+      const pid22 = c.req.query("product_id");
       const conn = getDb(c.env);
-      const res = await conn.execute("SELECT * FROM reviews" + (pid2 ? " WHERE product_id = ?" : "") + " ORDER BY created_at DESC", pid2 ? [pid2] : []);
+      const res = await conn.execute("SELECT * FROM reviews" + (pid22 ? " WHERE product_id = ?" : "") + " ORDER BY created_at DESC", pid22 ? [pid22] : []);
       return c.json({ data: res });
     });
     app.post("/reviews", async (c) => {
@@ -11147,18 +12338,33 @@ var init_path = __esm({
       return c.json({ success: true });
     });
     app.post("/upload", requireAuth, async (c) => {
-      return c.json({ error: "Local file uploads are not supported on Cloudflare. Please use external URLs." }, 400);
+      try {
+        const body = await c.req.parseBody();
+        const file = body.file;
+        if (!file || !(file instanceof File))
+          return c.json({ error: "No file uploaded" }, 400);
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ""));
+        const dataUrl = `data:${file.type};base64,${base64}`;
+        return c.json({
+          success: true,
+          data: {
+            path: `base64-${Date.now()}`,
+            publicUrl: dataUrl
+          }
+        });
+      } catch (err) {
+        return c.json({ error: "Upload failed", details: err.message }, 500);
+      }
     });
-    onRequest = /* @__PURE__ */ __name((context2) => {
-      return app.fetch(context2.request, context2.env, context2);
+    onRequest = /* @__PURE__ */ __name2((context22) => {
+      return app.fetch(context22.request, context22.env, context22);
     }, "onRequest");
   }
 });
-
-// ../.wrangler/tmp/pages-DdsvAX/functionsRoutes-0.9640866121596416.mjs
 var routes;
-var init_functionsRoutes_0_9640866121596416 = __esm({
-  "../.wrangler/tmp/pages-DdsvAX/functionsRoutes-0.9640866121596416.mjs"() {
+var init_functionsRoutes_0_2756035471849174 = __esm({
+  "../.wrangler/tmp/pages-jlcwY5/functionsRoutes-0.2756035471849174.mjs"() {
     init_path();
     routes = [
       {
@@ -11171,30 +12377,22 @@ var init_functionsRoutes_0_9640866121596416 = __esm({
     ];
   }
 });
-
-// ../.wrangler/tmp/bundle-s2ldP6/middleware-loader.entry.ts
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-
-// ../.wrangler/tmp/bundle-s2ldP6/middleware-insertion-facade.js
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-
-// ../node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-
-// ../node_modules/wrangler/node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -11244,7 +12442,7 @@ function lexer(str) {
       continue;
     }
     if (char === "(") {
-      var count3 = 1;
+      var count32 = 1;
       var pattern = "";
       var j = i + 1;
       if (str[j] === "?") {
@@ -11256,20 +12454,20 @@ function lexer(str) {
           continue;
         }
         if (str[j] === ")") {
-          count3--;
-          if (count3 === 0) {
+          count32--;
+          if (count32 === 0) {
             j++;
             break;
           }
         } else if (str[j] === "(") {
-          count3++;
+          count32++;
           if (str[j + 1] !== "?") {
             throw new TypeError("Capturing groups are not allowed at ".concat(j));
           }
         }
         pattern += str[j++];
       }
-      if (count3)
+      if (count32)
         throw new TypeError("Unbalanced pattern at ".concat(i));
       if (!pattern)
         throw new TypeError("Missing pattern at ".concat(i));
@@ -11283,6 +12481,7 @@ function lexer(str) {
   return tokens;
 }
 __name(lexer, "lexer");
+__name2(lexer, "lexer");
 function parse2(str, options) {
   if (options === void 0) {
     options = {};
@@ -11293,18 +12492,18 @@ function parse2(str, options) {
   var key = 0;
   var i = 0;
   var path = "";
-  var tryConsume = /* @__PURE__ */ __name(function(type) {
+  var tryConsume = /* @__PURE__ */ __name2(function(type) {
     if (i < tokens.length && tokens[i].type === type)
       return tokens[i++].value;
   }, "tryConsume");
-  var mustConsume = /* @__PURE__ */ __name(function(type) {
+  var mustConsume = /* @__PURE__ */ __name2(function(type) {
     var value2 = tryConsume(type);
     if (value2 !== void 0)
       return value2;
     var _a2 = tokens[i], nextType = _a2.type, index = _a2.index;
     throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index, ", expected ").concat(type));
   }, "mustConsume");
-  var consumeText = /* @__PURE__ */ __name(function() {
+  var consumeText = /* @__PURE__ */ __name2(function() {
     var result2 = "";
     var value2;
     while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
@@ -11312,7 +12511,7 @@ function parse2(str, options) {
     }
     return result2;
   }, "consumeText");
-  var isSafe = /* @__PURE__ */ __name(function(value2) {
+  var isSafe = /* @__PURE__ */ __name2(function(value2) {
     for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
       var char2 = delimiter_1[_i];
       if (value2.indexOf(char2) > -1)
@@ -11320,7 +12519,7 @@ function parse2(str, options) {
     }
     return false;
   }, "isSafe");
-  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
+  var safePattern = /* @__PURE__ */ __name2(function(prefix2) {
     var prev = result[result.length - 1];
     var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
     if (prev && !prevText) {
@@ -11382,13 +12581,15 @@ function parse2(str, options) {
   }
   return result;
 }
-__name(parse2, "parse");
+__name(parse2, "parse2");
+__name2(parse2, "parse");
 function match2(str, options) {
   var keys = [];
   var re2 = pathToRegexp(str, keys, options);
   return regexpToFunction(re2, keys, options);
 }
-__name(match2, "match");
+__name(match2, "match2");
+__name2(match2, "match");
 function regexpToFunction(re2, keys, options) {
   if (options === void 0) {
     options = {};
@@ -11402,7 +12603,7 @@ function regexpToFunction(re2, keys, options) {
       return false;
     var path = m[0], index = m.index;
     var params = /* @__PURE__ */ Object.create(null);
-    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
+    var _loop_1 = /* @__PURE__ */ __name2(function(i2) {
       if (m[i2] === void 0)
         return "continue";
       var key = keys[i2 - 1];
@@ -11421,14 +12622,17 @@ function regexpToFunction(re2, keys, options) {
   };
 }
 __name(regexpToFunction, "regexpToFunction");
+__name2(regexpToFunction, "regexpToFunction");
 function escapeString(str) {
   return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
 }
 __name(escapeString, "escapeString");
+__name2(escapeString, "escapeString");
 function flags(options) {
   return options && options.sensitive ? "" : "i";
 }
 __name(flags, "flags");
+__name2(flags, "flags");
 function regexpToRegexp(path, keys) {
   if (!keys)
     return path;
@@ -11449,6 +12653,7 @@ function regexpToRegexp(path, keys) {
   return path;
 }
 __name(regexpToRegexp, "regexpToRegexp");
+__name2(regexpToRegexp, "regexpToRegexp");
 function arrayToRegexp(paths, keys, options) {
   var parts = paths.map(function(path) {
     return pathToRegexp(path, keys, options).source;
@@ -11456,10 +12661,12 @@ function arrayToRegexp(paths, keys, options) {
   return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
 }
 __name(arrayToRegexp, "arrayToRegexp");
+__name2(arrayToRegexp, "arrayToRegexp");
 function stringToRegexp(path, keys, options) {
   return tokensToRegexp(parse2(path, options), keys, options);
 }
 __name(stringToRegexp, "stringToRegexp");
+__name2(stringToRegexp, "stringToRegexp");
 function tokensToRegexp(tokens, keys, options) {
   if (options === void 0) {
     options = {};
@@ -11515,6 +12722,7 @@ function tokensToRegexp(tokens, keys, options) {
   return new RegExp(route, flags(options));
 }
 __name(tokensToRegexp, "tokensToRegexp");
+__name2(tokensToRegexp, "tokensToRegexp");
 function pathToRegexp(path, keys, options) {
   if (path instanceof RegExp)
     return regexpToRegexp(path, keys);
@@ -11523,8 +12731,7 @@ function pathToRegexp(path, keys, options) {
   return stringToRegexp(path, keys, options);
 }
 __name(pathToRegexp, "pathToRegexp");
-
-// ../node_modules/wrangler/templates/pages-template-worker.ts
+__name2(pathToRegexp, "pathToRegexp");
 var escapeRegex = /[.+?^${}()|[\]\\]/g;
 function* executeRequest(request) {
   const requestPath = new URL(request.url).pathname;
@@ -11575,13 +12782,14 @@ function* executeRequest(request) {
   }
 }
 __name(executeRequest, "executeRequest");
+__name2(executeRequest, "executeRequest");
 var pages_template_worker_default = {
-  async fetch(originalRequest, env2, workerContext) {
+  async fetch(originalRequest, env22, workerContext) {
     let request = originalRequest;
     const handlerIterator = executeRequest(request);
     let data = {};
     let isFailOpen = false;
-    const next = /* @__PURE__ */ __name(async (input, init) => {
+    const next = /* @__PURE__ */ __name2(async (input, init) => {
       if (input !== void 0) {
         let url = input;
         if (typeof input === "string") {
@@ -11592,7 +12800,7 @@ var pages_template_worker_default = {
       const result = handlerIterator.next();
       if (result.done === false) {
         const { handler, params, path } = result.value;
-        const context2 = {
+        const context22 = {
           request: new Request(request.clone()),
           functionPath: path,
           next,
@@ -11606,19 +12814,19 @@ var pages_template_worker_default = {
             }
             data = value;
           },
-          env: env2,
+          env: env22,
           waitUntil: workerContext.waitUntil.bind(workerContext),
           passThroughOnException: () => {
             isFailOpen = true;
           }
         };
-        const response = await handler(context2);
+        const response = await handler(context22);
         if (!(response instanceof Response)) {
           throw new Error("Your Pages function should return a Response");
         }
         return cloneResponse(response);
       } else if ("ASSETS") {
-        const response = await env2["ASSETS"].fetch(request);
+        const response = await env22["ASSETS"].fetch(request);
         return cloneResponse(response);
       } else {
         const response = await fetch(request);
@@ -11627,32 +12835,30 @@ var pages_template_worker_default = {
     }, "next");
     try {
       return await next();
-    } catch (error3) {
+    } catch (error32) {
       if (isFailOpen) {
-        const response = await env2["ASSETS"].fetch(request);
+        const response = await env22["ASSETS"].fetch(request);
         return cloneResponse(response);
       }
-      throw error3;
+      throw error32;
     }
   }
 };
-var cloneResponse = /* @__PURE__ */ __name((response) => (
+var cloneResponse = /* @__PURE__ */ __name2((response) => (
   // https://fetch.spec.whatwg.org/#null-body-status
   new Response(
     [101, 204, 205, 304].includes(response.status) ? null : response.body,
     response
   )
 ), "cloneResponse");
-
-// ../node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
 init_performance2();
-var drainBody = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx) => {
+var drainBody = /* @__PURE__ */ __name2(async (request, env22, _ctx, middlewareCtx) => {
   try {
-    return await middlewareCtx.next(request, env2);
+    return await middlewareCtx.next(request, env22);
   } finally {
     try {
       if (request.body !== null && !request.bodyUsed) {
@@ -11666,9 +12872,7 @@ var drainBody = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx
   }
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
-
-// ../node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -11682,28 +12886,25 @@ function reduceError(e) {
   };
 }
 __name(reduceError, "reduceError");
-var jsonError = /* @__PURE__ */ __name(async (request, env2, _ctx, middlewareCtx) => {
+__name2(reduceError, "reduceError");
+var jsonError = /* @__PURE__ */ __name2(async (request, env22, _ctx, middlewareCtx) => {
   try {
-    return await middlewareCtx.next(request, env2);
+    return await middlewareCtx.next(request, env22);
   } catch (e) {
-    const error3 = reduceError(e);
-    return Response.json(error3, {
+    const error32 = reduceError(e);
+    return Response.json(error32, {
       status: 500,
       headers: { "MF-Experimental-Error-Stack": "true" }
     });
   }
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
-
-// ../.wrangler/tmp/bundle-s2ldP6/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
 ];
 var middleware_insertion_facade_default = pages_template_worker_default;
-
-// ../node_modules/wrangler/templates/middleware/common.ts
-init_functionsRoutes_0_9640866121596416();
+init_functionsRoutes_0_2756035471849174();
 init_strip_cf_connecting_ip_header();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_process();
 init_virtual_unenv_global_polyfill_cloudflare_unenv_preset_node_console();
@@ -11713,7 +12914,8 @@ function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
-function __facade_invokeChain__(request, env2, ctx, dispatch, middlewareChain) {
+__name2(__facade_register__, "__facade_register__");
+function __facade_invokeChain__(request, env22, ctx, dispatch, middlewareChain) {
   const [head, ...tail] = middlewareChain;
   const middlewareCtx = {
     dispatch,
@@ -11721,19 +12923,19 @@ function __facade_invokeChain__(request, env2, ctx, dispatch, middlewareChain) {
       return __facade_invokeChain__(newRequest, newEnv, ctx, dispatch, tail);
     }
   };
-  return head(request, env2, ctx, middlewareCtx);
+  return head(request, env22, ctx, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
-function __facade_invoke__(request, env2, ctx, dispatch, finalMiddleware) {
-  return __facade_invokeChain__(request, env2, ctx, dispatch, [
+__name2(__facade_invokeChain__, "__facade_invokeChain__");
+function __facade_invoke__(request, env22, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__(request, env22, ctx, dispatch, [
     ...__facade_middleware__,
     finalMiddleware
   ]);
 }
 __name(__facade_invoke__, "__facade_invoke__");
-
-// ../.wrangler/tmp/bundle-s2ldP6/middleware-loader.entry.ts
-var __Facade_ScheduledController__ = class {
+__name2(__facade_invoke__, "__facade_invoke__");
+var __Facade_ScheduledController__ = /* @__PURE__ */ __name(class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
     this.cron = cron;
@@ -11746,8 +12948,8 @@ var __Facade_ScheduledController__ = class {
     }
     this.#noRetry();
   }
-};
-__name(__Facade_ScheduledController__, "__Facade_ScheduledController__");
+}, "__Facade_ScheduledController__");
+__name2(__Facade_ScheduledController__, "__Facade_ScheduledController__");
 function wrapExportedHandler(worker) {
   if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
     return worker;
@@ -11755,16 +12957,16 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env2, ctx) {
+  const fetchDispatcher = /* @__PURE__ */ __name2(function(request, env22, ctx) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
-    return worker.fetch(request, env2, ctx);
+    return worker.fetch(request, env22, ctx);
   }, "fetchDispatcher");
   return {
     ...worker,
-    fetch(request, env2, ctx) {
-      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+    fetch(request, env22, ctx) {
+      const dispatcher = /* @__PURE__ */ __name2(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
             Date.now(),
@@ -11772,14 +12974,15 @@ function wrapExportedHandler(worker) {
             () => {
             }
           );
-          return worker.scheduled(controller, env2, ctx);
+          return worker.scheduled(controller, env22, ctx);
         }
       }, "dispatcher");
-      return __facade_invoke__(request, env2, ctx, dispatcher, fetchDispatcher);
+      return __facade_invoke__(request, env22, ctx, dispatcher, fetchDispatcher);
     }
   };
 }
 __name(wrapExportedHandler, "wrapExportedHandler");
+__name2(wrapExportedHandler, "wrapExportedHandler");
 function wrapWorkerEntrypoint(klass) {
   if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
     return klass;
@@ -11788,8 +12991,8 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = (request, env2, ctx) => {
-      this.env = env2;
+    #fetchDispatcher = (request, env22, ctx) => {
+      this.env = env22;
       this.ctx = ctx;
       if (super.fetch === void 0) {
         throw new Error("Entrypoint class does not define a fetch() function.");
@@ -11819,6 +13022,7 @@ function wrapWorkerEntrypoint(klass) {
   };
 }
 __name(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
+__name2(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
 var WRAPPED_ENTRY;
 if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapExportedHandler(middleware_insertion_facade_default);
@@ -11826,9 +13030,177 @@ if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapWorkerEntrypoint(middleware_insertion_facade_default);
 }
 var middleware_loader_entry_default = WRAPPED_ENTRY;
+
+// node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+var drainBody2 = /* @__PURE__ */ __name(async (request, env3, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env3);
+  } finally {
+    try {
+      if (request.body !== null && !request.bodyUsed) {
+        const reader = request.body.getReader();
+        while (!(await reader.read()).done) {
+        }
+      }
+    } catch (e) {
+      console.error("Failed to drain the unused request body.", e);
+    }
+  }
+}, "drainBody");
+var middleware_ensure_req_body_drained_default2 = drainBody2;
+
+// node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
+function reduceError2(e) {
+  return {
+    name: e?.name,
+    message: e?.message ?? String(e),
+    stack: e?.stack,
+    cause: e?.cause === void 0 ? void 0 : reduceError2(e.cause)
+  };
+}
+__name(reduceError2, "reduceError");
+var jsonError2 = /* @__PURE__ */ __name(async (request, env3, _ctx, middlewareCtx) => {
+  try {
+    return await middlewareCtx.next(request, env3);
+  } catch (e) {
+    const error4 = reduceError2(e);
+    return Response.json(error4, {
+      status: 500,
+      headers: { "MF-Experimental-Error-Stack": "true" }
+    });
+  }
+}, "jsonError");
+var middleware_miniflare3_json_error_default2 = jsonError2;
+
+// .wrangler/tmp/bundle-mE2Kxt/middleware-insertion-facade.js
+var __INTERNAL_WRANGLER_MIDDLEWARE__2 = [
+  middleware_ensure_req_body_drained_default2,
+  middleware_miniflare3_json_error_default2
+];
+var middleware_insertion_facade_default2 = middleware_loader_entry_default;
+
+// node_modules/wrangler/templates/middleware/common.ts
+var __facade_middleware__2 = [];
+function __facade_register__2(...args) {
+  __facade_middleware__2.push(...args.flat());
+}
+__name(__facade_register__2, "__facade_register__");
+function __facade_invokeChain__2(request, env3, ctx, dispatch, middlewareChain) {
+  const [head, ...tail] = middlewareChain;
+  const middlewareCtx = {
+    dispatch,
+    next(newRequest, newEnv) {
+      return __facade_invokeChain__2(newRequest, newEnv, ctx, dispatch, tail);
+    }
+  };
+  return head(request, env3, ctx, middlewareCtx);
+}
+__name(__facade_invokeChain__2, "__facade_invokeChain__");
+function __facade_invoke__2(request, env3, ctx, dispatch, finalMiddleware) {
+  return __facade_invokeChain__2(request, env3, ctx, dispatch, [
+    ...__facade_middleware__2,
+    finalMiddleware
+  ]);
+}
+__name(__facade_invoke__2, "__facade_invoke__");
+
+// .wrangler/tmp/bundle-mE2Kxt/middleware-loader.entry.ts
+var __Facade_ScheduledController__2 = class {
+  constructor(scheduledTime, cron, noRetry) {
+    this.scheduledTime = scheduledTime;
+    this.cron = cron;
+    this.#noRetry = noRetry;
+  }
+  #noRetry;
+  noRetry() {
+    if (!(this instanceof __Facade_ScheduledController__2)) {
+      throw new TypeError("Illegal invocation");
+    }
+    this.#noRetry();
+  }
+};
+__name(__Facade_ScheduledController__2, "__Facade_ScheduledController__");
+function wrapExportedHandler2(worker) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
+    return worker;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
+    __facade_register__2(middleware);
+  }
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env3, ctx) {
+    if (worker.fetch === void 0) {
+      throw new Error("Handler does not export a fetch() function.");
+    }
+    return worker.fetch(request, env3, ctx);
+  }, "fetchDispatcher");
+  return {
+    ...worker,
+    fetch(request, env3, ctx) {
+      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
+        if (type === "scheduled" && worker.scheduled !== void 0) {
+          const controller = new __Facade_ScheduledController__2(
+            Date.now(),
+            init.cron ?? "",
+            () => {
+            }
+          );
+          return worker.scheduled(controller, env3, ctx);
+        }
+      }, "dispatcher");
+      return __facade_invoke__2(request, env3, ctx, dispatcher, fetchDispatcher);
+    }
+  };
+}
+__name(wrapExportedHandler2, "wrapExportedHandler");
+function wrapWorkerEntrypoint2(klass) {
+  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
+    return klass;
+  }
+  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
+    __facade_register__2(middleware);
+  }
+  return class extends klass {
+    #fetchDispatcher = (request, env3, ctx) => {
+      this.env = env3;
+      this.ctx = ctx;
+      if (super.fetch === void 0) {
+        throw new Error("Entrypoint class does not define a fetch() function.");
+      }
+      return super.fetch(request);
+    };
+    #dispatcher = (type, init) => {
+      if (type === "scheduled" && super.scheduled !== void 0) {
+        const controller = new __Facade_ScheduledController__2(
+          Date.now(),
+          init.cron ?? "",
+          () => {
+          }
+        );
+        return super.scheduled(controller);
+      }
+    };
+    fetch(request) {
+      return __facade_invoke__2(
+        request,
+        this.env,
+        this.ctx,
+        this.#dispatcher,
+        this.#fetchDispatcher
+      );
+    }
+  };
+}
+__name(wrapWorkerEntrypoint2, "wrapWorkerEntrypoint");
+var WRAPPED_ENTRY2;
+if (typeof middleware_insertion_facade_default2 === "object") {
+  WRAPPED_ENTRY2 = wrapExportedHandler2(middleware_insertion_facade_default2);
+} else if (typeof middleware_insertion_facade_default2 === "function") {
+  WRAPPED_ENTRY2 = wrapWorkerEntrypoint2(middleware_insertion_facade_default2);
+}
+var middleware_loader_entry_default2 = WRAPPED_ENTRY2;
 export {
-  __INTERNAL_WRANGLER_MIDDLEWARE__,
-  middleware_loader_entry_default as default
+  __INTERNAL_WRANGLER_MIDDLEWARE__2 as __INTERNAL_WRANGLER_MIDDLEWARE__,
+  middleware_loader_entry_default2 as default
 };
 /*! Bundled license information:
 
@@ -11842,4 +13214,4 @@ bcryptjs/dist/bcrypt.js:
    * see: https://github.com/dcodeIO/bcrypt.js for details
    *)
 */
-//# sourceMappingURL=functionsWorker-0.8009737612994591.mjs.map
+//# sourceMappingURL=functionsWorker-0.3544185828105755.js.map

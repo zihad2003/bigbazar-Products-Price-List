@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award, Play, Instagram, Video } from 'lucide-react';
+import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import ProductModal from '../components/modals/ProductModal';
@@ -129,12 +129,12 @@ const ProductCard = ({ product, onClick }) => {
           </div>
         )}
       </div>
-      <div className="p-4 md:p-6 flex flex-col flex-1 gap-2">
+      <div className="p-4 md:p-6 flex flex-col flex-1 gap-4">
         <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-wide truncate">
             {product.category || 'Clothing'}
           </p>
-          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight h-10">{product.name}</h4>
+          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[44px]">{product.name}</h4>
         </div>
         <div className="mt-auto flex items-end justify-between">
           <div className="flex flex-col">
@@ -169,7 +169,7 @@ const ProductSkeleton = () => (
 
 const DEFAULT_SLIDES = [];
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 20;
 
 const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChange }) => {
   const { t, language } = useLanguage();
@@ -357,12 +357,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
               <h3 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
                 {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'প্রিমিয়াম কালেকশন' : 'Selective Edits') : selectedCategory)}
               </h3>
-              <div className="flex items-center gap-4">
-                <div className="h-[2px] w-12 bg-[#ce112d]" />
-                <p className="text-[11px] md:text-xs font-medium text-zinc-500">
-                  {products.length} {language === 'bn' ? 'টি পণ্য পাওয়া গেছে' : 'items found'}
-                </p>
-              </div>
             </div>
           </div>
 

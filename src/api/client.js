@@ -200,7 +200,12 @@ class QueryBuilder {
         if (this._table === 'products') {
             if (this._filters.status) params.set('status', this._filters.status);
             if (this._filters.id) params.set('id', this._filters.id);
-            if (this._inFilters.category) params.set('category', this._inFilters.category[0]);
+            // Forward boolean flags as category hints the backend understands
+            if (this._filters.is_new) params.set('category', 'New');
+            if (this._filters.is_sale) params.set('category', 'Sale');
+            if (this._filters.is_exclusive) params.set('category', 'Premium');
+            // in() filter for category — send ALL values, not just the first
+            if (this._inFilters.category) params.set('category', this._inFilters.category.join(','));
             if (this._inFilters.id) params.set('ids', this._inFilters.id.join(','));
             if (this._orFilter) {
                 // Extract search from or filter like "name.ilike.%query%,description.ilike.%query%"

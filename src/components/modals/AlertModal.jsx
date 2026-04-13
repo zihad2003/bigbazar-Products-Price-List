@@ -8,7 +8,7 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
             {isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[1100] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
+                    className="fixed inset-0 z-[3000] backdrop-blur-2xl flex items-center justify-center p-2 md:p-4"
                     style={{ backgroundColor: 'var(--bg-overlay)' }}
                     onClick={onClose}
                 >

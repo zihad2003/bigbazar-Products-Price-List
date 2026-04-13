@@ -68,11 +68,12 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                         {/* Cart */}
                         <button
                             onClick={onOpenCart}
-                            className="relative w-9 h-9 md:h-11 md:px-5 rounded-xl flex items-center justify-center md:gap-3 bg-[#ce112d] text-white shadow-xl shadow-red-500/20 active:scale-95 hover:brightness-110 transition-all"
+                            className="relative w-9 h-9 md:h-11 md:w-auto md:px-5 rounded-xl flex items-center justify-center md:gap-2.5 bg-[#ce112d] text-white shadow-xl shadow-red-500/20 active:scale-95 hover:brightness-110 transition-all"
                         >
                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="m2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                             <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Bag{cartCount > 0 ? ` (${cartCount})` : ''}</span>
                             {cartCount > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-zinc-900 border-2 border-white text-white w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center">
+                                <span className="md:hidden absolute -top-1 -right-1 bg-zinc-900 border-2 border-white text-white w-5 h-5 rounded-full text-[9px] font-black flex items-center justify-center">
                                     {cartCount}
                                 </span>
                             )}

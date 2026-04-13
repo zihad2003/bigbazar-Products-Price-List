@@ -220,13 +220,22 @@ app.get('/products', async (c) => {
     } else if (category === 'Premium') {
       sql += ' AND is_exclusive = 1';
     } else {
+      // Support comma-separated categories (e.g., "Men,ছেলেদের")
+      const catList = category.split(',').map(c => c.trim()).filter(Boolean);
       const maps = { 
         'Men': ['Men', 'ছেলেদের'], 
         'Women': ['Women', 'মেয়েদের'], 
         'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 
         'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] 
       };
-      const cats = maps[category] || [category];
+      // Expand all categories through the map, dedup
+      const allCats = new Set();
+      catList.forEach(c => {
+        const mapped = maps[c];
+        if (mapped) mapped.forEach(m => allCats.add(m));
+        else allCats.add(c);
+      });
+      const cats = [...allCats];
       sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
       params.push(...cats);
     }
@@ -268,13 +277,14 @@ app.post('/products', requireAuth, async (c) => {
        VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         p.serial_no || null, id, p.name, p.price, p.original_price || null, p.description || '', p.category || 'Women',
-        JSON.stringify(p.images || []), p.image_url || null, p.video_url || null, p.status || 'published', p.platform_id || null,
+        JSON.stringify(p.images || []), p.image_url || null, p.video_url || '', p.status || 'published', p.platform_id || null,
         p.is_sale ? 1 : 0, p.is_hot ? 1 : 0, p.is_new ? 1 : 0, p.is_sold_out ? 1 : 0, p.is_deleted ? 1 : 0,
         JSON.stringify(p.available_sizes || []), JSON.stringify(p.available_colors || []), p.stock_count ?? 3, p.is_exclusive ? 1 : 0
       ]
     );
-    return c.json({ success: true, id });
+    return c.json({ success: true, data: { id }, id });
   } catch (err) {
+    console.error('Product insert error:', err);
     return c.json({ error: err.message }, 500);
   }
 });
@@ -445,10 +455,30 @@ app.post('/settings', requireAuth, async (c) => {
 });
 
 // ============================================
-// UPLOAD (Placeholder)
+// UPLOAD (Cloudflare Pages / Base64 Fallback)
 // ============================================
 app.post('/upload', requireAuth, async (c) => {
-  return c.json({ error: 'Local file uploads are not supported on Cloudflare. Please use external URLs.' }, 400);
+  try {
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!file || !(file instanceof File)) return c.json({ error: 'No file uploaded' }, 400);
+
+    // If R2 is bound (e.g. c.env.R2_BUCKET), we could use it here.
+    // For now, we use a robust Base64 fallback so uploads "just work" everywhere.
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    const dataUrl = `data:${file.type};base64,${base64}`;
+
+    return c.json({
+      success: true,
+      data: {
+        path: `base64-${Date.now()}`,
+        publicUrl: dataUrl
+      }
+    });
+  } catch (err) {
+    return c.json({ error: 'Upload failed', details: err.message }, 500);
+  }
 });
 
 // ============================================
