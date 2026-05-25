@@ -5,7 +5,9 @@ import { bigBazarApi } from '../../api/client';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../../data/bdLocations';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize, selectedColor }) => {
+const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: propSize, selectedColor: propColor }) => {
+    const selectedColor = propColor || product?.selectedColor;
+    const selectedSize = propSize || product?.selectedSize;
     const { t, language } = useLanguage();
     const [error, setError] = useState('');
     const errorRef = useRef(null);

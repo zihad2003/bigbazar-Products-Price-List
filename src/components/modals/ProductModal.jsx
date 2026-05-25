@@ -309,7 +309,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
         </motion.div>
       </motion.div>
 
-      <DeliveryModal isOpen={showDeliveryModal} onClose={() => setShowDeliveryModal(false)} product={{ ...product, price, selectedColor, selectedSize, quantity }} />
+      <DeliveryModal isOpen={showDeliveryModal} onClose={() => setShowDeliveryModal(false)} product={{ ...product, price, selectedColor, selectedSize, quantity }} selectedColor={selectedColor} selectedSize={selectedSize} />
       <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />
       
       <AnimatePresence>
