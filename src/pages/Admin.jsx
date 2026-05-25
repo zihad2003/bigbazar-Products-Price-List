@@ -1848,7 +1848,6 @@ export default function Admin() {
                         </div>
                         <div className="p-6 md:p-8 space-y-8">
                              {(() => {
-                                 // Same Robust Parser
                                  const parseLine = (str) => {
                                      const res = { name: str, size: null, color: null, sku: null, qty: 1 };
                                      const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
@@ -1864,37 +1863,40 @@ export default function Admin() {
                                  };
 
                                  const itemsArr = (selectedOrder.product_name || '').split(' + ').map(parseLine);
-                                 return itemsArr.map((item, idx) => (
-                                     <div key={idx} className="flex gap-6 items-start group">
-                                         <div className="w-20 h-24 md:w-24 md:h-32 bg-black rounded-3xl border border-[#1d1d21] overflow-hidden shrink-0 shadow-2xl relative flex items-center justify-center">
-                                            {(() => {
-                                                const targetP = 
-                                                    products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
-                                                    products.find(p => item.sku && (p.platform_id === item.sku || p.serial_no === item.sku)) ||
-                                                    products.find(p => p.name === item.name) ||
-                                                    products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
-                                                    
-                                                const thumb = getOptimizedUrl(targetP?.image_url || targetP?.images?.[0], mediaSizes.thumbnail);
-                                                return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={32} className="text-zinc-800" />
-                                            })()}
-                                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">#{idx + 1}</div>
+                                 return itemsArr.map((item, idx) => {
+                                     const targetP = 
+                                         products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
+                                         products.find(p => item.sku && (p.platform_id == item.sku || p.serial_no == item.sku)) ||
+                                         products.find(p => p.name === item.name) ||
+                                         products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
+                                         
+                                     const thumb = getOptimizedUrl(targetP?.image_url || targetP?.images?.[0], mediaSizes.thumbnail);
+
+                                     return (
+                                         <div key={idx} className="flex gap-6 items-start group">
+                                             <div className="w-20 h-24 md:w-24 md:h-32 bg-black rounded-3xl border border-[#1d1d21] overflow-hidden shrink-0 shadow-2xl relative flex items-center justify-center">
+                                                {thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={32} className="text-zinc-800" />}
+                                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">
+                                                    #{targetP?.serial_no || idx + 1}
+                                                </div>
+                                             </div>
+                                             <div className="flex-1 space-y-4">
+                                                <h4 className="text-base md:text-xl font-black text-white italic leading-tight uppercase tracking-tight">{item.name}</h4>
+                                                
+                                                <div className="grid grid-cols-2 gap-2 md:gap-4">
+                                                   <div className="bg-black/30 border border-[#ce112d]/10 p-2 md:p-3 rounded-2xl">
+                                                      <p className="text-[7px] font-black uppercase text-[#ce112d]/60 mb-1">Size</p>
+                                                      <p className="text-[11px] font-black text-white uppercase">{item.size || selectedOrder.size || 'N/A'}</p>
+                                                   </div>
+                                                   <div className="bg-black/30 border border-blue-500/10 p-2 md:p-3 rounded-2xl">
+                                                      <p className="text-[7px] font-black uppercase text-blue-500/60 mb-1">Color</p>
+                                                      <p className="text-[11px] font-black text-white uppercase">{item.color || selectedOrder.color || 'N/A'}</p>
+                                                   </div>
+                                                </div>
+                                             </div>
                                          </div>
-                                         <div className="flex-1 space-y-4">
-                                            <h4 className="text-base md:text-xl font-black text-white italic leading-tight uppercase tracking-tight">{item.name}</h4>
-                                            
-                                            <div className="grid grid-cols-2 gap-2 md:gap-4">
-                                               <div className="bg-black/30 border border-[#ce112d]/10 p-2 md:p-3 rounded-2xl">
-                                                  <p className="text-[7px] font-black uppercase text-[#ce112d]/60 mb-1">Size</p>
-                                                  <p className="text-[11px] font-black text-white uppercase">{item.size || selectedOrder.size || 'N/A'}</p>
-                                               </div>
-                                               <div className="bg-black/30 border border-blue-500/10 p-2 md:p-3 rounded-2xl">
-                                                  <p className="text-[7px] font-black uppercase text-blue-500/60 mb-1">Color</p>
-                                                  <p className="text-[11px] font-black text-white uppercase">{item.color || selectedOrder.color || 'N/A'}</p>
-                                               </div>
-                                            </div>
-                                         </div>
-                                     </div>
-                                 ));
+                                     );
+                                 });
                              })()}
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-[#1d1d21]">
@@ -2027,7 +2029,7 @@ export default function Admin() {
                               
                               const targetProduct = 
                                 products.find(p => p.id == o.product_id) || 
-                                products.find(p => firstItemSku && (p.platform_id === firstItemSku || p.serial_no === firstItemSku)) ||
+                                products.find(p => firstItemSku && (p.platform_id == firstItemSku || p.serial_no == firstItemSku)) ||
                                 products.find(p => p.name === firstItemName) ||
                                 products.find(p => p.name && firstItemName && p.name.toLowerCase().includes(firstItemName.toLowerCase()));
                                 
@@ -2186,53 +2188,62 @@ export default function Admin() {
                                 };
 
                                 const items = (selectedOrder.product_name || '').split(' + ').map(parseLine);
-                                return items.map((item, idx) => (
-                                    <div key={idx} className="flex gap-6 items-start group">
-                                        <div className="w-24 h-32 bg-[#121215] rounded-2xl overflow-hidden shrink-0 border border-[#1d1d21] relative shadow-2xl group-hover:scale-[1.02] transition-transform flex items-center justify-center">
-                                            {(() => {
-                                                const targetProduct = 
-                                                    products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
-                                                    products.find(p => item.sku && (p.platform_id === item.sku || p.serial_no === item.sku)) ||
-                                                    products.find(p => p.name === item.name) ||
-                                                    products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
-                                                    
-                                                const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
-                                                return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-800 bg-zinc-950/50"><ImageIcon size={32} /></div>
-                                            })()}
-                                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">#{idx + 1}</div>
-                                        </div>
-                                        <div className="flex-1 space-y-4 pt-1">
-                                            <h4 className="text-xl font-bold text-white leading-tight italic group-hover:text-[#ce112d] transition-colors">{item.name}</h4>
-                                            
-                                            <div className="grid grid-cols-2 gap-3 max-w-md">
-                                                <div className="bg-[#1d1d22] border border-[#ce112d]/10 p-3 rounded-2xl space-y-1">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-[#ce112d]/60">Size Spec</p>
-                                                    <p className={`text-[13px] font-black uppercase ${item.size || selectedOrder.size ? 'text-white' : 'text-zinc-700'}`}>
-                                                        {item.size || selectedOrder.size || 'Not Specified'}
-                                                    </p>
+                                return items.map((item, idx) => {
+                                    const targetProduct = 
+                                        products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
+                                        products.find(p => item.sku && (p.platform_id == item.sku || p.serial_no == item.sku)) ||
+                                        products.find(p => p.name === item.name) ||
+                                        products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
+                                        
+                                    const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
+
+                                    return (
+                                        <div key={idx} className="flex gap-6 items-start group">
+                                            <div className="w-24 h-32 bg-[#121215] rounded-2xl overflow-hidden shrink-0 border border-[#1d1d21] relative shadow-2xl group-hover:scale-[1.02] transition-transform flex items-center justify-center">
+                                                {thumb ? (
+                                                    <img src={thumb} className="w-full h-full object-cover" alt="" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-zinc-800 bg-zinc-950/50">
+                                                        <ImageIcon size={32} />
+                                                    </div>
+                                                )}
+                                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">
+                                                    #{targetProduct?.serial_no || idx + 1}
                                                 </div>
-                                                <div className="bg-[#1d1d22] border border-blue-500/10 p-3 rounded-2xl space-y-1">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-blue-500/60">Color Variant</p>
-                                                    <p className={`text-[13px] font-black uppercase ${item.color || selectedOrder.color ? 'text-white' : 'text-zinc-700'}`}>
-                                                        {item.color || selectedOrder.color || 'Not Specified'}
-                                                    </p>
-                                                </div>
-                                                <div className="bg-[#1d1d22] border border-zinc-800 p-3 rounded-2xl space-y-1">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Product SKU</p>
-                                                    <p className={`text-[11px] font-bold font-mono ${item.sku ? 'text-zinc-400' : 'text-zinc-800'}`}>
-                                                        {item.sku || 'No SKU'}
-                                                    </p>
-                                                </div>
-                                                <div className="bg-[#1d1d22] border border-green-500/10 p-3 rounded-2xl space-y-1">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-green-500/60">Order Quantity</p>
-                                                    <p className="text-[13px] font-black text-white">
-                                                        {item.qty} UNIT(S)
-                                                    </p>
+                                            </div>
+                                            <div className="flex-1 space-y-4 pt-1">
+                                                <h4 className="text-xl font-bold text-white leading-tight italic group-hover:text-[#ce112d] transition-colors">{item.name}</h4>
+                                                
+                                                <div className="grid grid-cols-2 gap-3 max-w-md">
+                                                    <div className="bg-[#1d1d22] border border-[#ce112d]/10 p-3 rounded-2xl space-y-1">
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-[#ce112d]/60">Size Spec</p>
+                                                        <p className={`text-[13px] font-black uppercase ${item.size || selectedOrder.size ? 'text-white' : 'text-zinc-700'}`}>
+                                                            {item.size || selectedOrder.size || 'Not Specified'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#1d1d22] border border-blue-500/10 p-3 rounded-2xl space-y-1">
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-500/60">Color Variant</p>
+                                                        <p className={`text-[13px] font-black uppercase ${item.color || selectedOrder.color ? 'text-white' : 'text-zinc-700'}`}>
+                                                            {item.color || selectedOrder.color || 'Not Specified'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#1d1d22] border border-zinc-800 p-3 rounded-2xl space-y-1">
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Product SKU</p>
+                                                        <p className={`text-[11px] font-bold font-mono ${item.sku ? 'text-zinc-400' : 'text-zinc-800'}`}>
+                                                            {item.sku || 'No SKU'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#1d1d22] border border-green-500/10 p-3 rounded-2xl space-y-1">
+                                                        <p className="text-[8px] font-black uppercase tracking-widest text-green-500/60">Order Quantity</p>
+                                                        <p className="text-[13px] font-black text-white">
+                                                            {item.qty} UNIT(S)
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ));
+                                    );
+                                });
                             })()}
 
                             <div className="pt-6 border-t border-white/5 grid grid-cols-3 gap-6">
