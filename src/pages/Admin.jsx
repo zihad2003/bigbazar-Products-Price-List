@@ -1618,8 +1618,8 @@ export default function Admin() {
                      <div className="flex gap-5">
                         <div className="w-20 h-28 bg-black rounded-2xl overflow-hidden shrink-0 border border-white/5 shadow-xl">
                           {(() => {
-                            const product = products.find(p => p.id === order.product_id);
-                            const thumb = product?.image_url || product?.images?.[0];
+                            const product = products.find(p => p.id == order.product_id);
+                            const thumb = getOptimizedUrl(product?.image_url || product?.images?.[0], mediaSizes.thumbnail);
                             return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-800"><ShoppingBag size={32} /></div>
                           })()}
                         </div>
@@ -1666,16 +1666,15 @@ export default function Admin() {
                   </div>
                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-green-500/10 text-green-500 py-1.5 px-4 rounded-full border border-green-500/20">
                     Total Revenue: ৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
-                      const amount = typeof o.total_amount === 'string'
-                         ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
-                         : parseFloat(o.total_amount);
-                      return acc + (amount || 0);
+                      const amount = parseFloat(o.total_amount) || 0;
+                      return acc + amount;
                     }, 0).toLocaleString()}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 py-1.5 px-4 rounded-full border border-purple-500/20">
                     <ShieldCheck size={14} />
                     Advance: ৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
-                      const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && o.delivery_charge === 0 ? 100 : (o.delivery_charge || 0));
+                      const charge = parseFloat(o.delivery_charge) || 0;
+                      const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                       return acc + adv;
                     }, 0).toLocaleString()}
                   </div>
@@ -1708,10 +1707,8 @@ export default function Admin() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] -mr-16 -mt-16 rounded-full group-hover:bg-white/[0.02] transition-all" />
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Revenue</p>
                 <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
-                  const amount = typeof o.total_amount === 'string'
-                     ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
-                     : parseFloat(o.total_amount);
-                  return acc + (amount || 0);
+                  const amount = parseFloat(o.total_amount) || 0;
+                  return acc + amount;
                 }, 0).toLocaleString()}</p>
               </div>
               <div className="bg-[#121215] border border-[#1d1d21] p-6 rounded-[32px] space-y-4 shadow-xl relative overflow-hidden group">
@@ -1719,7 +1716,8 @@ export default function Admin() {
                 <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Advance</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
-                    const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && o.delivery_charge === 0 ? 100 : (o.delivery_charge || 0));
+                    const charge = parseFloat(o.delivery_charge) || 0;
+                    const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                     return acc + adv;
                   }, 0).toLocaleString()}</p>
                   <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 relative z-10">
@@ -1732,10 +1730,9 @@ export default function Admin() {
                 <p className="text-xs font-semibold text-[#ce112d] uppercase tracking-wide">Total Due</p>
                 <div className="flex items-end justify-between">
                   <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
-                    const totalAmount = typeof o.total_amount === 'string'
-                       ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
-                       : parseFloat(o.total_amount);
-                    const advanceAmount = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && o.delivery_charge === 0 ? 100 : (o.delivery_charge || 0))) : 0;
+                    const totalAmount = parseFloat(o.total_amount) || 0;
+                    const charge = parseFloat(o.delivery_charge) || 0;
+                    const advanceAmount = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
                     return acc + (totalAmount - advanceAmount);
                   }, 0).toLocaleString()}</p>
                   <div className="w-10 h-10 bg-[#ce112d]/10 rounded-2xl flex items-center justify-center border border-[#ce112d]/20 relative z-10">
@@ -1854,10 +1851,10 @@ export default function Admin() {
                                  // Same Robust Parser
                                  const parseLine = (str) => {
                                      const res = { name: str, size: null, color: null, sku: null, qty: 1 };
-                                     const colorMatch = str.match(/\(Color:\s*([^)]*)\)/i);
-                                     const sizeMatch = str.match(/\(Size:\s*([^)]*)\)/i);
-                                     const skuMatch = str.match(/\(SKU:\s*([^)]*)\)/i);
-                                     const qtyMatch = str.match(/\(Qty:\s*(\d+)\)/i);
+                                     const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+                                     const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
+                                     const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
+                                     const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
                                      if (colorMatch) res.color = colorMatch[1].trim();
                                      if (sizeMatch) res.size = sizeMatch[1].trim();
                                      if (skuMatch) res.sku = skuMatch[1].trim();
@@ -1872,12 +1869,12 @@ export default function Admin() {
                                          <div className="w-20 h-24 md:w-24 md:h-32 bg-black rounded-3xl border border-[#1d1d21] overflow-hidden shrink-0 shadow-2xl relative flex items-center justify-center">
                                             {(() => {
                                                 const targetP = 
-                                                    products.find(p => p.id === selectedOrder.product_id && idx === 0) ||
+                                                    products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
                                                     products.find(p => item.sku && (p.platform_id === item.sku || p.serial_no === item.sku)) ||
                                                     products.find(p => p.name === item.name) ||
                                                     products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
                                                     
-                                                const thumb = targetP?.image_url || targetP?.images?.[0];
+                                                const thumb = getOptimizedUrl(targetP?.image_url || targetP?.images?.[0], mediaSizes.thumbnail);
                                                 return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={32} className="text-zinc-800" />
                                             })()}
                                             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">#{idx + 1}</div>
@@ -2029,12 +2026,12 @@ export default function Admin() {
                               const firstItemSku = (o.product_name || '').match(/\(SKU:\s*([^)]*)\)/i)?.[1]?.trim();
                               
                               const targetProduct = 
-                                products.find(p => p.id === o.product_id) || 
+                                products.find(p => p.id == o.product_id) || 
                                 products.find(p => firstItemSku && (p.platform_id === firstItemSku || p.serial_no === firstItemSku)) ||
                                 products.find(p => p.name === firstItemName) ||
                                 products.find(p => p.name && firstItemName && p.name.toLowerCase().includes(firstItemName.toLowerCase()));
                                 
-                              const thumb = targetProduct?.image_url || targetProduct?.images?.[0];
+                              const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
                               
                               return thumb ? (
                                 <img src={thumb} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
@@ -2174,10 +2171,10 @@ export default function Admin() {
                                 // Robust Parser for Item details
                                 const parseLine = (str) => {
                                     const res = { name: str, size: null, color: null, sku: null, qty: 1 };
-                                    const colorMatch = str.match(/\(Color:\s*([^)]*)\)/i);
-                                    const sizeMatch = str.match(/\(Size:\s*([^)]*)\)/i);
-                                    const skuMatch = str.match(/\(SKU:\s*([^)]*)\)/i);
-                                    const qtyMatch = str.match(/\(Qty:\s*(\d+)\)/i);
+                                    const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+                                    const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
+                                    const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
+                                    const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
                                     
                                     if (colorMatch) res.color = colorMatch[1].trim();
                                     if (sizeMatch) res.size = sizeMatch[1].trim();
@@ -2194,12 +2191,12 @@ export default function Admin() {
                                         <div className="w-24 h-32 bg-[#121215] rounded-2xl overflow-hidden shrink-0 border border-[#1d1d21] relative shadow-2xl group-hover:scale-[1.02] transition-transform flex items-center justify-center">
                                             {(() => {
                                                 const targetProduct = 
-                                                    products.find(p => p.id === selectedOrder.product_id && idx === 0) ||
+                                                    products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
                                                     products.find(p => item.sku && (p.platform_id === item.sku || p.serial_no === item.sku)) ||
                                                     products.find(p => p.name === item.name) ||
                                                     products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
                                                     
-                                                const thumb = targetProduct?.image_url || targetProduct?.images?.[0];
+                                                const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
                                                 return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-800 bg-zinc-950/50"><ImageIcon size={32} /></div>
                                             })()}
                                             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">#{idx + 1}</div>
@@ -2249,7 +2246,10 @@ export default function Admin() {
                                 </div>
                                 <div className="bg-[#ce112d]/5 p-4 rounded-2xl border border-[#ce112d]/10">
                                     <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-widest mb-1">Advance Received</p>
-                                    <p className="text-xl font-black text-[#ce112d] italic">৳{selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && selectedOrder.delivery_charge === 0 ? 100 : (selectedOrder.delivery_charge || 0))) : 0}</p>
+                                    <p className="text-xl font-black text-[#ce112d] italic">৳{(() => {
+                                        const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                                        return selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
+                                    })()}</p>
                                 </div>
                             </div>
 
@@ -2262,7 +2262,8 @@ export default function Admin() {
                                             const totalAmount = typeof selectedOrder.total_amount === 'string'
                                                ? Number(selectedOrder.total_amount.replace(/[^0-9.]/g, ''))
                                                : Number(selectedOrder.total_amount);
-                                            const advanceAmount = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && selectedOrder.delivery_charge === 0 ? 100 : Number(selectedOrder.delivery_charge || 0))) : 0;
+                                            const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                                            const advanceAmount = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
                                             return (selectedOrder.payment_status === 'Fully Paid' ? 0 : totalAmount - advanceAmount).toLocaleString();
                                         })()}
                                     </p>
@@ -2347,7 +2348,7 @@ export default function Admin() {
                     >
                       <div className="flex gap-4">
                         <div className="w-16 h-20 bg-black rounded-xl overflow-hidden shrink-0 relative border border-white/5">
-                          {productThumb && <img src={productThumb} className="w-full h-full object-cover" alt="" />}
+                          {productThumb && <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt="" />}
                           {product?.serial_no && (
                             <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-bl">#{product.serial_no}</div>
                           )}
@@ -2455,7 +2456,7 @@ export default function Admin() {
                       <div className="flex gap-4 p-3 bg-black/40 border border-white/5 rounded-[24px]">
                         <div className="w-16 h-20 bg-zinc-900 rounded-xl overflow-hidden flex-shrink-0 relative border border-white/5">
                           {productThumb ? (
-                            <img src={productThumb} className="w-full h-full object-cover grayscale" alt="" />
+                            <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover grayscale" alt="" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-zinc-800">
                               <ImageIcon size={20} />
@@ -2876,7 +2877,7 @@ export default function Admin() {
             const alreadyUsedIds = new Set();
             const detailedItems = parsedItems.map((item, idx) => {
               const isTruncatedSku = item.sku?.endsWith('…');
-              let p = idx === 0 ? products.find(pr => pr.id === selectedOrder.product_id) : null;
+              let p = idx === 0 ? products.find(pr => pr.id == selectedOrder.product_id) : null;
 
               if (!p && !isTruncatedSku) {
                 if (item.sku && item.sku.length > 2) {
@@ -2952,7 +2953,7 @@ export default function Admin() {
                             </div>
                             <div className="flex gap-4">
                               <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden shrink-0 border border-white/10 relative">
-                                {thumb ? <img src={thumb} className="w-full h-full object-cover" alt={item.name} /> : <div className="w-full h-full flex items-center justify-center text-neutral-800"><ImageIcon size={20} /></div>}
+                                {thumb ? <img src={getOptimizedUrl(thumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt={item.name} /> : <div className="w-full h-full flex items-center justify-center text-neutral-800"><ImageIcon size={20} /></div>}
                                 {p?.serial_no && <div className="absolute top-0 left-0 bg-[#ce112d] text-white text-[6px] font-black px-1 rounded-br">#{p.serial_no}</div>}
                               </div>
                               <div className="flex-1 min-w-0 space-y-2 pr-5">
@@ -3001,13 +3002,13 @@ export default function Admin() {
                           {selectedOrder.is_advance_paid && (
                             <div className="flex justify-between text-[11px] bg-orange-500/5 p-2 rounded-lg border border-orange-500/10">
                                 <span className="text-orange-500 font-bold uppercase tracking-wider">Advance / Partial Paid</span>
-                                <span className="font-black text-orange-400 italic">-৳{selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)}</span>
+                                <span className="font-black text-orange-400 italic">-৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span>
                             </div>
                           )}
 
                           <div className="flex justify-between items-center pt-1">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ce112d]">Due on Delivery</span>
-                            <span className="text-2xl font-black text-[#ce112d] italic">৳{selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? derivedTotalAmount - (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)) : derivedTotalAmount)}</span>
+                            <span className="text-2xl font-black text-[#ce112d] italic">৳{selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? derivedTotalAmount - (selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)) : derivedTotalAmount)}</span>
                           </div>
                         </div>
                       </div>
@@ -3101,8 +3102,7 @@ export default function Admin() {
                                     {selectedOrder.is_exclusive_order ? 'Adv Required' : 'Deli Charge'}
                                 </p>
                             </div>
-                            <p className="text-xl font-black text-white italic">৳{selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)}</p>
-                        </div>
+                            <span className="text-2xl font-black italic tracking-tighter">৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span> </div>
                         
                         <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
                             <div className="flex items-center justify-between mb-2">
@@ -3126,7 +3126,7 @@ export default function Admin() {
                           className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
                         >
                           <div className="relative z-10 flex flex-col items-center">
-                            <span className="text-2xl font-black italic tracking-tighter">৳{selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_charge || 0)}</span>
+                            <span className="text-2xl font-black italic tracking-tighter">৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span>
                             <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">{selectedOrder.is_exclusive_order ? 'Adv Paid' : 'Deli Paid'}</span>
                           </div>
                           {selectedOrder.payment_status === 'Advance Paid' && <div className="absolute top-0 right-0 p-1.5 bg-white/20 rounded-bl-xl"><Check size={10} strokeWidth={4} /></div>}

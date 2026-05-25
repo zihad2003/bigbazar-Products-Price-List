@@ -358,10 +358,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                                 <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
                                                                 <span className="font-black text-orange-500">-৳500</span>
                                                             </div>
-                                                        ) : order.delivery_charge > 0 ? (
+                                                        ) : (parseFloat(order.delivery_charge) || 0) > 0 ? (
                                                             <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
                                                                 <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
-                                                                <span className="font-black text-orange-500">-৳{order.delivery_charge}</span>
+                                                                <span className="font-black text-orange-500">-৳{parseFloat(order.delivery_charge) || 0}</span>
                                                             </div>
                                                         ) : null
                                                     )}
@@ -371,7 +371,8 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         ৳{(() => {
                                                             if (order.payment_status === 'Fully Paid') return 0;
                                                             if (!order.is_advance_paid) return order.total_amount;
-                                                            const advance = order.is_exclusive_order ? 500 : (order.delivery_area === 'mirsarai' && order.delivery_charge === 0 ? 100 : (order.delivery_charge || 0));
+                                                            const charge = parseFloat(order.delivery_charge) || 0;
+                                                            const advance = order.is_exclusive_order ? 500 : (order.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                                                             return order.total_amount - advance;
                                                         })()}
                                                         </span>
@@ -388,7 +389,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         <p className="text-[8px] md:text-[9px] font-medium text-green-500/70">
                                                             {order.is_exclusive_order
                                                                 ? (language === 'bn' ? 'আপনার ৳৫০০ অগ্রিম (Premium) পেমেন্ট পেয়েছি।' : 'We have received your ৳500 advance (Premium) payment.')
-                                                                : (order.delivery_area === 'mirsarai' && order.delivery_charge === 0 
+                                                                : (order.delivery_area === 'mirsarai' && (parseFloat(order.delivery_charge) || 0) === 0 
                                                                     ? (language === 'bn' ? 'আপনার ৳১০০ কনফার্মেশন ফি আমরা পেয়েছি।' : 'We have received your ৳100 confirmation fee.')
                                                                     : (language === 'bn' ? 'আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।' : 'We have received your advance payment.'))
                                                             }
