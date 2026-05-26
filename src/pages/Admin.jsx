@@ -1917,7 +1917,7 @@ export default function Admin() {
                                </div>
                                <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
                                   <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Shipping Cost</p>
-                                  <p className="text-xl font-black text-white italic tracking-tighter">৳{selectedOrder.delivery_charge || 0}</p>
+                                  <p className="text-xl font-black text-white italic tracking-tighter">৳{parseFloat(selectedOrder.delivery_charge) || 0}</p>
                                </div>
                                <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
                                   <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Sender ID</p>
@@ -1925,7 +1925,11 @@ export default function Admin() {
                                </div>
                                <div className="bg-[#ce112d]/10 p-4 rounded-3xl border border-[#ce112d]/20">
                                   <p className="text-[8px] font-black text-[#ce112d] uppercase mb-1">Advance Received</p>
-                                  <p className="text-xl font-black text-[#ce112d] italic tracking-tighter">৳{selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && selectedOrder.delivery_charge === 0 ? 100 : (selectedOrder.delivery_charge || 0))) : 0}</p>
+                                  <p className="text-xl font-black text-[#ce112d] italic tracking-tighter">৳{(() => {
+                                     const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                                     const adv = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
+                                     return adv;
+                                  })()}</p>
                                </div>
                             </div>
 
@@ -1936,7 +1940,8 @@ export default function Admin() {
                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter drop-shadow-lg">
                                       ৳{(() => {
                                           const total = Number(selectedOrder.total_amount);
-                                          const adv = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && selectedOrder.delivery_charge === 0 ? 100 : Number(selectedOrder.delivery_charge || 0))) : 0;
+                                          const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                                           const adv = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
                                           return (selectedOrder.payment_status === 'Fully Paid' ? 0 : total - adv);
                                       })().toLocaleString()}
                                    </p>
@@ -2406,7 +2411,7 @@ export default function Admin() {
                             }}
                             className={`text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-black text-zinc-600 border-white/5'}`}
                           >
-                            {o.is_exclusive_order ? 'Adv' : (o.delivery_area === 'mirsarai' && o.delivery_charge === 0 ? 'Conf' : 'Del')} Paid
+                            {o.is_exclusive_order ? 'Adv' : (o.delivery_area === 'mirsarai' && (parseFloat(o.delivery_charge) || 0) === 0 ? 'Conf' : 'Del')} Paid
                           </button>
                           <button
                             onClick={(e) => {
@@ -3028,13 +3033,20 @@ export default function Admin() {
                           {selectedOrder.is_advance_paid && (
                             <div className="flex justify-between text-[11px] bg-orange-500/5 p-2 rounded-lg border border-orange-500/10">
                                 <span className="text-orange-500 font-bold uppercase tracking-wider">Advance / Partial Paid</span>
-                                <span className="font-black text-orange-400 italic">-৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span>
+                                <span className="font-black text-orange-400 italic">-৳{(() => {
+                                  const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                                  return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
+                                })()}</span>
                             </div>
                           )}
 
                           <div className="flex justify-between items-center pt-1">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ce112d]">Due on Delivery</span>
-                            <span className="text-2xl font-black text-[#ce112d] italic">৳{selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? derivedTotalAmount - (selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)) : derivedTotalAmount)}</span>
+                            <span className="text-2xl font-black text-[#ce112d] italic">৳{(() => {
+                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                              const adv = selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
+                              return selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? derivedTotalAmount - adv : derivedTotalAmount);
+                            })()}</span>
                           </div>
                         </div>
                       </div>
@@ -3128,7 +3140,10 @@ export default function Admin() {
                                     {selectedOrder.is_exclusive_order ? 'Adv Required' : 'Deli Charge'}
                                 </p>
                             </div>
-                            <span className="text-2xl font-black italic tracking-tighter">৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span> </div>
+                            <span className="text-2xl font-black italic tracking-tighter">৳{(() => {
+                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                              return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
+                            })()}</span> </div>
                         
                         <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
                             <div className="flex items-center justify-between mb-2">
@@ -3152,8 +3167,11 @@ export default function Admin() {
                           className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
                         >
                           <div className="relative z-10 flex flex-col items-center">
-                            <span className="text-2xl font-black italic tracking-tighter">৳{selectedOrder.is_exclusive_order ? 500 : (parseFloat(selectedOrder.delivery_charge) || 0)}</span>
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">{selectedOrder.is_exclusive_order ? 'Adv Paid' : 'Deli Paid'}</span>
+                            <span className="text-2xl font-black italic tracking-tighter">৳{(() => {
+                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
+                              return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
+                            })()}</span>
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">{selectedOrder.is_exclusive_order ? 'Adv Paid' : (selectedOrder.delivery_area === 'mirsarai' && (parseFloat(selectedOrder.delivery_charge) || 0) === 0 ? 'Conf Paid' : 'Deli Paid')}</span>
                           </div>
                           {selectedOrder.payment_status === 'Advance Paid' && <div className="absolute top-0 right-0 p-1.5 bg-white/20 rounded-bl-xl"><Check size={10} strokeWidth={4} /></div>}
                         </button>

@@ -358,6 +358,11 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                                 <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
                                                                 <span className="font-black text-orange-500">-৳500</span>
                                                             </div>
+                                                        ) : (order.delivery_area === 'mirsarai' && (parseFloat(order.delivery_charge) || 0) === 0) ? (
+                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
+                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee'}</span>
+                                                                <span className="font-black text-orange-500">-৳100</span>
+                                                            </div>
                                                         ) : (parseFloat(order.delivery_charge) || 0) > 0 ? (
                                                             <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
                                                                 <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
