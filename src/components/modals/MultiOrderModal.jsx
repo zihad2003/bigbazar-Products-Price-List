@@ -395,8 +395,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             </div>
                         </div>
 
-                        {/* Footer - lift for mobile menu (increased for safety) */}
-                        <div className="p-6 pb-20 md:p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                        {/* Footer - standard padding for mobile view */}
+                        <div className="p-5 pb-6 md:p-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <div>
                                     <p className="text-[10px] font-black uppercase text-neutral-500 tracking-widest">{language === 'bn' ? 'পরিশোধযোগ্য মোট' : 'Total Payable'}</p>
