@@ -1814,6 +1814,17 @@ export default function Admin() {
                                     </div>
                                  </div>
                               </div>
+                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
+                               <div>
+                                  <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-[0.2em] mb-1.5">Sender bKash Number / ID</p>
+                                  <div className="flex items-center justify-between bg-[#ce112d]/5 px-4 py-3 rounded-2xl border border-[#ce112d]/10 shadow-inner">
+                                     <span className="text-base font-black text-[#ce112d] tracking-widest italic">{selectedOrder.last_four_digits}</span>
+                                     <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="w-8 h-8 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d] border border-[#ce112d]/20 active:scale-95 transition-all">
+                                        <Copy size={12} />
+                                     </button>
+                                  </div>
+                               </div>
+                              )}
                            </div>
                         </div>
 
@@ -1899,7 +1910,7 @@ export default function Admin() {
                                  });
                              })()}
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-[#1d1d21]">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-[#1d1d21]">
                                <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
                                   <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Base Price</p>
                                   <p className="text-xl font-black text-white italic tracking-tighter">৳{selectedOrder.product_price.toLocaleString()}</p>
@@ -1908,15 +1919,19 @@ export default function Admin() {
                                   <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Shipping Cost</p>
                                   <p className="text-xl font-black text-white italic tracking-tighter">৳{selectedOrder.delivery_charge || 0}</p>
                                </div>
-                               <div className="col-span-2 md:col-span-1 bg-[#ce112d]/10 p-4 rounded-3xl border border-[#ce112d]/20">
+                               <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
+                                  <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Sender ID</p>
+                                  <p className="text-xs font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>{selectedOrder.last_four_digits || 'COD'}</p>
+                               </div>
+                               <div className="bg-[#ce112d]/10 p-4 rounded-3xl border border-[#ce112d]/20">
                                   <p className="text-[8px] font-black text-[#ce112d] uppercase mb-1">Advance Received</p>
                                   <p className="text-xl font-black text-[#ce112d] italic tracking-tighter">৳{selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && selectedOrder.delivery_charge === 0 ? 100 : (selectedOrder.delivery_charge || 0))) : 0}</p>
                                </div>
                             </div>
 
-                            <div className="bg-gradient-to-br from-[#ce112d] to-[#ff1c3a] p-8 rounded-[40px] flex items-center justify-between shadow-red-900/40 shadow-2xl relative overflow-hidden group">
+                            <div className="bg-gradient-to-br from-[#ce112d] to-[#ff1c3a] p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] flex flex-col sm:flex-row gap-6 items-center justify-between shadow-red-900/40 shadow-2xl relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)] pointer-events-none" />
-                                <div>
+                                <div className="text-center sm:text-left">
                                    <p className="text-[10px] font-black uppercase text-white/60 mb-1 tracking-widest">Balance at Delivery</p>
                                    <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter drop-shadow-lg">
                                       ৳{(() => {

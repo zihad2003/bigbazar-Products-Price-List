@@ -615,7 +615,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                     </div>
 
                     {/* Footer */}
-                    <div className="px-6 pb-12 pt-5 md:px-10 md:pb-10 md:pt-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                    <div className="px-5 pb-6 pt-5 md:px-10 md:pb-10 md:pt-6 border-t" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                         <button onClick={handleConfirmOrder} disabled={isSubmitting}
                             className="w-full flex items-center justify-center gap-3 py-5 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:scale-[1.02] shadow-[0_15px_45px_rgba(206,17,45,0.35)] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100">
                             {isSubmitting ? (
