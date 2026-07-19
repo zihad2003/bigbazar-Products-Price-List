@@ -32,7 +32,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
     };
 
     return (
-        <footer className="pt-16 pb-8 border-t transition-all font-sans text-xs md:text-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+        <footer className="pt-16 pb-28 md:pb-8 border-t transition-all font-sans text-xs md:text-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
             <div className="max-w-7xl mx-auto px-6 md:px-8">
                 
                 {/* Main Links Area */}
