@@ -273,7 +273,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     { id: 'Women', icon: <IconWomen size={22} />, label: t('women') },
     { id: 'Kids (Boys)', icon: <IconBoy size={22} />, label: t('boys') },
     { id: 'Kids (Girls)', icon: <IconGirl size={22} />, label: t('girls') },
-    ...(visibility.show_new !== false ? [{ id: 'New', icon: <IconNew size={22} />, label: language === 'bn' ? 'নতুন' : 'New' }] : []),
   ];
 
   return (
