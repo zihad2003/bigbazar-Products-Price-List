@@ -574,18 +574,94 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 });
 
 // ============================================
-// UPLOAD (Cloudflare Pages / Base64 Fallback)
+// UPLOAD (Cloudinary primary / Base64 fallback)
 // ============================================
+
+/**
+ * Fast base64 encoding for ArrayBuffers — kept as fallback when
+ * Cloudinary env vars are not configured.
+ */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/**
+ * SHA-1 hex digest using the Web Crypto API (available in Workers).
+ * Cloudinary requires HMAC-style signatures: sha1(paramsString + apiSecret).
+ */
+async function sha1Hex(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
+  return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 app.post('/upload', requireAuth, requireAdmin, async (c) => {
   try {
     const body = await c.req.parseBody();
     const file = body.file;
     if (!file || !(file instanceof File)) return c.json({ error: 'No file uploaded' }, 400);
 
-    // If R2 is bound (e.g. c.env.R2_BUCKET), we could use it here.
-    // For now, we use a robust Base64 fallback so uploads "just work" everywhere.
+    const MAX_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      return c.json({ error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.` }, 413);
+    }
+
+    // ── Cloudinary upload (primary path) ──────────────────────────────────
+    const cloudName  = c.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey     = c.env.CLOUDINARY_API_KEY;
+    const apiSecret  = c.env.CLOUDINARY_API_SECRET;
+
+    if (cloudName && apiKey && apiSecret) {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const folder = 'bigbazar';
+      // Cloudinary transformation: auto quality, auto format, max 1600px wide
+      const eager = 'q_auto,f_auto,w_1600,c_limit';
+
+      // Params must be sorted alphabetically for signature
+      const paramsToSign = `eager=${eager}&folder=${folder}&timestamp=${timestamp}`;
+      const signature = await sha1Hex(paramsToSign + apiSecret);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp);
+      formData.append('signature', signature);
+      formData.append('folder', folder);
+      formData.append('eager', eager);
+
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+
+      if (!cloudRes.ok) {
+        const errBody = await cloudRes.text();
+        console.error('Cloudinary upload failed:', cloudRes.status, errBody);
+        return c.json({ error: 'Image host upload failed', details: errBody }, 502);
+      }
+
+      const result = await cloudRes.json();
+      // Use the eager transformation URL if available, otherwise secure_url
+      const publicUrl = result.eager?.[0]?.secure_url || result.secure_url;
+
+      return c.json({
+        success: true,
+        data: {
+          path: result.public_id,
+          publicUrl
+        }
+      });
+    }
+
+    // ── Base64 fallback (Cloudinary env vars not set) ─────────────────────
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    const base64 = arrayBufferToBase64(arrayBuffer);
     const dataUrl = `data:${file.type};base64,${base64}`;
 
     return c.json({
@@ -599,6 +675,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     return c.json({ error: 'Upload failed', details: err.message }, 500);
   }
 });
+
 
 // ============================================
 // EXPORT FOR CLOUDFLARE PAGES AND LOCAL SERVER
