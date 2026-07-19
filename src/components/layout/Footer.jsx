@@ -1,8 +1,9 @@
 import React from 'react';
-import { Facebook, Instagram, MessageCircle, Phone } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Facebook, Instagram, Phone, Mail, MapPin } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const TikTokIcon = ({ size = 12, className }) => (
+const TikTokIcon = ({ size = 16, className }) => (
     <svg
         width={size}
         height={size}
@@ -18,78 +19,177 @@ const TikTokIcon = ({ size = 12, className }) => (
     </svg>
 );
 
-export default function Footer() {
-    const { t, language } = useLanguage();
-    const socialLinks = [
-        {
-            label: 'FACEBOOK',
-            icon: Facebook,
-            url: 'https://www.facebook.com/profile.php?id=100063541603515'
-        },
-        {
-            label: 'INSTAGRAM',
-            icon: Instagram,
-            url: 'https://www.instagram.com/big_bazar_25/'
-        },
-        {
-            label: 'WHATSAPP',
-            icon: MessageCircle,
-            url: 'https://wa.me/8801335945351'
-        },
-        {
-            label: 'TIKTOK',
-            icon: TikTokIcon,
-            url: 'https://www.tiktok.com/@big.bazar2'
+export default function Footer({ onTrackOrder, onSelectCategory }) {
+    const { language, setLanguage } = useLanguage();
+    const navigate = useNavigate();
+
+    const handleCategoryClick = (category) => {
+        if (onSelectCategory) {
+            onSelectCategory(category);
         }
-    ];
+        navigate('/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
-        <footer className="py-16 md:py-24 px-4 md:px-6 border-t" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
-            <div className="max-w-7xl mx-auto flex flex-col items-center gap-10 md:gap-16">
+        <footer className="pt-16 pb-8 border-t transition-all font-sans text-xs md:text-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
+                
+                {/* Main Links Area */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-16">
+                    
+                    {/* Brand Info Column */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="space-y-2">
+                            <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-block group">
+                                <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                    <span className="text-[#ce112d]">BIG</span> BAZAR
+                                </h2>
+                                <div className="h-[2px] bg-[#ce112d] w-8 mt-1 transition-all group-hover:w-16" />
+                            </Link>
+                            <p className="text-zinc-500 font-medium leading-relaxed max-w-xs text-xs mt-4">
+                                Your one-stop destination for premium fashion from top brands. Quality clothing for the whole family.
+                            </p>
+                        </div>
 
-                {/* Brand Logo */}
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter" style={{ color: 'var(--text-primary)' }}>
-                        BIG<span className="text-[#ce112d]">BAZAR</span>
-                    </h1>
-                </div>
-
-                {/* Header */}
-                <h3 className="font-black italic uppercase tracking-[0.2em] text-xs md:text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {language === 'bn' ? 'আমাদের সাথে যুক্ত হোন' : 'Connect With Us'}
-                </h3>
-
-                {/* Social Icons Grid */}
-                <div className="flex flex-wrap justify-center gap-6 md:gap-16">
-                    {socialLinks.map((social) => (
-                        <a
-                            key={social.label}
-                            href={social.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex flex-col items-center gap-4 md:gap-6"
-                        >
-                            <div
-                                className="w-12 h-12 md:w-16 md:h-16 rounded-[16px] md:rounded-[20px] border flex items-center justify-center group-hover:bg-[#ce112d] group-hover:text-white group-hover:border-[#ce112d] group-hover:scale-110 transition-all duration-500"
-                                style={{ borderColor: 'var(--border-hover)', color: 'var(--text-primary)' }}
-                            >
-                                <social.icon size={18} strokeWidth={1.5} className="md:w-5 md:h-5" />
+                        {/* Contact details */}
+                        <div className="space-y-4 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                            <div className="flex items-center gap-3">
+                                <Phone size={14} className="text-zinc-400" />
+                                <a href="tel:01857045449" className="hover:text-[#ce112d] transition-colors">01857045449</a>
                             </div>
-                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-muted)' }}>
-                                {social.label}
-                            </span>
-                        </a>
-                    ))}
+                            <div className="flex items-center gap-3">
+                                <Mail size={14} className="text-zinc-400" />
+                                <a href="mailto:infobigbazar01@gmail.com" className="hover:text-[#ce112d] transition-colors">infobigbazar01@gmail.com</a>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <MapPin size={14} className="text-zinc-400 text-left shrink-0" />
+                                <span className="text-justify leading-tight">Bariarhat, Mirsharai, Chattogram</span>
+                            </div>
+                        </div>
+
+                        {/* Social media icons */}
+                        <div className="flex items-center gap-3 pt-2">
+                            {[
+                                { icon: Facebook, url: 'https://www.facebook.com/profile.php?id=100063541603515' },
+                                { icon: Instagram, url: 'https://www.instagram.com/big_bazar_25/' },
+                                { icon: TikTokIcon, url: 'https://www.tiktok.com/@big.bazar2' }
+                            ].map((social, index) => (
+                                <a
+                                    key={index}
+                                    href={social.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-[#ce112d] hover:border-[#ce112d] hover:bg-[#ce112d]/5 transition-all duration-300"
+                                >
+                                    <social.icon size={13} />
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Columns 2-5 */}
+                    
+                    {/* SHOP Column */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">SHOP</h4>
+                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
+                            <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] transition-colors">পুরুষ</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] transition-colors">মহিলা</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Boys')} className="hover:text-[#ce112d] transition-colors">শিশু (ছেলে)</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Girls')} className="hover:text-[#ce112d] transition-colors">শিশু (মেয়ে)</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('All')} className="hover:text-[#ce112d] transition-colors">নতুন কালেকশন</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('All')} className="hover:text-[#ce112d] transition-colors text-rose-500">Sale</button></li>
+                        </ul>
+                    </div>
+
+                    {/* HELP Column */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">HELP</h4>
+                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
+                            <li><Link to="/contact-us" className="hover:text-[#ce112d] transition-colors">Contact Us</Link></li>
+                            <li><Link to="/faq" className="hover:text-[#ce112d] transition-colors">FAQs</Link></li>
+                            <li><Link to="/size-guide" className="hover:text-[#ce112d] transition-colors">Size Guide</Link></li>
+                            <li><Link to="/shipping" className="hover:text-[#ce112d] transition-colors">Shipping Info</Link></li>
+                            <li><Link to="/returns" className="hover:text-[#ce112d] transition-colors">Returns & Exchanges</Link></li>
+                            <li>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (onTrackOrder) onTrackOrder();
+                                        else navigate('/'); // Fallback
+                                    }}
+                                    className="hover:text-[#ce112d] transition-colors text-left"
+                                >
+                                    Track Order
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* COMPANY Column */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">COMPANY</h4>
+                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
+                            <li><Link to="/about-us" className="hover:text-[#ce112d] transition-colors">About Us</Link></li>
+                            <li><Link to="/store-locations" className="hover:text-[#ce112d] transition-colors">Store Locations</Link></li>
+                        </ul>
+                    </div>
+
+                    {/* LEGAL Column */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">LEGAL</h4>
+                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
+                            <li><Link to="/privacy-policy" className="hover:text-[#ce112d] transition-colors">Privacy Policy</Link></li>
+                            <li><Link to="/terms" className="hover:text-[#ce112d] transition-colors">Terms of Service</Link></li>
+                            <li><Link to="/refund" className="hover:text-[#ce112d] transition-colors">Refund Policy</Link></li>
+                        </ul>
+                    </div>
+
                 </div>
 
-                {/* Footer Credit */}
-                <div className="mt-4 md:mt-8 text-center space-y-3 md:space-y-4 opacity-60">
-                    <h2 className="text-[10px] md:text-xs font-black italic uppercase tracking-widest flex items-center justify-center gap-1 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
-                        {language === 'bn' ? 'তৈরি করেছেন' : 'ENGINEERED BY'} <span className="text-[#ce112d]">ZIHAD</span> {language === 'bn' ? '' : 'FOR'} <span className="text-[#ce112d]">BIG BAZAR</span> {language === 'bn' ? 'এর জন্য' : ''}
-                    </h2>
-                    <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.3em] md:tracking-[0.4em]" style={{ color: 'var(--text-faint)' }}>
-                        {t('location')} | 2026
-                    </p>
+                {/* Bottom Credits & Payment Badges */}
+                <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-6" style={{ borderColor: 'var(--border-color)' }}>
+                    
+                    {/* Copyright */}
+                    <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                        © 2026 BIG BAZAR. All rights reserved.
+                    </div>
+
+                    {/* Language Switcher */}
+                    <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full p-1 h-10 w-44">
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('en')}
+                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'en' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                        >
+                            ENGLISH
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLanguage('bn')}
+                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'bn' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                        >
+                            বাংলা
+                        </button>
+                    </div>
+
+                    {/* Payment methods */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-2">WE ACCEPT:</span>
+                        
+                        <div className="bg-white border border-rose-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-rose-500 h-7 select-none">
+                            → BKASH
+                        </div>
+
+                        <div className="bg-white border border-orange-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-orange-600 h-7 select-none">
+                            Or- NAGAD
+                        </div>
+
+                        <div className="bg-white border border-zinc-200 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-zinc-650 h-7 select-none">
+                            COD
+                        </div>
+                    </div>
                 </div>
 
             </div>

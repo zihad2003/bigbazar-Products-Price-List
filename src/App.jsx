@@ -7,6 +7,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
+import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
@@ -30,6 +31,9 @@ function PublicLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const location = useLocation();
+  const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
+  const isStaticPage = staticPaths.includes(location.pathname);
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -96,15 +100,19 @@ function PublicLayout() {
 
       {/* Main Content */}
       <main className="flex-grow pt-16 md:pt-20 pb-24 md:pb-0">
-        <Home
-          selectedCategory={category}
-          setSelectedCategory={setCategory}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
+        {isStaticPage ? (
+          <StaticPage path={location.pathname} />
+        ) : (
+          <Home
+            selectedCategory={category}
+            setSelectedCategory={setCategory}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        )}
       </main>
 
-      <Footer />
+      <Footer onTrackOrder={() => openModal(setIsTrackOpen)} onSelectCategory={setCategory} />
 
       {/* Mobile Customer Menu */}
       <CustomerMenu
@@ -129,6 +137,16 @@ function App() {
               <Routes>
                 <Route path="/" element={<PublicLayout />} />
                 <Route path="/product/:productId" element={<PublicLayout />} />
+                <Route path="/about-us" element={<PublicLayout />} />
+                <Route path="/privacy-policy" element={<PublicLayout />} />
+                <Route path="/terms" element={<PublicLayout />} />
+                <Route path="/refund" element={<PublicLayout />} />
+                <Route path="/contact-us" element={<PublicLayout />} />
+                <Route path="/faq" element={<PublicLayout />} />
+                <Route path="/size-guide" element={<PublicLayout />} />
+                <Route path="/shipping" element={<PublicLayout />} />
+                <Route path="/returns" element={<PublicLayout />} />
+                <Route path="/store-locations" element={<PublicLayout />} />
                 <Route path="/admin" element={<Admin />} />
               </Routes>
             </Router>
