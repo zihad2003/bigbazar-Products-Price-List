@@ -1,15 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import MultiOrderModal from './modals/MultiOrderModal';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export default function CartDrawer({ isOpen, onClose }) {
     const { t, language } = useLanguage();
+    const navigate = useNavigate();
     const { cartItems, removeFromCart, updateQuantity, cartTotal, cartCount } = useCart();
-    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
     return (
         <AnimatePresence>
@@ -127,7 +127,10 @@ export default function CartDrawer({ isOpen, onClose }) {
                                     <span className="text-2xl font-black text-[#ce112d]">৳{cartTotal}</span>
                                 </div>
                                 <button
-                                    onClick={() => setIsCheckoutOpen(true)}
+                                    onClick={() => {
+                                        navigate('/checkout');
+                                        onClose();
+                                    }}
                                     className="w-full bg-[#ce112d] text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 shadow-[0_10px_40px_rgba(206,17,45,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
                                 >
                                     {t('checkout')} <ArrowRight size={18} />
@@ -138,13 +141,6 @@ export default function CartDrawer({ isOpen, onClose }) {
                     </motion.div>
                 </>
             )}
-            <MultiOrderModal
-                isOpen={isCheckoutOpen}
-                onClose={() => {
-                    setIsCheckoutOpen(false);
-                    onClose(); // Close the drawer too after successful order or cancel
-                }}
-            />
         </AnimatePresence>
     );
 }

@@ -9,6 +9,8 @@ import Home from './pages/Home';
 import Admin from './pages/Admin';
 import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import Checkout from './pages/Checkout';
+import OrderConfirmation from './pages/OrderConfirmation';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
@@ -34,6 +36,8 @@ function PublicLayout() {
   const location = useLocation();
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
+  const isCheckoutPage = location.pathname === '/checkout';
+  const isConfirmationPage = location.pathname.startsWith('/order-confirmation');
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -102,6 +106,10 @@ function PublicLayout() {
       <main className="flex-grow pt-16 md:pt-20 pb-24 md:pb-0">
         {isStaticPage ? (
           <StaticPage path={location.pathname} />
+        ) : isCheckoutPage ? (
+          <Checkout />
+        ) : isConfirmationPage ? (
+          <OrderConfirmation />
         ) : (
           <Home
             selectedCategory={category}
@@ -147,6 +155,8 @@ function App() {
                 <Route path="/shipping" element={<PublicLayout />} />
                 <Route path="/returns" element={<PublicLayout />} />
                 <Route path="/store-locations" element={<PublicLayout />} />
+                <Route path="/checkout" element={<PublicLayout />} />
+                <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
                 <Route path="/admin" element={<Admin />} />
               </Routes>
             </Router>
