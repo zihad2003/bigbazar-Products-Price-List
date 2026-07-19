@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingBag, Truck, CreditCard, Box, Check, Play, Image as ImageIcon, Share2, Award, Zap, AlertCircle, ShoppingCart, ChevronLeft } from 'lucide-react';
 import { generateShareMessage } from '../../utils/messageTemplates';
@@ -10,6 +11,7 @@ import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { cartItems, addToCart } = useCart();
   const [showCartSuccess, setShowCartSuccess] = useState(false);
@@ -88,7 +90,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
     if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     setValidationError('');
-    setShowDeliveryModal(true);
+    navigate(`/checkout?product=${product.id}&color=${encodeURIComponent(selectedColor)}&size=${encodeURIComponent(selectedSize)}&qty=${quantity}`);
+    onClose();
   };
 
   const isInCart = cartItems.some(item =>
