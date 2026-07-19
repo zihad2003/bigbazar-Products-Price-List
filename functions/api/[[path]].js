@@ -4,6 +4,41 @@ import { getDb } from './db.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+// Simple in-memory store for rate limiting (at Edge level per isolate)
+const rateLimitStore = new Map();
+let lastCleanup = Date.now();
+
+const checkRateLimit = (ip, endpoint, limit, windowMs) => {
+  const now = Date.now();
+  // Periodically clean up expired keys (every 5 minutes)
+  if (now - lastCleanup > 300000) {
+    for (const [k, v] of rateLimitStore.entries()) {
+      if (now > v.resetTime) rateLimitStore.delete(k);
+    }
+    lastCleanup = now;
+  }
+
+  const key = `${ip}:${endpoint}`;
+  const record = rateLimitStore.get(key);
+
+  if (!record) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    return true; // allowed
+  }
+
+  if (now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    return true; // allowed
+  }
+
+  if (record.count >= limit) {
+    return false; // blocked
+  }
+
+  record.count += 1;
+  return true; // allowed
+};
+
 // Cloudflare Serverless API
 const app = new Hono().basePath('/api');
 
@@ -74,6 +109,11 @@ const requireAuth = async (c, next) => {
 // ============================================
 
 app.post('/auth/register', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'register', 3, 60000)) {
+    return c.json({ error: 'Too many registration attempts. Please try again after a minute.' }, 429);
+  }
+
   const { name, email, mobile, password } = await c.req.json();
   if (!mobile || !password) return c.json({ error: 'Mobile and Password are required' }, 400);
 
@@ -100,6 +140,11 @@ app.post('/auth/register', async (c) => {
 });
 
 app.post('/auth/login', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'login', 5, 60000)) {
+    return c.json({ error: 'Too many login attempts. Please try again after a minute.' }, 429);
+  }
+
   const { email, mobile, password } = await c.req.json();
   const identifier = email || mobile;
   if (!identifier || !password) return c.json({ error: 'Identifier and Password are required' }, 400);
@@ -353,6 +398,41 @@ app.post('/orders', async (c) => {
   const id = crypto.randomUUID();
 
   try {
+    if (!o.product_id) {
+      return c.json({ error: 'Product ID is required' }, 400);
+    }
+
+    // 1. Check product stock
+    const products = await conn.execute(
+      'SELECT name, stock_count, is_sold_out, is_deleted, status FROM products WHERE id = ?',
+      [o.product_id]
+    );
+
+    if (products.length === 0) {
+      return c.json({ error: 'Product not found' }, 404);
+    }
+
+    const product = products[0];
+    if (product.is_deleted || product.status !== 'published') {
+      return c.json({ error: 'This product is no longer available' }, 400);
+    }
+
+    if (product.stock_count <= 0 || product.is_sold_out) {
+      return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
+    }
+
+    // 2. Decrement stock atomically
+    const updateRes = await conn.execute(
+      'UPDATE products SET stock_count = stock_count - 1, is_sold_out = CASE WHEN stock_count <= 1 THEN 1 ELSE is_sold_out END WHERE id = ? AND stock_count > 0',
+      [o.product_id],
+      { fullResult: true }
+    );
+
+    if (updateRes.rowsAffected === 0) {
+      return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
+    }
+
+    // 3. Create the order
     await conn.execute(
       `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -364,6 +444,7 @@ app.post('/orders', async (c) => {
     );
     return c.json({ success: true, order_id: id });
   } catch (err) {
+    console.error('Order placement error:', err);
     return c.json({ error: err.message }, 500);
   }
 });
@@ -395,8 +476,28 @@ app.delete('/orders', requireAuth, async (c) => {
 
 app.delete('/orders/:id', requireAuth, async (c) => {
   const conn = getDb(c.env);
-  await conn.execute('DELETE FROM orders WHERE id = ?', [c.req.param('id')]);
-  return c.json({ success: true });
+  const id = c.req.param('id');
+  try {
+    // 1. Get product_id from order
+    const orders = await conn.execute('SELECT product_id FROM orders WHERE id = ?', [id]);
+    if (orders.length > 0) {
+      const productId = orders[0].product_id;
+      
+      // 2. Delete order
+      await conn.execute('DELETE FROM orders WHERE id = ?', [id]);
+      
+      // 3. Re-increment stock and reset is_sold_out status if it was set
+      if (productId) {
+        await conn.execute(
+          'UPDATE products SET stock_count = stock_count + 1, is_sold_out = 0 WHERE id = ?',
+          [productId]
+        );
+      }
+    }
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.get('/orders/track', async (c) => {
