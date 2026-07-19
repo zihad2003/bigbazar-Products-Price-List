@@ -81,10 +81,10 @@ const IconPremium = ({ size = 24 }) => (
 const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
   const hasVideo = !!product.video_url;
-  
+
   // Choose the best candidate for the display image
   let sourceImage = product.image_url || product.images?.[0];
-  
+
   // If no image but has video, use video (normalization happens in getOptimizedUrl)
   if (!sourceImage && hasVideo) {
     sourceImage = product.video_url;
@@ -113,7 +113,7 @@ const ProductCard = ({ product, onClick }) => {
           </div>
         ) : (
           <div className="w-full h-full bg-neutral-50 flex items-center justify-center">
-             <Instagram size={22} className="text-zinc-200" />
+            <Instagram size={22} className="text-zinc-200" />
           </div>
         )}
         {hasDiscount && (
@@ -280,17 +280,17 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     <div className="min-h-screen bg-white pb-16">
       {/* Elite Hero Section */}
       {((siteSettings.main_slides?.length > 0) || (DEFAULT_SLIDES.length > 0)) && (
-      <section className="w-full relative px-4 md:px-12 pt-4 md:pt-10 flex flex-col items-center">
-        <div className="w-[60%] md:w-[70%] aspect-square md:aspect-video rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative border-8 border-white">
-          {settingsLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
-              <div className="w-16 h-16 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
-            </div>
-          ) : (
-            <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
-          )}
-        </div>
-      </section>
+        <section className="w-full relative px-4 md:px-12 pt-4 md:pt-10 flex flex-col items-center">
+          <div className="w-[60%] md:w-[70%] aspect-square md:aspect-video rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative border-8 border-white">
+            {settingsLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
+                <div className="w-16 h-16 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
+              </div>
+            ) : (
+              <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
+            )}
+          </div>
+        </section>
       )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
@@ -405,8 +405,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar Selective</p>
-              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic">Redefining Premium Shopping • Dhaka</p>
+              <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar</p>
+              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic"> Bariarhat Mirsharai Chattagram</p>
             </div>
           </div>
         </section>

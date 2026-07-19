@@ -36,10 +36,10 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
             <div className="max-w-7xl mx-auto px-6 md:px-8">
                 
                 {/* Main Links Area */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 pb-16">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 md:gap-12 pb-16">
                     
                     {/* Brand Info Column */}
-                    <div className="lg:col-span-1 space-y-6">
+                    <div className="col-span-2 md:col-span-4 lg:col-span-1 space-y-6">
                         <div className="space-y-2">
                             <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-block group">
                                 <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
@@ -152,7 +152,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                 <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-6" style={{ borderColor: 'var(--border-color)' }}>
                     
                     {/* Copyright */}
-                    <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center md:text-left">
                         © 2026 BIG BAZAR. All rights reserved.
                     </div>
 
@@ -175,7 +175,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     </div>
 
                     {/* Payment methods */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                         <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-2">WE ACCEPT:</span>
                         
                         <div className="bg-white border border-rose-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-rose-500 h-7 select-none">
