@@ -274,8 +274,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     { id: 'Kids (Boys)', icon: <IconBoy size={22} />, label: t('boys') },
     { id: 'Kids (Girls)', icon: <IconGirl size={22} />, label: t('girls') },
     ...(visibility.show_new !== false ? [{ id: 'New', icon: <IconNew size={22} />, label: language === 'bn' ? 'নতুন' : 'New' }] : []),
-    ...(visibility.show_sale !== false ? [{ id: 'Sale', icon: <IconSale size={22} />, label: language === 'bn' ? 'অফার' : 'Sale' }] : []),
-    ...(visibility.show_exclusive !== false ? [{ id: 'Premium', icon: <IconPremium size={22} />, label: language === 'bn' ? 'এক্সক্লুসিভ' : 'Premium' }] : []),
   ];
 
   return (
