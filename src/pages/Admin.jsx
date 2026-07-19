@@ -6,7 +6,7 @@ import {
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -20,6 +20,7 @@ export default function Admin() {
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
@@ -628,13 +629,22 @@ export default function Admin() {
           </div>
           <div className="space-y-2">
             <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider ml-1">Password</label>
+            <div className="relative">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••"
-              className="w-full bg-black border border-zinc-800 h-12 px-4 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
+              className="w-full bg-black border border-zinc-800 h-12 pl-4 pr-12 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all text-white"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
+            <button
+              type="button"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-white transition-colors"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           </div>
           <button disabled={loading} className="w-full bg-[#ce112d] h-14 rounded-2xl font-bold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-red-900/20 text-white text-sm mt-4 disabled:opacity-50">
             {loading ? 'Verifying...' : 'Continue →'}
