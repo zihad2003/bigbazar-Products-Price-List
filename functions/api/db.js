@@ -15,7 +15,9 @@ export const getDb = (env = {}) => {
   };
 
   const databaseUrl = getVar('DATABASE_URL');
-  if (databaseUrl) {
+  const rawHost = getVar('DB_HOST');
+  const rawUser = getVar('DB_USER');
+  if (databaseUrl && (!rawHost || !rawUser)) {
     return connect({ url: databaseUrl });
   }
 
