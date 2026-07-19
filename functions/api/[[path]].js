@@ -44,19 +44,20 @@ const app = new Hono().basePath('/api');
 
 // Global Error Handler for Debugging
 app.onError((err, c) => {
+  // Log details server-side only
   console.error(err);
+  console.error('Environment check:', {
+    has_db_host: !!c.env.DB_HOST,
+    has_db_user: !!c.env.DB_USER,
+    has_db_pass: !!c.env.DB_PASSWORD,
+    has_db_name: !!c.env.DB_NAME,
+    has_db_port: !!c.env.DB_PORT,
+    has_jwt: !!c.env.JWT_SECRET
+  });
+
   return c.json({ 
     error: 'Internal Server Error', 
-    message: err.message,
-    stack: err.stack,
-    env_check: {
-      has_db_host: !!c.env.DB_HOST,
-      has_db_user: !!c.env.DB_USER,
-      has_db_pass: !!c.env.DB_PASSWORD,
-      has_db_name: !!c.env.DB_NAME,
-      has_db_port: !!c.env.DB_PORT,
-      has_jwt: !!c.env.JWT_SECRET
-    }
+    message: err.message
   }, 500);
 });
 
@@ -91,17 +92,32 @@ app.use('*', async (c, next) => {
 });
 
 // Auth Middleware
+const getJwtSecret = (c) => {
+  const secret = c.env?.JWT_SECRET || (typeof process !== 'undefined' && process.env?.JWT_SECRET);
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is missing.');
+  }
+  return secret;
+};
+
 const requireAuth = async (c, next) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return c.json({ error: 'No token provided' }, 401);
   try {
-    // Use same fallback as sign — so tokens still verify when JWT_SECRET is not yet configured
-    const secret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+    const secret = getJwtSecret(c);
     c.set('user', jwt.verify(token, secret));
     await next();
   } catch (err) {
     return c.json({ error: 'Invalid token' }, 401);
   }
+};
+
+const requireAdmin = async (c, next) => {
+  const user = c.get('user');
+  if (!user || user.type !== 'admin') {
+    return c.json({ error: 'Unauthorized: Admin access required' }, 403);
+  }
+  await next();
 };
 
 // ============================================
@@ -127,7 +143,7 @@ app.post('/auth/register', async (c) => {
       [id, name || null, email || null, mobile, hash]
     );
 
-    const regSecret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+    const regSecret = getJwtSecret(c);
     const token = jwt.sign({ id, mobile, type: 'customer' }, regSecret, { expiresIn: '30d' });
     return c.json({
       session: { access_token: token, user: { id, name, email, mobile } },
@@ -152,7 +168,7 @@ app.post('/auth/login', async (c) => {
   const conn = getDb(c.env);
   
   // Resolve JWT secret once — same source used for both sign and verify
-  const jwtSecret = c.env.JWT_SECRET || (typeof process !== 'undefined' && process.env.JWT_SECRET) || 'fallback';
+  const jwtSecret = getJwtSecret(c);
 
   // Check Admin
   const admins = await conn.execute('SELECT * FROM admin_users WHERE email = ?', [identifier]);
@@ -312,7 +328,7 @@ app.get('/products/:id', async (c) => {
   return c.json({ data: parseProductRow(res[0]) });
 });
 
-app.post('/products', requireAuth, async (c) => {
+app.post('/products', requireAuth, requireAdmin, async (c) => {
   const p = await c.req.json();
   const conn = getDb(c.env);
   const id = p.id || crypto.randomUUID();
@@ -334,7 +350,7 @@ app.post('/products', requireAuth, async (c) => {
   }
 });
 
-app.put('/products/:id', requireAuth, async (c) => {
+app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
   const p = await c.req.json();
   const id = c.req.param('id');
   const conn = getDb(c.env);
@@ -363,7 +379,7 @@ app.put('/products/:id', requireAuth, async (c) => {
   return c.json({ success: true });
 });
 
-app.delete('/products/:id', requireAuth, async (c) => {
+app.delete('/products/:id', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await conn.execute('DELETE FROM products WHERE id = ?', [c.req.param('id')]);
   return c.json({ success: true });
@@ -397,43 +413,42 @@ app.post('/orders', async (c) => {
   const conn = getDb(c.env);
   const id = crypto.randomUUID();
 
-  try {
-    if (!o.product_id) {
-      return c.json({ error: 'Product ID is required' }, 400);
-    }
+  if (!o.product_id) {
+    return c.json({ error: 'Product ID is required' }, 400);
+  }
 
-    // 1. Check product stock
-    const products = await conn.execute(
-      'SELECT name, stock_count, is_sold_out, is_deleted, status FROM products WHERE id = ?',
+  const tx = await conn.begin();
+  try {
+    // 1. Fetch product and lock the row for update inside transaction
+    const products = await tx.execute(
+      'SELECT name, stock_count, is_sold_out, is_deleted, status FROM products WHERE id = ? FOR UPDATE',
       [o.product_id]
     );
 
     if (products.length === 0) {
+      await tx.rollback();
       return c.json({ error: 'Product not found' }, 404);
     }
 
     const product = products[0];
     if (product.is_deleted || product.status !== 'published') {
+      await tx.rollback();
       return c.json({ error: 'This product is no longer available' }, 400);
     }
 
     if (product.stock_count <= 0 || product.is_sold_out) {
+      await tx.rollback();
       return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
     }
 
-    // 2. Decrement stock atomically
-    const updateRes = await conn.execute(
-      'UPDATE products SET stock_count = stock_count - 1, is_sold_out = CASE WHEN stock_count <= 1 THEN 1 ELSE is_sold_out END WHERE id = ? AND stock_count > 0',
-      [o.product_id],
-      { fullResult: true }
+    // 2. Decrement stock
+    await tx.execute(
+      'UPDATE products SET stock_count = stock_count - 1, is_sold_out = CASE WHEN stock_count <= 1 THEN 1 ELSE is_sold_out END WHERE id = ?',
+      [o.product_id]
     );
 
-    if (updateRes.rowsAffected === 0) {
-      return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
-    }
-
     // 3. Create the order
-    await conn.execute(
+    await tx.execute(
       `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -442,14 +457,17 @@ app.post('/orders', async (c) => {
         o.size || null, o.color || null, o.is_advance_paid ? 1 : 0, o.is_exclusive_order ? 1 : 0, o.payment_status || 'Unpaid', o.moderator_reference || null
       ]
     );
+
+    await tx.commit();
     return c.json({ success: true, order_id: id });
   } catch (err) {
-    console.error('Order placement error:', err);
+    await tx.rollback();
+    console.error('Order placement transaction error:', err);
     return c.json({ error: err.message }, 500);
   }
 });
 
-app.put('/orders/:id', requireAuth, async (c) => {
+app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const o = await c.req.json();
   const id = c.req.param('id');
   const conn = getDb(c.env);
@@ -466,7 +484,7 @@ app.put('/orders/:id', requireAuth, async (c) => {
 });
 
 // Bulk delete by status — used by Admin "Empty Bin" feature
-app.delete('/orders', requireAuth, async (c) => {
+app.delete('/orders', requireAuth, requireAdmin, async (c) => {
   const status = c.req.query('status');
   if (!status) return c.json({ error: 'status query param required' }, 400);
   const conn = getDb(c.env);
@@ -474,7 +492,7 @@ app.delete('/orders', requireAuth, async (c) => {
   return c.json({ success: true });
 });
 
-app.delete('/orders/:id', requireAuth, async (c) => {
+app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   const id = c.req.param('id');
   try {
@@ -545,7 +563,7 @@ app.get('/settings', async (c) => {
   return c.json({ data: settings });
 });
 
-app.post('/settings', requireAuth, async (c) => {
+app.post('/settings', requireAuth, requireAdmin, async (c) => {
   const s = await c.req.json();
   const conn = getDb(c.env);
   await conn.execute(
@@ -558,7 +576,7 @@ app.post('/settings', requireAuth, async (c) => {
 // ============================================
 // UPLOAD (Cloudflare Pages / Base64 Fallback)
 // ============================================
-app.post('/upload', requireAuth, async (c) => {
+app.post('/upload', requireAuth, requireAdmin, async (c) => {
   try {
     const body = await c.req.parseBody();
     const file = body.file;
