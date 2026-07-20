@@ -15,6 +15,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import ModeratorEntry from '../components/ModeratorEntry';
+import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -429,80 +430,212 @@ export default function Admin() {
   };
 
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  // 'idle' | 'compressing' | 'uploading'
+  const [uploadStatus, setUploadStatus] = useState('idle');
 
-  const uploadSingleFile = async (file) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `assets/${fileName}`;
+  /**
+   * Upload an already compressed/processed File to the backend.
+   * Returns the public URL string on success, or null on failure.
+   */
+  const uploadSingleFile = async (fileToUpload) => {
+    setUploadStatus('uploading');
 
-    const { data: uploadData, error: uploadError } = await bigBazarApi.storage.from('assets').upload(filePath, file, {
-      cacheControl: '31536000',
-      upsert: false
-    });
-
-    if (uploadError) {
-      console.error(uploadError);
+    // Extreme safety size check: block uploads over 3MB to prevent base64 timeouts
+    const MAX_ALLOWED_SIZE = 3 * 1024 * 1024; // 3 MB
+    if (fileToUpload.size > MAX_ALLOWED_SIZE) {
+      console.error(`Rejected upload: File size is ${formatFileSize(fileToUpload.size)} which exceeds the 3MB safety limit.`);
       return null;
     }
 
-    // Support for local Express API which returns the exact fullPath immediately
-    if (uploadData && uploadData.fullPath) {
-      return uploadData.fullPath;
-    }
+    const fileExt = fileToUpload.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `assets/${fileName}`;
 
-    const { data } = bigBazarApi.storage.from('assets').getPublicUrl(uploadData?.path || filePath);
-    return data.publicUrl;
+    try {
+      const { data: uploadData, error: uploadError } = await bigBazarApi.storage.from('assets').upload(filePath, fileToUpload, {
+        cacheControl: '31536000',
+        upsert: false
+      });
+
+      if (uploadError) {
+        console.error('Upload API Error:', uploadError);
+        return null;
+      }
+
+      if (uploadData && uploadData.fullPath) return uploadData.fullPath;
+      const { data } = bigBazarApi.storage.from('assets').getPublicUrl(uploadData?.path || filePath);
+      return data.publicUrl;
+    } catch (err) {
+      console.error('Upload Error:', err);
+      return null;
+    }
   };
 
   const handleFileUpload = async (e, target) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
 
     setLoading(true);
-    setUploadProgress({ current: 0, total: files.length });
+    setUploadProgress({ current: 0, total: rawFiles.length });
 
     if (target === 'banner') {
-      // Banner only uses single file
-      const url = await uploadSingleFile(files[0]);
+      setUploadStatus('compressing');
+      const totalBefore = rawFiles[0].size;
+      let compressed;
+      try {
+        compressed = await compressImage(rawFiles[0], COMPRESS_PRESETS.banner);
+      } catch (err) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Image Compression Skipped',
+          message: err.message || "Failed to parse the file image payload. Please ensure it is a valid format (e.g. JPG, PNG).",
+          type: 'error'
+        });
+        setLoading(false);
+        setUploadStatus('idle');
+        e.target.value = '';
+        return;
+      }
+
+      const totalAfter = compressed.size;
+      if (totalAfter > 1.5 * 1024 * 1024) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Image Too Large',
+          message: `The image is ${formatFileSize(totalAfter)} after compression, which exceeds the limit. Please resize it locally first.`,
+          type: 'error'
+        });
+        setLoading(false);
+        setUploadStatus('idle');
+        e.target.value = '';
+        return;
+      }
+
+      const url = await uploadSingleFile(compressed);
       if (url) {
         setSiteSettings(prev => ({ ...prev, hero_banner: { ...prev.hero_banner, image_url: url } }));
+        setAlertModal({
+          isOpen: true,
+          title: 'Banner Uploaded ✓',
+          message: `Size: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${Math.round((1 - totalAfter / totalBefore) * 100)}%)`,
+          type: 'success'
+        });
       } else {
-        setAlertModal({ isOpen: true, title: 'Upload Failed', message: "Upload failed. Make sure 'assets' bucket exists and is public.", type: 'error' });
+        setAlertModal({ isOpen: true, title: 'Upload Failed', message: "The database or server-side store rejected this banner upload.", type: 'error' });
       }
+
     } else if (target === 'slider') {
-      // Slider supports multiple
       const uploadedUrls = [];
-      for (let i = 0; i < files.length; i++) {
-        setUploadProgress({ current: i + 1, total: files.length });
-        const url = await uploadSingleFile(files[i]);
-        if (url) uploadedUrls.push({ id: Date.now() + i, image: url });
+      let totalBefore = 0, totalAfter = 0;
+      let failedReasons = [];
+
+      for (let i = 0; i < rawFiles.length; i++) {
+        setUploadProgress({ current: i + 1, total: rawFiles.length });
+        totalBefore += rawFiles[i].size;
+
+        setUploadStatus('compressing');
+        let compressed;
+        try {
+          compressed = await compressImage(rawFiles[i], COMPRESS_PRESETS.slider);
+        } catch (err) {
+          failedReasons.push(`${rawFiles[i].name}: ${err.message}`);
+          continue;
+        }
+
+        totalAfter += compressed.size;
+
+        // Size check for specific slide to prevent crash
+        if (compressed.size > 2 * 1024 * 1024) {
+          failedReasons.push(`${rawFiles[i].name}: File size remains at ${formatFileSize(compressed.size)} which exceeds the 2MB limit.`);
+          continue;
+        }
+
+        const url = await uploadSingleFile(compressed);
+        if (url) {
+          uploadedUrls.push({ id: Date.now() + i, image: url });
+        } else {
+          failedReasons.push(`${rawFiles[i].name}: Main upload rejected by server.`);
+        }
       }
+
       if (uploadedUrls.length > 0) {
         setSiteSettings(prev => ({ ...prev, main_slides: [...(prev.main_slides || []), ...uploadedUrls] }));
+        const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
+        setAlertModal({
+          isOpen: true,
+          title: `${uploadedUrls.length} Slide${uploadedUrls.length > 1 ? 's' : ''} Uploaded ✓`,
+          message: `Compressed total: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${savings}%)${failedReasons.length > 0 ? `. ${failedReasons.length} issue(s): ${failedReasons.join(' | ')}` : ''}`,
+          type: 'success'
+        });
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: failedReasons.length > 0
+            ? failedReasons.join('\n')
+            : 'No files were uploaded. Make sure you selected correct images.',
+          type: 'error'
+        });
       }
-      if (uploadedUrls.length < files.length) {
-        setAlertModal({ isOpen: true, title: 'Partial Upload', message: `${files.length - uploadedUrls.length} of ${files.length} files failed to upload.`, type: 'error' });
-      }
+
     } else {
-      // Product gallery supports multiple
+      // Product gallery / variants
       const uploadedUrls = [];
-      for (let i = 0; i < files.length; i++) {
-        setUploadProgress({ current: i + 1, total: files.length });
-        const url = await uploadSingleFile(files[i]);
-        if (url) uploadedUrls.push(url);
+      let totalBefore = 0, totalAfter = 0;
+      let failedReasons = [];
+
+      for (let i = 0; i < rawFiles.length; i++) {
+        setUploadProgress({ current: i + 1, total: rawFiles.length });
+        totalBefore += rawFiles[i].size;
+
+        setUploadStatus('compressing');
+        const preset = i === 0 && target === 'product' ? COMPRESS_PRESETS.product : COMPRESS_PRESETS.gallery;
+        let compressed;
+        try {
+          compressed = await compressImage(rawFiles[i], preset);
+        } catch (err) {
+          failedReasons.push(`${rawFiles[i].name}: ${err.message}`);
+          continue;
+        }
+
+        totalAfter += compressed.size;
+
+        if (compressed.size > 2 * 1024 * 1024) {
+          failedReasons.push(`${rawFiles[i].name}: Over 2MB limit (${formatFileSize(compressed.size)})`);
+          continue;
+        }
+
+        const url = await uploadSingleFile(compressed);
+        if (url) {
+          uploadedUrls.push(url);
+        } else {
+          failedReasons.push(`${rawFiles[i].name}: Transfer failed.`);
+        }
       }
+
       if (uploadedUrls.length > 0) {
         setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
         setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
-      }
-      if (uploadedUrls.length < files.length) {
-        setAlertModal({ isOpen: true, title: 'Partial Upload', message: `${files.length - uploadedUrls.length} of ${files.length} files failed to upload.`, type: 'error' });
+        const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
+        setAlertModal({
+          isOpen: true,
+          title: `${uploadedUrls.length} Photo${uploadedUrls.length > 1 ? 's' : ''} Uploaded ✓`,
+          message: `Optimized: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${savings}%)${failedReasons.length > 0 ? `. skipped: ${failedReasons.join(', ')}` : ''}`,
+          type: 'success'
+        });
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: failedReasons.length > 0 ? failedReasons.join('\n') : 'Could not upload pictures.',
+          type: 'error'
+        });
       }
     }
 
     setUploadProgress({ current: 0, total: 0 });
+    setUploadStatus('idle');
     setLoading(false);
-    // Reset the input so the same files can be re-selected if needed
     e.target.value = '';
   };
 
@@ -815,15 +948,32 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
-                <label className="flex flex-col items-center justify-center gap-4 aspect-[16/9] rounded-[24px] border-2 border-dashed border-[#1d1d21] cursor-pointer bg-[#121215]/30 hover:bg-[#121215]/50 hover:border-[#ce112d]/30 transition-all text-zinc-600 hover:text-white group">
+                <label className={`flex flex-col items-center justify-center gap-4 aspect-[16/9] rounded-[24px] border-2 border-dashed transition-all text-zinc-600 group ${
+                  loading && uploadStatus !== 'idle'
+                    ? 'border-[#ce112d]/50 bg-[#ce112d]/5 cursor-not-allowed'
+                    : 'border-[#1d1d21] cursor-pointer bg-[#121215]/30 hover:bg-[#121215]/50 hover:border-[#ce112d]/30 hover:text-white'
+                }`}>
                   <div className="w-16 h-16 rounded-full bg-[#121215] flex items-center justify-center border border-white/5 shadow-2xl group-hover:scale-110 transition-transform">
-                    <Plus size={24} className="text-[#ce112d]" />
+                    {loading && uploadStatus !== 'idle'
+                      ? <div className="w-7 h-7 border-[3px] border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
+                      : <Plus size={24} className="text-[#ce112d]" />}
                   </div>
                   <div className="text-center">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Upload Visuals</span>
-                    <p className="text-[9px] text-zinc-700 mt-1 uppercase font-bold">21:9 or 16:9 Recommended</p>
+                    {loading && uploadStatus !== 'idle' ? (
+                      <>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ce112d] animate-pulse">
+                          {uploadStatus === 'compressing' ? 'Compressing...' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
+                        </span>
+                        <p className="text-[9px] text-zinc-700 mt-1 uppercase font-bold">Please wait, do not close</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Upload Visuals</span>
+                        <p className="text-[9px] text-zinc-700 mt-1 uppercase font-bold">21:9 or 16:9 Recommended</p>
+                      </>
+                    )}
                   </div>
-                  <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'slider')} />
+                  <input type="file" className="hidden" accept="image/*" multiple disabled={loading} onChange={e => handleFileUpload(e, 'slider')} />
                 </label>
               </div>
 
@@ -1237,9 +1387,12 @@ export default function Admin() {
                     <div className="pt-10 border-t border-white/5">
                       <div className="flex items-center justify-between mb-8 px-1">
                         <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">More Photos</label>
-                        {uploadProgress.total > 0 && (
-                          <div className="text-[10px] font-black text-[#ce112d] uppercase tracking-widest animate-pulse">
-                            Uploading: {uploadProgress.current}/{uploadProgress.total}
+                        {loading && uploadStatus !== 'idle' && (
+                          <div className="flex items-center gap-2 text-[10px] font-black text-[#ce112d] uppercase tracking-widest animate-pulse">
+                            <div className="w-3 h-3 border-2 border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
+                            {uploadStatus === 'compressing'
+                              ? 'Compressing...'
+                              : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
                           </div>
                         )}
                       </div>
@@ -1824,12 +1977,28 @@ export default function Admin() {
                               </div>
                             </div>
                           </div>
-                          {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
+                           {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
                             <div>
-                              <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-[0.2em] mb-1.5">Sender bKash Number / ID</p>
+                              <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-[0.2em] mb-1.5">
+                                {selectedOrder.last_four_digits.includes(': ')
+                                  ? `${selectedOrder.last_four_digits.split(': ')[0]} Detail`
+                                  : 'Sender bKash Number / ID'}
+                              </p>
                               <div className="flex items-center justify-between bg-[#ce112d]/5 px-4 py-3 rounded-2xl border border-[#ce112d]/10 shadow-inner">
-                                <span className="text-base font-black text-[#ce112d] tracking-widest italic">{selectedOrder.last_four_digits}</span>
-                                <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="w-8 h-8 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d] border border-[#ce112d]/20 active:scale-95 transition-all">
+                                <span className="text-base font-black text-[#ce112d] tracking-widest italic">
+                                  {selectedOrder.last_four_digits.includes(': ')
+                                    ? selectedOrder.last_four_digits.split(': ')[1]
+                                    : selectedOrder.last_four_digits}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    const val = selectedOrder.last_four_digits.includes(': ')
+                                      ? selectedOrder.last_four_digits.split(': ')[1]
+                                      : selectedOrder.last_four_digits;
+                                    copyToClipboard(val, "Sender Detail");
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d] border border-[#ce112d]/20 active:scale-95 transition-all"
+                                >
                                   <Copy size={12} />
                                 </button>
                               </div>
@@ -1929,9 +2098,17 @@ export default function Admin() {
                             <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Shipping Cost</p>
                             <p className="text-xl font-black text-white italic tracking-tighter">৳{parseFloat(selectedOrder.delivery_charge) || 0}</p>
                           </div>
-                          <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Sender ID</p>
-                            <p className="text-xs font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>{selectedOrder.last_four_digits || 'COD'}</p>
+                           <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
+                            <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">
+                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
+                                ? `${selectedOrder.last_four_digits.split(': ')[0]} Ref`
+                                : 'Sender Reference'}
+                            </p>
+                            <p className="text-xs font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>
+                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
+                                ? selectedOrder.last_four_digits.split(': ')[1]
+                                : (selectedOrder.last_four_digits || 'COD')}
+                            </p>
                           </div>
                           <div className="bg-[#ce112d]/10 p-4 rounded-3xl border border-[#ce112d]/20">
                             <p className="text-[8px] font-black text-[#ce112d] uppercase mb-1">Advance Received</p>
@@ -3151,17 +3328,33 @@ export default function Admin() {
                           return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                         })()}</span> </div>
 
-                      <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
+                       <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 opacity-60">
                             <ShieldCheck size={14} className="text-neutral-500" />
-                            <p className="text-[8px] font-black uppercase text-neutral-500 tracking-widest">Sender ID</p>
+                            <p className="text-[8px] font-black uppercase text-neutral-500 tracking-widest">
+                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
+                                ? `${selectedOrder.last_four_digits.split(': ')[0]} Ref`
+                                : 'Sender ID'}
+                            </p>
                           </div>
-                          <button onClick={() => copyToClipboard(selectedOrder.last_four_digits, "Sender Number")} className="p-1.5 bg-neutral-950 text-neutral-700 hover:text-[#ce112d] rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={() => {
+                              const val = selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
+                                ? selectedOrder.last_four_digits.split(': ')[1]
+                                : selectedOrder.last_four_digits;
+                              copyToClipboard(val, "Sender Detail");
+                            }}
+                            className="p-1.5 bg-neutral-950 text-neutral-700 hover:text-[#ce112d] rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          >
                             <Copy size={10} />
                           </button>
                         </div>
-                        <p className="text-xl font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>{selectedOrder.last_four_digits || 'COD'}</p>
+                        <p className="text-xl font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>
+                          {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
+                            ? selectedOrder.last_four_digits.split(': ')[1]
+                            : (selectedOrder.last_four_digits || 'COD')}
+                        </p>
                       </div>
                     </div>
 

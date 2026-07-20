@@ -277,7 +277,7 @@ class QueryBuilder {
             });
             const json = await res.json();
             if (!res.ok) return { data: null, error: { message: json.error } };
-            results.push(json.data);
+            results.push(typeof json.data !== 'undefined' ? json.data : json);
         }
         return { data: results.length === 1 ? results[0] : results, error: null };
     }

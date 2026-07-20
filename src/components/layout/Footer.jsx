@@ -93,13 +93,13 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     {/* SHOP Column */}
                     <div className="space-y-4">
                         <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">SHOP</h4>
-                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
-                            <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] transition-colors">পুরুষ</button></li>
-                            <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] transition-colors">মহিলা</button></li>
-                            <li><button type="button" onClick={() => handleCategoryClick('Boys')} className="hover:text-[#ce112d] transition-colors">শিশু (ছেলে)</button></li>
-                            <li><button type="button" onClick={() => handleCategoryClick('Girls')} className="hover:text-[#ce112d] transition-colors">শিশু (মেয়ে)</button></li>
-                            <li><button type="button" onClick={() => handleCategoryClick('All')} className="hover:text-[#ce112d] transition-colors">নতুন কালেকশন</button></li>
-                            <li><button type="button" onClick={() => handleCategoryClick('All')} className="hover:text-[#ce112d] transition-colors text-rose-500">Sale</button></li>
+                        <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
+                            <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Men</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Women</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Kids (Boys)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Kids (Boys)</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Kids (Girls)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Kids (Girls)</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('New')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">New Collection</button></li>
+                            <li><button type="button" onClick={() => handleCategoryClick('Sale')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300 text-rose-500 font-bold uppercase tracking-wider">Sale</button></li>
                         </ul>
                     </div>
 
