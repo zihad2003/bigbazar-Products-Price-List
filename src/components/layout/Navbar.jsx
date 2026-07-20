@@ -19,13 +19,16 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                 <div className="h-14 md:h-20 flex items-center justify-between gap-4 md:gap-8">
                     {/* Logo Section */}
                     <div className="shrink-0">
-                        <h1 
+                        <button 
                             onClick={() => { onSelectCategory('All'); navigate('/'); }}
-                            className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none" 
+                            className="inline-block group text-left relative"
                         >
-                            <span className="text-zinc-900">BIG</span>
-                            <span className="text-[#ce112d]">BAZAR</span>
-                        </h1>
+                            <h1 className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none">
+                                <span className="text-[#ce112d]">BIG</span>
+                                <span className="text-zinc-900 ml-1">BAZAR</span>
+                            </h1>
+                            <div className="h-[2px] bg-[#ce112d] w-8 mt-1 transition-all duration-300 group-hover:w-16" />
+                        </button>
                     </div>
 
                     {/* Desktop Category Links (Elegant) */}

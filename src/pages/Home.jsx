@@ -187,15 +187,23 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   });
 
   // Fetch settings with robust fallback
+  // The /api/settings endpoint returns { data: { main_slides: [...], ... } } — a flat object.
+  // We unpack it directly rather than iterating over array rows.
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data } = await bigBazarApi.from('site_settings').select('*');
-        if (data && Array.isArray(data)) {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          // Flat object: { main_slides: [...], announcement: '', ... }
+          setSiteSettings(prev => ({
+            ...prev,
+            ...data,
+            main_slides: Array.isArray(data.main_slides) ? data.main_slides : [],
+          }));
+        } else if (data && Array.isArray(data)) {
+          // Legacy array-of-rows fallback: [{ key, value }, ...]
           const settingsMap = {};
-          data.forEach(item => {
-            settingsMap[item.key] = item.value;
-          });
+          data.forEach(item => { settingsMap[item.key] = item.value; });
           setSiteSettings(prev => ({ ...prev, ...settingsMap }));
         }
       } catch (err) {
@@ -277,17 +285,21 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-16">
-      {/* Elite Hero Section */}
-      {((siteSettings.main_slides?.length > 0) || (DEFAULT_SLIDES.length > 0)) && (
-        <section className="w-full relative px-4 md:px-12 pt-4 md:pt-10 flex flex-col items-center">
-          <div className="w-[60%] md:w-[70%] aspect-square md:aspect-video rounded-[24px] md:rounded-[40px] overflow-hidden shadow-2xl shadow-zinc-200 bg-neutral-50 relative border-8 border-white">
-            {settingsLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 animate-pulse">
-                <div className="w-16 h-16 border-4 border-[#ce112d]/10 border-t-[#ce112d] rounded-full animate-spin" />
-              </div>
-            ) : (
-              <HeroSlider slides={siteSettings.main_slides?.length > 0 ? siteSettings.main_slides : DEFAULT_SLIDES} />
-            )}
+      {/* Elite Hero Section — full-width banner, DB-controlled */}
+      {!settingsLoading && siteSettings.main_slides?.length > 0 && (
+        <section className="w-full relative">
+          {/* Full-bleed container; image uses object-contain so the full poster is always visible */}
+          <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] overflow-hidden bg-neutral-50 relative">
+            <HeroSlider slides={siteSettings.main_slides} />
+          </div>
+        </section>
+      )}
+
+      {/* Hero loading skeleton */}
+      {settingsLoading && (
+        <section className="w-full">
+          <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] bg-neutral-100 animate-pulse flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
           </div>
         </section>
       )}
@@ -365,7 +377,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => navigate(`/product/${product.id}`)}
                 />
               ))
             )}

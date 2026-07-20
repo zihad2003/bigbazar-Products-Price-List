@@ -9,6 +9,9 @@ import Home from './pages/Home';
 import Admin from './pages/Admin';
 import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import Checkout from './pages/Checkout';
+import OrderConfirmation from './pages/OrderConfirmation';
+import ProductDetails from './pages/ProductDetails';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
@@ -34,6 +37,9 @@ function PublicLayout() {
   const location = useLocation();
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
+  const isCheckoutPage = location.pathname === '/checkout';
+  const isConfirmationPage = location.pathname.startsWith('/order-confirmation');
+  const isProductPage = location.pathname.startsWith('/product/');
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -88,7 +94,7 @@ function PublicLayout() {
         onSelectCategory={setCategory}
       />
 
-      <header className="fixed top-0 left-0 right-0 z-[1000] flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-[1010] flex flex-col">
         <Navbar
           selectedCategory={category}
           onSelectCategory={setCategory}
@@ -102,6 +108,12 @@ function PublicLayout() {
       <main className="flex-grow pt-16 md:pt-20 pb-24 md:pb-0">
         {isStaticPage ? (
           <StaticPage path={location.pathname} />
+        ) : isCheckoutPage ? (
+          <Checkout />
+        ) : isConfirmationPage ? (
+          <OrderConfirmation />
+        ) : isProductPage ? (
+          <ProductDetails />
         ) : (
           <Home
             selectedCategory={category}
@@ -147,6 +159,8 @@ function App() {
                 <Route path="/shipping" element={<PublicLayout />} />
                 <Route path="/returns" element={<PublicLayout />} />
                 <Route path="/store-locations" element={<PublicLayout />} />
+                <Route path="/checkout" element={<PublicLayout />} />
+                <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
                 <Route path="/admin" element={<Admin />} />
               </Routes>
             </Router>

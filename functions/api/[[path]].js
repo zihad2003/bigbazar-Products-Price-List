@@ -419,47 +419,114 @@ app.post('/orders', async (c) => {
 
   const tx = await conn.begin();
   try {
-    // 1. Fetch product and lock the row for update inside transaction
-    const products = await tx.execute(
-      'SELECT name, stock_count, is_sold_out, is_deleted, status FROM products WHERE id = ? FOR UPDATE',
-      [o.product_id]
-    );
+    const itemsToProcess = Array.isArray(o.items) && o.items.length > 0
+      ? o.items
+      : [{
+          id: o.product_id,
+          quantity: 1,
+          selectedColor: o.color || null,
+          selectedSize: o.size || null
+        }];
 
-    if (products.length === 0) {
-      await tx.rollback();
-      return c.json({ error: 'Product not found' }, 404);
+    let calculatedSubtotal = 0;
+
+    for (const item of itemsToProcess) {
+      // 1. Fetch product and lock row inside transaction
+      const products = await tx.execute(
+        'SELECT name, price, stock_count, is_sold_out, is_deleted, status, available_colors FROM products WHERE id = ? FOR UPDATE',
+        [item.id]
+      );
+
+      if (products.length === 0) {
+        await tx.rollback();
+        return c.json({ error: `Product not found: ${item.id}` }, 404);
+      }
+
+      const product = products[0];
+      if (product.is_deleted || product.status !== 'published') {
+        await tx.rollback();
+        return c.json({ error: `Product "${product.name}" is no longer available` }, 400);
+      }
+
+      const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
+      const requestedQty = parseInt(item.quantity) || 1;
+
+      if (hadRealStock && product.stock_count < requestedQty) {
+        await tx.rollback();
+        return c.json({ error: `Product "${product.name}" is out of stock (Requested: ${requestedQty}, Available: ${product.stock_count})` }, 400);
+      }
+
+      // Calculate true price of the product item
+      const itemUnitPrice = parseFloat(product.price || 0);
+      calculatedSubtotal += itemUnitPrice * requestedQty;
+
+      // Decrement stock
+      let updatedGlobalStock = product.stock_count;
+      if (hadRealStock) {
+        updatedGlobalStock = Math.max(0, product.stock_count - requestedQty);
+      }
+
+      // Decrement color/size variant stock
+      let availableColorsParsed = [];
+      try {
+        availableColorsParsed = typeof product.available_colors === 'string'
+          ? JSON.parse(product.available_colors)
+          : (product.available_colors || []);
+      } catch (e) {
+        availableColorsParsed = [];
+      }
+
+      if (item.selectedColor && availableColorsParsed.length > 0) {
+        availableColorsParsed = availableColorsParsed.map(color => {
+          const colorName = typeof color === 'object' ? color.name : color;
+          if (colorName === item.selectedColor && color.sizes?.length > 0) {
+            const updatedSizes = color.sizes.map(sz => {
+              const szName = typeof sz === 'object' ? sz.name : sz;
+              if (szName === item.selectedSize) {
+                return { ...sz, stock: Math.max(0, (sz.stock || 0) - requestedQty) };
+              }
+              return sz;
+            });
+            return { ...color, sizes: updatedSizes };
+          }
+          return color;
+        });
+      }
+
+      await tx.execute(
+        'UPDATE products SET stock_count = ?, is_sold_out = ?, available_colors = ? WHERE id = ?',
+        [
+          updatedGlobalStock,
+          hadRealStock && updatedGlobalStock <= 0 ? 1 : (product.is_sold_out ? 1 : 0),
+          JSON.stringify(availableColorsParsed),
+          item.id
+        ]
+      );
     }
 
-    const product = products[0];
-    if (product.is_deleted || product.status !== 'published') {
-      await tx.rollback();
-      return c.json({ error: 'This product is no longer available' }, 400);
+    // Determine correct delivery charge based on area
+    let calculatedDeliveryCharge = 150;
+    if (o.delivery_area === 'mirsarai') {
+      calculatedDeliveryCharge = 0;
+    } else if (o.delivery_area === 'chattogram') {
+      calculatedDeliveryCharge = 100;
     }
 
-    if (product.stock_count <= 0 || product.is_sold_out) {
-      await tx.rollback();
-      return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
-    }
+    const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
 
-    // 2. Decrement stock
-    await tx.execute(
-      'UPDATE products SET stock_count = stock_count - 1, is_sold_out = CASE WHEN stock_count <= 1 THEN 1 ELSE is_sold_out END WHERE id = ?',
-      [o.product_id]
-    );
-
-    // 3. Create the order
+    // 3. Create the order using server-side calculated totals
     await tx.execute(
       `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, o.product_id, o.product_name, o.product_price, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
-        o.delivery_area || 'Inside Dhaka', o.delivery_charge || 0, o.total_amount, o.last_four_digits || 'COD', 'Pending',
+        id, o.product_id, o.product_name, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
+        o.delivery_area || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
         o.size || null, o.color || null, o.is_advance_paid ? 1 : 0, o.is_exclusive_order ? 1 : 0, o.payment_status || 'Unpaid', o.moderator_reference || null
       ]
     );
 
     await tx.commit();
-    return c.json({ success: true, order_id: id });
+    return c.json({ success: true, order_id: id, data: { id, order_id: id } });
   } catch (err) {
     await tx.rollback();
     console.error('Order placement transaction error:', err);
@@ -574,18 +641,94 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 });
 
 // ============================================
-// UPLOAD (Cloudflare Pages / Base64 Fallback)
+// UPLOAD (Cloudinary primary / Base64 fallback)
 // ============================================
+
+/**
+ * Fast base64 encoding for ArrayBuffers — kept as fallback when
+ * Cloudinary env vars are not configured.
+ */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/**
+ * SHA-1 hex digest using the Web Crypto API (available in Workers).
+ * Cloudinary requires HMAC-style signatures: sha1(paramsString + apiSecret).
+ */
+async function sha1Hex(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
+  return [...new Uint8Array(hashBuffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 app.post('/upload', requireAuth, requireAdmin, async (c) => {
   try {
     const body = await c.req.parseBody();
     const file = body.file;
     if (!file || !(file instanceof File)) return c.json({ error: 'No file uploaded' }, 400);
 
-    // If R2 is bound (e.g. c.env.R2_BUCKET), we could use it here.
-    // For now, we use a robust Base64 fallback so uploads "just work" everywhere.
+    const MAX_BYTES = 10 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      return c.json({ error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.` }, 413);
+    }
+
+    // ── Cloudinary upload (primary path) ──────────────────────────────────
+    const cloudName  = c.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey     = c.env.CLOUDINARY_API_KEY;
+    const apiSecret  = c.env.CLOUDINARY_API_SECRET;
+
+    if (cloudName && apiKey && apiSecret) {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const folder = 'bigbazar';
+      // Cloudinary transformation: auto quality, auto format, max 1600px wide
+      const eager = 'q_auto,f_auto,w_1600,c_limit';
+
+      // Params must be sorted alphabetically for signature
+      const paramsToSign = `eager=${eager}&folder=${folder}&timestamp=${timestamp}`;
+      const signature = await sha1Hex(paramsToSign + apiSecret);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp);
+      formData.append('signature', signature);
+      formData.append('folder', folder);
+      formData.append('eager', eager);
+
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+
+      if (!cloudRes.ok) {
+        const errBody = await cloudRes.text();
+        console.error('Cloudinary upload failed:', cloudRes.status, errBody);
+        return c.json({ error: 'Image host upload failed', details: errBody }, 502);
+      }
+
+      const result = await cloudRes.json();
+      // Use the eager transformation URL if available, otherwise secure_url
+      const publicUrl = result.eager?.[0]?.secure_url || result.secure_url;
+
+      return c.json({
+        success: true,
+        data: {
+          path: result.public_id,
+          publicUrl
+        }
+      });
+    }
+
+    // ── Base64 fallback (Cloudinary env vars not set) ─────────────────────
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+    const base64 = arrayBufferToBase64(arrayBuffer);
     const dataUrl = `data:${file.type};base64,${base64}`;
 
     return c.json({
@@ -599,6 +742,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     return c.json({ error: 'Upload failed', details: err.message }, 500);
   }
 });
+
 
 // ============================================
 // EXPORT FOR CLOUDFLARE PAGES AND LOCAL SERVER
