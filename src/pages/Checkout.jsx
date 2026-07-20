@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, ChevronDown, Package } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, ChevronDown, Package, QrCode } from 'lucide-react';
 import { bigBazarApi } from '../api/client';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { useCart } from '../contexts/CartContext';
@@ -43,8 +43,9 @@ export default function Checkout() {
             setLoadingProduct(true);
             bigBazarApi.from('products').select('*').eq('id', productIdQuery)
                 .then(({ data, error }) => {
-                    if (data && data.length > 0) {
-                        setSingleProduct(data[0]);
+                    const prod = Array.isArray(data) ? data[0] : data;
+                    if (prod) {
+                        setSingleProduct(prod);
                     } else {
                         setError(language === 'bn' ? "পণ্যটি পাওয়া যায়নি।" : "Product not found.");
                     }
@@ -131,6 +132,10 @@ export default function Checkout() {
             setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
+        if (formData.paymentMethod === 'bangla_qr' && !formData.senderNumber) {
+            setError(language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম অথবা ট্রানজেকশন আইডি দিন।" : "Please enter the sender account name or transaction ID.");
+            return;
+        }
         if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
             const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
                           (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
@@ -181,64 +186,39 @@ export default function Checkout() {
                     delivery_area: deliveryInfo.area,
                     delivery_charge: deliveryCharge,
                     total_amount: finalTotal,
-                    last_four_digits: formData.senderNumber || (formData.paymentMethod === 'cod' ? 'COD' : ''),
+                    last_four_digits: formData.senderNumber
+                        ? (formData.paymentMethod === 'bkash'
+                            ? `bKash: ${formData.senderNumber}`
+                            : formData.paymentMethod === 'bangla_qr'
+                                ? `Bangla QR: ${formData.senderNumber}`
+                                : `COD: ${formData.senderNumber}`)
+                        : (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
                     size: combinedSizes.substring(0, 250) || null,
                     color: combinedColors.substring(0, 250) || null,
                     is_exclusive_order: isExclusiveOrder || false,
-                    customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500)
+                    customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500),
+                    items: items.map(item => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                        selectedColor: item.selectedColor || null,
+                        selectedSize: item.selectedSize || null
+                    }))
                 }]);
 
             if (insertError) throw insertError;
-
-            // Update stocks
-            for (const item of items) {
-                let updatedGlobalStock = item.stock_count;
-                let updatedColors = item.available_colors;
-                const hadRealStock = item.stock_count !== null && item.stock_count !== undefined;
-
-                if (hadRealStock) {
-                    updatedGlobalStock = Math.max(0, item.stock_count - item.quantity);
-                }
-
-                if (item.selectedColor && updatedColors?.length > 0) {
-                    updatedColors = updatedColors.map(color => {
-                        const colorName = typeof color === 'object' ? color.name : color;
-                        if (colorName === item.selectedColor && color.sizes?.length > 0) {
-                            const updatedSizes = color.sizes.map(sz => {
-                                const szName = typeof sz === 'object' ? sz.name : sz;
-                                if (szName === item.selectedSize) {
-                                    return { ...sz, stock: Math.max(0, (sz.stock || 0) - item.quantity) };
-                                }
-                                return sz;
-                            });
-                            return { ...color, sizes: updatedSizes };
-                        }
-                        return color;
-                    });
-                }
-
-                await bigBazarApi
-                    .from('products')
-                    .update({
-                        stock_count: updatedGlobalStock,
-                        is_sold_out: hadRealStock ? updatedGlobalStock <= 0 : false,
-                        available_colors: updatedColors
-                    })
-                    .eq('id', item.id);
-            }
 
             // Clear Cart if checking out from Cart
             if (!productIdQuery) {
                 clearCart();
             }
 
-            const newOrderId = insertedData?.[0]?.id || `ORD-${Date.now().toString().slice(-6)}`;
+            const newOrderId = insertedData?.order_id || insertedData?.id || (Array.isArray(insertedData) ? (insertedData[0]?.order_id || insertedData[0]?.id) : null) || `ORD-${Date.now().toString().slice(-6)}`;
             // Navigate to dedicated confirmation route
             navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {
             setError(language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
-            console.error("Supabase Error:", err);
+            console.error("Order submission Error:", err);
         } finally {
             setIsSubmitting(false);
         }
@@ -400,20 +380,39 @@ export default function Checkout() {
                     {/* Payment methods choice */}
                     <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-sm">
                         <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">💳 {language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</h4>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-2">
                             {[
                                 { id: 'cod', label: language === 'bn' ? 'ক্যাশ অন ক্যাশ' : 'Cash on Delivery', icon: <Truck size={16} /> },
-                                { id: 'bkash', label: language === 'bn' ? 'বিকাশ পেমেন্ট' : 'bKash Payment', icon: <CreditCard size={16} /> }
+                                { id: 'bkash', label: language === 'bn' ? 'বিকাশ পেমেন্ট' : 'bKash Payment', icon: <CreditCard size={16} /> },
+                                { id: 'bangla_qr', label: language === 'bn' ? 'বাংলা কিউআর' : 'Bangla QR', icon: <QrCode size={16} /> }
                             ].map(m => (
-                                <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
-                                    className={`p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d]/80 bg-[#ce112d]/5' : 'bg-white border-neutral-200'}`}>
+                                <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id, senderNumber: '' }))}
+                                    className={`p-3 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-1.5 ${formData.paymentMethod === m.id ? 'border-[#ce112d]/80 bg-[#ce112d]/5' : 'bg-white border-neutral-200'}`}>
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formData.paymentMethod === m.id ? 'bg-[#ce112d] text-white' : 'bg-neutral-100 text-neutral-400'}`}>{m.icon}</div>
-                                    <p className={`text-[10px] font-black uppercase tracking-tight ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
+                                    <p className={`text-[9px] font-black uppercase tracking-tight leading-none ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
                                 </button>
                             ))}
                         </div>
 
-                        {needsAdvancePayment && (
+                        {formData.paymentMethod === 'bangla_qr' && (
+                            <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-4">
+                                <p className="text-[11px] leading-relaxed font-bold text-neutral-600">
+                                    {language === 'bn'
+                                        ? <>অগ্রিম পেমেন্ট <strong className="text-[#ce112d]">৳{advanceAmount}</strong> নিচের বাংলা কিউআর কোড স্ক্যান করে অথবা ব্যাংকে ট্রান্সফার করুন। আমাদের ব্যাংক অ্যাকাউন্ট নম্বর : 1081010373801 (City Bank)। বাকি টাকা পণ্য হাতে পেয়ে পরিশোধ করবেন।</>
+                                        : <>Scan the Bangla QR code below or transfer the advance amount <strong className="text-[#ce112d]">৳{advanceAmount}</strong> to City Bank A/C: 1081010373801. Pay the rest on delivery.</>}
+                                </p>
+                                <div className="flex justify-center bg-white p-2.5 rounded-xl border border-neutral-200 max-w-[180px] mx-auto shadow-sm">
+                                    <img src="/bangla-qr.png" alt="Bangla QR" className="w-full h-auto object-contain" />
+                                </div>
+                                <div className="text-center font-bold text-[10px] text-neutral-500 uppercase tracking-widest">
+                                    {language === 'bn' ? 'মার্চেন্ট নম্বর: 01857045449' : 'Merchant No: 01857045449'}
+                                </div>
+                                <input type="text" name="senderNumber" placeholder={language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম / ট্রানজেকশন আইডি" : "Sender account name / Txn ID"} value={formData.senderNumber} onChange={handleInputChange}
+                                    className="w-full border border-neutral-200 rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold" />
+                            </div>
+                        )}
+
+                        {formData.paymentMethod !== 'bangla_qr' && needsAdvancePayment && (
                             <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-3">
                                 <p className="text-[11px] leading-relaxed font-bold text-neutral-600">
                                     {formData.paymentMethod === 'cod'

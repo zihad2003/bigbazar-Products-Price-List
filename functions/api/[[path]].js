@@ -419,47 +419,114 @@ app.post('/orders', async (c) => {
 
   const tx = await conn.begin();
   try {
-    // 1. Fetch product and lock the row for update inside transaction
-    const products = await tx.execute(
-      'SELECT name, stock_count, is_sold_out, is_deleted, status FROM products WHERE id = ? FOR UPDATE',
-      [o.product_id]
-    );
+    const itemsToProcess = Array.isArray(o.items) && o.items.length > 0
+      ? o.items
+      : [{
+          id: o.product_id,
+          quantity: 1,
+          selectedColor: o.color || null,
+          selectedSize: o.size || null
+        }];
 
-    if (products.length === 0) {
-      await tx.rollback();
-      return c.json({ error: 'Product not found' }, 404);
+    let calculatedSubtotal = 0;
+
+    for (const item of itemsToProcess) {
+      // 1. Fetch product and lock row inside transaction
+      const products = await tx.execute(
+        'SELECT name, price, stock_count, is_sold_out, is_deleted, status, available_colors FROM products WHERE id = ? FOR UPDATE',
+        [item.id]
+      );
+
+      if (products.length === 0) {
+        await tx.rollback();
+        return c.json({ error: `Product not found: ${item.id}` }, 404);
+      }
+
+      const product = products[0];
+      if (product.is_deleted || product.status !== 'published') {
+        await tx.rollback();
+        return c.json({ error: `Product "${product.name}" is no longer available` }, 400);
+      }
+
+      const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
+      const requestedQty = parseInt(item.quantity) || 1;
+
+      if (hadRealStock && product.stock_count < requestedQty) {
+        await tx.rollback();
+        return c.json({ error: `Product "${product.name}" is out of stock (Requested: ${requestedQty}, Available: ${product.stock_count})` }, 400);
+      }
+
+      // Calculate true price of the product item
+      const itemUnitPrice = parseFloat(product.price || 0);
+      calculatedSubtotal += itemUnitPrice * requestedQty;
+
+      // Decrement stock
+      let updatedGlobalStock = product.stock_count;
+      if (hadRealStock) {
+        updatedGlobalStock = Math.max(0, product.stock_count - requestedQty);
+      }
+
+      // Decrement color/size variant stock
+      let availableColorsParsed = [];
+      try {
+        availableColorsParsed = typeof product.available_colors === 'string'
+          ? JSON.parse(product.available_colors)
+          : (product.available_colors || []);
+      } catch (e) {
+        availableColorsParsed = [];
+      }
+
+      if (item.selectedColor && availableColorsParsed.length > 0) {
+        availableColorsParsed = availableColorsParsed.map(color => {
+          const colorName = typeof color === 'object' ? color.name : color;
+          if (colorName === item.selectedColor && color.sizes?.length > 0) {
+            const updatedSizes = color.sizes.map(sz => {
+              const szName = typeof sz === 'object' ? sz.name : sz;
+              if (szName === item.selectedSize) {
+                return { ...sz, stock: Math.max(0, (sz.stock || 0) - requestedQty) };
+              }
+              return sz;
+            });
+            return { ...color, sizes: updatedSizes };
+          }
+          return color;
+        });
+      }
+
+      await tx.execute(
+        'UPDATE products SET stock_count = ?, is_sold_out = ?, available_colors = ? WHERE id = ?',
+        [
+          updatedGlobalStock,
+          hadRealStock && updatedGlobalStock <= 0 ? 1 : (product.is_sold_out ? 1 : 0),
+          JSON.stringify(availableColorsParsed),
+          item.id
+        ]
+      );
     }
 
-    const product = products[0];
-    if (product.is_deleted || product.status !== 'published') {
-      await tx.rollback();
-      return c.json({ error: 'This product is no longer available' }, 400);
+    // Determine correct delivery charge based on area
+    let calculatedDeliveryCharge = 150;
+    if (o.delivery_area === 'mirsarai') {
+      calculatedDeliveryCharge = 0;
+    } else if (o.delivery_area === 'chattogram') {
+      calculatedDeliveryCharge = 100;
     }
 
-    if (product.stock_count <= 0 || product.is_sold_out) {
-      await tx.rollback();
-      return c.json({ error: `Product "${product.name}" is out of stock` }, 400);
-    }
+    const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
 
-    // 2. Decrement stock
-    await tx.execute(
-      'UPDATE products SET stock_count = stock_count - 1, is_sold_out = CASE WHEN stock_count <= 1 THEN 1 ELSE is_sold_out END WHERE id = ?',
-      [o.product_id]
-    );
-
-    // 3. Create the order
+    // 3. Create the order using server-side calculated totals
     await tx.execute(
       `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        id, o.product_id, o.product_name, o.product_price, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
-        o.delivery_area || 'Inside Dhaka', o.delivery_charge || 0, o.total_amount, o.last_four_digits || 'COD', 'Pending',
+        id, o.product_id, o.product_name, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
+        o.delivery_area || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
         o.size || null, o.color || null, o.is_advance_paid ? 1 : 0, o.is_exclusive_order ? 1 : 0, o.payment_status || 'Unpaid', o.moderator_reference || null
       ]
     );
 
     await tx.commit();
-    return c.json({ success: true, order_id: id });
+    return c.json({ success: true, order_id: id, data: { id, order_id: id } });
   } catch (err) {
     await tx.rollback();
     console.error('Order placement transaction error:', err);

@@ -90,7 +90,8 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
     if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
     if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
     setValidationError('');
-    navigate(`/checkout?product=${product.id}&color=${encodeURIComponent(selectedColor)}&size=${encodeURIComponent(selectedSize)}&qty=${quantity}`);
+    addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
+    navigate('/checkout');
     onClose();
   };
 

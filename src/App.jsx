@@ -11,6 +11,7 @@ import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
+import ProductDetails from './pages/ProductDetails';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
@@ -38,6 +39,7 @@ function PublicLayout() {
   const isStaticPage = staticPaths.includes(location.pathname);
   const isCheckoutPage = location.pathname === '/checkout';
   const isConfirmationPage = location.pathname.startsWith('/order-confirmation');
+  const isProductPage = location.pathname.startsWith('/product/');
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -92,7 +94,7 @@ function PublicLayout() {
         onSelectCategory={setCategory}
       />
 
-      <header className="fixed top-0 left-0 right-0 z-[1000] flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-[1010] flex flex-col">
         <Navbar
           selectedCategory={category}
           onSelectCategory={setCategory}
@@ -110,6 +112,8 @@ function PublicLayout() {
           <Checkout />
         ) : isConfirmationPage ? (
           <OrderConfirmation />
+        ) : isProductPage ? (
+          <ProductDetails />
         ) : (
           <Home
             selectedCategory={category}
