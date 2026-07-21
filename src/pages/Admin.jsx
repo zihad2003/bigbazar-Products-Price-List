@@ -727,7 +727,7 @@ export default function Admin() {
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-white uppercase">Admin <span className="text-[#ce112d]">Login</span></h2>
           <p className="text-sm text-zinc-500 font-medium">
-            Enter your credentials to access the dashboard
+            Enter your email & password to access the dashboard
           </p>
         </div>
 
@@ -1009,11 +1009,10 @@ export default function Admin() {
                                   updated[i] = { ...slide, text_align: align };
                                   setSiteSettings({ ...siteSettings, main_slides: updated });
                                 }}
-                                className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase transition-all ${
-                                  (slide.text_align || 'center') === align
+                                className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase transition-all ${(slide.text_align || 'center') === align
                                     ? 'bg-[#ce112d] text-white shadow-md'
                                     : 'text-zinc-500 hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 {align[0].toUpperCase()}
                               </button>
@@ -1047,11 +1046,10 @@ export default function Admin() {
                               updated[i] = { ...slide, image_fit: slide.image_fit === 'contain' ? 'cover' : 'contain' };
                               setSiteSettings({ ...siteSettings, main_slides: updated });
                             }}
-                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${
-                              slide.image_fit === 'contain'
+                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${slide.image_fit === 'contain'
                                 ? 'bg-zinc-800 border-white/20 text-white'
                                 : 'bg-[#ce112d]/20 border-[#ce112d]/40 text-[#ce112d]'
-                            }`}
+                              }`}
                           >
                             {slide.image_fit === 'contain' ? 'Fit (Contain)' : 'Fill (Cover)'}
                           </button>
@@ -1060,11 +1058,10 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
-                <label className={`flex flex-col items-center justify-center gap-4 aspect-[16/9] rounded-[24px] border-2 border-dashed transition-all text-zinc-600 group ${
-                  loading && uploadStatus !== 'idle'
+                <label className={`flex flex-col items-center justify-center gap-4 aspect-[16/9] rounded-[24px] border-2 border-dashed transition-all text-zinc-600 group ${loading && uploadStatus !== 'idle'
                     ? 'border-[#ce112d]/50 bg-[#ce112d]/5 cursor-not-allowed'
                     : 'border-[#1d1d21] cursor-pointer bg-[#121215]/30 hover:bg-[#121215]/50 hover:border-[#ce112d]/30 hover:text-white'
-                }`}>
+                  }`}>
                   <div className="w-16 h-16 rounded-full bg-[#121215] flex items-center justify-center border border-white/5 shadow-2xl group-hover:scale-110 transition-transform">
                     {loading && uploadStatus !== 'idle'
                       ? <div className="w-7 h-7 border-[3px] border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
@@ -1346,15 +1343,13 @@ export default function Admin() {
 
             {/* Contextual In-Page Alert */}
             {formAlert && (
-              <div className={`p-5 rounded-2xl border flex items-center justify-between gap-4 transition-all shadow-2xl ${
-                formAlert.type === 'error'
+              <div className={`p-5 rounded-2xl border flex items-center justify-between gap-4 transition-all shadow-2xl ${formAlert.type === 'error'
                   ? 'bg-[#ce112d]/15 border-[#ce112d]/40 text-red-200'
                   : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
-              }`}>
+                }`}>
                 <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                    formAlert.type === 'error' ? 'bg-[#ce112d] text-white' : 'bg-emerald-500 text-black'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${formAlert.type === 'error' ? 'bg-[#ce112d] text-white' : 'bg-emerald-500 text-black'
+                    }`}>
                     {formAlert.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
                   </div>
                   <div>
@@ -1646,11 +1641,10 @@ export default function Admin() {
                                     setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
                                   }
                                 }}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
-                                  isAdded
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${isAdded
                                     ? 'bg-[#ce112d] border-[#ce112d] text-white'
                                     : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/20'
-                                }`}
+                                  }`}
                               >
                                 {isAdded ? `✓ ${s}` : `+ ${s}`}
                               </button>
@@ -1673,9 +1667,8 @@ export default function Admin() {
                               return (
                                 <div
                                   key={idx}
-                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-3 transition-all border ${
-                                    isAvailable ? 'bg-[#ce112d]/20 text-white border-[#ce112d]/40' : 'bg-zinc-900 text-zinc-600 border-white/5 line-through'
-                                  }`}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-3 transition-all border ${isAvailable ? 'bg-[#ce112d]/20 text-white border-[#ce112d]/40' : 'bg-zinc-900 text-zinc-600 border-white/5 line-through'
+                                    }`}
                                 >
                                   <span>{name}</span>
                                   <button
@@ -2148,7 +2141,7 @@ export default function Admin() {
                               </div>
                             </div>
                           </div>
-                           {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
+                          {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
                             <div>
                               <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-[0.2em] mb-1.5">
                                 {selectedOrder.last_four_digits.includes(': ')
@@ -2269,7 +2262,7 @@ export default function Admin() {
                             <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Shipping Cost</p>
                             <p className="text-xl font-black text-white italic tracking-tighter">৳{parseFloat(selectedOrder.delivery_charge) || 0}</p>
                           </div>
-                           <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
+                          <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
                             <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">
                               {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
                                 ? `${selectedOrder.last_four_digits.split(': ')[0]} Ref`
@@ -2328,11 +2321,11 @@ export default function Admin() {
                             key={status}
                             onClick={() => updateOrderStatus(selectedOrder.id, status)}
                             className={`h-16 rounded-[28px] text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-between px-6 ${selectedOrder.status === status
-                                ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-xl' :
-                                  status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-xl' :
-                                    status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-xl' :
-                                      'bg-yellow-500 border-yellow-500 text-black shadow-xl')
-                                : 'bg-zinc-900 border-white/5 text-zinc-600 hover:border-white/20'
+                              ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-xl' :
+                                status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-xl' :
+                                  status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-xl' :
+                                    'bg-yellow-500 border-yellow-500 text-black shadow-xl')
+                              : 'bg-zinc-900 border-white/5 text-zinc-600 hover:border-white/20'
                               }`}
                           >
                             {status}
@@ -2392,8 +2385,8 @@ export default function Admin() {
                         key={o.id}
                         onClick={() => setSelectedOrder(o)}
                         className={`p-4 rounded-[24px] border transition-all duration-300 cursor-pointer group relative ${isSelected
-                            ? 'bg-[#1d1d22] border-[#ce112d] shadow-[0_0_40px_-5px_rgba(206,17,45,0.15)] ring-1 ring-[#ce112d]/30'
-                            : 'bg-[#121215]/50 border-[#1d1d21] hover:border-white/10 hover:bg-[#16161a]'
+                          ? 'bg-[#1d1d22] border-[#ce112d] shadow-[0_0_40px_-5px_rgba(206,17,45,0.15)] ring-1 ring-[#ce112d]/30'
+                          : 'bg-[#121215]/50 border-[#1d1d21] hover:border-white/10 hover:bg-[#16161a]'
                           }`}
                       >
                         <div className="flex gap-4">
@@ -2430,8 +2423,8 @@ export default function Admin() {
                                   {new Date(o.created_at).toLocaleDateString()}
                                 </p>
                                 <span className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider backdrop-blur-md border ${o.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                    o.status === 'Shipped' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                      o.status === 'Delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                  o.status === 'Shipped' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                    o.status === 'Delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
                                   }`}>
                                   {o.status}
                                 </span>
@@ -2694,11 +2687,11 @@ export default function Admin() {
                                 key={status}
                                 onClick={() => updateOrderStatus(selectedOrder.id, status)}
                                 className={`h-14 rounded-2xl text-xs font-black uppercase tracking-widest border transition-all flex items-center justify-between px-6 ${selectedOrder.status === status
-                                    ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-lg' :
-                                      status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-lg' :
-                                        status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-lg' :
-                                          'bg-yellow-500 border-yellow-500 text-black shadow-lg')
-                                    : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-500 hover:text-white'
+                                  ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-lg' :
+                                    status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-lg' :
+                                      status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-lg' :
+                                        'bg-yellow-500 border-yellow-500 text-black shadow-lg')
+                                  : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-500 hover:text-white'
                                   }`}
                               >
                                 {status}
@@ -3499,7 +3492,7 @@ export default function Admin() {
                           return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                         })()}</span> </div>
 
-                       <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
+                      <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2 opacity-60">
                             <ShieldCheck size={14} className="text-neutral-500" />

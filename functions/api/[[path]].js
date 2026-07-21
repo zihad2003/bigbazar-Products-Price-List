@@ -178,10 +178,7 @@ app.post('/auth/login', async (c) => {
     const cleanInput = password.trim();
     const cleanHash = (user.password_hash || '').trim();
 
-    let valid = await bcrypt.compare(cleanInput, cleanHash);
-    if (!valid && (cleanInput === 'admin' || cleanInput === 'admin123')) {
-      valid = true;
-    }
+    const valid = await bcrypt.compare(cleanInput, cleanHash);
     if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
 
     const token = jwt.sign(
