@@ -21,13 +21,12 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                     <div className="shrink-0">
                         <button 
                             onClick={() => { onSelectCategory('All'); navigate('/'); }}
-                            className="inline-block group text-left relative"
+                            className="inline-block text-left relative"
                         >
                             <h1 className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none">
                                 <span className="text-[#ce112d]">BIG</span>
                                 <span className="text-zinc-900 ml-1">BAZAR</span>
                             </h1>
-                            <div className="h-[2px] bg-[#ce112d] w-8 mt-1 transition-all duration-300 group-hover:w-16" />
                         </button>
                     </div>
 

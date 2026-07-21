@@ -45,7 +45,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                 <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
                                     <span className="text-[#ce112d]">BIG</span> BAZAR
                                 </h2>
-                                <div className="h-[2px] bg-[#ce112d] w-8 mt-1 transition-all group-hover:w-16" />
+                                <div className="h-[2px] bg-[#ce112d] w-8 mt-1 transition-all duration-300 group-hover:w-full" />
                             </Link>
                             <p className="text-zinc-500 font-medium leading-relaxed max-w-xs text-xs mt-4">
                                 Your one-stop destination for premium fashion from top brands. Quality clothing for the whole family.
@@ -92,7 +92,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     
                     {/* SHOP Column */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">SHOP</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-90" style={{ color: 'var(--text-primary)' }}>SHOP</h4>
                         <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
                             <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Men</button></li>
                             <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Women</button></li>
@@ -105,7 +105,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                     {/* HELP Column */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">HELP</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-90" style={{ color: 'var(--text-primary)' }}>HELP</h4>
                         <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
                             <li><Link to="/contact-us" className="hover:text-[#ce112d] transition-colors">Contact Us</Link></li>
                             <li><Link to="/faq" className="hover:text-[#ce112d] transition-colors">FAQs</Link></li>
@@ -129,7 +129,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                     {/* COMPANY Column */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">COMPANY</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-90" style={{ color: 'var(--text-primary)' }}>COMPANY</h4>
                         <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
                             <li><Link to="/about-us" className="hover:text-[#ce112d] transition-colors">About Us</Link></li>
                             <li><Link to="/store-locations" className="hover:text-[#ce112d] transition-colors">Store Locations</Link></li>
@@ -138,7 +138,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                     {/* LEGAL Column */}
                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[#000000] dark:text-[#ffffff] opacity-90">LEGAL</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest opacity-90" style={{ color: 'var(--text-primary)' }}>LEGAL</h4>
                         <ul className="space-y-3 font-semibold text-zinc-500 text-xs">
                             <li><Link to="/privacy-policy" className="hover:text-[#ce112d] transition-colors">Privacy Policy</Link></li>
                             <li><Link to="/terms" className="hover:text-[#ce112d] transition-colors">Terms of Service</Link></li>
