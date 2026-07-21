@@ -440,8 +440,8 @@ export default function Admin() {
   const uploadSingleFile = async (fileToUpload) => {
     setUploadStatus('uploading');
 
-    // Extreme safety size check: block uploads over 3MB to prevent base64 timeouts
-    const MAX_ALLOWED_SIZE = 3 * 1024 * 1024; // 3 MB
+    // Extreme safety size check: block uploads over 5MB to prevent base64 timeouts
+    const MAX_ALLOWED_SIZE = 5 * 1024 * 1024; // 5 MB
     if (fileToUpload.size > MAX_ALLOWED_SIZE) {
       console.error(`Rejected upload: File size is ${formatFileSize(fileToUpload.size)} which exceeds the 3MB safety limit.`);
       return null;
@@ -498,11 +498,11 @@ export default function Admin() {
       }
 
       const totalAfter = compressed.size;
-      if (totalAfter > 1.5 * 1024 * 1024) {
+      if (totalAfter > 5 * 1024 * 1024) {
         setAlertModal({
           isOpen: true,
           title: 'Image Too Large',
-          message: `The image is ${formatFileSize(totalAfter)} after compression, which exceeds the limit. Please resize it locally first.`,
+          message: `The image is ${formatFileSize(totalAfter)} after compression, which exceeds the 5MB limit. Please resize it locally first.`,
           type: 'error'
         });
         setLoading(false);
@@ -545,8 +545,8 @@ export default function Admin() {
         totalAfter += compressed.size;
 
         // Size check for specific slide to prevent crash
-        if (compressed.size > 2 * 1024 * 1024) {
-          failedReasons.push(`${rawFiles[i].name}: File size remains at ${formatFileSize(compressed.size)} which exceeds the 2MB limit.`);
+        if (compressed.size > 5 * 1024 * 1024) {
+          failedReasons.push(`${rawFiles[i].name}: File size remains at ${formatFileSize(compressed.size)} which exceeds the 5MB limit.`);
           continue;
         }
 

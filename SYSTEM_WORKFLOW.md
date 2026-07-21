@@ -1,6 +1,6 @@
 # BigBazar — System Workflow & Architecture Reference
 
-> Last updated: 2026-04-05
+> Last updated: 2026-07-22
 
 ---
 
@@ -14,6 +14,15 @@
 | Database | TiDB Serverless (MySQL-compatible) via `@tidbcloud/serverless` |
 | Auth | JWT (jsonwebtoken) + bcryptjs |
 | Hosting | Cloudflare Pages (`npm run deploy`) |
+
+---
+
+## System & Architecture Summary
+
+BigBazar is an e-commerce platform designed for high conversion sales with real-time site aesthetics and slider management. Key sections include:
+- **Admin Dashboard (`src/pages/Admin.jsx`)**: System settings management (Home Slider Engine, Announcement Banners, global configuration), catalog CRUD, order tracking, and media uploads.
+- **Home Landing Page (`src/pages/Home.jsx`)**: Hero Slider (`HeroSlider.jsx`), Announcement Banner (`StickyBanner.jsx`), product catalog grid, and checkout modal.
+- **Image Processing Engine (`src/utils/imageCompressor.js`)**: Zero-dependency browser-side canvas resizing with multi-stage image decoding (`createImageBitmap` → `FileReader DataURL` → `ObjectURL`) and safety raw file bypass.
 
 ---
 
@@ -90,63 +99,28 @@ into REST calls to the Hono API.
 
 ---
 
-## Bugs Fixed (2026-04-05)
+## Upgrades & Edit History
 
-### 1. Admin Login + All CRUD — JWT Secret Mismatch
-**Symptom:** Admin login appeared to succeed but all subsequent authenticated
-requests (add product, update order, etc.) returned 401.
-
-**Root cause:** The login route signed tokens with `c.env.JWT_SECRET || 'fallback'`
-but `requireAuth` verified with `c.env.JWT_SECRET` (no fallback → `undefined` →
-`jwt.verify` threw → 401 on every request).
-
-**Fix:** `requireAuth` now uses the same three-way lookup:
-```js
-const secret = c.env.JWT_SECRET
-  || (typeof process !== 'undefined' && process.env.JWT_SECRET)
-  || 'fallback';
-```
-All sign calls use the same pattern.
-
-### 2. bcrypt.compareSync Blocking Event Loop
-**Symptom:** Admin login intermittently timed out on Cloudflare (free plan
-has a 50 ms CPU budget).
-
-**Fix:** Changed to `await bcrypt.compare()` (async).
-
-### 3. DB Connection Caching — Silent Failure on Cold Start
-**Symptom:** After a cold start where env vars weren't injected yet, the broken
-connection object got cached; all subsequent requests failed even after env was
-correctly configured.
-
-**Fix:** Removed module-level `connection` cache from `db.js`. TiDB serverless
-uses HTTP under the hood — `connect()` is cheap and safe to call per request.
-
-### 4. Localhost Can't Reach API
-**Symptom:** `npm run dev` frontend couldn't fetch/patch data from the local server.
-
-**Fix:** Added `VITE_API_URL=http://localhost:3001` to `.env.local`.
-The Vite dev server now correctly points to the local Hono API server.
-
-### 5. Empty Bin (bulk delete) Had No Endpoint
-**Symptom:** Admin "Empty Bin" sent `DELETE /api/orders?status=Deleted` which
-returned 404 — no matching route existed.
-
-**Fix:** Added `app.delete('/orders', requireAuth, ...)` that accepts
-`?status=...` and deletes orders matching that status.
+### 2026-07-22 — Hero Section Banner & Home Slider Engine Upload Fix (Multi-Stage Image Decoder)
+- **Problem**: Uploading AI-generated PNGs (e.g. `Gemini_Generated_Image_...png`) or non-standard format files under *System Settings → Global Configuration → Home Slider Engine* triggered an "UPLOAD FAILED: Failed to decode image" error modal.
+- **Root Cause**: `compressImage` relied exclusively on `new Image()` with `URL.createObjectURL(file)`. Certain AI PNGs or browser security contexts triggered `img.onerror`, and throwing an unhandled rejection aborted the upload.
+- **Changes Made**:
+  1. **Multi-Stage Decoder (`src/utils/imageCompressor.js`)**: Implemented a 3-tier fallback decoding mechanism:
+     - **Stage 1**: Off-thread native `createImageBitmap(file)` (decodes AI PNGs, WebP, JPEG fast & reliably).
+     - **Stage 2**: `FileReader.readAsDataURL(file)` Data URL string loading (bypasses ObjectURL cross-context blocks).
+     - **Stage 3**: `URL.createObjectURL(file)` Blob URL loading fallback.
+  2. **Resilient Raw File Fallback**: If browser canvas decoders fail, `compressImage` safely returns the raw `File` (if size <= 8MB) so admin uploads never fail.
+  3. **Increased Safety Upload Limits (`src/pages/Admin.jsx`)**: Raised upload size safety thresholds from 1.5MB/3MB to 5MB to accommodate high-resolution 4K landing page banners and slider images.
 
 ---
 
-## Product Card — Video/Reel Preview (2026-04-05)
-
-**Before:** Each product card with `video_url` embedded a live Instagram iframe
-(`<VideoPlayer>`), loading up to 12 simultaneous iframes — terrible performance
-and often blocked by Instagram's embed policy.
-
-**After:** Product cards now show a **static thumbnail + play-badge overlay** when
-`video_url` is set. The live iframe (`VideoPlayer`) is only loaded inside the
-`ProductModal` when the user clicks "Play Video". The modal already had the
-"See Photo / Play Video" toggle — no changes needed there.
+### 2026-04-05 — Core Bug Fixes & Optimizations
+1. **Admin Login JWT Secret Mismatch**: Standardized `requireAuth` secret lookup to match login signing logic.
+2. **bcrypt.compareSync Async Fix**: Changed to `await bcrypt.compare()` to prevent event loop blocking on Cloudflare Pages CPU limits.
+3. **TiDB Connection Caching Fix**: Removed module-level DB connection cache from `db.js`.
+4. **Local API Proxying**: Configured `VITE_API_URL=http://localhost:3001` in `.env.local`.
+5. **Bulk Order Deletion Endpoint**: Added `DELETE /api/orders?status=...` endpoint for Admin Empty Bin.
+6. **Product Card Video Preview**: Replaced live Instagram iframes on product list grid with static thumbnails + play button overlays.
 
 ---
 

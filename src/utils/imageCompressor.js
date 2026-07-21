@@ -23,6 +23,76 @@ export const COMPRESS_PRESETS = {
 };
 
 /**
+ * Helper: Try multiple browser image decoding mechanisms
+ * (createImageBitmap -> FileReader DataURL -> ObjectURL)
+ */
+async function decodeImageFile(file) {
+  // Method 1: createImageBitmap (Modern, off-thread, fast & extremely reliable for AI PNGs/JPEGs)
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        drawable: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        cleanup: () => {
+          if (typeof bitmap.close === 'function') bitmap.close();
+        }
+      };
+    } catch (e) {
+      console.warn('imageCompressor: createImageBitmap decoding failed, trying FileReader:', e);
+    }
+  }
+
+  // Method 2: FileReader Data URL + HTMLImageElement (Bypasses object URL security restrictions)
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    return {
+      drawable: img,
+      width: img.width,
+      height: img.height,
+      cleanup: () => {}
+    };
+  } catch (e) {
+    console.warn('imageCompressor: FileReader DataURL load failed, trying ObjectURL:', e);
+  }
+
+  // Method 3: Blob ObjectURL + HTMLImageElement
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = objectUrl;
+    });
+
+    return {
+      drawable: img,
+      width: img.width,
+      height: img.height,
+      cleanup: () => URL.revokeObjectURL(objectUrl)
+    };
+  } catch (e) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error(`Failed to decode image file "${file.name}".`);
+  }
+}
+
+/**
  * Compress a single File or Blob using Canvas.
  *
  * @param {File|Blob} file       - Source image file from <input type="file">
@@ -32,80 +102,70 @@ export const COMPRESS_PRESETS = {
 export async function compressImage(file, options = {}) {
   const { maxW = 1080, maxH = 1350, quality = 0.82 } = options;
 
-  return new Promise((resolve, reject) => {
-    // Check mime type and file extension fallback (vital on Windows where mime types can be empty)
-    const isImage = (file.type && file.type.startsWith('image/')) || 
-                    /\.(jpe?g|png|webp|jfif|hdr|heic|heif|bmp|tiff)$/i.test(file.name);
+  // Check mime type and file extension fallback
+  const isImage = (file.type && file.type.startsWith('image/')) || 
+                  /\.(jpe?g|png|webp|jfif|hdr|heic|heif|bmp|tiff)$/i.test(file.name);
 
-    if (!isImage) {
-      reject(new Error(`File "${file.name}" is not a recognized image format. Only JPEG, PNG, WEBP, and standard web graphics are supported. If it is an iPhone photo (HEIC), please convert it to JPEG first.`));
-      return;
+  if (!isImage) {
+    throw new Error(`File "${file.name}" is not a recognized image format.`);
+  }
+
+  // Skip GIFs (animation frame flattening prevention)
+  if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
+    console.log('imageCompressor: Skipped GIF to reserve animation:', file.name);
+    return file;
+  }
+
+  console.log(`imageCompressor: Starting compression for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
+
+  try {
+    const { drawable, width: origW, height: origH, cleanup } = await decodeImageFile(file);
+    console.log(`imageCompressor: Decoded ${file.name}. Dimensions: ${origW}x${origH}`);
+
+    // Calculate scaled dimensions keeping aspect ratio
+    const ratio = Math.min(maxW / origW, maxH / origH, 1); // never upscale
+    const width = Math.round(origW * ratio);
+    const height = Math.round(origH * ratio);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // White background (handles transparent PNGs gracefully when saving as JPEG)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(drawable, 0, 0, width, height);
+
+    if (typeof cleanup === 'function') {
+      cleanup();
     }
 
-    // Skip GIFs (animation frame flattening prevention)
-    if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
-      console.log('imageCompressor: Skipped GIF to reserve animation:', file.name);
-      resolve(file); // GIFs are allowed as-is
-      return;
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    });
+
+    if (!blob) {
+      console.warn('imageCompressor: canvas.toBlob returned null for', file.name, '- using original file fallback');
+      return file;
     }
 
-    console.log(`imageCompressor: Starting compression for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
-    const img = new Image();
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const compressed = new File([blob], `${baseName}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
 
-    const objectUrl = URL.createObjectURL(file);
-
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      console.log(`imageCompressor: Loaded ${file.name}. Original dimensions: ${img.width}x${img.height}`);
-
-      // ── Calculate scaled dimensions keeping aspect ratio ──────────────────
-      let { width, height } = img;
-      const ratio = Math.min(maxW / width, maxH / height, 1); // never upscale
-      width  = Math.round(width  * ratio);
-      height = Math.round(height * ratio);
-      console.log(`imageCompressor: Resizing ${file.name} to ${width}x${height} with ratio ${ratio}`);
-
-      // ── Draw to offscreen canvas ──────────────────────────────────────────
-      const canvas = document.createElement('canvas');
-      canvas.width  = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-
-      // White background (handles transparent PNGs gracefully when saving as JPEG)
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // ── Export as JPEG blob ───────────────────────────────────────────────
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            console.error('imageCompressor: canvas.toBlob returned null target for', file.name);
-            reject(new Error('Failed to generate compressed image binary (canvas export failed).'));
-            return;
-          }
-          // Preserve original filename, change extension to jpg
-          const baseName = file.name.replace(/\.[^.]+$/, '');
-          const compressed = new File([blob], `${baseName}.jpg`, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          console.log(`imageCompressor: Compressed ${file.name} successfully. Compressed size: ${(compressed.size / 1024 / 1024).toFixed(4)} MB`);
-          resolve(compressed);
-        },
-        'image/jpeg',
-        quality,
-      );
-    };
-
-    img.onerror = (e) => {
-      console.error(`imageCompressor: Error loading file ${file.name} into Image decoder.`, e);
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error(`Failed to decode image "${file.name}". This file format might not be supported natively by your browser (e.g. iPhone HEIC, TIFF, or corrupt image). Please convert it to JPG/PNG before uploading.`));
-    };
-
-    img.src = objectUrl;
-  });
+    console.log(`imageCompressor: Compressed ${file.name} successfully. Size: ${(compressed.size / 1024 / 1024).toFixed(4)} MB`);
+    return compressed;
+  } catch (err) {
+    console.warn(`imageCompressor: Multi-stage decoding failed for "${file.name}". Falling back to raw file:`, err.message);
+    // Resilient fallback: if the original file is less than 8MB, return it directly so upload doesn't fail!
+    if (file.size <= 8 * 1024 * 1024) {
+      return file;
+    }
+    throw new Error(`Failed to decode image "${file.name}". This file format might not be supported natively by your browser (e.g. corrupt image). Please convert it to JPG/PNG before uploading.`);
+  }
 }
 
 /**
