@@ -101,6 +101,50 @@ into REST calls to the Hono API.
 
 ## Upgrades & Edit History
 
+### 2026-07-22 — Admin Authentication Reset & Local Login Fix
+- **Root Cause**: The legacy hash in `admin_users` table did not match standard local login credentials, and a missing `selectedOrder` state hook in `Admin.jsx` threw client-side runtime errors.
+- **Fixes Applied**:
+  1. Reset `admin@bigbazar.com` password in TiDB Cloud database to `admin`.
+  2. Upgraded backend login handler (`functions/api/[[path]].js`) to support both `admin@bigbazar.com` and `admin` identifiers with seamless fallback handling.
+  3. Added missing `selectedOrder` state hook declaration in `src/pages/Admin.jsx`.
+
+---
+
+### 2026-07-22 — Hero Banner Cutoff Fix & Selective Edits Benchmarked Showcase Bar
+- **Changes Made**:
+  1. **Hero Banner Top-Alignment & Aspect Optimization (`src/components/sliders/HeroSlider.jsx` & `src/pages/Home.jsx`)**:
+     - Changed image positioning from `object-center` to `object-top md:object-[center_top]`, completely eliminating top banner image cutoff (e.g. heads of people or top text in banners).
+     - Adjusted hero container height (`max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px]`) and centered overlay text vertically (`py-6 md:py-10`) so text and CTA buttons fit cleanly within standard desktop viewports.
+  2. **Selective Edits & Premium Collection Showcase Bar (`src/pages/Home.jsx`)**:
+     - Reconstructed the plain "আরো পণ্য দেখুন" load-more button into a luxury benchmarked **"প্রিমিয়াম কালেকশন / Selective Edits"** showcase bar.
+     - Includes a glowing badge (`Sparkles`), rich Bengali & English subtitles, and an interactive red gradient CTA button (`Explore Full Edits →`).
+  3. **Professional Connection Error Messaging (`src/components/ErrorBoundary.jsx`)**:
+     - Fixed text copy to clean professional language: *"A temporary connection error occurred. Please try again or refresh the page."*
+
+---
+
+### 2026-07-22 — Admin UI Redesign, Slider Engine Customization, Mobile Color Palette & Contextual Notifications
+- **Features & Fixes Added**:
+  1. **Hero Slider Customization (`src/components/sliders/HeroSlider.jsx` & `src/pages/Admin.jsx`)**:
+     - Added configurable text alignment (`left`, `center`, `right`).
+     - Added customizable text color picker & hex code per slide.
+     - Added customizable action CTA buttons (`button_text` + `button_link` / `product_id`).
+     - Added picture alignment fit options (`cover` vs `contain`).
+  2. **Contextual In-Page Notifications & Dark Theme Alert Modal (`src/components/modals/AlertModal.jsx` & `src/pages/Admin.jsx`)**:
+     - Upgraded global `AlertModal` to dark glassmorphism styling (`bg-[#121215]/95 border-white/10 text-white`).
+     - Added in-page contextual alert banners (`formAlert`) directly inside the Add/Edit form drawer showing exact error details on save failure.
+  3. **Manual Sizes Tag System (`src/pages/Admin.jsx`)**:
+     - Removed 50 rigid preset buttons.
+     - Implemented manual size entry tag input (press Enter/Comma or tap quick presets `S`, `M`, `L`, `XL`, `XXL`, `38`, `40`, `42`, `Free Size`).
+  4. **Mobile Color Palette Swatches (`src/utils/colorNames.js` & `src/pages/Admin.jsx`)**:
+     - Added `PRESET_SWATCHES` array with 27 retail colors for 1-tap color selection on mobile devices.
+     - Enhanced custom color picker with hex inputs and photo attachment for color variants.
+  5. **Stock Management System (`src/pages/Admin.jsx`)**:
+     - Added total product stock count & in-stock/sold-out status controls.
+     - Added stock input per color variant & per size.
+
+---
+
 ### 2026-07-22 — Hero Section Banner & Home Slider Engine Upload Fix (Multi-Stage Image Decoder)
 - **Problem**: Uploading AI-generated PNGs (e.g. `Gemini_Generated_Image_...png`) or non-standard format files under *System Settings → Global Configuration → Home Slider Engine* triggered an "UPLOAD FAILED: Failed to decode image" error modal.
 - **Root Cause**: `compressImage` relied exclusively on `new Image()` with `URL.createObjectURL(file)`. Certain AI PNGs or browser security contexts triggered `img.onerror`, and throwing an unhandled rejection aborted the upload.

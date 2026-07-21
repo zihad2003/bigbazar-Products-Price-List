@@ -11,8 +11,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8788',
+        target: process.env.VITE_BACKEND_URL || 'https://bigbazarbariarhat.pages.dev',
         changeOrigin: true,
+        secure: false,
       }
     }
   },

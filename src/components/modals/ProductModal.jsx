@@ -167,6 +167,14 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
           {/* Details Panel */}
           <div className="flex-1 p-6 md:p-12 lg:p-14 bg-white flex flex-col gap-8 md:gap-10">
             <div className="space-y-4">
+               {/* Breadcrumb Path Tag */}
+               <div className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest text-neutral-400">
+                  <button type="button" onClick={onClose} className="hover:text-black transition-colors">Home</button>
+                  <span>/</span>
+                  <span className="text-[#ce112d] font-bold">{product.category || 'Women'}</span>
+                  <span>/</span>
+                  <span className="text-neutral-700 truncate max-w-[180px] md:max-w-[280px]">{product.name}</span>
+               </div>
                <h2 className="text-2xl md:text-5xl font-black text-neutral-900 italic leading-tight">{product.name}</h2>
                <div className="flex items-baseline gap-4">
                   <span className="text-3xl md:text-6xl font-black text-[#ce112d] italic">৳ {price}</span>

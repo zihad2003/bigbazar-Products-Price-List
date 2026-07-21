@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import { formatColorName, getColorName, COLOR_MAP } from '../utils/colorNames';
+import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -31,13 +31,15 @@ export default function Admin() {
   const [previewImage, setPreviewImage] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Delete' });
   const [siteTheme, setSiteTheme] = useState('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
-  const [selectedOrder, setSelectedOrder] = useState(null);
   const [pendingCodes, setPendingCodes] = useState([]);
+  const [formAlert, setFormAlert] = useState(null); // { title, message, type: 'error' | 'success' }
+  const [customSizeInput, setCustomSizeInput] = useState('');
 
   const copyToClipboard = (text, label) => {
     if (!text) return;
@@ -387,31 +389,33 @@ export default function Admin() {
 
     if (error) {
       console.error("Detailed Error:", error);
-      let message = "Oops! Something went wrong while saving the product.";
-      let title = "Error!";
+      let message = error.message || error.details || "Failed to save product to database.";
+      let title = "Save Failed";
 
       if (error.message?.includes("duplicate key") || error.code === '23505') {
         title = "Duplicate Entry";
-        message = "It looks like this product (or serial number) already exists in the system.";
+        message = "A product with this serial number or name already exists.";
       } else if (error.message?.includes("null value") || error.code === '23502') {
         title = "Missing Details";
-        // Extract the column name from the error message for a clearer message
         const colMatch = error.message?.match(/column "(\w+)"/);
         const colName = colMatch ? colMatch[1] : null;
         message = colName
-          ? `The field "${colName}" is required. Please fill it in.`
-          : "Please make sure all required fields (name, price) are filled in.";
+          ? `The field "${colName}" is required.`
+          : "Please fill in all required fields (Product Name, Price).";
       } else if (error.message?.includes("network")) {
         title = "Connection Error";
-        message = "Network error. Please check your internet connection and try again.";
+        message = "Network error. Please check your internet connection.";
       }
 
+      setFormAlert({ title, message, type: 'error' });
       setAlertModal({ isOpen: true, title, message, type: 'error' });
     } else {
+      const msg = editingProduct ? "Product updated successfully!" : "New product added successfully!";
+      setFormAlert({ title: "Success!", message: msg, type: 'success' });
       setAlertModal({
         isOpen: true,
         title: "Success!",
-        message: editingProduct ? "Product updated successfully!" : "New product added successfully!",
+        message: msg,
         type: 'success'
       });
       cancelEdit();
@@ -731,21 +735,30 @@ export default function Admin() {
 
         <form onSubmit={async (e) => {
           e.preventDefault();
+          if (!email || !password) {
+            setAlertModal({ isOpen: true, title: 'Incomplete Login', message: 'Please enter both email address and password.', type: 'error' });
+            return;
+          }
           setLoading(true);
           try {
-            const res = await fetch(`${API_URL}/api/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password })
-            });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Login failed');
-
-            // Direct login
-            setToken(json.session.access_token);
-            setSession(json.session);
+            const { data, error } = await bigBazarApi.auth.signInWithPassword({ email, password });
+            if (error) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Authentication Error',
+                message: error.message || 'Invalid email or password. Please verify your admin credentials.',
+                type: 'error'
+              });
+            } else if (data?.session) {
+              setSession(data.session);
+            }
           } catch (err) {
-            setAlertModal({ isOpen: true, title: 'Login Failed', message: err.message, type: 'error' });
+            setAlertModal({
+              isOpen: true,
+              title: 'Login Error',
+              message: err.message || 'Unable to connect to login service. Please check your connection.',
+              type: 'error'
+            });
           } finally {
             setLoading(false);
           }
@@ -924,27 +937,126 @@ export default function Admin() {
                       </button>
                       <div className="absolute bottom-4 left-4 px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 italic">SLIDE {i + 1}</div>
                     </div>
-                    <div className="p-6 space-y-4 bg-gradient-to-b from-transparent to-[#0a0a0c]/40">
-                      <input
-                        value={slide.title || ''}
-                        placeholder="Headline (e.g. SUMMER SALE)"
-                        onChange={e => {
-                          const updated = [...siteSettings.main_slides];
-                          updated[i] = { ...slide, title: e.target.value };
-                          setSiteSettings({ ...siteSettings, main_slides: updated });
-                        }}
-                        className="w-full bg-black/40 border border-white/5 h-11 px-4 rounded-xl text-xs font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all shadow-inner"
-                      />
-                      <input
-                        value={slide.product_id || ''}
-                        placeholder="Link to Product SKU / ID"
-                        onChange={e => {
-                          const updated = [...siteSettings.main_slides];
-                          updated[i] = { ...slide, product_id: e.target.value };
-                          setSiteSettings({ ...siteSettings, main_slides: updated });
-                        }}
-                        className="w-full bg-black/40 border border-white/5 h-11 px-4 rounded-xl text-[10px] text-zinc-500 placeholder:text-zinc-800 outline-none focus:border-white/10 transition-all font-mono"
-                      />
+                    <div className="p-5 space-y-3 bg-gradient-to-b from-transparent to-[#0a0a0c]/60">
+                      <div>
+                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Title (শিরোনাম)</label>
+                        <input
+                          value={slide.title || ''}
+                          placeholder="Headline (e.g. গায়ে হলুদের শাড়ি)"
+                          onChange={e => {
+                            const updated = [...siteSettings.main_slides];
+                            updated[i] = { ...slide, title: e.target.value };
+                            setSiteSettings({ ...siteSettings, main_slides: updated });
+                          }}
+                          className="w-full bg-black/50 border border-white/10 h-10 px-3 rounded-xl text-xs font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all shadow-inner"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Subtitle (উপ-শিরোনাম)</label>
+                        <input
+                          value={slide.subtitle || ''}
+                          placeholder="Subheading (e.g. ৫% ছাড় সকল শাড়িতে)"
+                          onChange={e => {
+                            const updated = [...siteSettings.main_slides];
+                            updated[i] = { ...slide, subtitle: e.target.value };
+                            setSiteSettings({ ...siteSettings, main_slides: updated });
+                          }}
+                          className="w-full bg-black/50 border border-white/10 h-10 px-3 rounded-xl text-[11px] font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Button Text (বাটন টেক্সট)</label>
+                          <input
+                            value={slide.button_text || slide.cta || ''}
+                            placeholder="e.g. অর্ডার করুন / Shop Now"
+                            onChange={e => {
+                              const updated = [...siteSettings.main_slides];
+                              updated[i] = { ...slide, button_text: e.target.value, cta: e.target.value };
+                              setSiteSettings({ ...siteSettings, main_slides: updated });
+                            }}
+                            className="w-full bg-black/50 border border-white/10 h-9 px-3 rounded-xl text-[10px] font-bold text-[#ce112d] placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Button Link / Product ID</label>
+                          <input
+                            value={slide.button_link || slide.product_id || ''}
+                            placeholder="URL or Product ID"
+                            onChange={e => {
+                              const updated = [...siteSettings.main_slides];
+                              updated[i] = { ...slide, button_link: e.target.value, product_id: e.target.value };
+                              setSiteSettings({ ...siteSettings, main_slides: updated });
+                            }}
+                            className="w-full bg-black/50 border border-white/10 h-9 px-3 rounded-xl text-[10px] text-zinc-400 placeholder:text-zinc-800 outline-none focus:border-white/10 transition-all font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Align & Color & Fit controls */}
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 items-center">
+                        <div>
+                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Text Alignment</label>
+                          <div className="flex bg-black/60 p-0.5 rounded-lg border border-white/5">
+                            {['left', 'center', 'right'].map(align => (
+                              <button
+                                key={align}
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...siteSettings.main_slides];
+                                  updated[i] = { ...slide, text_align: align };
+                                  setSiteSettings({ ...siteSettings, main_slides: updated });
+                                }}
+                                className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase transition-all ${
+                                  (slide.text_align || 'center') === align
+                                    ? 'bg-[#ce112d] text-white shadow-md'
+                                    : 'text-zinc-500 hover:text-white'
+                                }`}
+                              >
+                                {align[0].toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Text Color</label>
+                          <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-lg border border-white/5">
+                            <input
+                              type="color"
+                              value={slide.text_color || '#ffffff'}
+                              onChange={e => {
+                                const updated = [...siteSettings.main_slides];
+                                updated[i] = { ...slide, text_color: e.target.value };
+                                setSiteSettings({ ...siteSettings, main_slides: updated });
+                              }}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
+                            />
+                            <span className="text-[9px] font-mono text-zinc-400 uppercase">{slide.text_color || '#FFFFFF'}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Picture Alignment</label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...siteSettings.main_slides];
+                              updated[i] = { ...slide, image_fit: slide.image_fit === 'contain' ? 'cover' : 'contain' };
+                              setSiteSettings({ ...siteSettings, main_slides: updated });
+                            }}
+                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${
+                              slide.image_fit === 'contain'
+                                ? 'bg-zinc-800 border-white/20 text-white'
+                                : 'bg-[#ce112d]/20 border-[#ce112d]/40 text-[#ce112d]'
+                            }`}
+                          >
+                            {slide.image_fit === 'contain' ? 'Fit (Contain)' : 'Fill (Cover)'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1232,6 +1344,30 @@ export default function Admin() {
               </div>
             </div>
 
+            {/* Contextual In-Page Alert */}
+            {formAlert && (
+              <div className={`p-5 rounded-2xl border flex items-center justify-between gap-4 transition-all shadow-2xl ${
+                formAlert.type === 'error'
+                  ? 'bg-[#ce112d]/15 border-[#ce112d]/40 text-red-200'
+                  : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                    formAlert.type === 'error' ? 'bg-[#ce112d] text-white' : 'bg-emerald-500 text-black'
+                  }`}>
+                    {formAlert.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider">{formAlert.title}</h4>
+                    <p className="text-xs font-medium text-zinc-300 mt-1">{formAlert.message}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setFormAlert(null)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/10 transition-all">
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
             {/* IDENTITY & PRICING */}
             <div className="space-y-10">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -1249,7 +1385,7 @@ export default function Admin() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 pt-4">
                         <div className="group">
                           <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Original Price</label>
                           <div className="relative">
@@ -1273,6 +1409,18 @@ export default function Admin() {
                               placeholder="1450"
                               className="w-full bg-black/40 border-2 border-[#ce112d]/30 pl-10 md:pl-12 pr-4 md:pr-6 h-12 md:h-16 rounded-2xl md:rounded-3xl text-xl md:text-2xl font-black focus:border-[#ce112d] outline-none transition-all placeholder:text-zinc-800 text-[#ce112d] italic shadow-[0_0_30px_rgba(206,17,45,0.1)]"
                               onChange={e => setForm({ ...form, price: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="group">
+                          <label className="text-[10px] font-black uppercase text-emerald-400 mb-3 block tracking-[0.2em] px-1">Stock Quantity (স্টক)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={form.stock_count !== undefined && form.stock_count !== null ? form.stock_count : ''}
+                              placeholder="e.g. 50"
+                              className="w-full bg-black/40 border-2 border-emerald-500/30 px-6 h-12 md:h-16 rounded-2xl md:rounded-3xl text-xl font-black focus:border-emerald-400 outline-none transition-all placeholder:text-zinc-800 text-emerald-400 italic"
+                              onChange={e => setForm({ ...form, stock_count: e.target.value })}
                             />
                           </div>
                         </div>
@@ -1439,87 +1587,108 @@ export default function Admin() {
                   </div>
 
                   <div className="space-y-8">
+                    {/* Manual Sizes Section */}
                     <div className="space-y-6 bg-black/20 p-4 md:p-8 rounded-2xl md:rounded-[32px] border border-white/5">
-                      <label className="text-[10px] font-black uppercase text-zinc-500 mb-4 block tracking-[0.2em]">Available Sizes</label>
-                      <div className="space-y-10">
-                        {[
-                          { label: 'Standard Clothing (XS-5XL)', items: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL'] },
-                          { label: 'Trousers / Numeric Waist', items: ['28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'] },
-                          { label: 'Traditional Format (16–26)', items: ['16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26'] },
-                          { label: 'Kids Group (Years/Growth)', items: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'] }
-                        ].map((group, gIdx) => (
-                          <div key={gIdx} className="space-y-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-1 h-4 bg-[#ce112d]/50 rounded-full"></div>
-                              <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest italic">{group.label}</span>
-                            </div>
-                            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-9 gap-2 md:gap-3">
-                              {group.items.map(s => {
-                                const isSelected = (form.available_sizes || []).some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
-                                return (
-                                  <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => {
-                                      if (isSelected) {
-                                        setForm({ ...form, available_sizes: (form.available_sizes || []).filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
-                                      } else {
-                                        setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
-                                      }
-                                    }}
-                                    className={`py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all border shadow-lg ${isSelected ? 'bg-gradient-to-b from-[#ce112d] to-[#ff1c3a] border-[#ce112d] text-white shadow-red-900/40' : 'bg-[#121215]/50 border-[#1d1d21] text-zinc-600 hover:border-white/10 hover:text-white'}`}
-                                  >
-                                    {s}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-
-                        <div className="pt-6">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const custom = prompt('Enter custom size code:');
-                              if (custom) {
-                                const formatted = custom.trim().toUpperCase();
-                                if (formatted && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === formatted)) {
-                                  setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: formatted, is_available: true }] });
-                                }
-                              }
-                            }}
-                            className="w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border-2 border-dashed border-[#1d1d21] text-zinc-700 hover:bg-[#ce112d]/5 hover:border-[#ce112d]/50 hover:text-[#ce112d] transition-all italic bg-[#121215]/20"
-                          >
-                            + Construct Custom Size
-                          </button>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Available Sizes (সাইজ সমূহ)</label>
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Type custom size manually or tap quick preset chips</p>
                         </div>
                       </div>
 
+                      {/* Manual Size Input Box */}
+                      <div className="flex gap-3">
+                        <input
+                          value={customSizeInput}
+                          placeholder="Type custom size (e.g. S, M, L, XL, 38, 40, Free Size)..."
+                          onChange={e => setCustomSizeInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault();
+                              const val = customSizeInput.trim().toUpperCase();
+                              if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                                setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
+                                setCustomSizeInput('');
+                              }
+                            }
+                          }}
+                          className="flex-1 bg-black/60 border-2 border-zinc-800 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = customSizeInput.trim().toUpperCase();
+                            if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                              setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
+                              setCustomSizeInput('');
+                            }
+                          }}
+                          className="px-6 h-12 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+                        >
+                          + Add Size
+                        </button>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-black uppercase text-zinc-600 tracking-widest">Quick Presets:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', 'Free Size'].map(s => {
+                            const isAdded = (form.available_sizes || []).some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  if (isAdded) {
+                                    setForm({ ...form, available_sizes: (form.available_sizes || []).filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
+                                  } else {
+                                    setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                                  isAdded
+                                    ? 'bg-[#ce112d] border-[#ce112d] text-white'
+                                    : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/20'
+                                }`}
+                              >
+                                {isAdded ? `✓ ${s}` : `+ ${s}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Active Added Size Tags */}
                       {(form.available_sizes || []).length > 0 && (
-                        <div className="mt-8 p-6 bg-[#ce112d]/[0.02] rounded-[32px] border border-[#ce112d]/10 shadow-inner">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#ce112d]" />
-                            <span className="text-[10px] font-black uppercase text-[#ce112d] tracking-[0.2em]">Active Matrix: {(form.available_sizes || []).length} Sizes</span>
+                        <div className="mt-4 p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#ce112d]" />
+                            <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Active Sizes ({(form.available_sizes || []).length}):</span>
                           </div>
-                          <div className="flex flex-wrap gap-2 md:gap-3">
+                          <div className="flex flex-wrap gap-2">
                             {form.available_sizes.map((size, idx) => {
                               const name = typeof size === 'object' ? size.name : size;
                               const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
                               return (
-                                <button
+                                <div
                                   key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    const newSizes = [...form.available_sizes];
-                                    newSizes[idx] = { name, is_available: !isAvailable };
-                                    setForm({ ...form, available_sizes: newSizes });
-                                  }}
-                                  className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase flex items-center gap-3 transition-all border ${isAvailable ? 'bg-[#ce112d]/10 text-white border-[#ce112d]/20' : 'bg-black/40 text-zinc-800 border-white/[0.02] line-through'}`}
+                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-3 transition-all border ${
+                                    isAvailable ? 'bg-[#ce112d]/20 text-white border-[#ce112d]/40' : 'bg-zinc-900 text-zinc-600 border-white/5 line-through'
+                                  }`}
                                 >
-                                  {name}
-                                  {isAvailable && <div className="w-1.5 h-1.5 rounded-full bg-[#ce112d] shadow-[0_0_10px_#ce112d]"></div>}
-                                </button>
+                                  <span>{name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = (form.available_sizes || []).filter((_, i) => i !== idx);
+                                      setForm({ ...form, available_sizes: updated });
+                                    }}
+                                    className="p-1 hover:text-red-400 text-zinc-400 transition-colors"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
                               );
                             })}
                           </div>
@@ -1527,75 +1696,77 @@ export default function Admin() {
                       )}
                     </div>
 
-                    <div className="space-y-8 pt-6">
+                    {/* Colors & Mobile Color Picker */}
+                    <div className="space-y-6 pt-4">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">Add Colors</label>
+                        <div>
+                          <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Add Color Variants (কালার অপশন)</label>
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Tap a swatch on mobile/desktop or enter custom color</p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             const val = (form._newColorName || '').trim();
-                            if (!val) { setAlertModal({ isOpen: true, title: 'Missing', message: 'Please enter a color name first', type: 'error' }); return; }
+                            if (!val) { setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Please enter or tap a color name first', type: 'error' }); return; }
                             const hex = form._newColorHex || '#888888';
                             setForm({ ...form, available_colors: [...(form.available_colors || []), { name: val, image: null, is_available: true, hex, sizes: [] }], _newColorHex: '#888888', _newColorName: '', _colorSuggestions: false });
                           }}
-                          className="px-6 py-2.5 bg-[#ce112d] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                          className="px-6 py-3 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
                         >
-                          Add Color
+                          + Add Color
                         </button>
                       </div>
 
-                      {/* Color Picker + Name Input */}
-                      <div className="p-4 md:p-6 bg-black/40 border border-white/5 rounded-2xl md:rounded-[32px] space-y-4">
-                        <div className="flex gap-3 md:gap-4 items-center">
-                          <label className="relative w-14 h-14 shrink-0 cursor-pointer rounded-2xl border-4 border-zinc-800 shadow-2xl overflow-hidden transition-all hover:scale-105" style={{ backgroundColor: form._newColorHex || '#888888' }}>
-                            <input type="color" value={form._newColorHex || '#888888'} onChange={e => {
-                              const matched = getColorName(e.target.value);
-                              setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en, _colorSuggestions: false });
-                            }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                          </label>
-                          <div className="flex-1 relative">
-                            <input
-                              value={form._newColorName || ''}
-                              placeholder="Type color name..."
-                              onChange={e => setForm({ ...form, _newColorName: e.target.value, _colorSuggestions: true })}
-                              onFocus={() => setForm({ ...form, _colorSuggestions: true })}
-                              className="w-full bg-black/60 border-2 border-zinc-800 h-12 md:h-14 px-4 rounded-xl md:rounded-2xl text-sm font-bold shadow-inner focus:border-[#ce112d]/50 outline-none transition-all text-white"
-                            />
-                            {/* Suggestion Dropdown */}
-                            {form._colorSuggestions && form._newColorName && form._newColorName.length > 0 && (() => {
-                              const q = (form._newColorName || '').toLowerCase();
-                              const matches = COLOR_MAP.filter(c => c.en.toLowerCase().includes(q) || c.bn.includes(q)).slice(0, 8);
-                              if (matches.length === 0) return null;
-                              return (
-                                <div className="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-50 max-h-64 overflow-y-auto no-scrollbar">
-                                  {matches.map((c, i) => (
-                                    <button
-                                      key={i}
-                                      type="button"
-                                      onClick={() => setForm({ ...form, _newColorName: c.en, _newColorHex: c.hex, _colorSuggestions: false })}
-                                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0"
-                                    >
-                                      <div className="w-8 h-8 rounded-xl border-2 border-zinc-700 shrink-0" style={{ backgroundColor: c.hex }}></div>
-                                      <div className="flex-1 min-w-0">
-                                        <span className="text-sm font-bold text-white block">{c.en}</span>
-                                        <span className="text-xs text-zinc-500">{c.bn}</span>
-                                      </div>
-                                      <span className="text-[9px] font-mono text-zinc-600 uppercase">{c.hex}</span>
-                                    </button>
-                                  ))}
+                      {/* Mobile-Friendly Swatch Palette + Custom Input */}
+                      <div className="p-4 md:p-6 bg-black/40 border border-white/5 rounded-2xl md:rounded-[32px] space-y-5">
+                        <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider block">Tap Color Swatch (মোবাইল কালার প্যালেট):</span>
+                        <div className="grid grid-cols-7 sm:grid-cols-9 md:grid-cols-14 gap-2">
+                          {PRESET_SWATCHES.map((swatch, sIdx) => (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => {
+                                setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en });
+                              }}
+                              className="aspect-square rounded-xl border-2 border-white/10 hover:border-white transition-all transform hover:scale-110 active:scale-95 relative group shadow-md"
+                              style={{ backgroundColor: swatch.hex }}
+                              title={`${swatch.en} (${swatch.bn})`}
+                            >
+                              {form._newColorHex === swatch.hex && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
+                                  <Check size={14} className={swatch.hex === '#FFFFFF' ? 'text-black' : 'text-white'} />
                                 </div>
-                              );
-                            })()}
-                          </div>
+                              )}
+                            </button>
+                          ))}
                         </div>
-                        {/* Selected preview */}
-                        {form._newColorName && (
-                          <div className="flex items-center gap-3 px-3 py-2 bg-white/5 rounded-xl">
-                            <div className="w-6 h-6 rounded-lg" style={{ backgroundColor: form._newColorHex || '#888' }}></div>
-                            <span className="text-xs font-bold text-white">{form._newColorName}</span>
-                            <span className="text-[10px] text-zinc-500 ml-1">{getColorName(form._newColorHex || '#888').bn}</span>
-                          </div>
-                        )}
+
+                        {/* Input Row for Custom Name & Custom Picker */}
+                        <div className="flex gap-3 md:gap-4 items-center pt-2">
+                          <label className="relative w-12 h-12 shrink-0 cursor-pointer rounded-2xl border-2 border-white/20 shadow-xl overflow-hidden transition-all hover:scale-105" style={{ backgroundColor: form._newColorHex || '#888888' }}>
+                            <input
+                              type="color"
+                              value={form._newColorHex || '#888888'}
+                              onChange={e => {
+                                const matched = getColorName(e.target.value);
+                                setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </label>
+                          <input
+                            value={form._newColorName || ''}
+                            placeholder="Selected or custom color name..."
+                            onChange={e => setForm({ ...form, _newColorName: e.target.value })}
+                            className="flex-1 bg-black/60 border-2 border-zinc-800 h-12 px-4 rounded-xl text-sm font-bold shadow-inner focus:border-[#ce112d]/50 outline-none transition-all text-white"
+                          />
+                          <input
+                            value={form._newColorHex || ''}
+                            placeholder="#HEX"
+                            onChange={e => setForm({ ...form, _newColorHex: e.target.value })}
+                            className="w-24 bg-black/60 border-2 border-zinc-800 h-12 px-3 rounded-xl text-xs font-mono font-bold text-zinc-400 outline-none uppercase"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-8">

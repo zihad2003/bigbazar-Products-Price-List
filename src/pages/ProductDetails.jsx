@@ -152,9 +152,11 @@ export default function ProductDetails() {
             {/* Breadcrumbs */}
             <div className="mb-6 flex items-center justify-between text-xs text-neutral-400 font-bold uppercase tracking-widest">
                 <div className="flex items-center gap-2">
-                    <Link to="/" className="hover:text-black transition-colors">{language === 'bn' ? 'হোম' : 'Home'}</Link>
+                    <Link to="/" className="hover:text-black transition-colors">Home</Link>
                     <span>/</span>
-                    <span className="text-neutral-950 font-black">{product.category || 'Clothing'}</span>
+                    <span className="text-[#ce112d] font-bold">{product.category || 'Women'}</span>
+                    <span>/</span>
+                    <span className="text-neutral-800 font-bold max-w-[220px] md:max-w-[320px] truncate">{product.name}</span>
                 </div>
                 <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-black transition-all">
                     <Share2 size={14} />

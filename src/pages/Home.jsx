@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag } from 'lucide-react';
+import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import ProductModal from '../components/modals/ProductModal';
@@ -288,8 +288,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Elite Hero Section — full-width banner, DB-controlled */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
         <section className="w-full relative">
-          {/* Full-bleed container; image uses object-contain so the full poster is always visible */}
-          <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] overflow-hidden bg-neutral-50 relative">
+          <div className="w-full max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px] overflow-hidden bg-neutral-950 relative">
             <HeroSlider slides={siteSettings.main_slides} />
           </div>
         </section>
@@ -298,7 +297,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Hero loading skeleton */}
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9] bg-neutral-100 animate-pulse flex items-center justify-center">
+          <div className="w-full max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px] bg-neutral-100 animate-pulse flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
           </div>
         </section>
@@ -307,22 +306,33 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Maintenance Notice */}
         {/* No Products Found */}
+        {/* Smart Proportional Empty State */}
         {!loading && products.length === 0 && (
-          <section className="px-4">
-            <div className="bg-zinc-50 border border-zinc-100 rounded-3xl p-6 md:p-10 flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center">
-                <ShoppingBag size={24} className="text-zinc-400" />
+          <section className="px-2">
+            <div className="bg-gradient-to-b from-[#ce112d]/[0.03] via-zinc-50/50 to-white border border-zinc-200/80 rounded-[32px] p-8 md:p-14 flex flex-col items-center text-center gap-6 shadow-sm max-w-3xl mx-auto">
+              <div className="w-20 h-20 bg-gradient-to-b from-[#ce112d]/15 to-[#ce112d]/5 rounded-3xl flex items-center justify-center border border-[#ce112d]/20 text-[#ce112d] shadow-xl shadow-red-900/10 transform hover:scale-105 transition-transform">
+                <ShoppingBag size={36} strokeWidth={2} />
               </div>
-              <div className="space-y-4 max-w-2xl">
-                <h2 className="text-xl md:text-2xl font-bold text-neutral-900 leading-tight">
-                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Found'}
+              <div className="space-y-3">
+                <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase italic">
+                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Available'}
                 </h2>
-                <p className="text-sm md:text-base text-neutral-600 leading-relaxed">
+                <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
                   {language === 'bn'
-                    ? 'দুঃখিত, এই ক্যাটাগরিতে বর্তমানে কোনো পণ্য নেই। অনুগ্রহ করে অন্য কোনো ক্যাটাগরি বা ফিল্টার চেক করুন।'
-                    : 'Sorry, we couldn\'t find any products in this category right now. Please check back later or try another filter.'}
+                    ? 'দুঃখিত, এই ক্যাটাগরি বা সার্চের বিপরীতে কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।'
+                    : 'Sorry, no items matched your selected category or search query. Try exploring all collections or clearing your search filter.'}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (setSelectedCategory) setSelectedCategory('All');
+                  if (onSearchChange) onSearchChange('');
+                }}
+                className="mt-2 px-8 py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-red-900/30 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <span>{language === 'bn' ? 'সকল পণ্য দেখুন' : 'Explore All Collections'}</span>
+              </button>
             </div>
           </section>
         )}
@@ -390,18 +400,19 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             </div>
           )}
 
+          {/* Minimal Modern Load More Section */}
           {hasMore && !loading && (
-            <div className="flex justify-center pt-12">
+            <div className="flex flex-col items-center justify-center pt-12 pb-6 gap-3">
               <button
                 onClick={() => setPage(prev => prev + 1)}
-                className="group relative px-16 py-6 bg-zinc-900 text-white rounded-[24px] overflow-hidden transition-all hover:scale-105 active:scale-95"
+                className="group inline-flex items-center gap-3 px-10 py-4 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-[0.2em] rounded-full shadow-xl hover:shadow-red-900/30 active:scale-95 transition-all duration-300 border border-white/10"
               >
-                <div className="relative z-10 flex items-center gap-4">
-                  <span className="text-xs font-bold uppercase tracking-widest">{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore Designs'}</span>
-                  <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-                </div>
-                <div className="absolute inset-0 bg-[#ce112d] translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                <span>{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore More Designs'}</span>
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
+              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
+                {language === 'bn' ? 'প্রিমিয়াম কালেকশন • ট্রেন্ডিং ডিজাইন' : 'Selective Edits • Premium Catalog'}
+              </span>
             </div>
           )}
         </section>
