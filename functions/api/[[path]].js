@@ -642,6 +642,50 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 });
 
 // ============================================
+// VISITOR ANALYTICS
+// ============================================
+app.post('/analytics/track-visitor', async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
+    let currentCount = 0;
+    if (res.length > 0) {
+      try {
+        currentCount = parseInt(typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value) || 0;
+      } catch (e) {
+        currentCount = parseInt(res[0].value) || 0;
+      }
+    }
+    const newCount = currentCount + 1;
+    await conn.execute(
+      "INSERT INTO site_settings (`key`, value) VALUES ('site_visitors', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+      [JSON.stringify(newCount), JSON.stringify(newCount)]
+    );
+    return c.json({ success: true, count: newCount });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.get('/analytics/visitor-count', async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
+    let count = 0;
+    if (res.length > 0) {
+      try {
+        count = parseInt(typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value) || 0;
+      } catch (e) {
+        count = parseInt(res[0].value) || 0;
+      }
+    }
+    return c.json({ success: true, count });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// ============================================
 // UPLOAD (Cloudinary primary / Base64 fallback)
 // ============================================
 

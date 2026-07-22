@@ -90,10 +90,13 @@ export default function Admin() {
     fetchReviews();
     fetchSiteSettings();
 
-    // Fetch total site visitor count from bigBazarApi
-    bigBazarApi.from('site_settings').select('value').eq('key', 'visitor_count').single()
-      .then(({ data }) => setVisitorCount(data?.value || 0))
-      .catch(() => 0);
+    // Fetch real-time site visitor count
+    fetch(`${API_URL}/api/analytics/visitor-count`)
+      .then(res => res.json())
+      .then(json => {
+        if (typeof json?.count === 'number') setVisitorCount(json.count);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchProducts = async () => {
@@ -325,8 +328,26 @@ export default function Admin() {
       if (themeData?.mode) setSiteTheme(themeData.mode);
       const catVis = getValue('category_visibility');
       if (catVis) settings.category_visibility = catVis;
+
+      const visitors = getValue('site_visitors');
+      if (visitors !== undefined && visitors !== null) {
+        setVisitorCount(parseInt(visitors) || 0);
+      }
     }
     setSiteSettings(settings);
+
+    // Direct real-time fetch fallback for visitor count
+    try {
+      const vRes = await fetch(`${API_URL}/api/analytics/visitor-count`);
+      if (vRes.ok) {
+        const vJson = await vRes.json();
+        if (typeof vJson.count === 'number') {
+          setVisitorCount(vJson.count);
+        }
+      }
+    } catch (err) {
+      // Keep existing count
+    }
   };
 
   const fetchPendingCodes = async () => {

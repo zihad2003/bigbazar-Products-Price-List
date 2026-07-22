@@ -19,7 +19,7 @@ import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
 import SEOHead from './components/SEOHead';
-import { bigBazarApi } from './api/client';
+import { bigBazarApi, API_URL } from './api/client';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -38,6 +38,15 @@ function PublicLayout() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [tickerSettings, setTickerSettings] = useState(null);
   const location = useLocation();
+
+  useEffect(() => {
+    const hasTracked = sessionStorage.getItem('bb_visitor_tracked');
+    if (!hasTracked) {
+      fetch(`${API_URL}/api/analytics/track-visitor`, { method: 'POST' })
+        .then(() => sessionStorage.setItem('bb_visitor_tracked', 'true'))
+        .catch(() => {});
+    }
+  }, []);
 
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
