@@ -1,0 +1,180 @@
+/**
+ * Cloudflare Pages Function — Edge Pre-Renderer for SEO, AEO, and GEO.
+ * Intercepts HTML route requests and injects route-specific title, meta tags,
+ * OpenGraph, Twitter Cards, and Schema.org JSON-LD microdata using HTMLRewriter.
+ */
+
+export async function onRequest(context) {
+  const { request } = context;
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // Let API requests and static files pass through unchanged
+  if (
+    path.startsWith('/api/') ||
+    path === '/sitemap.xml' ||
+    path === '/robots.txt' ||
+    /\.(png|jpe?g|gif|svg|webp|ico|css|js|json|woff2?|ttf|eot)$/i.test(path)
+  ) {
+    return context.next();
+  }
+
+  // Fetch raw static index.html from origin
+  const response = await context.next();
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/html')) {
+    return response;
+  }
+
+  const domain = url.origin;
+
+  // Canonical entity metadata
+  const canonicalUrl = `${domain}${path}`;
+  const defaultTitle = "Big Bazar | Baraiyarhat — Complete Family Fashion & Lifestyle Destination";
+  const defaultDesc = "Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.";
+
+  let pageTitle = defaultTitle;
+  let pageDesc = defaultDesc;
+  let ogImage = `${domain}/b.jpg`;
+
+  // Route-specific customizations
+  if (path === '/about-us') {
+    pageTitle = "About Us — Big Bazar Baraiyarhat | 65,000+ Community Trusted Store";
+    pageDesc = "Discover Big Bazar at Jomidar Plaza, Baraiyarhat. Serving 65,000+ community followers with complete family fashion solutions, Biyer Sajani wedding collections, and Free Home Delivery across Mirsharai.";
+  } else if (path === '/store-locations') {
+    pageTitle = "Store Outlet Location — Big Bazar Baraiyarhat | 2nd Floor Jomidar Plaza";
+    pageDesc = "Visit Big Bazar on the 2nd Floor of Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Open daily 9:00 AM - 9:00 PM.";
+  } else if (path === '/faq') {
+    pageTitle = "Frequently Asked Questions (FAQ) — Big Bazar Baraiyarhat";
+    pageDesc = "Find answers regarding order placement, Free Mirsharai delivery, nationwide Cash on Delivery, returns, and Biyer Sajani wedding collections at Big Bazar Baraiyarhat.";
+  } else if (path === '/shipping') {
+    pageTitle = "Shipping & Free Mirsharai Home Delivery — Big Bazar Baraiyarhat";
+    pageDesc = "Free Home Delivery within Mirsharai Upazila. Fast nationwide Cash on Delivery across Bangladesh (60 BDT local, 120 BDT national).";
+  } else if (path === '/returns') {
+    pageTitle = "Returns & Exchange Policy — Big Bazar Baraiyarhat";
+    pageDesc = "Hassle-free return and exchange policy within 24 hours for defective items or sizing issues at Big Bazar Baraiyarhat.";
+  } else if (path.startsWith('/product/')) {
+    pageTitle = "Exclusive Collection | Big Bazar Baraiyarhat";
+    pageDesc = "Shop authentic fashion collections at Big Bazar Baraiyarhat with fast Cash on Delivery across Bangladesh.";
+  }
+
+  // Schema.org JSON-LD microdata graph
+  const jsonLdGraph = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["ClothingStore", "LocalBusiness", "Organization"],
+        "@id": `${domain}/#organization`,
+        "name": "Big Bazar",
+        "alternateName": [
+          "Big Bazar Baraiyarhat",
+          "বিগ বাজার বারইয়ারহাট",
+          "Biyer Sajani",
+          "বিয়ের সাজনি"
+        ],
+        "url": domain,
+        "logo": `${domain}/b.jpg`,
+        "image": ogImage,
+        "description": defaultDesc,
+        "telephone": "+8801857045449",
+        "email": "infobigbazar01@gmail.com",
+        "priceRange": "৳৳",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba",
+          "addressLocality": "Mirsharai",
+          "addressRegion": "Chattogram",
+          "postalCode": "4327",
+          "addressCountry": "BD"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 22.8984,
+          "longitude": 91.5303
+        },
+        "areaServed": [
+          { "@type": "AdministrativeArea", "name": "Mirsharai Upazila" },
+          { "@type": "AdministrativeArea", "name": "Chattogram Division" },
+          { "@type": "Country", "name": "Bangladesh" }
+        ],
+        "sameAs": [
+          "https://www.facebook.com/100063541603515",
+          "https://www.instagram.com/big_bazar_25",
+          "https://www.tiktok.com/@big.bazar2"
+        ],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Family Fashion & Bridal Catalog",
+          "itemListElement": [
+            { "@type": "OfferCatalog", "name": "Biyer Sajani (Bridal & Groom Wear)" },
+            { "@type": "OfferCatalog", "name": "Ladies Modest Fashion (Abayas, Borkas, Hijabs)" },
+            { "@type": "OfferCatalog", "name": "Kids Wear (0-15 Years)" },
+            { "@type": "OfferCatalog", "name": "Menswear (Panjabis, Suits, Polos)" },
+            { "@type": "OfferCatalog", "name": "Home Decor & Goj Kapor" }
+          ]
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${domain}/#faq`,
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Where is Big Bazar located in Baraiyarhat?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Big Bazar is located on the 2nd Floor of Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram, Bangladesh."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is Biyer Sajani at Big Bazar?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Biyer Sajani (বিয়ের সাজনি) is Big Bazar's signature bridal and groom section, featuring Karchupi Jamdani, Dhakai Jamdani, Katan, Jorjet, Sararas, Gararas for brides, and Sherwanis, Panjabis, Blazers, and Suits for grooms."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Big Bazar offer Free Home Delivery in Mirsharai?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! Residents of Mirsharai Upazila enjoy 100% Free Home Delivery on all online orders. Cash on Delivery is available nationwide across Bangladesh."
+            }
+          }
+        ]
+      }
+    ]
+  };
+
+  // Cloudflare HTMLRewriter API transformation
+  const rewriter = new HTMLRewriter()
+    .on('title', {
+      element(element) {
+        element.setInnerContent(pageTitle);
+      }
+    })
+    .on('meta[name="description"]', {
+      element(element) {
+        element.setAttribute('content', pageDesc);
+      }
+    })
+    .on('head', {
+      element(element) {
+        element.append(`<link rel="canonical" href="${canonicalUrl}" />`, { html: true });
+        element.append(`<meta property="og:title" content="${pageTitle}" />`, { html: true });
+        element.append(`<meta property="og:description" content="${pageDesc}" />`, { html: true });
+        element.append(`<meta property="og:image" content="${ogImage}" />`, { html: true });
+        element.append(`<meta property="og:url" content="${canonicalUrl}" />`, { html: true });
+        element.append(`<meta property="og:type" content="website" />`, { html: true });
+        element.append(`<meta property="og:site_name" content="Big Bazar Baraiyarhat" />`, { html: true });
+        element.append(`<meta name="twitter:card" content="summary_large_image" />`, { html: true });
+        element.append(`<meta name="twitter:title" content="${pageTitle}" />`, { html: true });
+        element.append(`<meta name="twitter:description" content="${pageDesc}" />`, { html: true });
+        element.append(`<meta name="twitter:image" content="${ogImage}" />`, { html: true });
+        element.append(`<script type="application/ld+json">${JSON.stringify(jsonLdGraph)}</script>`, { html: true });
+      }
+    });
+
+  return rewriter.transform(response);
+}

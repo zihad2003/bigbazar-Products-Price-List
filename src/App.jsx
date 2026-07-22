@@ -18,6 +18,7 @@ import CustomerMenu from './components/CustomerMenu';
 import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
+import SEOHead from './components/SEOHead';
 import { bigBazarApi } from './api/client';
 
 function ScrollToTop() {
@@ -98,6 +99,7 @@ function PublicLayout() {
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <SEOHead />
       <TrackOrderModal isOpen={isTrackOpen} onClose={() => handleCloseModal(setIsTrackOpen)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => handleCloseModal(setIsCartOpen)} />
       <LoginModal isOpen={isAuthOpen} onClose={() => handleCloseModal(setIsAuthOpen)} />
