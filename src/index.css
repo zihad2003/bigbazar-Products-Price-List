@@ -134,14 +134,14 @@ h4,
     transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translate3d(-50%, 0, 0);
+    transform: translate3d(-100%, 0, 0);
   }
 }
 
 .animate-marquee {
   display: flex;
-  width: max-content;
-  animation: tickerMarquee 25s linear infinite;
+  flex-shrink: 0;
+  animation: tickerMarquee 35s linear infinite;
   will-change: transform;
 }
 

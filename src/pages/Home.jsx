@@ -307,7 +307,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
+      <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Maintenance Notice */}
         {/* No Products Found */}
         {/* Smart Proportional Empty State */}
@@ -383,7 +383,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-4 md:gap-6">
             {loading && page === 0 ? (
               Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
             ) : (
