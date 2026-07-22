@@ -78,7 +78,9 @@ app.use('*', async (c, next) => {
   const isAllowed = !origin || 
                    origin.includes('localhost') || 
                    origin === 'https://bigbazarbariarhat.pages.dev' || 
-                   origin.endsWith('.bigbazarbariarhat.pages.dev');
+                   origin.endsWith('.bigbazarbariarhat.pages.dev') ||
+                   origin === 'https://bigbazarbaraiyarhat.pages.dev' || 
+                   origin.endsWith('.bigbazarbaraiyarhat.pages.dev');
   
   if (isAllowed) {
     return cors({

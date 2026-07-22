@@ -64,7 +64,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                             </div>
                             <div className="flex items-center gap-3">
                                 <MapPin size={14} className="text-zinc-400 text-left shrink-0" />
-                                <span className="text-justify leading-tight">Bariarhat, Mirsharai, Chattogram</span>
+                                <span className="text-justify leading-tight">Baraiyarhat, Mirsharai, Chattogram</span>
                             </div>
                         </div>
 

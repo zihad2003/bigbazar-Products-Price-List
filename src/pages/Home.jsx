@@ -4,6 +4,7 @@ import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkle
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import ProductModal from '../components/modals/ProductModal';
+import TickerAnnouncement from '../components/TickerAnnouncement';
 import { bigBazarApi, API_URL } from '../api/client';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -291,6 +292,9 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           <div className="w-full max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px] overflow-hidden bg-neutral-950 relative">
             <HeroSlider slides={siteSettings.main_slides} />
           </div>
+          {siteSettings.ticker_announcement?.position === 'bottom_slider' && (
+            <TickerAnnouncement ticker={siteSettings.ticker_announcement} />
+          )}
         </section>
       )}
 
@@ -319,8 +323,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                 </h2>
                 <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
                   {language === 'bn'
-                    ? 'দুঃখিত, এই ক্যাটাগরি বা সার্চের বিপরীতে কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।'
-                    : 'Sorry, no items matched your selected category or search query. Try exploring all collections or clearing your search filter.'}
+                    ? 'দুঃখিত,কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।'
+                    : 'Sorry,no items matched. Try exploring all collections or clearing your search filter.'}
                 </p>
               </div>
               <button
@@ -374,7 +378,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-4">
               <h3 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
-                {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'প্রিমিয়াম কালেকশন' : 'Selective Edits') : selectedCategory)}
+                {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'নতুন কালেকশন' : 'New Arrival') : selectedCategory)}
               </h3>
             </div>
           </div>
@@ -428,7 +432,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             </div>
             <div className="space-y-2">
               <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar</p>
-              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic"> Bariarhat Mirsharai Chattagram</p>
+              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic"> Baraiyarhat Mirsharai Chattagram</p>
             </div>
           </div>
         </section>

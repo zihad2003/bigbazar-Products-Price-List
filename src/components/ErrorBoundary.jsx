@@ -34,6 +34,14 @@ class ErrorBoundary extends React.Component {
                             <p className="text-xs md:text-sm text-zinc-400 font-medium leading-relaxed">
                                 A temporary connection error occurred. Please try again or refresh the page.
                             </p>
+                            {this.state.error && (
+                                <div className="text-left bg-black/80 p-3 rounded-xl border border-red-500/30 overflow-x-auto text-[11px] font-mono text-rose-300 max-h-36">
+                                    <p className="font-bold text-red-400">{String(this.state.error?.message || this.state.error)}</p>
+                                    {this.state.error?.stack && (
+                                        <pre className="text-[9px] text-zinc-500 mt-1 whitespace-pre-wrap">{this.state.error.stack}</pre>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex flex-col gap-3 pt-2">

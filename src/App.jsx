@@ -17,6 +17,7 @@ import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
 import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
+import TickerAnnouncement from './components/TickerAnnouncement';
 import { bigBazarApi } from './api/client';
 
 function ScrollToTop() {
@@ -34,7 +35,9 @@ function PublicLayout() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [tickerSettings, setTickerSettings] = useState(null);
   const location = useLocation();
+
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
   const isCheckoutPage = location.pathname === '/checkout';
@@ -80,7 +83,18 @@ function PublicLayout() {
         sessionStorage.setItem('visited', 'true');
       });
     }
+
+    // Fetch site settings for ticker announcement
+    bigBazarApi.from('site_settings').select('*').then(({ data }) => {
+      if (data) {
+        const isArray = Array.isArray(data);
+        const ticker = isArray ? data.find(s => s.key === 'ticker_announcement')?.value : data.ticker_announcement;
+        if (ticker) setTickerSettings(ticker);
+      }
+    });
   }, []);
+
+  const isTopTickerActive = tickerSettings?.enabled && tickerSettings?.text && (!tickerSettings?.position || tickerSettings?.position === 'top_navbar');
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -95,6 +109,9 @@ function PublicLayout() {
       />
 
       <header className="fixed top-0 left-0 right-0 z-[1010] flex flex-col">
+        {isTopTickerActive && (
+          <TickerAnnouncement ticker={tickerSettings} />
+        )}
         <Navbar
           selectedCategory={category}
           onSelectCategory={setCategory}
@@ -105,7 +122,7 @@ function PublicLayout() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow pt-16 md:pt-20 pb-24 md:pb-0">
+      <main className={`flex-grow ${isTopTickerActive ? 'pt-24 md:pt-28' : 'pt-16 md:pt-20'} pb-24 md:pb-0`}>
         {isStaticPage ? (
           <StaticPage path={location.pathname} />
         ) : isCheckoutPage ? (
@@ -120,6 +137,7 @@ function PublicLayout() {
             setSelectedCategory={setCategory}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            tickerSettings={tickerSettings}
           />
         )}
       </main>

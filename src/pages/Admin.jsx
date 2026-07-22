@@ -6,7 +6,7 @@ import {
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -38,6 +38,8 @@ export default function Admin() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
   const [pendingCodes, setPendingCodes] = useState([]);
+  const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'compressing' | 'uploading'
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [formAlert, setFormAlert] = useState(null); // { title, message, type: 'error' | 'success' }
   const [customSizeInput, setCustomSizeInput] = useState('');
 
@@ -289,6 +291,13 @@ export default function Admin() {
         message_en: 'Dear customer, thanks for staying with Big Bazar! Currently, due to a high volume of messages, replies may be delayed. To make your shopping easier and faster, please order directly from the website.',
         footer_bn: 'Website থেকে অর্ডার করুন — দ্রুত ও সহজ!',
         footer_en: 'Order from Website — Fast & Easy!'
+      },
+      ticker_announcement: {
+        enabled: false,
+        text: '',
+        position: 'top_navbar',
+        bg_color: '#ce112d',
+        speed: 25
       }
     };
 
@@ -306,10 +315,12 @@ export default function Admin() {
       const contact = getValue('contact_info');
       const slides = getValue('main_slides');
       const announcement = getValue('announcement');
+      const ticker = getValue('ticker_announcement');
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
       if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
       if (announcement) settings.announcement = announcement;
+      if (ticker) settings.ticker_announcement = ticker;
       const themeData = getValue('site_theme');
       if (themeData?.mode) setSiteTheme(themeData.mode);
       const catVis = getValue('category_visibility');
@@ -324,8 +335,12 @@ export default function Admin() {
       const res = await fetch(`${API_URL}/api/auth/pending-codes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (!res.ok) {
+        setPendingCodes([]);
+        return;
+      }
       const json = await res.json();
-      setPendingCodes(json.codes || []);
+      setPendingCodes(Array.isArray(json?.codes) ? json.codes : []);
     } catch { setPendingCodes([]); }
   };
 
@@ -430,12 +445,7 @@ export default function Admin() {
     const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'hero_banner', value: siteSettings.hero_banner }, { onConflict: 'key' });
     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
     else setAlertModal({ isOpen: true, title: 'Success', message: "Hero Banner Updated!", type: 'success' });
-    setLoading(false);
   };
-
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
-  // 'idle' | 'compressing' | 'uploading'
-  const [uploadStatus, setUploadStatus] = useState('idle');
 
   /**
    * Upload an already compressed/processed File to the backend.
@@ -856,7 +866,10 @@ export default function Admin() {
                 onClick={() => {
                   setActiveTab(tab.id);
                   setIsMobileMenuOpen(false);
-                  if (tab.id === 'settings') fetchPendingCodes();
+                  if (tab.id === 'settings') {
+                    fetchSiteSettings();
+                    fetchPendingCodes();
+                  }
                 }}
                 className={`w-full flex items-center gap-3.5 p-3.5 rounded-2xl text-[11px] font-bold tracking-wider transition-all duration-300 ${tab.special && activeTab !== tab.id ? 'border-2 border-dashed border-[#ce112d]/40 text-[#ce112d] hover:bg-[#ce112d]/10 hover:border-[#ce112d]' : activeTab === tab.id ? 'bg-gradient-to-r from-[#ce112d] to-[#ff1c3a] text-white shadow-xl shadow-red-900/30 ring-1 ring-white/10' : 'hover:bg-white/[0.03] text-zinc-500 hover:text-zinc-200'}`}
               >
@@ -1222,6 +1235,180 @@ export default function Admin() {
                 >
                   {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
                   <span>{loading ? 'Saving...' : 'Save Announcement'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Moving Text Announcement Ticker Section */}
+            <div className="space-y-8 pt-12 border-t border-white/5">
+              <div>
+                <h3 className="text-xl font-bold uppercase tracking-tight text-white">
+                  Scrolling Announcement <span className="text-[#ce112d]">Ticker</span>
+                </h3>
+                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">
+                  Create a minimal moving text strip (e.g. Free Delivery for Mirsharai, 10% OFF, etc.)
+                </p>
+              </div>
+
+              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-8">
+                {/* Enable/Disable Toggle */}
+                <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
+                      <Sparkles size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white uppercase tracking-wider">Enable Moving Ticker</p>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Show left-to-right animated text strip</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSiteSettings({
+                      ...siteSettings,
+                      ticker_announcement: { 
+                        ...siteSettings.ticker_announcement, 
+                        enabled: !siteSettings.ticker_announcement?.enabled 
+                      }
+                    })}
+                    className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
+                  >
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.ticker_announcement?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+
+                {/* Text Content Input */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] px-1 block">
+                    Announcement Text (বিজ্ঞপ্তির লেখা)
+                  </label>
+                  <input
+                    value={siteSettings.ticker_announcement?.text || ''}
+                    placeholder="Enter your announcement (e.g. 🎉 Free Delivery for Mirsharai on orders over 1000 BDT! | 10% OFF on Eid Collection)"
+                    onChange={e => setSiteSettings({
+                      ...siteSettings,
+                      ticker_announcement: { ...siteSettings.ticker_announcement, text: e.target.value }
+                    })}
+                    className="w-full bg-black/40 border border-white/5 h-14 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                  <p className="text-[10px] text-zinc-500 italic px-1">
+                    * Leave empty or disable toggle to hide the ticker from the website.
+                  </p>
+                </div>
+
+                {/* Display Position Selector */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] px-1 block">
+                    Display Position (প্রদর্শনের স্থান)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      { id: 'top_navbar', label: 'Top of Page (On Navbar)', desc: 'Sticks above the site header across all pages' },
+                      { id: 'bottom_slider', label: 'Bottom of Hero Slider', desc: 'Displays right below main slider on home page' }
+                    ].map(pos => (
+                      <button
+                        key={pos.id}
+                        type="button"
+                        onClick={() => setSiteSettings({
+                          ...siteSettings,
+                          ticker_announcement: { ...siteSettings.ticker_announcement, position: pos.id }
+                        })}
+                        className={`p-4 rounded-2xl border text-left transition-all ${
+                          (siteSettings.ticker_announcement?.position || 'top_navbar') === pos.id 
+                            ? 'bg-[#ce112d]/10 border-[#ce112d] text-white' 
+                            : 'bg-black/40 border-white/5 text-zinc-400 hover:border-white/10'
+                        }`}
+                      >
+                        <p className="text-xs font-bold uppercase tracking-wider">{pos.label}</p>
+                        <p className="text-[10px] opacity-60 mt-1">{pos.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color & Speed Customization */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                  {/* Background Color */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] block">
+                      Background Theme Color
+                    </label>
+                    <div className="flex items-center gap-3">
+                      {[
+                        { color: '#ce112d', label: 'Red' },
+                        { color: '#18181b', label: 'Dark' },
+                        { color: '#059669', label: 'Green' },
+                        { color: '#d97706', label: 'Gold' },
+                        { color: '#4f46e5', label: 'Indigo' }
+                      ].map(c => (
+                        <button
+                          key={c.color}
+                          type="button"
+                          onClick={() => setSiteSettings({
+                            ...siteSettings,
+                            ticker_announcement: { ...siteSettings.ticker_announcement, bg_color: c.color }
+                          })}
+                          className={`w-9 h-9 rounded-xl transition-transform ${
+                            (siteSettings.ticker_announcement?.bg_color || '#ce112d') === c.color 
+                              ? 'scale-110 ring-2 ring-white shadow-lg' 
+                              : 'opacity-70 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: c.color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Speed */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] block">
+                      Scroll Speed
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[
+                        { speed: 15, label: 'Fast (15s)' },
+                        { speed: 25, label: 'Normal (25s)' },
+                        { speed: 40, label: 'Slow (40s)' }
+                      ].map(s => (
+                        <button
+                          key={s.speed}
+                          type="button"
+                          onClick={() => setSiteSettings({
+                            ...siteSettings,
+                            ticker_announcement: { ...siteSettings.ticker_announcement, speed: s.speed }
+                          })}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                            (siteSettings.ticker_announcement?.speed || 25) === s.speed 
+                              ? 'bg-white text-black border-white' 
+                              : 'bg-black/40 text-zinc-400 border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex pt-4">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ 
+                      key: 'ticker_announcement', 
+                      value: siteSettings.ticker_announcement 
+                    }, { onConflict: 'key' });
+                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                    else setAlertModal({ isOpen: true, title: 'Success', message: "Ticker Announcement Saved Successfully!", type: 'success' });
+                    setLoading(false);
+                  }}
+                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                >
+                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
+                  <span>{loading ? 'Saving...' : 'Save Ticker Announcement'}</span>
                 </button>
               </div>
             </div>

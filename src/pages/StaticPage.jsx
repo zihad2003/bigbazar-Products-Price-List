@@ -197,7 +197,7 @@ const pageData = {
         
         <div className="p-8 bg-zinc-50 border border-zinc-150 rounded-3xl space-y-4">
           <h4 className="text-zinc-900 font-bold text-base md:text-lg flex items-center gap-2">
-            <ShoppingBag className="text-[#ce112d]" size={18} /> বিগ বাজার বারইয়ারহাট শোরুম
+            <ShoppingBag className="text-[#ce112d]" size={18} /> বিগ বাজার বারইয়ারহাট শোরুম
           </h4>
           <p className="text-zinc-500 text-xs md:text-sm leading-relaxed font-semibold">
             বারইয়ারহাট পৌরসভা বাজার রোড, মীরসরাই উপজেলা, চট্টগ্রাম বিভাগ, বাংলাদেশ।
