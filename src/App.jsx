@@ -40,12 +40,24 @@ function PublicLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    const hasTracked = sessionStorage.getItem('bb_visitor_tracked');
-    if (!hasTracked) {
-      fetch(`${API_URL}/api/analytics/track-visitor`, { method: 'POST' })
-        .then(() => sessionStorage.setItem('bb_visitor_tracked', 'true'))
-        .catch(() => {});
+    let sessionId = sessionStorage.getItem('bb_session_id');
+    const isNewSession = !sessionId;
+    if (!sessionId) {
+      sessionId = 's-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now();
+      sessionStorage.setItem('bb_session_id', sessionId);
     }
+
+    const sendPing = (isNew) => {
+      fetch(`${API_URL}/api/analytics/ping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, is_new: isNew })
+      }).catch(() => {});
+    };
+
+    sendPing(isNewSession);
+    const timer = setInterval(() => sendPing(false), 30000);
+    return () => clearInterval(timer);
   }, []);
 
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];

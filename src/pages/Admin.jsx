@@ -37,6 +37,7 @@ export default function Admin() {
   const [siteTheme, setSiteTheme] = useState('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorCount, setVisitorCount] = useState(0);
+  const [analyticsStats, setAnalyticsStats] = useState({ online_now: 1, today_count: 0, total_count: 0 });
   const [pendingCodes, setPendingCodes] = useState([]);
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle' | 'compressing' | 'uploading'
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
@@ -82,6 +83,23 @@ export default function Admin() {
     }
   });
 
+  const fetchAnalyticsStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/analytics/stats`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setAnalyticsStats({
+            online_now: json.online_now || 1,
+            today_count: json.today_count || 0,
+            total_count: json.total_count || 0
+          });
+          if (json.total_count) setVisitorCount(json.total_count);
+        }
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     bigBazarApi.auth.getSession().then(({ data: { session } }) => setSession(session));
     bigBazarApi.auth.onAuthStateChange((_event, session) => setSession(session));
@@ -89,14 +107,11 @@ export default function Admin() {
     fetchOrders();
     fetchReviews();
     fetchSiteSettings();
+    fetchAnalyticsStats();
 
-    // Fetch real-time site visitor count
-    fetch(`${API_URL}/api/analytics/visitor-count`)
-      .then(res => res.json())
-      .then(json => {
-        if (typeof json?.count === 'number') setVisitorCount(json.count);
-      })
-      .catch(() => {});
+    // Refresh live visitor analytics every 10 seconds while admin dashboard is open
+    const statsTimer = setInterval(fetchAnalyticsStats, 10000);
+    return () => clearInterval(statsTimer);
   }, []);
 
   const fetchProducts = async () => {
@@ -2213,9 +2228,25 @@ export default function Admin() {
                       return acc + adv;
                     }, 0).toLocaleString()}
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-500 py-1.5 px-4 rounded-full border border-blue-500/20">
+                  {/* Live Active Online Now Badge */}
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 py-1.5 px-4 rounded-full border border-emerald-500/20 shadow-sm">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>{analyticsStats.online_now || 1} Online Now</span>
+                  </div>
+
+                  {/* Today's 24h Visitors Badge */}
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400 py-1.5 px-4 rounded-full border border-sky-500/20 shadow-sm">
+                    <Clock size={14} />
+                    <span>{(analyticsStats.today_count || 0).toLocaleString()} Today</span>
+                  </div>
+
+                  {/* Lifetime Total Visitors Badge */}
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 py-1.5 px-4 rounded-full border border-indigo-500/20 shadow-sm">
                     <Users size={14} />
-                    {visitorCount} Visitors
+                    <span>{(analyticsStats.total_count || visitorCount || 0).toLocaleString()} Total</span>
                   </div>
                 </div>
               </div>

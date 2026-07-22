@@ -642,47 +642,113 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 });
 
 // ============================================
-// VISITOR ANALYTICS
+// VISITOR ANALYTICS (3-TIER: LIVE ONLINE, TODAY, LIFETIME TOTAL)
 // ============================================
-app.post('/analytics/track-visitor', async (c) => {
-  const conn = getDb(c.env);
-  try {
-    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
-    let currentCount = 0;
-    if (res.length > 0) {
-      try {
-        currentCount = parseInt(typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value) || 0;
-      } catch (e) {
-        currentCount = parseInt(res[0].value) || 0;
-      }
+const activeSessions = new Map();
+
+function getTodayKey() {
+  const d = new Date(Date.now() + 6 * 3600 * 1000); // UTC+6 (Bangladesh Time)
+  return `site_visitors_${d.toISOString().split('T')[0]}`;
+}
+
+app.post('/analytics/ping', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const sessionId = body.session_id || c.req.header('x-session-id') || 'anon-' + Math.random();
+  const isNewSession = !!body.is_new;
+
+  const now = Date.now();
+  activeSessions.set(sessionId, now);
+
+  // Periodic cleanup of stale sessions (> 60s)
+  if (Math.random() < 0.1) {
+    for (const [sId, lastSeen] of activeSessions.entries()) {
+      if (now - lastSeen > 60000) activeSessions.delete(sId);
     }
-    const newCount = currentCount + 1;
-    await conn.execute(
-      "INSERT INTO site_settings (`key`, value) VALUES ('site_visitors', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-      [JSON.stringify(newCount), JSON.stringify(newCount)]
-    );
-    return c.json({ success: true, count: newCount });
-  } catch (err) {
-    return c.json({ error: err.message }, 500);
   }
+
+  if (isNewSession) {
+    const conn = getDb(c.env);
+    const todayKey = getTodayKey();
+    try {
+      // 1. Increment Today's Count
+      const tRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = ?", [todayKey]);
+      let todayCount = 0;
+      if (tRes.length > 0) {
+        try { todayCount = parseInt(typeof tRes[0].value === 'string' ? JSON.parse(tRes[0].value) : tRes[0].value) || 0; }
+        catch (e) { todayCount = parseInt(tRes[0].value) || 0; }
+      }
+      const newToday = todayCount + 1;
+      await conn.execute(
+        "INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+        [todayKey, JSON.stringify(newToday)]
+      );
+
+      // 2. Increment Lifetime Total Count
+      const totRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
+      let totalCount = 0;
+      if (totRes.length > 0) {
+        try { totalCount = parseInt(typeof totRes[0].value === 'string' ? JSON.parse(totRes[0].value) : totRes[0].value) || 0; }
+        catch (e) { totalCount = parseInt(totRes[0].value) || 0; }
+      }
+      const newTotal = totalCount + 1;
+      await conn.execute(
+        "INSERT INTO site_settings (`key`, value) VALUES ('site_visitors', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+        [JSON.stringify(newTotal)]
+      );
+    } catch (err) {
+      console.error('Analytics ping DB update error:', err);
+    }
+  }
+
+  return c.json({ success: true });
+});
+
+app.get('/analytics/stats', async (c) => {
+  const now = Date.now();
+  let onlineNow = 0;
+  for (const [sId, lastSeen] of activeSessions.entries()) {
+    if (now - lastSeen <= 60000) onlineNow++;
+    else activeSessions.delete(sId);
+  }
+
+  const conn = getDb(c.env);
+  const todayKey = getTodayKey();
+  let todayCount = 0;
+  let totalCount = 0;
+
+  try {
+    const res = await conn.execute(
+      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors')",
+      [todayKey]
+    );
+    res.forEach(r => {
+      let val = 0;
+      try { val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0; }
+      catch (e) { val = parseInt(r.value) || 0; }
+
+      if (r.key === todayKey) todayCount = val;
+      if (r.key === 'site_visitors') totalCount = val;
+    });
+  } catch (err) {
+    console.error('Analytics stats fetch error:', err);
+  }
+
+  if (onlineNow === 0) onlineNow = 1;
+
+  return c.json({
+    success: true,
+    online_now: onlineNow,
+    today_count: todayCount,
+    total_count: totalCount
+  });
+});
+
+app.post('/analytics/track-visitor', async (c) => {
+  return c.redirect('/api/analytics/stats');
 });
 
 app.get('/analytics/visitor-count', async (c) => {
-  const conn = getDb(c.env);
-  try {
-    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
-    let count = 0;
-    if (res.length > 0) {
-      try {
-        count = parseInt(typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value) || 0;
-      } catch (e) {
-        count = parseInt(res[0].value) || 0;
-      }
-    }
-    return c.json({ success: true, count });
-  } catch (err) {
-    return c.json({ error: err.message }, 500);
-  }
+  return c.redirect('/api/analytics/stats');
 });
 
 // ============================================
