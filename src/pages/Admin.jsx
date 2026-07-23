@@ -58,6 +58,34 @@ export default function Admin() {
     }, 1200);
   };
 
+  const copyFullOrderDetails = (order) => {
+    if (!order) return;
+    const charge = parseFloat(order.delivery_charge) || 0;
+    const advance = order.is_advance_paid
+      ? (order.is_exclusive_order ? 500 : (order.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
+      : 0;
+    const total = Number(order.total_amount) || 0;
+    const due = order.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+
+    const text = `📦 BIG BAZAR ORDER DETAILS
+━━━━━━━━━━━━━━━━━━━━
+Order Ref: #${order.id.toString().slice(-6).toUpperCase()}
+Date: ${new Date(order.created_at).toLocaleDateString()}
+Customer: ${order.customer_name || 'N/A'}
+Phone: ${order.customer_phone || 'N/A'}
+Address: ${order.customer_address || 'N/A'}
+Area: ${order.delivery_area || 'N/A'}
+━━━━━━━━━━━━━━━━━━━━
+Product(s): ${order.product_name || 'N/A'}
+${order.size ? `Size: ${order.size}\n` : ''}${order.color ? `Color: ${order.color}\n` : ''}Total Price: ৳${total.toLocaleString()}
+Advance Paid: ৳${advance.toLocaleString()}
+Balance Due: ৳${due.toLocaleString()}
+Payment Ref: ${order.last_four_digits || 'COD'}
+${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
+
+    copyToClipboard(text, "Order Details");
+  };
+
   const [formStep, setFormStep] = useState(1);
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
@@ -2190,13 +2218,20 @@ export default function Admin() {
                     </div>
 
                     {/* Quick Move Action */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <a href={`tel:${order.customer_phone}`} className="h-12 flex items-center justify-center bg-blue-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-wide border border-blue-400/20 shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all">Call Customer</a>
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      <a href={`tel:${order.customer_phone}`} className="h-11 flex items-center justify-center bg-blue-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wide border border-blue-400/20 shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all">Call</a>
                       <button
-                        onClick={() => updateOrderStatus(order.id, 'Shipped')}
-                        className="h-12 flex items-center justify-center bg-yellow-500 text-black rounded-2xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-yellow-500/10 active:scale-[0.98] transition-all"
+                        onClick={(e) => { e.stopPropagation(); copyFullOrderDetails(order); }}
+                        className="h-11 flex items-center justify-center bg-zinc-800 text-white hover:bg-[#ce112d] rounded-xl text-[10px] font-bold uppercase tracking-wide border border-white/10 active:scale-[0.98] transition-all gap-1"
+                        title="Copy Order Details"
                       >
-                        Mark Shipped
+                        <Copy size={12} /> Copy
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, 'Shipped'); }}
+                        className="h-11 flex items-center justify-center bg-yellow-500 text-black rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-yellow-500/10 active:scale-[0.98] transition-all"
+                      >
+                        Shipped
                       </button>
                     </div>
                   </div>
@@ -2347,6 +2382,13 @@ export default function Admin() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => copyFullOrderDetails(selectedOrder)}
+                        className="flex items-center gap-1.5 px-4 h-11 bg-[#ce112d]/10 hover:bg-[#ce112d] text-[#ce112d] hover:text-white rounded-2xl border border-[#ce112d]/20 active:scale-95 transition-all text-[11px] font-black uppercase tracking-wider shadow-lg shadow-red-900/20"
+                        title="Copy Full Order Details"
+                      >
+                        <Copy size={16} /> Copy Order
+                      </button>
                       <button onClick={() => { deleteOrder(selectedOrder.id); setSelectedOrder(null); }} className="w-11 h-11 flex items-center justify-center bg-red-500/5 text-red-500/50 rounded-2xl border border-red-500/10 active:scale-95 transition-all hover:bg-red-500 hover:text-white">
                         <Trash2 size={18} />
                       </button>
@@ -2716,6 +2758,13 @@ export default function Admin() {
                         </div>
                       </div>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => copyFullOrderDetails(selectedOrder)}
+                          className="flex items-center gap-1.5 px-4 h-10 bg-[#ce112d]/10 hover:bg-[#ce112d] text-[#ce112d] hover:text-white rounded-xl border border-[#ce112d]/20 active:scale-95 transition-all text-xs font-black uppercase tracking-wider shadow-lg shadow-red-900/20"
+                          title="Copy Full Order Details"
+                        >
+                          <Copy size={14} /> Copy Order Details
+                        </button>
                         <button onClick={() => deleteOrder(selectedOrder.id)} className="w-10 h-10 flex items-center justify-center bg-red-500/5 text-red-500/50 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/10">
                           <Trash2 size={16} />
                         </button>
