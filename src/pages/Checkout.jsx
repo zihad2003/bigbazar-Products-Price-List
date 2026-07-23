@@ -5,6 +5,7 @@ import { bigBazarApi } from '../api/client';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import BanglaQRPayment from '../components/BanglaQRPayment';
 
 export default function Checkout() {
     const { t, language } = useLanguage();
@@ -23,6 +24,7 @@ export default function Checkout() {
     const errorRef = useRef(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [paymentOption, setPaymentOption] = useState('advance');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -190,7 +192,7 @@ export default function Checkout() {
                         ? (formData.paymentMethod === 'bkash'
                             ? `bKash: ${formData.senderNumber}`
                             : formData.paymentMethod === 'bangla_qr'
-                                ? `Bangla QR: ${formData.senderNumber}`
+                                ? `Bangla QR (${paymentOption === 'full' ? 'Full ৳' + finalTotal : 'Advance ৳' + advanceAmount}): ${formData.senderNumber}`
                                 : `COD: ${formData.senderNumber}`)
                         : (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
@@ -395,21 +397,14 @@ export default function Checkout() {
                         </div>
 
                         {formData.paymentMethod === 'bangla_qr' && (
-                            <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-4">
-                                <p className="text-[11px] leading-relaxed font-bold text-neutral-600">
-                                    {language === 'bn'
-                                        ? <>অগ্রিম পেমেন্ট <strong className="text-[#ce112d]">৳{advanceAmount}</strong> নিচের বাংলা কিউআর কোড স্ক্যান করে অথবা ব্যাংকে ট্রান্সফার করুন। আমাদের ব্যাংক অ্যাকাউন্ট নম্বর : 1081010373801 (City Bank)। বাকি টাকা পণ্য হাতে পেয়ে পরিশোধ করবেন।</>
-                                        : <>Scan the Bangla QR code below or transfer the advance amount <strong className="text-[#ce112d]">৳{advanceAmount}</strong> to City Bank A/C: 1081010373801. Pay the rest on delivery.</>}
-                                </p>
-                                <div className="flex justify-center bg-white p-2.5 rounded-xl border border-neutral-200 max-w-[180px] mx-auto shadow-sm">
-                                    <img src="/bangla-qr.png" alt="Bangla QR" className="w-full h-auto object-contain" />
-                                </div>
-                                <div className="text-center font-bold text-[10px] text-neutral-500 uppercase tracking-widest">
-                                    {language === 'bn' ? 'মার্চেন্ট নম্বর: 01857045449' : 'Merchant No: 01857045449'}
-                                </div>
-                                <input type="text" name="senderNumber" placeholder={language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম / ট্রানজেকশন আইডি" : "Sender account name / Txn ID"} value={formData.senderNumber} onChange={handleInputChange}
-                                    className="w-full border border-neutral-200 rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold" />
-                            </div>
+                            <BanglaQRPayment
+                                advanceAmount={advanceAmount}
+                                finalTotal={finalTotal}
+                                paymentOption={paymentOption}
+                                setPaymentOption={setPaymentOption}
+                                senderNumber={formData.senderNumber}
+                                onSenderNumberChange={handleInputChange}
+                            />
                         )}
 
                         {formData.paymentMethod !== 'bangla_qr' && needsAdvancePayment && (

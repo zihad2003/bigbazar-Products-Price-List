@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Package } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Package, QrCode } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../../data/bdLocations';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import BanglaQRPayment from '../BanglaQRPayment';
 
 const MultiOrderModal = ({ isOpen, onClose }) => {
     const { t, language } = useLanguage();
@@ -14,6 +15,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [paymentOption, setPaymentOption] = useState('advance');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -83,6 +85,10 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
             setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
+        if (formData.paymentMethod === 'bangla_qr' && !formData.senderNumber) {
+            setError(language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম অথবা ট্রানজেকশন আইডি দিন।" : "Please enter the sender account name or transaction ID.");
+            return;
+        }
         if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
             const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
                           (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
@@ -140,7 +146,13 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     delivery_area: deliveryInfo.area,
                     delivery_charge: deliveryCharge,
                     total_amount: finalTotal,
-                    last_four_digits: formData.senderNumber || (formData.paymentMethod === 'cod' ? 'COD' : ''),
+                    last_four_digits: formData.senderNumber
+                        ? (formData.paymentMethod === 'bkash'
+                            ? `bKash: ${formData.senderNumber}`
+                            : formData.paymentMethod === 'bangla_qr'
+                                ? `Bangla QR (${paymentOption === 'full' ? 'Full ৳' + finalTotal : 'Advance ৳' + advanceAmount}): ${formData.senderNumber}`
+                                : `COD: ${formData.senderNumber}`)
+                        : (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
                     size: combinedSizes.substring(0, 250) || null,
                     color: combinedColors.substring(0, 250) || null,
@@ -359,22 +371,36 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 )}
 
                                 <div className="space-y-3">
-                                    <h4 className="text-[10px] font-black uppercase text-neutral-500 tracking-widest ml-1">💳 পেমেন্ট করার মাধ্যম</h4>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
+                                        💳 {language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}
+                                    </h4>
+                                    <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 'cod', label: 'ক্যাশ অন ডেলিভারি', icon: <Truck size={16} /> },
-                                            { id: 'bkash', label: 'বিকাশ পেমেন্ট', icon: <CreditCard size={16} /> }
+                                            { id: 'cod', label: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', icon: <Truck size={16} /> },
+                                            { id: 'bkash', label: language === 'bn' ? 'বিকাশ পেমেন্ট' : 'bKash Payment', icon: <CreditCard size={16} /> },
+                                            { id: 'bangla_qr', label: language === 'bn' ? 'বাংলা কিউআর' : 'Bangla QR', icon: <QrCode size={16} /> }
                                         ].map(m => (
-                                            <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id }))}
-                                                className={`p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'bg-neutral-900/50 border-white/5 opacity-60'}`}>
+                                            <button key={m.id} type="button" onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id, senderNumber: '' }))}
+                                                className={`p-3 rounded-xl border-2 transition-all text-center flex flex-col items-center gap-2 ${formData.paymentMethod === m.id ? 'border-[#ce112d] bg-[#ce112d]/10' : 'bg-neutral-900/50 border-white/5 opacity-60'}`}>
                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formData.paymentMethod === m.id ? 'bg-[#ce112d] text-white' : 'bg-neutral-900 text-neutral-500'}`}>{m.icon}</div>
-                                                <p className={`text-[9px] font-black uppercase ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
+                                                <p className={`text-[9px] font-black uppercase tracking-tight leading-none ${formData.paymentMethod === m.id ? 'text-[#ce112d]' : 'text-neutral-500'}`}>{m.label}</p>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                {needsAdvancePayment && (
+                                {formData.paymentMethod === 'bangla_qr' && (
+                                    <BanglaQRPayment
+                                        advanceAmount={advanceAmount}
+                                        finalTotal={finalTotal}
+                                        paymentOption={paymentOption}
+                                        setPaymentOption={setPaymentOption}
+                                        senderNumber={formData.senderNumber}
+                                        onSenderNumberChange={handleInputChange}
+                                    />
+                                )}
+
+                                {formData.paymentMethod !== 'bangla_qr' && needsAdvancePayment && (
                                     <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-4 space-y-3">
                                         <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>
                                             {formData.paymentMethod === 'cod'
