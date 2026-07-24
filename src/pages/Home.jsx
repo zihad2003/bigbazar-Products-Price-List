@@ -149,17 +149,15 @@ const ProductCard = ({ product, onClick }) => {
           <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[40px]">{product.name}</h4>
         </div>
         
-        <div className="mt-auto flex items-end justify-between gap-2">
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-2">
-              <span className="text-lg md:text-xl font-black text-[#ce112d]">৳ {price}</span>
-              {hasDiscount && (
-                <span className="text-[10px] md:text-[11px] text-neutral-400 line-through font-semibold">৳ {originalPrice}</span>
-              )}
-            </div>
+        <div className="mt-auto flex items-center justify-between gap-1.5 pt-1 min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0 overflow-hidden">
+            <span className="text-sm sm:text-base md:text-lg font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>
+            {hasDiscount && (
+              <span className="text-[10px] sm:text-[11px] text-neutral-400 line-through font-semibold whitespace-nowrap">৳{originalPrice}</span>
+            )}
           </div>
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-400 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm shrink-0">
-            <ArrowRight size={16} md:size={18} strokeWidth={2.5} />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-400 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm shrink-0">
+            <ArrowRight size={14} className="sm:w-4 sm:h-4" strokeWidth={2.5} />
           </div>
         </div>
       </div>
@@ -184,7 +182,7 @@ const ProductSkeleton = () => (
 
 const DEFAULT_SLIDES = [];
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 24;
 
 const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChange }) => {
   const { t, language } = useLanguage();
@@ -303,7 +301,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Elite Hero Section — full-width banner, DB-controlled */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
         <section className="w-full relative">
-          <div className="w-full max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px] overflow-hidden bg-neutral-950 relative">
+          <div className="w-full aspect-[16/9] sm:aspect-[21/9] min-h-[260px] sm:min-h-[360px] max-h-[580px] overflow-hidden bg-neutral-950 relative">
             <HeroSlider slides={siteSettings.main_slides} />
           </div>
           {siteSettings.ticker_announcement?.position === 'bottom_slider' && (
@@ -315,7 +313,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Hero loading skeleton */}
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full max-h-[62vh] h-[320px] sm:h-[400px] md:h-[460px] lg:h-[500px] bg-neutral-100 animate-pulse flex items-center justify-center">
+          <div className="w-full aspect-[16/9] sm:aspect-[21/9] min-h-[260px] sm:min-h-[360px] max-h-[580px] bg-neutral-100 animate-pulse flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
           </div>
         </section>
@@ -397,7 +395,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
             {loading && page === 0 ? (
               Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
             ) : (

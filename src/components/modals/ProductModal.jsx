@@ -176,10 +176,10 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   <span className="text-neutral-700 truncate max-w-[180px] md:max-w-[280px]">{product.name}</span>
                </div>
                <h2 className="text-2xl md:text-5xl font-black text-neutral-900 italic leading-tight">{product.name}</h2>
-               <div className="flex items-baseline gap-4">
-                  <span className="text-3xl md:text-6xl font-black text-[#ce112d] italic">৳ {price}</span>
+               <div className="flex flex-wrap items-baseline gap-3">
+                  <span className="text-2xl sm:text-3xl md:text-6xl font-black text-[#ce112d] italic whitespace-nowrap">৳{price}</span>
                   {hasDiscount && (
-                    <span className="text-lg md:text-xl text-neutral-300 line-through font-bold">৳ {originalPrice}</span>
+                    <span className="text-base sm:text-lg md:text-xl text-neutral-400 line-through font-bold whitespace-nowrap">৳{originalPrice}</span>
                   )}
                </div>
             </div>

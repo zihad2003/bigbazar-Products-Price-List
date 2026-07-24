@@ -211,10 +211,10 @@ export default function ProductDetails() {
                         <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 italic leading-tight uppercase tracking-tight">
                             {product.name}
                         </h1>
-                        <div className="flex items-baseline gap-3 pt-1">
-                            <span className="text-3xl md:text-4xl lg:text-5xl font-black text-[#ce112d]">৳ {price}</span>
+                        <div className="flex flex-wrap items-baseline gap-3 pt-1">
+                            <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>
                             {hasDiscount && (
-                                <span className="text-base md:text-lg lg:text-xl text-neutral-400 line-through font-semibold">৳ {originalPrice}</span>
+                                <span className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 line-through font-semibold whitespace-nowrap">৳{originalPrice}</span>
                             )}
                         </div>
                     </div>

@@ -114,7 +114,7 @@ export default function HeroSlider({ slides = [] }) {
           <img
             src={getOptimizedUrl(slide.image, mediaSizes.banner)}
             alt={slide.title || 'Collection Banner'}
-            className="w-full h-full object-cover object-center select-none bg-neutral-950"
+            className={`w-full h-full ${imageFitClass} object-top md:object-center select-none bg-neutral-950`}
             loading={current === 0 ? 'eager' : 'lazy'}
             fetchPriority={current === 0 ? 'high' : 'auto'}
             decoding="async"

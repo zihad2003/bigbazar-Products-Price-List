@@ -14,8 +14,8 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
     ];
 
     return (
-        <nav className="relative z-[1002] transition-all duration-500 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
-            <div className="w-full max-w-7xl mx-auto px-4 md:px-8">
+        <nav className="relative z-[1002] transition-all duration-500 bg-white/95 backdrop-blur-md shadow-sm border-b border-zinc-100/80">
+            <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
                 <div className="h-14 md:h-20 flex items-center justify-between gap-4 md:gap-8">
                     {/* Logo Section */}
                     <div className="shrink-0">
