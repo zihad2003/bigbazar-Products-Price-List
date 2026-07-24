@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingBag, Truck, CreditCard, ChevronLeft, Check, Play, Image as ImageIcon, Share2, Award, Zap, AlertCircle, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
-import ProductModalMedia from '../components/ProductModalMedia';
+import ProductGallery from '../components/ProductGallery';
+import ProductTabs from '../components/ProductTabs';
 import AlertModal from '../components/modals/AlertModal';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -14,15 +15,13 @@ export default function ProductDetails() {
     const navigate = useNavigate();
     const { t, language } = useLanguage();
     const { cartItems, addToCart } = useCart();
-    
+
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showCartSuccess, setShowCartSuccess] = useState(false);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [validationError, setValidationError] = useState('');
-    const [showVideo, setShowVideo] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [showAlert, setShowAlert] = useState(false);
 
@@ -83,8 +82,8 @@ export default function ProductDetails() {
                     {language === 'bn' ? 'পণ্যটি পাওয়া যায়নি' : 'Product Not Found'}
                 </h1>
                 <p className="text-neutral-500 text-sm max-w-md mx-auto">
-                    {language === 'bn' 
-                        ? 'দুঃখিত, আমরা এই আইডি দিয়ে কোনো পণ্য খুঁজে পাইনি। অনুগ্রহ করে আমাদের কালেকশন চেক করুন।'
+                    {language === 'bn'
+                        ? 'দুঃখিত,পণ্যটি খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আমাদের কালেকশন চেক করুন।'
                         : 'Sorry, we could not find the product you are looking for. Please browse our collections.'}
                 </p>
                 <div className="pt-4">
@@ -102,8 +101,8 @@ export default function ProductDetails() {
         : [product.image || product.image_url].filter(Boolean);
 
     // Calculate discount percentage
-    const discountPercent = hasDiscount && originalPrice > 0 
-        ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+    const discountPercent = hasDiscount && originalPrice > 0
+        ? Math.round(((originalPrice - price) / originalPrice) * 100)
         : 0;
 
     const hasValidColors = product.available_colors?.some(c => {
@@ -114,6 +113,17 @@ export default function ProductDetails() {
         const name = typeof s === 'object' ? s.name : s;
         return name && String(name).trim() !== '';
     });
+
+    // Stock validation - if product is sold out, disable all options
+    const isOutOfStock = product.is_sold_out;
+
+    // Check if required selections are made
+    const canProceed = () => {
+        if (isOutOfStock) return false;
+        if (hasValidColors && !selectedColor) return false;
+        if (hasValidSizes && !selectedSize) return false;
+        return true;
+    };
 
     const handleAddToCart = () => {
         if (product.is_sold_out) return;
@@ -171,54 +181,29 @@ export default function ProductDetails() {
 
             {/* Main Product Layout */}
             <div className="flex flex-col md:flex-row gap-6 lg:gap-12">
-                {/* Media Column */}
-                <div className="w-full md:w-[50%] lg:w-[48%] relative flex flex-col justify-start bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5] shadow-sm">
-                    <ProductModalMedia 
-                        images={images} 
-                        videoUrl={product.video_url} 
-                        showVideo={showVideo} 
-                        setShowVideo={setShowVideo} 
-                        currentIndex={currentImageIndex}
-                        setIndex={setCurrentImageIndex}
-                    />
-                    
-                    {/* Media Type Toggles */}
-                    {product.video_url && (
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-white/90 backdrop-blur-md rounded-full p-1 shadow-2xl border border-neutral-200 z-[10]">
-                            <button 
-                                onClick={() => setShowVideo(false)}
-                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${!showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
-                            >
-                                <ImageIcon size={12} md:size={14} />
-                                <span>{language === 'bn' ? 'ছবি দেখুন' : 'See Photo'}</span>
-                            </button>
-                            <button 
-                                onClick={() => setShowVideo(true)}
-                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
-                            >
-                                <Play size={12} md:size={14} />
-                                <span>{language === 'bn' ? 'ভিডিও দেখুন' : 'See Video'}</span>
-                            </button>
-                        </div>
-                    )}
+                {/* Media Column - Gallery */}
+                <div className="w-full md:w-[50%] lg:w-[48%]">
+                    <div className="relative">
+                        <ProductGallery images={images} />
 
-                    {/* Badges */}
-                    <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-[10]">
-                        {product.is_new && (
-                            <span className="px-3 py-1 bg-[#ce112d] text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
-                                {language === 'bn' ? 'নতুন' : 'NEW'}
-                            </span>
-                        )}
-                        {hasDiscount && (
-                            <span className="px-3 py-1 bg-neutral-900 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
-                                {discountPercent}% OFF
-                            </span>
-                        )}
+                        {/* Badges */}
+                        <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-[10]">
+                            {product.is_new && (
+                                <span className="px-3 py-1 bg-[#ce112d] text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
+                                    {language === 'bn' ? 'নতুন' : 'NEW'}
+                                </span>
+                            )}
+                            {hasDiscount && (
+                                <span className="px-3 py-1 bg-neutral-900 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
+                                    {discountPercent}% OFF
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Details Column */}
-                <div className="flex-1 flex flex-col justify-start gap-6 lg:py-2">
+                <div className="flex-1 flex flex-col justify-start gap-8">
                     <div className="space-y-3">
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">
                             {product.category || 'Clothing'}
@@ -234,147 +219,179 @@ export default function ProductDetails() {
                         </div>
                     </div>
 
-                    {/* Options Selection */}
-                    <div className="space-y-6">
-                        {hasValidColors && (
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                                    {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {product.available_colors?.filter(c => {
-                                        const name = typeof c === 'object' ? c.name : c;
-                                        return name && String(name).trim() !== '';
-                                    }).map((c, i) => {
-                                        const name = typeof c === 'object' ? c.name : c;
-                                        const hex = typeof c === 'object' ? c.hex : null;
-                                        return (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => { setSelectedColor(name); setValidationError(''); }}
-                                                className={`group relative flex items-center gap-2 px-3 py-2 border-[2px] rounded-lg transition-all ${selectedColor === name ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-100 hover:border-neutral-200'}`}
-                                            >
-                                                {hex && (
-                                                    <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
-                                                )}
-                                                <span className="text-[10px] font-black uppercase tracking-wider">{name}</span>
-                                                {selectedColor === name && <Check size={10} className="ml-1" />}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {hasValidSizes && (
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                                    {language === 'bn' ? 'সাইজ সিলেক্ট করুন' : 'Select Size'}
-                                </p>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {product.available_sizes?.filter(s => {
-                                        const name = typeof s === 'object' ? s.name : s;
-                                        return name && String(name).trim() !== '';
-                                    }).map((s, i) => {
-                                        const name = typeof s === 'object' ? s.name : s;
-                                        return (
-                                            <button 
-                                                key={i} 
-                                                onClick={() => { setSelectedSize(name); setValidationError(''); }}
-                                                className={`py-2.5 border-[2px] text-[10px] md:text-xs font-black tracking-wider transition-all rounded-lg ${selectedSize === name ? 'bg-neutral-900 text-white border-neutral-900 shadow-lg' : 'border-neutral-100 text-neutral-500 hover:border-neutral-200'}`}
-                                            >
-                                                {name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Error Handling and Quantity + Checkouts */}
-                        <div className="space-y-4 pt-2">
-                            <AnimatePresence>
-                                {validationError && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#ce112d] text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                                        <AlertCircle size={14} /> 
-                                        {validationError === 'size' 
-                                            ? (language === 'bn' ? 'দয়া করে সাইজ বেছে নিন' : 'Please select size first')
-                                            : (language === 'bn' ? 'দয়া করে কালার বেছে নিন' : 'Please select color first')
-                                        }
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            
-                            {product.is_sold_out ? (
-                                <div className="w-full py-4 bg-neutral-50 text-neutral-400 text-center rounded-xl font-black uppercase tracking-widest text-xs">
-                                    {language === 'bn' ? 'স্টক নেই' : 'Currently Out of Stock'}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-4">
-                                    {/* Quantity Picker */}
-                                    <div className="flex items-center justify-between p-2.5 bg-neutral-50 rounded-xl border border-neutral-100">
-                                        <p className="pl-3 text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                                            {language === 'bn' ? 'পরিমাণ' : 'Quantity'}
-                                        </p>
-                                        <div className="flex items-center gap-5 pr-2">
-                                            <button 
-                                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                                className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
-                                            >
-                                                <span className="text-base font-bold">-</span>
-                                            </button>
-                                            <span className="text-sm font-black text-neutral-900 w-4 text-center">{quantity}</span>
-                                            <button 
-                                                onClick={() => setQuantity(quantity + 1)}
-                                                className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
-                                            >
-                                                <span className="text-base font-bold">+</span>
-                                            </button>
-                                        </div>
+                    {/* Options Selection - Only show if data exists */}
+                    {(hasValidColors || hasValidSizes) && (
+                        <div className="space-y-6">
+                            {hasValidColors && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {product.available_colors?.filter(c => {
+                                            const name = typeof c === 'object' ? c.name : c;
+                                            return name && String(name).trim() !== '';
+                                        }).map((c, i) => {
+                                            const name = typeof c === 'object' ? c.name : c;
+                                            const hex = typeof c === 'object' ? c.hex : null;
+                                            const isDisabled = isOutOfStock;
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => { if (!isDisabled) { setSelectedColor(name); setValidationError(''); } }}
+                                                    disabled={isDisabled}
+                                                    className={`group relative flex items-center gap-2 px-3 py-2 border-[2px] rounded-lg transition-all ${isDisabled
+                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                                                            : selectedColor === name
+                                                                ? 'border-neutral-900 bg-neutral-900 text-white'
+                                                                : 'border-neutral-100 hover:border-neutral-200'
+                                                        }`}
+                                                >
+                                                    {hex && (
+                                                        <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
+                                                    )}
+                                                    <span className="text-[10px] font-black uppercase tracking-wider">{name}</span>
+                                                    {selectedColor === name && <Check size={10} className="ml-1" />}
+                                                    {isDisabled && (
+                                                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-neutral-400 whitespace-nowrap">
+                                                            {language === 'bn' ? 'স্টক নেই' : 'Out of stock'}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
+                                </div>
+                            )}
 
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-col sm:flex-row gap-3">
-                                        <button 
-                                            onClick={handleMainOrder}
-                                            className="flex-1 py-4 bg-[#ce112d] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-red-900/20 active:scale-95 transition-all text-center"
-                                        >
-                                            {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
-                                        </button>
-                                        <button 
-                                            onClick={handleAddToCart}
-                                            className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}
-                                        >
-                                            {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
-                                            {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
-                                        </button>
+                            {hasValidSizes && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {language === 'bn' ? 'সাইজ সিলেক্ট করুন' : 'Select Size'}
+                                    </p>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {product.available_sizes?.filter(s => {
+                                            const name = typeof s === 'object' ? s.name : s;
+                                            return name && String(name).trim() !== '';
+                                        }).map((s, i) => {
+                                            const name = typeof s === 'object' ? s.name : s;
+                                            const isDisabled = isOutOfStock;
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => { if (!isDisabled) { setSelectedSize(name); setValidationError(''); } }}
+                                                    disabled={isDisabled}
+                                                    className={`py-2.5 border-[2px] text-[10px] md:text-xs font-black tracking-wider transition-all rounded-lg ${isDisabled
+                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                                                            : selectedSize === name
+                                                                ? 'bg-neutral-900 text-white border-neutral-900 shadow-lg'
+                                                                : 'border-neutral-100 text-neutral-500 hover:border-neutral-200'
+                                                        }`}
+                                                >
+                                                    {name}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* Quantity + Checkouts */}
+                    <div className="space-y-4">
+                        <AnimatePresence>
+                            {validationError && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[#ce112d] text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <AlertCircle size={14} />
+                                    {validationError === 'size'
+                                        ? (language === 'bn' ? 'দয়া করে সাইজ বেছে নিন' : 'Please select size first')
+                                        : (language === 'bn' ? 'দয়া করে কালার বেছে নিন' : 'Please select color first')
+                                    }
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {isOutOfStock ? (
+                            <div className="w-full py-4 bg-neutral-50 text-neutral-400 text-center rounded-xl font-black uppercase tracking-widest text-xs">
+                                {language === 'bn' ? 'স্টক নেই' : 'Currently Out of Stock'}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-4">
+                                {/* Quantity Picker */}
+                                <div className="flex items-center justify-between p-2.5 bg-neutral-50 rounded-xl border border-neutral-100">
+                                    <p className="pl-3 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {language === 'bn' ? 'পরিমাণ' : 'Quantity'}
+                                    </p>
+                                    <div className="flex items-center gap-5 pr-2">
+                                        <button
+                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                            className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                                        >
+                                            <span className="text-base font-bold">-</span>
+                                        </button>
+                                        <span className="text-sm font-black text-neutral-900 w-4 text-center">{quantity}</span>
+                                        <button
+                                            onClick={() => setQuantity(quantity + 1)}
+                                            className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                                        >
+                                            <span className="text-base font-bold">+</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons - Primary vs Secondary distinction */}
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <button
+                                        onClick={handleMainOrder}
+                                        disabled={!canProceed()}
+                                        className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-center ${canProceed()
+                                                ? 'bg-[#ce112d] text-white shadow-xl shadow-red-900/30 hover:bg-[#b00e26] active:scale-95'
+                                                : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
+                                    </button>
+                                    <button
+                                        onClick={handleAddToCart}
+                                        disabled={!canProceed()}
+                                        className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart
+                                                ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]'
+                                                : canProceed()
+                                                    ? 'border-neutral-900 text-neutral-900 hover:bg-neutral-50'
+                                                    : 'border-neutral-200 text-neutral-400 cursor-not-allowed'
+                                            }`}
+                                    >
+                                        {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
+                                        {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Description Section */}
-                    <div className="space-y-3 pt-5 border-t border-neutral-100">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-300">Description</p>
-                        <p className="text-sm leading-relaxed text-neutral-600 font-medium whitespace-pre-wrap">{product.description}</p>
-                    </div>
+                    {/* Product Tabs - Description, Video, Size Guide */}
+                    <ProductTabs
+                        description={product.description}
+                        videoUrl={product.video_url}
+                        hasSizes={hasValidSizes}
+                    />
 
-                    {/* Guarantee / Perks Grid */}
-                    <div className="grid grid-cols-2 gap-4 pt-5 border-t border-neutral-100">
+                    {/* Guarantee / Perks Grid - Fixed 4-column layout */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-neutral-100">
                         {[
                             { icon: Truck, label: language === 'bn' ? 'ডেলিভারি' : 'Delivery', desc: language === 'bn' ? 'দ্রুত হোম ডেলিভারি' : 'Fast Shipping' },
                             { icon: Award, label: language === 'bn' ? 'কোয়ালিটি' : 'Quality', desc: language === 'bn' ? 'সেরা ফেব্রিক গ্যারান্টি' : 'Guaranteed Quality' },
                             { icon: CreditCard, label: language === 'bn' ? 'নিরাপদ' : 'Safe', desc: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery' },
                             { icon: Zap, label: language === 'bn' ? 'সাপোর্ট' : 'Support', desc: language === 'bn' ? 'মেসেঞ্জার সহায়তা' : '24/7 Live Care' }
                         ].map((item, i) => (
-                            <div key={i} className="flex gap-3 items-center">
-                                <div className="w-9 h-9 rounded-lg bg-neutral-50 flex items-center justify-center text-[#ce112d] shadow-sm shrink-0">
-                                    <item.icon size={16} strokeWidth={2.5} />
+                            <div key={i} className="flex flex-col items-center text-center gap-2">
+                                <div className="w-10 h-10 rounded-lg bg-neutral-50 flex items-center justify-center text-[#ce112d] shadow-sm shrink-0">
+                                    <item.icon size={18} strokeWidth={2.5} />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-tight text-neutral-900 leading-tight truncate">{item.label}</p>
-                                    <p className="text-[9px] text-neutral-400 font-medium truncate">{item.desc}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-tight text-neutral-900 leading-tight">{item.label}</p>
+                                    <p className="text-[9px] text-neutral-400 font-medium leading-tight">{item.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -383,7 +400,7 @@ export default function ProductDetails() {
             </div>
 
             <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />
-            
+
             <AnimatePresence>
                 {showCartSuccess && (
                     <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}

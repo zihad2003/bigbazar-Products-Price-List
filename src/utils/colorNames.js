@@ -228,3 +228,91 @@ export const COLOR_MAP = [
     { hex: '#FFDB58', bn: 'সরিষা', en: 'Mustard' },
     { hex: '#E1AD01', bn: 'গাঢ় সরিষা', en: 'Dark Mustard' },
 ];
+
+/**
+ * Convert hex string to RGB
+ */
+function hexToRgb(hex) {
+    if (!hex) return { r: 0, g: 0, b: 0 };
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    return {
+        r: parseInt(hex.substring(0, 2), 16) || 0,
+        g: parseInt(hex.substring(2, 4), 16) || 0,
+        b: parseInt(hex.substring(4, 6), 16) || 0,
+    };
+}
+
+/**
+ * Calculate Euclidean distance between two RGB colors
+ */
+function colorDistance(c1, c2) {
+    return Math.sqrt(
+        Math.pow(c1.r - c2.r, 2) +
+        Math.pow(c1.g - c2.g, 2) +
+        Math.pow(c1.b - c2.b, 2)
+    );
+}
+
+/**
+ * Find the nearest color name for a given hex code.
+ * Returns { bn, en, hex } with the closest match.
+ */
+export function getColorName(hex) {
+    if (!hex) return { bn: 'অজানা', en: 'Unknown', hex: '#888888' };
+
+    const target = hexToRgb(hex);
+    let nearest = COLOR_MAP[0];
+    let minDist = Infinity;
+
+    for (const color of COLOR_MAP) {
+        const dist = colorDistance(target, hexToRgb(color.hex));
+        if (dist < minDist) {
+            minDist = dist;
+            nearest = color;
+        }
+    }
+
+    return { bn: nearest.bn, en: nearest.en, hex: nearest.hex };
+}
+
+/**
+ * Format the final name string: "বাংলা (English)"
+ */
+export function formatColorName(hex) {
+    const { bn, en } = getColorName(hex);
+    return `${bn} (${en})`;
+}
+
+/**
+ * Mobile-friendly preset color swatches for quick selection
+ */
+export const PRESET_SWATCHES = [
+    { hex: '#000000', en: 'Black', bn: 'কালো' },
+    { hex: '#FFFFFF', en: 'White', bn: 'সাদা' },
+    { hex: '#FF0000', en: 'Red', bn: 'লাল' },
+    { hex: '#800000', en: 'Maroon', bn: 'মেরুন' },
+    { hex: '#800020', en: 'Burgundy', bn: 'বারগান্ডি' },
+    { hex: '#FFC0CB', en: 'Pink', bn: 'গোলাপি' },
+    { hex: '#E8ADAA', en: 'Dusty Rose', bn: 'ডাস্টি রোজ' },
+    { hex: '#FFA500', en: 'Orange', bn: 'কমলা' },
+    { hex: '#FFD700', en: 'Gold', bn: 'সোনালি' },
+    { hex: '#FFFF00', en: 'Yellow', bn: 'হলুদ' },
+    { hex: '#FFDB58', en: 'Mustard', bn: 'সরিষা' },
+    { hex: '#008000', en: 'Green', bn: 'সবুজ' },
+    { hex: '#50C878', en: 'Emerald', bn: 'এমারেল্ড' },
+    { hex: '#808000', en: 'Olive', bn: 'অলিভ' },
+    { hex: '#0000FF', en: 'Blue', bn: 'নীল' },
+    { hex: '#4169E1', en: 'Royal Blue', bn: 'রয়্যাল ব্লু' },
+    { hex: '#000080', en: 'Navy', bn: 'নেভি' },
+    { hex: '#87CEEB', en: 'Sky Blue', bn: 'আকাশি' },
+    { hex: '#008080', en: 'Teal', bn: 'টিল' },
+    { hex: '#800080', en: 'Purple', bn: 'বেগুনি' },
+    { hex: '#E6E6FA', en: 'Lavender', bn: 'ল্যাভেন্ডার' },
+    { hex: '#964B00', en: 'Brown', bn: 'বাদামি' },
+    { hex: '#F5F5DC', en: 'Beige', bn: 'বেইজ' },
+    { hex: '#FFFDD0', en: 'Cream', bn: 'ক্রিম' },
+    { hex: '#808080', en: 'Grey', bn: 'গ্রে' },
+    { hex: '#36454F', en: 'Charcoal', bn: 'চারকোল' },
+    { hex: '#C0C0C0', en: 'Silver', bn: 'সিলভার' },
+];

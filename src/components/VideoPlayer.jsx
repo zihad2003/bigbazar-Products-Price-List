@@ -36,7 +36,6 @@ const VideoPlayer = ({ src, poster, priority = false }) => {
             className="w-full h-full border-0 absolute inset-0 z-10"
             allowFullScreen
             loading={priority ? 'eager' : 'lazy'}
-            referrerPolicy="no-referrer"
             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
             style={{
               opacity: isLoaded ? 1 : 0,
