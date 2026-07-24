@@ -93,20 +93,25 @@ const ProductCard = ({ product, onClick }) => {
 
   const { language } = useLanguage();
 
+  // Calculate discount percentage
+  const discountPercent = hasDiscount && originalPrice > 0 
+    ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+    : 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       onClick={() => onClick(product)}
-      className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-neutral-100 cursor-pointer group flex flex-col h-full"
+      className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
         {sourceImage ? (
           <div className="relative w-full h-full">
             <img
               src={getOptimizedUrl(sourceImage, mediaSizes.thumbnail)}
-              className="w-full h-auto object-cover object-top group-hover:scale-110 transition-transform duration-1000"
+              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500 ease-out"
               alt={product.name}
               loading="lazy"
               referrerPolicy="no-referrer"
@@ -117,36 +122,45 @@ const ProductCard = ({ product, onClick }) => {
             <Instagram size={22} className="text-zinc-200" />
           </div>
         )}
+        
+        {/* Corner Ribbon Sale Badge */}
         {hasDiscount && (
-          <div className="absolute top-4 left-4 bg-[#ce112d] text-white text-[10px] font-bold uppercase tracking-wide py-1 px-3 rounded-full shadow-lg">
-            SALE
+          <div className="absolute top-0 left-0">
+            <div className="bg-[#ce112d] text-white text-[9px] md:text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-br-lg shadow-md">
+              {discountPercent}% OFF
+            </div>
           </div>
         )}
+        
         {product.is_sold_out && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center p-6 text-center">
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center p-6 text-center">
             <span className="text-xs font-bold uppercase text-neutral-900 border-2 border-neutral-900 px-4 py-2 rounded-xl">
               {language === 'bn' ? 'স্টক নেই' : 'Sold Out'}
             </span>
           </div>
         )}
       </div>
-      <div className="p-4 md:p-6 flex flex-col flex-1 gap-4">
+      
+      <div className="p-3.5 md:p-5 flex flex-col flex-1 gap-3">
         <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase text-neutral-400 tracking-wide truncate">
+          <p className="text-[9px] md:text-[10px] font-bold uppercase text-neutral-400 tracking-wider truncate">
             {product.category || 'Clothing'}
           </p>
-          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[44px]">{product.name}</h4>
+          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[40px]">{product.name}</h4>
         </div>
-        <div className="mt-auto flex items-end justify-between">
+        
+        <div className="mt-auto flex items-end justify-between gap-2">
           <div className="flex flex-col">
-            <span className="text-lg md:text-xl font-black text-[#ce112d] italic">৳ {price}</span>
-            {hasDiscount && (
-              <span className="text-[10px] text-neutral-300 line-through font-bold">৳ {originalPrice}</span>
-            )}
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg md:text-xl font-black text-[#ce112d]">৳ {price}</span>
+              {hasDiscount && (
+                <span className="text-[10px] md:text-[11px] text-neutral-400 line-through font-semibold">৳ {originalPrice}</span>
+              )}
+            </div>
           </div>
-          <button className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-neutral-50 flex items-center justify-center text-neutral-400 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm">
-            <ArrowRight size={18} strokeWidth={3} />
-          </button>
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-400 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm shrink-0">
+            <ArrowRight size={16} md:size={18} strokeWidth={2.5} />
+          </div>
         </div>
       </div>
     </motion.div>
@@ -154,15 +168,15 @@ const ProductCard = ({ product, onClick }) => {
 };
 
 const ProductSkeleton = () => (
-  <div className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden border border-neutral-100 animate-pulse h-full">
+  <div className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden border border-neutral-100 animate-pulse h-full">
     <div className="aspect-[4/5] bg-neutral-200" />
-    <div className="p-4 md:p-6 space-y-3">
+    <div className="p-3.5 md:p-5 space-y-3">
       <div className="h-2 w-16 bg-neutral-100 rounded-full" />
       <div className="h-4 w-full bg-neutral-200 rounded-lg" />
       <div className="h-4 w-2/3 bg-neutral-100 rounded-lg" />
       <div className="mt-8 flex justify-between items-end">
         <div className="h-6 w-20 bg-neutral-100 rounded-lg" />
-        <div className="h-10 w-10 bg-neutral-200 rounded-2xl" />
+        <div className="h-8 w-8 md:h-10 md:w-10 bg-neutral-200 rounded-xl" />
       </div>
     </div>
   </div>

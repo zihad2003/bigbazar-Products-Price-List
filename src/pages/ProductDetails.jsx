@@ -101,6 +101,11 @@ export default function ProductDetails() {
         ? product.images
         : [product.image || product.image_url].filter(Boolean);
 
+    // Calculate discount percentage
+    const discountPercent = hasDiscount && originalPrice > 0 
+        ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+        : 0;
+
     const hasValidColors = product.available_colors?.some(c => {
         const name = typeof c === 'object' ? c.name : c;
         return name && String(name).trim() !== '';
@@ -165,9 +170,9 @@ export default function ProductDetails() {
             </div>
 
             {/* Main Product Layout */}
-            <div className="flex flex-col md:flex-row gap-8 lg:gap-16">
+            <div className="flex flex-col md:flex-row gap-6 lg:gap-12">
                 {/* Media Column */}
-                <div className="w-full md:w-[50%] lg:w-[48%] relative flex flex-col justify-start bg-neutral-50 rounded-[32px] overflow-hidden aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5]">
+                <div className="w-full md:w-[50%] lg:w-[48%] relative flex flex-col justify-start bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5] shadow-sm">
                     <ProductModalMedia 
                         images={images} 
                         videoUrl={product.video_url} 
@@ -182,55 +187,61 @@ export default function ProductDetails() {
                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-white/90 backdrop-blur-md rounded-full p-1 shadow-2xl border border-neutral-200 z-[10]">
                             <button 
                                 onClick={() => setShowVideo(false)}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${!showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
+                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${!showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
                             >
-                                <ImageIcon size={14} />
+                                <ImageIcon size={12} md:size={14} />
                                 <span>{language === 'bn' ? 'ছবি দেখুন' : 'See Photo'}</span>
                             </button>
                             <button 
                                 onClick={() => setShowVideo(true)}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
+                                className={`flex items-center gap-2 px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all ${showVideo ? 'bg-[#ce112d] text-white' : 'text-neutral-500'}`}
                             >
-                                <Play size={14} />
+                                <Play size={12} md:size={14} />
                                 <span>{language === 'bn' ? 'ভিডিও দেখুন' : 'See Video'}</span>
                             </button>
                         </div>
                     )}
 
-                    {product.is_new && (
-                        <div className="absolute top-6 left-6 pointer-events-none z-[10]">
-                            <span className="px-5 py-1.5 bg-[#ce112d] text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-sm">
-                                {language === 'bn' ? 'নতুন কালেকশন' : 'New Arrival'}
+                    {/* Badges */}
+                    <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-[10]">
+                        {product.is_new && (
+                            <span className="px-3 py-1 bg-[#ce112d] text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
+                                {language === 'bn' ? 'নতুন' : 'NEW'}
                             </span>
-                        </div>
-                    )}
+                        )}
+                        {hasDiscount && (
+                            <span className="px-3 py-1 bg-neutral-900 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-md shadow-md">
+                                {discountPercent}% OFF
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Details Column */}
-                <div className="flex-1 flex flex-col justify-start gap-8 lg:py-4">
-                    <div className="space-y-4">
+                <div className="flex-1 flex flex-col justify-start gap-6 lg:py-2">
+                    <div className="space-y-3">
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">
                             {product.category || 'Clothing'}
                         </span>
-                        <h1 className="text-3xl md:text-5xl font-black text-neutral-900 italic leading-tight uppercase tracking-tight">
+                        <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 italic leading-tight uppercase tracking-tight">
                             {product.name}
                         </h1>
-                        <div className="flex items-baseline gap-4 pt-2">
-                            <span className="text-4xl md:text-5xl font-black text-[#ce112d] italic">৳ {price}</span>
+                        <div className="flex items-baseline gap-3 pt-1">
+                            <span className="text-3xl md:text-4xl lg:text-5xl font-black text-[#ce112d]">৳ {price}</span>
                             {hasDiscount && (
-                                <span className="text-lg md:text-xl text-neutral-300 line-through font-bold">৳ {originalPrice}</span>
+                                <span className="text-base md:text-lg lg:text-xl text-neutral-400 line-through font-semibold">৳ {originalPrice}</span>
                             )}
                         </div>
                     </div>
 
                     {/* Options Selection */}
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                         {hasValidColors && (
                             <div className="space-y-3">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
                                     {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}
                                 </p>
-                                <div className="flex flex-wrap gap-2.5">
+                                <div className="flex flex-wrap gap-2">
                                     {product.available_colors?.filter(c => {
                                         const name = typeof c === 'object' ? c.name : c;
                                         return name && String(name).trim() !== '';
@@ -241,13 +252,13 @@ export default function ProductDetails() {
                                             <button 
                                                 key={i} 
                                                 onClick={() => { setSelectedColor(name); setValidationError(''); }}
-                                                className={`group relative flex items-center gap-3 px-4 py-2.5 border-[2px] rounded-xl transition-all ${selectedColor === name ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-100 hover:border-neutral-200'}`}
+                                                className={`group relative flex items-center gap-2 px-3 py-2 border-[2px] rounded-lg transition-all ${selectedColor === name ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-100 hover:border-neutral-200'}`}
                                             >
                                                 {hex && (
-                                                    <span className="w-4 h-4 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
+                                                    <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
                                                 )}
-                                                <span className="text-[10px] font-black uppercase tracking-widest">{name}</span>
-                                                {selectedColor === name && <Check size={12} className="ml-1" />}
+                                                <span className="text-[10px] font-black uppercase tracking-wider">{name}</span>
+                                                {selectedColor === name && <Check size={10} className="ml-1" />}
                                             </button>
                                         );
                                     })}
@@ -270,7 +281,7 @@ export default function ProductDetails() {
                                             <button 
                                                 key={i} 
                                                 onClick={() => { setSelectedSize(name); setValidationError(''); }}
-                                                className={`py-3 border-[2px] text-[10px] md:text-xs font-black tracking-widest transition-all rounded-xl ${selectedSize === name ? 'bg-neutral-900 text-white border-neutral-900 shadow-xl' : 'border-neutral-100 text-neutral-500'}`}
+                                                className={`py-2.5 border-[2px] text-[10px] md:text-xs font-black tracking-wider transition-all rounded-lg ${selectedSize === name ? 'bg-neutral-900 text-white border-neutral-900 shadow-lg' : 'border-neutral-100 text-neutral-500 hover:border-neutral-200'}`}
                                             >
                                                 {name}
                                             </button>
@@ -295,27 +306,27 @@ export default function ProductDetails() {
                             </AnimatePresence>
                             
                             {product.is_sold_out ? (
-                                <div className="w-full py-5 bg-neutral-50 text-neutral-400 text-center rounded-2xl font-black uppercase tracking-widest text-xs">
+                                <div className="w-full py-4 bg-neutral-50 text-neutral-400 text-center rounded-xl font-black uppercase tracking-widest text-xs">
                                     {language === 'bn' ? 'স্টক নেই' : 'Currently Out of Stock'}
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-4">
                                     {/* Quantity Picker */}
-                                    <div className="flex items-center justify-between p-2 bg-neutral-50 rounded-2xl border border-neutral-100">
-                                        <p className="pl-4 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                    <div className="flex items-center justify-between p-2.5 bg-neutral-50 rounded-xl border border-neutral-100">
+                                        <p className="pl-3 text-[10px] font-black uppercase tracking-widest text-neutral-400">
                                             {language === 'bn' ? 'পরিমাণ' : 'Quantity'}
                                         </p>
-                                        <div className="flex items-center gap-6 pr-2">
+                                        <div className="flex items-center gap-5 pr-2">
                                             <button 
                                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                                className="w-10 h-10 rounded-xl bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                                                className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
                                             >
                                                 <span className="text-base font-bold">-</span>
                                             </button>
                                             <span className="text-sm font-black text-neutral-900 w-4 text-center">{quantity}</span>
                                             <button 
                                                 onClick={() => setQuantity(quantity + 1)}
-                                                className="w-10 h-10 rounded-xl bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                                                className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
                                             >
                                                 <span className="text-base font-bold">+</span>
                                             </button>
@@ -326,15 +337,15 @@ export default function ProductDetails() {
                                     <div className="flex flex-col sm:flex-row gap-3">
                                         <button 
                                             onClick={handleMainOrder}
-                                            className="flex-1 py-5 bg-[#ce112d] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.15)] active:scale-95 transition-all text-center"
+                                            className="flex-1 py-4 bg-[#ce112d] text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-xl shadow-lg shadow-red-900/20 active:scale-95 transition-all text-center"
                                         >
                                             {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
                                         </button>
                                         <button 
                                             onClick={handleAddToCart}
-                                            className={`sm:w-48 py-5 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2.5 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}
+                                            className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}
                                         >
-                                            {isInCart ? <Check size={16} /> : <ShoppingCart size={16} />}
+                                            {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
                                             {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
                                         </button>
                                     </div>
@@ -344,22 +355,22 @@ export default function ProductDetails() {
                     </div>
 
                     {/* Description Section */}
-                    <div className="space-y-3 pt-6 border-t border-neutral-100">
+                    <div className="space-y-3 pt-5 border-t border-neutral-100">
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-300">Description</p>
-                        <p className="text-sm leading-relaxed text-neutral-500 font-medium whitespace-pre-wrap">{product.description}</p>
+                        <p className="text-sm leading-relaxed text-neutral-600 font-medium whitespace-pre-wrap">{product.description}</p>
                     </div>
 
                     {/* Guarantee / Perks Grid */}
-                    <div className="grid grid-cols-2 gap-6 pt-6 border-t border-neutral-100">
+                    <div className="grid grid-cols-2 gap-4 pt-5 border-t border-neutral-100">
                         {[
                             { icon: Truck, label: language === 'bn' ? 'ডেলিভারি' : 'Delivery', desc: language === 'bn' ? 'দ্রুত হোম ডেলিভারি' : 'Fast Shipping' },
                             { icon: Award, label: language === 'bn' ? 'কোয়ালিটি' : 'Quality', desc: language === 'bn' ? 'সেরা ফেব্রিক গ্যারান্টি' : 'Guaranteed Quality' },
                             { icon: CreditCard, label: language === 'bn' ? 'নিরাপদ' : 'Safe', desc: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery' },
                             { icon: Zap, label: language === 'bn' ? 'সাপোর্ট' : 'Support', desc: language === 'bn' ? 'মেসেঞ্জার সহায়তা' : '24/7 Live Care' }
                         ].map((item, i) => (
-                            <div key={i} className="flex gap-3.5 items-center">
-                                <div className="w-10 h-10 rounded-xl bg-neutral-50 flex items-center justify-center text-[#ce112d] shadow-sm shrink-0">
-                                    <item.icon size={18} strokeWidth={2.5} />
+                            <div key={i} className="flex gap-3 items-center">
+                                <div className="w-9 h-9 rounded-lg bg-neutral-50 flex items-center justify-center text-[#ce112d] shadow-sm shrink-0">
+                                    <item.icon size={16} strokeWidth={2.5} />
                                 </div>
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-black uppercase tracking-tight text-neutral-900 leading-tight truncate">{item.label}</p>

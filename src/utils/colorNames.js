@@ -1,10 +1,10 @@
 /**
  * Color name lookup utility — maps hex values to Bangla + English names.
- * Uses nearest-color matching via Euclidean distance in RGB space.
+ * Extended with Pastels, Neons, Metallics, and Modern Fashion Shades.
  */
 
 export const COLOR_MAP = [
-    // Whites & Off-whites
+    // White & Off-Whites
     { hex: '#FFFFFF', bn: 'সাদা', en: 'White' },
     { hex: '#FFFDD0', bn: 'ক্রিম', en: 'Cream' },
     { hex: '#FAF0E6', bn: 'লিনেন', en: 'Linen' },
@@ -13,21 +13,26 @@ export const COLOR_MAP = [
     { hex: '#FFFFF0', bn: 'আইভরি', en: 'Ivory' },
     { hex: '#F5F5DC', bn: 'বেইজ', en: 'Beige' },
     { hex: '#F0EAD6', bn: 'অফ হোয়াইট', en: 'Off White' },
+    { hex: '#F5F5F5', bn: 'স্মোক হোয়াইট', en: 'White Smoke' }, // Added
+    { hex: '#FFF0F5', bn: 'ল্যাভেন্ডার ব্লশ', en: 'Lavender Blush' }, // Added
 
-    // Greys
+    // Greys & Silvers
     { hex: '#808080', bn: 'গ্রে', en: 'Grey' },
-    { hex: '#C0C0C0', bn: 'সিলভার গ্রে', en: 'Silver Grey' },
+    { hex: '#C0C0C0', bn: 'সিলভার', en: 'Silver' },
     { hex: '#A9A9A9', bn: 'ডার্ক গ্রে', en: 'Dark Grey' },
     { hex: '#D3D3D3', bn: 'হালকা ছাই রঙ', en: 'Light Grey' },
     { hex: '#696969', bn: 'ডিম গ্রে', en: 'Dim Grey' },
     { hex: '#B0B0B0', bn: 'ছাই রঙ', en: 'Ash Grey' },
     { hex: '#778899', bn: 'স্লেট গ্রে', en: 'Slate Grey' },
     { hex: '#708090', bn: 'নীলচে ছাই', en: 'Blue Grey' },
+    { hex: '#E5E4E2', bn: 'প্ল্যাটিনাম', en: 'Platinum' }, // Added
+    { hex: '#2A3439', bn: 'গানমেটাল', en: 'Gunmetal' }, // Added
 
     // Blacks
     { hex: '#000000', bn: 'কালো', en: 'Black' },
     { hex: '#1C1C1C', bn: 'জেট ব্ল্যাক', en: 'Jet Black' },
     { hex: '#36454F', bn: 'চারকোল', en: 'Charcoal' },
+    { hex: '#0B0B0B', bn: 'ম্যাট ব্ল্যাক', en: 'Matte Black' }, // Added
 
     // Reds
     { hex: '#FF0000', bn: 'লাল', en: 'Red' },
@@ -39,8 +44,10 @@ export const COLOR_MAP = [
     { hex: '#FF6347', bn: 'টমেটো লাল', en: 'Tomato Red' },
     { hex: '#FF4500', bn: 'কমলা-লাল', en: 'Orange Red' },
     { hex: '#CC0033', bn: 'চেরি লাল', en: 'Cherry Red' },
+    { hex: '#990000', bn: 'রক্ত লাল', en: 'Blood Red' }, // Added
+    { hex: '#E30B5C', bn: 'রাস্পবেরি', en: 'Raspberry' }, // Added
 
-    // Pinks
+    // Pinks & Pastels
     { hex: '#FFC0CB', bn: 'গোলাপি', en: 'Pink' },
     { hex: '#FF69B4', bn: 'হট পিঙ্ক', en: 'Hot Pink' },
     { hex: '#FF1493', bn: 'ডিপ পিঙ্ক', en: 'Deep Pink' },
@@ -52,8 +59,11 @@ export const COLOR_MAP = [
     { hex: '#E0B0FF', bn: 'মভ', en: 'Mauve' },
     { hex: '#DE5D83', bn: 'রোজ পিঙ্ক', en: 'Rose Pink' },
     { hex: '#BE5F6E', bn: 'অ্যান্টিক রোজ', en: 'Antique Rose' },
+    { hex: '#F7CAC9', bn: 'রোজ কোয়ার্টজ', en: 'Rose Quartz' }, // Added
+    { hex: '#B38B6D', bn: 'ব্লশ পিঙ্ক', en: 'Blush' }, // Added
+    { hex: '#FC8EAC', bn: 'ফ্লেমিঙ্গো পিঙ্ক', en: 'Flamingo Pink' }, // Added
 
-    // Oranges
+    // Oranges & Corals
     { hex: '#FFA500', bn: 'কমলা', en: 'Orange' },
     { hex: '#FF8C00', bn: 'গাঢ় কমলা', en: 'Dark Orange' },
     { hex: '#FFD700', bn: 'সোনালি', en: 'Gold' },
@@ -66,8 +76,10 @@ export const COLOR_MAP = [
     { hex: '#D2691E', bn: 'চকোলেট অরেঞ্জ', en: 'Chocolate Orange' },
     { hex: '#FF6600', bn: 'বার্ন্ট অরেঞ্জ', en: 'Burnt Orange' },
     { hex: '#F28500', bn: 'ট্যাঞ্জারিন', en: 'Tangerine' },
+    { hex: '#F88379', bn: 'কোরাল পিঙ্ক', en: 'Coral Pink' }, // Added
+    { hex: '#FF7518', bn: 'পাম্পকিন অরেঞ্জ', en: 'Pumpkin' }, // Added
 
-    // Yellows
+    // Yellows & Gold
     { hex: '#FFFF00', bn: 'হলুদ', en: 'Yellow' },
     { hex: '#FFFFE0', bn: 'হালকা হলুদ', en: 'Light Yellow' },
     { hex: '#F0E68C', bn: 'খাকি হলুদ', en: 'Khaki Yellow' },
@@ -79,8 +91,10 @@ export const COLOR_MAP = [
     { hex: '#FFF44F', bn: 'উজ্জ্বল হলুদ', en: 'Bright Yellow' },
     { hex: '#E4D00A', bn: 'সিট্রিন', en: 'Citrine' },
     { hex: '#FFD300', bn: 'সাইবার ইয়েলো', en: 'Bright Gold' },
+    { hex: '#FFE135', bn: 'কলা হলুদ', en: 'Banana Yellow' }, // Added
+    { hex: '#CC9900', bn: 'মেটালিক গোল্ড', en: 'Metallic Gold' }, // Added
 
-    // Browns
+    // Browns & Earthy Tones
     { hex: '#964B00', bn: 'বাদামি', en: 'Brown' },
     { hex: '#8B4513', bn: 'স্যাডল ব্রাউন', en: 'Saddle Brown' },
     { hex: '#A0522D', bn: 'সিয়েনা', en: 'Sienna' },
@@ -96,7 +110,8 @@ export const COLOR_MAP = [
     { hex: '#483C32', bn: 'টুপি', en: 'Taupe' },
     { hex: '#E1C16E', bn: 'ব্রাস', en: 'Brass' },
     { hex: '#80461B', bn: 'রাসেট', en: 'Russet' },
-    { hex: '#CC5500', bn: 'বার্ন্ট অরেঞ্জ', en: 'Burnt Orange' },
+    { hex: '#3B2F2F', bn: 'ডার্ক চকোলেট', en: 'Dark Chocolate' }, // Added
+    { hex: '#C19A6B', bn: 'কাঠালি বাদামি', en: 'Wood Brown' }, // Added
 
     // Greens
     { hex: '#008000', bn: 'সবুজ', en: 'Green' },
@@ -122,6 +137,9 @@ export const COLOR_MAP = [
     { hex: '#BFFF00', bn: 'লাইম', en: 'Lime' },
     { hex: '#7CFC00', bn: 'লন গ্রিন', en: 'Lawn Green' },
     { hex: '#AAF0D1', bn: 'মিন্ট গ্রিন', en: 'Mint Green' },
+    { hex: '#00FF00', bn: 'নিয়ন গ্রিন', en: 'Neon Green' }, // Added
+    { hex: '#0A5C36', bn: 'বটল গ্রিন', en: 'Bottle Green' }, // Added
+    { hex: '#9AB973', bn: 'পিস্তা সবুজ', en: 'Pistachio' }, // Added
 
     // Blues
     { hex: '#0000FF', bn: 'নীল', en: 'Blue' },
@@ -150,8 +168,10 @@ export const COLOR_MAP = [
     { hex: '#0077B6', bn: 'সার্ফ ব্লু', en: 'Ocean Blue' },
     { hex: '#73C2FB', bn: 'মায়া ব্লু', en: 'Maya Blue' },
     { hex: '#002244', bn: 'অক্সফোর্ড ব্লু', en: 'Oxford Blue' },
+    { hex: '#0F52BA', bn: 'স্যাফায়ার ব্লু', en: 'Sapphire' }, // Added
+    { hex: '#7FFFD4', bn: 'অ্যাকোয়া', en: 'Aqua' }, // Added
 
-    // Purples / Violets
+    // Purples & Violets
     { hex: '#800080', bn: 'বেগুনি', en: 'Purple' },
     { hex: '#4B0082', bn: 'ইনডিগো', en: 'Indigo' },
     { hex: '#8B008B', bn: 'গাঢ় ম্যাজেন্টা', en: 'Dark Magenta' },
@@ -165,41 +185,40 @@ export const COLOR_MAP = [
     { hex: '#6A0DAD', bn: 'রয়্যাল পার্পল', en: 'Royal Purple' },
     { hex: '#702963', bn: 'বাইজেন্টাইন', en: 'Byzantine' },
     { hex: '#FF00FF', bn: 'ম্যাজেন্টা', en: 'Magenta' },
-    { hex: '#FF00FF', bn: 'ফুচিয়া', en: 'Fuchsia' },
     { hex: '#301934', bn: 'ডার্ক পার্পল', en: 'Dark Purple' },
     { hex: '#551A8B', bn: 'ইম্পেরিয়াল পার্পল', en: 'Imperial Purple' },
+    { hex: '#DF00FF', bn: 'নিয়ন পার্পল', en: 'Psychedelic Purple' }, // Added
 
-    // Maroon / Wine / Burgundy
+    // Maroon, Wine & Reds
     { hex: '#800000', bn: 'মেরুন', en: 'Maroon' },
     { hex: '#722F37', bn: 'ওয়াইন', en: 'Wine' },
     { hex: '#800020', bn: 'বারগান্ডি', en: 'Burgundy' },
-    { hex: '#B5651D', bn: 'পার্সিমন', en: 'Persimmon' },
+    { hex: '#EC5800', bn: 'পার্সিমন', en: 'Persimmon' }, // Fixed Hex Value
 
-    // Skin / Nude tones
+    // Skin & Nude Tones
     { hex: '#F3D5B5', bn: 'নিউড', en: 'Nude' },
     { hex: '#FFDBAC', bn: 'পীচ', en: 'Peach' },
     { hex: '#FFDAB9', bn: 'পীচ পাফ', en: 'Peach Puff' },
     { hex: '#FFE4C4', bn: 'বিস্ক', en: 'Bisque' },
     { hex: '#EDC9AF', bn: 'ডেজার্ট স্যান্ড', en: 'Desert Sand' },
 
-    // Khaki / Military
+    // Khaki & Military
     { hex: '#C3B091', bn: 'খাকি', en: 'Khaki' },
-    { hex: '#BDB76B', bn: 'ডার্ক খাকি', en: 'Dark Khaki' },
     { hex: '#4B5320', bn: 'আর্মি গ্রিন', en: 'Army Green' },
     { hex: '#3B3C36', bn: 'মিলিটারি গ্রিন', en: 'Military Green' },
 
-    // Copper / Bronze / Metallic
+    // Copper, Bronze & Metallic Trends
     { hex: '#B87333', bn: 'কপার', en: 'Copper' },
     { hex: '#CD7F32', bn: 'ব্রোঞ্জ', en: 'Bronze' },
     { hex: '#CFB53B', bn: 'ওল্ড গোল্ড', en: 'Old Gold' },
     { hex: '#C5B358', bn: 'ভেগাস গোল্ড', en: 'Vegas Gold' },
+    { hex: '#B76E79', bn: 'রোজ গোল্ড', en: 'Rose Gold' }, // Added
 
-    // Rust / Amber / Earthy
+    // Rust & Earthy
     { hex: '#B7410E', bn: 'রাস্ট', en: 'Rust' },
-    { hex: '#CC7722', bn: 'ওচার', en: 'Ochre' },
     { hex: '#E49B0F', bn: 'গাম্বোজ', en: 'Gamboge' },
 
-    // Aqua / Mint
+    // Aqua & Mint
     { hex: '#7FFFD4', bn: 'অ্যাকোয়ামারিন', en: 'Aquamarine' },
     { hex: '#66CDAA', bn: 'মিডিয়াম অ্যাকোয়ামারিন', en: 'Medium Aquamarine' },
     { hex: '#3EB489', bn: 'মিন্ট', en: 'Mint' },
@@ -209,91 +228,3 @@ export const COLOR_MAP = [
     { hex: '#FFDB58', bn: 'সরিষা', en: 'Mustard' },
     { hex: '#E1AD01', bn: 'গাঢ় সরিষা', en: 'Dark Mustard' },
 ];
-
-/**
- * Convert hex string to RGB
- */
-function hexToRgb(hex) {
-    hex = hex.replace('#', '');
-    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-    return {
-        r: parseInt(hex.substring(0, 2), 16),
-        g: parseInt(hex.substring(2, 4), 16),
-        b: parseInt(hex.substring(4, 6), 16),
-    };
-}
-
-/**
- * Calculate Euclidean distance between two RGB colors
- */
-function colorDistance(c1, c2) {
-    return Math.sqrt(
-        Math.pow(c1.r - c2.r, 2) +
-        Math.pow(c1.g - c2.g, 2) +
-        Math.pow(c1.b - c2.b, 2)
-    );
-}
-
-/**
- * Find the nearest color name for a given hex code.
- * Returns { bn, en, hex } with the closest match.
- */
-export function getColorName(hex) {
-    if (!hex) return { bn: 'অজানা', en: 'Unknown', hex: '#888888' };
-
-    const target = hexToRgb(hex);
-    let nearest = COLOR_MAP[0];
-    let minDist = Infinity;
-
-    for (const color of COLOR_MAP) {
-        const dist = colorDistance(target, hexToRgb(color.hex));
-        if (dist < minDist) {
-            minDist = dist;
-            nearest = color;
-        }
-    }
-
-    return { bn: nearest.bn, en: nearest.en, hex: nearest.hex };
-}
-
-/**
- * Format the final name string: "বাংলা (English)"
- */
-export function formatColorName(hex) {
-    const { bn, en } = getColorName(hex);
-    return `${bn} (${en})`;
-}
-
-/**
- * Mobile-friendly preset color swatches for quick selection
- */
-export const PRESET_SWATCHES = [
-    { hex: '#000000', en: 'Black', bn: 'কালো' },
-    { hex: '#FFFFFF', en: 'White', bn: 'সাদা' },
-    { hex: '#FF0000', en: 'Red', bn: 'লাল' },
-    { hex: '#800000', en: 'Maroon', bn: 'মেরুন' },
-    { hex: '#800020', en: 'Burgundy', bn: 'বারগান্ডি' },
-    { hex: '#FFC0CB', en: 'Pink', bn: 'গোলাপি' },
-    { hex: '#E8ADAA', en: 'Dusty Rose', bn: 'ডাস্টি রোজ' },
-    { hex: '#FFA500', en: 'Orange', bn: 'কমলা' },
-    { hex: '#FFD700', en: 'Gold', bn: 'সোনালি' },
-    { hex: '#FFFF00', en: 'Yellow', bn: 'হলুদ' },
-    { hex: '#FFDB58', en: 'Mustard', bn: 'সরিষা' },
-    { hex: '#008000', en: 'Green', bn: 'সবুজ' },
-    { hex: '#50C878', en: 'Emerald', bn: 'এমারেল্ড' },
-    { hex: '#808000', en: 'Olive', bn: 'অলিভ' },
-    { hex: '#0000FF', en: 'Blue', bn: 'নীল' },
-    { hex: '#4169E1', en: 'Royal Blue', bn: 'রয়্যাল ব্লু' },
-    { hex: '#000080', en: 'Navy', bn: 'নেভি' },
-    { hex: '#87CEEB', en: 'Sky Blue', bn: 'আকাশি' },
-    { hex: '#008080', en: 'Teal', bn: 'টিল' },
-    { hex: '#800080', en: 'Purple', bn: 'বেগুনি' },
-    { hex: '#E6E6FA', en: 'Lavender', bn: 'ল্যাভেন্ডার' },
-    { hex: '#964B00', en: 'Brown', bn: 'বাদামি' },
-    { hex: '#F5F5DC', en: 'Beige', bn: 'বেইজ' },
-    { hex: '#FFFDD0', en: 'Cream', bn: 'ক্রিম' },
-    { hex: '#808080', en: 'Grey', bn: 'গ্রে' },
-    { hex: '#36454F', en: 'Charcoal', bn: 'চারকোল' },
-    { hex: '#C0C0C0', en: 'Silver', bn: 'সিলভার' },
-];
-
