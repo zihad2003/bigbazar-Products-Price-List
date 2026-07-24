@@ -43,6 +43,20 @@ export default function HeroSlider({ slides = [] }) {
     goTo((current - 1 + total) % total, -1);
   }, [current, total, goTo]);
 
+  // Preload all slider images so slide transitions are instant
+  useEffect(() => {
+    if (!slides || slides.length === 0) return;
+    slides.forEach((s) => {
+      if (s?.image) {
+        const url = getOptimizedUrl(s.image, mediaSizes.banner);
+        if (url) {
+          const img = new Image();
+          img.src = url;
+        }
+      }
+    });
+  }, [slides]);
+
   // Auto-play
   useEffect(() => {
     if (isPaused || total <= 1) return;
@@ -102,6 +116,8 @@ export default function HeroSlider({ slides = [] }) {
             alt={slide.title || 'Collection Banner'}
             className="w-full h-full object-cover object-center select-none bg-neutral-950"
             loading={current === 0 ? 'eager' : 'lazy'}
+            fetchPriority={current === 0 ? 'high' : 'auto'}
+            decoding="async"
             draggable={false}
           />
 

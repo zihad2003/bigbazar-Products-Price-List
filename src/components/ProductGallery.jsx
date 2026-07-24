@@ -36,6 +36,18 @@ const ProductGallery = ({ images }) => {
     else setCurrentIndex(images.length - 1);
   };
 
+  // Preload all gallery images for instant switching
+  React.useEffect(() => {
+    if (!images || images.length === 0) return;
+    images.forEach((imgSrc) => {
+      const url = getOptimizedUrl(imgSrc, mediaSizes.gallery);
+      if (url) {
+        const img = new Image();
+        img.src = url;
+      }
+    });
+  }, [images]);
+
   if (!images || images.length === 0) {
     return (
       <div className="aspect-[4/5] bg-neutral-100 rounded-[24px] md:rounded-[32px] flex items-center justify-center">
@@ -63,6 +75,9 @@ const ProductGallery = ({ images }) => {
             transition={{ duration: 0.3 }}
             className="w-full h-full object-cover object-top"
             alt={`Product image ${currentIndex + 1}`}
+            loading={currentIndex === 0 ? "eager" : "lazy"}
+            fetchPriority={currentIndex === 0 ? "high" : "auto"}
+            decoding="async"
           />
         </AnimatePresence>
 
