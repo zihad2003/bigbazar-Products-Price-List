@@ -51,7 +51,7 @@ export default function SizeGuide() {
         </table>
       </div>
       <p className="text-xs text-zinc-400 italic mt-4 pl-1">
-        * প্রিপেইড বা কাস্টমাইজড অর্ডারের সময় সঠিক গাইড পেতে আমাদের হোয়াটসঅ্যাপ হেল্পলাইনে সরাসরি মেসেজ দিতে পারেন।
+        * প্রিপেইড বা কাস্টমাইজড অর্ডারের সময় সঠিক গাইড পেতে আমাদের হোয়াটসঅ্যাপ হেল্পলাইনে (<a href="https://wa.me/8801824950082" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-bold hover:underline">01824950082</a>) সরাসরি মেসেজ দিতে পারেন।
       </p>
     </div>
   );

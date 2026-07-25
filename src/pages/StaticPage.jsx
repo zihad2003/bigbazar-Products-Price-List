@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Mail, FileText, HelpCircle, Shield, RefreshCw, Info, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, FileText, HelpCircle, Shield, RefreshCw, Info, ShoppingBag, MessageCircle } from 'lucide-react';
 
 const pageData = {
   '/about-us': {
@@ -56,13 +56,21 @@ const pageData = {
           যেকোনো অর্ডার সংক্রান্ত তথ্য, প্রোডাক্টের স্টক কিংবা কাস্টমাইজেশন বিষয়ে যেকোনো তথ্যের জন্য সরাসরি আমাদের হেল্পলাইন বা শোরুমে যোগাযোগ করতে পারেন।
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="p-6 bg-zinc-50 border border-zinc-150 rounded-3xl flex flex-col items-center text-center space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d]">
               <Phone size={20} />
             </div>
             <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">মোবাইল নম্বর</span>
             <a href="tel:01857045449" className="text-zinc-900 font-bold hover:text-[#ce112d] transition-colors text-sm">01857045449</a>
+          </div>
+
+          <div className="p-6 bg-emerald-50/60 border border-emerald-150 rounded-3xl flex flex-col items-center text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+              <MessageCircle size={20} />
+            </div>
+            <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider">হোয়াটসঅ্যাপ (WhatsApp)</span>
+            <a href="https://wa.me/8801824950082" target="_blank" rel="noopener noreferrer" className="text-zinc-900 font-bold hover:text-emerald-600 transition-colors text-sm">01824950082</a>
           </div>
 
           <div className="p-6 bg-zinc-50 border border-zinc-150 rounded-3xl flex flex-col items-center text-center space-y-3">
@@ -161,7 +169,7 @@ const pageData = {
           </table>
         </div>
         <p className="text-xs text-zinc-400 italic mt-4 pl-1">
-          * প্রিপেইড বা কাস্টমাইজড অর্ডারের সময় সঠিক গাইড পেতে আমাদের হোয়াটসঅ্যাপ হেল্পলাইনে সরাসরি মেসেজ দিতে পারেন।
+          * প্রিপেইড বা কাস্টমাইজড অর্ডারের সময় সঠিক গাইড পেতে আমাদের হোয়াটসঅ্যাপ হেল্পলাইনে (<a href="https://wa.me/8801824950082" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-bold hover:underline">01824950082</a>) সরাসরি মেসেজ দিতে পারেন।
         </p>
       </div>
     )
