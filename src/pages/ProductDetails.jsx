@@ -504,11 +504,11 @@ export default function ProductDetails() {
                             </div>
                         ))}
                     </div>
-
-                    {/* Recently Viewed Products Section */}
-                    {product && <RecentlyViewed currentProductId={product.id} />}
                 </div>
             </div>
+
+            {/* Recently Viewed Products Section — Full Width from Left */}
+            {product && <RecentlyViewed currentProductId={product.id} />}
 
             <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />
 
