@@ -21,7 +21,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-[2500] bg-black/50 backdrop-blur-md"
+                        className="fixed inset-x-0 bottom-0 top-14 md:top-20 z-[1005] bg-black/40 backdrop-blur-md"
                     />
 
                     {/* Drawer */}
@@ -30,11 +30,11 @@ export default function CartDrawer({ isOpen, onClose }) {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 30, stiffness: 250 }}
-                        className="fixed right-0 top-0 bottom-0 w-full max-w-md z-[2501] flex flex-col shadow-2xl border-l border-neutral-100 dark:border-white/5"
+                        className="fixed right-0 top-14 md:top-20 bottom-0 w-full max-w-md z-[1006] flex flex-col shadow-[0_10px_50px_rgba(0,0,0,0.1)] border-l border-neutral-100 dark:border-white/5"
                         style={{ backgroundColor: 'var(--modal-bg)' }}
                     >
                         {/* Header */}
-                        <div className="p-6 border-b flex items-center justify-between border-neutral-100 dark:border-white/5">
+                        <div className="p-6 pt-7 md:pt-8 border-b flex items-center justify-between border-neutral-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-[#ce112d]/5 flex items-center justify-center text-[#ce112d]">
                                     <ShoppingBag size={20} strokeWidth={2.5} />
