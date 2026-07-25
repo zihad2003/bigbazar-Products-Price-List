@@ -59,13 +59,6 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                 <a href="tel:01857045449" className="hover:text-[#ce112d] transition-colors">01857045449</a>
                             </div>
                             <div className="flex items-center gap-3">
-                                <MessageCircle size={15} className="text-emerald-500 shrink-0" />
-                                <a href="https://wa.me/8801824950082" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 transition-colors flex items-center gap-1.5 font-bold">
-                                    <span>01824950082</span>
-                                    <span className="text-[9px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-md font-black uppercase tracking-wider">WhatsApp</span>
-                                </a>
-                            </div>
-                            <div className="flex items-center gap-3">
                                 <Mail size={15} className="text-[#ce112d] shrink-0" />
                                 <a href="mailto:infobigbazar01@gmail.com" className="hover:text-[#ce112d] transition-colors">infobigbazar01@gmail.com</a>
                             </div>
