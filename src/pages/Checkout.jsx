@@ -411,7 +411,7 @@ export default function Checkout() {
                             <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-3">
                                 <p className="text-[11px] leading-relaxed font-bold text-neutral-600">
                                     {formData.paymentMethod === 'cod'
-                                        ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (isConfirmationFee ? (language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'))} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? `বিকাশে সেন্ড মানি করুন। বাকি ৳${finalTotal - advanceAmount} হাতে পেয়ে দিবেন।` : `Send money via bKash. Pay due ৳${finalTotal - advanceAmount} on delivery.`}</>
+                                        ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (isConfirmationFee ? (language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'))} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? `বিকাশে সেন্ড মানি করুন। বাকি ৳${finalTotal - advanceAmount} হাতে পেতে দিবেন।` : `Send money via bKash. Pay due ৳${finalTotal - advanceAmount} on delivery.`}</>
                                         : <>{language === 'bn' ? 'সর্বমোট' : 'Total'} <strong className="text-[#ce112d]">৳{finalTotal}</strong> {language === 'bn' ? 'আজই সেন্ড মানি করুন।' : 'Send Money to below number.'}</>}
                                 </p>
                                 <div className="flex items-center gap-3 bg-white border border-neutral-200 p-2.5 rounded-lg justify-between">

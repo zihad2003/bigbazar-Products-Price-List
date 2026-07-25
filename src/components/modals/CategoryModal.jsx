@@ -57,13 +57,13 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory }) 
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[2000] flex items-end justify-center">
+                <div className="fixed inset-0 z-[2500] flex items-end justify-center">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        className="absolute inset-0 bg-black/60"
                     />
                     <motion.div
                         initial={{ y: '100%' }}

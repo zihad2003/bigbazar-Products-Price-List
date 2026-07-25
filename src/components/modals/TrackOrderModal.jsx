@@ -163,10 +163,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-2 md:p-4">
+            <div className="fixed inset-0 z-[2500] flex items-center justify-center p-2 md:p-4">
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/65 backdrop-blur-md"
+                    className="absolute inset-0 bg-black/60"
                     onClick={onClose}
                 />
                 <motion.div
@@ -414,7 +414,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     <Truck size={14} style={{ color: 'var(--text-muted)' }} />
                                                     <div>
                                                         <p className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter md:tracking-widest" style={{ color: 'var(--text-secondary)' }}>Cash on Delivery (COD)</p>
-                                                        <p className="text-[8px] md:text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'পণ্য হাতে পেয়ে টাকা পরিশোধ করবেন।' : 'Pay when you receive the product.'}</p>
+                                                        <p className="text-[8px] md:text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'পণ্য হাতে পেতে টাকা পরিশোধ করবেন।' : 'Pay when you receive the product.'}</p>
                                                     </div>
                                                 </div>
                                             )}
