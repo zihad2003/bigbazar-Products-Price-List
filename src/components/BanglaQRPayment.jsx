@@ -99,7 +99,7 @@ export default function BanglaQRPayment({
         <p className="text-[11px] leading-relaxed font-bold text-neutral-700 bg-white p-3 rounded-xl border border-[#ce112d]/15">
           {paymentOption === 'advance' ? (
             language === 'bn'
-              ? <>অগ্রিম পেমেন্ট <strong className="text-[#ce112d]">৳{advanceAmount}</strong> টাকা নিচের নম্বর/কিউআর আইডিতে পাঠাবেন। বাকি <strong className="text-neutral-900">৳{dueAmount}</strong> টাকা পণ্য হাতে পেতে ডেলিভারি ম্যানের কাছে পরিশোধ করবেন।</>
+              ? <>অগ্রিম পেমেন্ট <strong className="text-[#ce112d]">৳{advanceAmount}</strong> টাকা নিচের নম্বর/কিউআর আইডিতে পাঠাবেন। বাকি <strong className="text-neutral-900">৳{dueAmount}</strong> টাকা পণ্য হাতে পেয়ে ডেলিভারি ম্যানের কাছে পরিশোধ করবেন।</>
               : <>Pay advance amount <strong className="text-[#ce112d]">৳{advanceAmount}</strong> below. Pay due <strong className="text-neutral-900">৳{dueAmount}</strong> on delivery.</>
           ) : (
             language === 'bn'
