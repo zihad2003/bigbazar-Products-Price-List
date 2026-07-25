@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkles } from 'lucide-react';
+import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkles, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import ProductModal from '../components/modals/ProductModal';
@@ -320,6 +320,27 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       )}
 
       <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
+        {/* Local Delivery & Assurance Highlight Banner */}
+        <div className="p-4 md:p-5 bg-gradient-to-r from-[#ce112d]/5 via-red-50/40 to-zinc-50/50 rounded-2xl md:rounded-3xl border border-red-100/80 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-[#ce112d] text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-900/20">
+              <Truck size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="font-black text-neutral-900 uppercase text-xs md:text-sm tracking-tight">
+                {language === 'bn' ? 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি!' : 'Free Home Delivery in Mirsharai Upazila'}
+              </p>
+              <p className="text-[11px] md:text-xs text-neutral-500 font-medium leading-relaxed">
+                {language === 'bn' ? 'ক্যাশ অন ডেলিভারি সুবিধা চট্টগ্রাম ও সারা বাংলাদেশে • ১০০% সেরা ফেব্রিক কোয়ালিটি' : 'Cash on Delivery in Chattogram & Countrywide • 100% Guaranteed Quality Fabric'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-3.5 py-1.5 bg-white text-[#ce112d] text-[10px] font-black uppercase tracking-widest rounded-full border border-red-200 shadow-xs">
+              {language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery'}
+            </span>
+          </div>
+        </div>
         {/* Maintenance Notice */}
         {/* No Products Found */}
         {/* Smart Proportional Empty State */}
