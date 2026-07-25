@@ -473,9 +473,6 @@ export default function ProductDetails() {
                                             </p>
                                         </div>
                                     </div>
-                                    <span className="px-2.5 py-1 bg-white text-[#ce112d] text-[9px] font-black uppercase tracking-widest rounded-full border border-red-200 shrink-0 shadow-xs">
-                                        {language === 'bn' ? 'গ্যারান্টিযুক্ত' : 'Verified'}
-                                    </span>
                                 </div>
                             </div>
                         )}
