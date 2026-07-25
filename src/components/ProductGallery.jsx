@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, X } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 
 const ProductGallery = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   const minSwipeDistance = 50;
 
@@ -46,7 +47,7 @@ const ProductGallery = ({ images }) => {
         img.src = url;
       }
     });
-  }, [images]);
+  }, [JSON.stringify(images)]);
 
   if (!images || images.length === 0) {
     return (
@@ -60,10 +61,11 @@ const ProductGallery = ({ images }) => {
     <div className="flex flex-col md:flex-row gap-4">
       {/* Main Image */}
       <div 
-        className="relative aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm"
+        className="relative aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm cursor-zoom-in group"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onClick={() => setIsZoomOpen(true)}
       >
         <AnimatePresence mode="wait">
           <motion.img
@@ -81,17 +83,23 @@ const ProductGallery = ({ images }) => {
           />
         </AnimatePresence>
 
+        {/* Zoom Hint Badge */}
+        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-none">
+          <ZoomIn size={14} />
+          <span>Tap to zoom</span>
+        </div>
+
         {/* Navigation arrows (Desktop only, show if multiple images) */}
         {images.length > 1 && (
           <>
             <button
-              onClick={prevSlide}
+              onClick={(e) => { e.stopPropagation(); prevSlide(); }}
               className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full items-center justify-center text-neutral-800 shadow-lg hover:bg-[#ce112d] hover:text-white transition-all z-10"
             >
               <ChevronLeft size={20} />
             </button>
             <button
-              onClick={nextSlide}
+              onClick={(e) => { e.stopPropagation(); nextSlide(); }}
               className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full items-center justify-center text-neutral-800 shadow-lg hover:bg-[#ce112d] hover:text-white transition-all z-10"
             >
               <ChevronRight size={20} />
@@ -138,6 +146,91 @@ const ProductGallery = ({ images }) => {
           ))}
         </div>
       )}
+
+      {/* Full-Screen Interactive Lightbox Zoom Modal */}
+      <AnimatePresence>
+        {isZoomOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[3000] bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6 select-none"
+            onClick={() => setIsZoomOpen(false)}
+          >
+            {/* Top Toolbar */}
+            <div className="flex items-center justify-between z-10">
+              <span className="text-white/70 text-xs font-mono font-bold">
+                {currentIndex + 1} / {images.length}
+              </span>
+              <button
+                onClick={() => setIsZoomOpen(false)}
+                className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-[#ce112d] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Main Lightbox Image View */}
+            <div
+              className="relative flex-1 flex items-center justify-center my-4 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <motion.img
+                key={currentIndex}
+                src={getOptimizedUrl(images[currentIndex], { w: 1600 })}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+                alt={`Full screen product view ${currentIndex + 1}`}
+              />
+
+              {/* Prev / Next controls inside Lightbox */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); prevSlide(); }}
+                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center hover:bg-[#ce112d] transition-all"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); nextSlide(); }}
+                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center hover:bg-[#ce112d] transition-all"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Bottom Thumbnail Strip inside Lightbox */}
+            {images.length > 1 && (
+              <div
+                className="flex items-center justify-center gap-2 overflow-x-auto py-2 z-10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentIndex(i)}
+                    className={`w-14 h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
+                      i === currentIndex ? 'border-[#ce112d] scale-110' : 'border-white/20 opacity-50'
+                    }`}
+                  >
+                    <img
+                      src={getOptimizedUrl(img, { w: 100, h: 120 })}
+                      className="w-full h-full object-cover"
+                      alt={`Lightbox thumbnail ${i + 1}`}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

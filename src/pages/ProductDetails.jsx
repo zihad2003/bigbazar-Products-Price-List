@@ -5,6 +5,7 @@ import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle,
 import { calculatePrice } from '../utils/pricing';
 import ProductGallery from '../components/ProductGallery';
 import ProductTabs from '../components/ProductTabs';
+import RecentlyViewed from '../components/RecentlyViewed';
 import AlertModal from '../components/modals/AlertModal';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -24,6 +25,30 @@ export default function ProductDetails() {
     const [validationError, setValidationError] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [showAlert, setShowAlert] = useState(false);
+    const [showStickyBar, setShowStickyBar] = useState(false);
+    const mainActionsRef = React.useRef(null);
+
+    const images = React.useMemo(() => {
+        if (!product) return [];
+        return (product.images && Array.isArray(product.images) && product.images.length > 0)
+            ? product.images
+            : [product.image || product.image_url].filter(Boolean);
+    }, [product]);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (mainActionsRef.current && window.innerWidth < 768) {
+                const rect = mainActionsRef.current.getBoundingClientRect();
+                const isPast = rect.bottom < 100;
+                setShowStickyBar(prev => (prev !== isPast ? isPast : prev));
+            } else {
+                setShowStickyBar(prev => (prev !== false ? false : prev));
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     useEffect(() => {
         if (productId) {
@@ -33,6 +58,25 @@ export default function ProductDetails() {
                     if (res && res.data) {
                         const prod = res.data;
                         setProduct(prod);
+
+                        // Save product to recently viewed list
+                        try {
+                            const stored = localStorage.getItem('bigbazar_recently_viewed');
+                            let list = stored ? JSON.parse(stored) : [];
+                            if (!Array.isArray(list)) list = [];
+                            list = list.filter(item => item && item.id !== prod.id);
+                            list.unshift({
+                                id: prod.id,
+                                name: prod.name,
+                                price: prod.price,
+                                original_price: prod.original_price,
+                                image_url: prod.image_url || prod.image || (prod.images && prod.images[0]),
+                                category: prod.category
+                            });
+                            localStorage.setItem('bigbazar_recently_viewed', JSON.stringify(list.slice(0, 10)));
+                        } catch (e) {
+                            console.error('Failed to save to recently viewed:', e);
+                        }
 
                         const getValidOptions = (arr) => (arr || []).filter(item => {
                             const name = typeof item === 'object' ? item.name : item;
@@ -60,6 +104,50 @@ export default function ProductDetails() {
                 });
         }
     }, [productId]);
+
+    useEffect(() => {
+        if (!product) return;
+
+        const { price } = calculatePrice(product);
+        const schemaData = {
+            "@context": "https://schema.org/",
+            "@type": "Product",
+            "name": product.name,
+            "image": product.image_url || product.image || (product.images && product.images[0]) || "",
+            "description": product.description || `${product.name} - Buy online at Big Bazar Baraiyarhat`,
+            "sku": String(product.id),
+            "brand": {
+                "@type": "Brand",
+                "name": "Big Bazar"
+            },
+            "offers": {
+                "@type": "Offer",
+                "url": window.location.href,
+                "priceCurrency": "BDT",
+                "price": price,
+                "availability": product.is_sold_out ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+                "seller": {
+                    "@type": "Organization",
+                    "name": "Big Bazar Baraiyarhat"
+                }
+            }
+        };
+
+        const script = document.createElement('script');
+        script.type = 'application/ld+json';
+        script.id = 'product-jsonld-schema';
+        script.text = JSON.stringify(schemaData);
+
+        const existing = document.getElementById('product-jsonld-schema');
+        if (existing) existing.remove();
+
+        document.head.appendChild(script);
+
+        return () => {
+            const currentScript = document.getElementById('product-jsonld-schema');
+            if (currentScript) currentScript.remove();
+        };
+    }, [product]);
 
     if (loading) {
         return (
@@ -96,9 +184,6 @@ export default function ProductDetails() {
     }
 
     const { price, originalPrice, hasDiscount } = calculatePrice(product);
-    const images = (product.images && Array.isArray(product.images) && product.images.length > 0)
-        ? product.images
-        : [product.image || product.image_url].filter(Boolean);
 
     // Calculate discount percentage
     const discountPercent = hasDiscount && originalPrice > 0
@@ -125,10 +210,16 @@ export default function ProductDetails() {
         return true;
     };
 
+    const scrollToOptions = () => {
+        if (mainActionsRef.current) {
+            mainActionsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
     const handleAddToCart = () => {
         if (product.is_sold_out) return;
-        if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
-        if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
+        if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
+        if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
         setShowCartSuccess(true);
         setTimeout(() => setShowCartSuccess(false), 2000);
@@ -137,8 +228,8 @@ export default function ProductDetails() {
 
     const handleMainOrder = () => {
         if (product.is_sold_out) return;
-        if (hasValidColors && !selectedColor) { setValidationError('color'); return; }
-        if (hasValidSizes && !selectedSize) { setValidationError('size'); return; }
+        if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
+        if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         setValidationError('');
         addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
         navigate('/checkout');
@@ -341,7 +432,7 @@ export default function ProductDetails() {
                                 </div>
 
                                 {/* Action Buttons - Primary vs Secondary distinction */}
-                                <div className="flex flex-col sm:flex-row gap-3">
+                                <div ref={mainActionsRef} className="flex flex-col sm:flex-row gap-3">
                                     <button
                                         onClick={handleMainOrder}
                                         disabled={!canProceed()}
@@ -365,6 +456,26 @@ export default function ProductDetails() {
                                         {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
                                         {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
                                     </button>
+                                </div>
+
+                                {/* Local Delivery & Assurance Highlight Banner */}
+                                <div className="p-3.5 bg-gradient-to-r from-[#ce112d]/5 via-red-50/40 to-neutral-50 rounded-2xl border border-red-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-[#ce112d] text-white flex items-center justify-center shrink-0 shadow-md shadow-red-900/20">
+                                            <Truck size={18} strokeWidth={2.5} />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-neutral-900 uppercase text-[10px] tracking-tight">
+                                                {language === 'bn' ? 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি!' : 'Free Home Delivery in Mirsharai'}
+                                            </p>
+                                            <p className="text-[9px] text-neutral-500 font-medium leading-tight">
+                                                {language === 'bn' ? 'ক্যাশ অন ডেলিভারি সুবিধা চট্টগ্রাম ও সারা বাংলাদেশে' : 'Cash on Delivery Available Countrywide'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className="px-2.5 py-1 bg-white text-[#ce112d] text-[9px] font-black uppercase tracking-widest rounded-full border border-red-200 shrink-0 shadow-xs">
+                                        {language === 'bn' ? 'গ্যারান্টিযুক্ত' : 'Verified'}
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -396,6 +507,9 @@ export default function ProductDetails() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Recently Viewed Products Section */}
+                    {product && <RecentlyViewed currentProductId={product.id} />}
                 </div>
             </div>
 
@@ -408,6 +522,44 @@ export default function ProductDetails() {
                     >
                         <Check size={18} strokeWidth={3} className="text-green-400" />
                         <span className="text-[11px] font-black uppercase tracking-widest">{language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে' : 'Added to bag!'}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Mobile Floating Sticky Quick-Order Bar */}
+            <AnimatePresence>
+                {showStickyBar && !loading && product && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 100 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 100 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="md:hidden fixed bottom-16 left-3 right-3 z-[990] bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl flex items-center justify-between gap-3 text-white"
+                    >
+                        <div className="flex flex-col pl-1 shrink-0">
+                            <span className="text-xs font-black text-[#ce112d]">৳{price}</span>
+                            <span className="text-[9px] text-zinc-400 font-medium truncate max-w-[100px]">
+                                {selectedColor || selectedSize
+                                    ? `${selectedColor} ${selectedSize}`.trim()
+                                    : (language === 'bn' ? 'অপশন বেছে নিন' : 'Select options')}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                            <button
+                                onClick={handleAddToCart}
+                                className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl active:scale-95 transition-all flex items-center justify-center shrink-0 border border-white/10"
+                                title={language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag'}
+                            >
+                                {isInCart ? <Check size={16} className="text-green-400" /> : <ShoppingCart size={16} />}
+                            </button>
+                            <button
+                                onClick={handleMainOrder}
+                                className="flex-1 py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-lg shadow-red-900/30 active:scale-95 transition-all text-center truncate"
+                            >
+                                {language === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
+                            </button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
