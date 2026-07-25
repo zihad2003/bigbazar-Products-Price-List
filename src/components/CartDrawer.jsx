@@ -34,7 +34,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                         style={{ backgroundColor: 'var(--modal-bg)' }}
                     >
                         {/* Header */}
-                        <div className="p-6 pt-7 md:pt-8 border-b flex items-center justify-between border-neutral-100 dark:border-white/5">
+                        <div className="p-6 pt-10 md:pt-12 border-b flex items-center justify-between border-neutral-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-[#ce112d]/5 flex items-center justify-center text-[#ce112d]">
                                     <ShoppingBag size={20} strokeWidth={2.5} />
