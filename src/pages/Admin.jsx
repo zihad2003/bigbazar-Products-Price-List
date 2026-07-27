@@ -6,7 +6,7 @@ import {
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -15,6 +15,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import ModeratorEntry from '../components/ModeratorEntry';
+import AdminReports from '../components/admin/AdminReports';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 
 export default function Admin() {
@@ -997,6 +998,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             {[
               { id: 'pending-items', icon: <Package size={18} />, label: 'Pending Items', count: orders.filter(o => o && o.status === 'Pending').length },
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
+              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics' },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
               { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
@@ -1054,7 +1056,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-12 overflow-y-auto no-scrollbar bg-[#0a0a0c]">
-        {activeTab === 'settings' ? (
+        {activeTab === 'reports' ? (
+          <AdminReports orders={orders} products={products} reviews={reviews} />
+        ) : activeTab === 'settings' ? (
           <div className="max-w-4xl space-y-12 pb-20">
             <div className="flex items-center justify-between">
               <div>
