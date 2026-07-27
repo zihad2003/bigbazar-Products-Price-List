@@ -7,6 +7,7 @@ import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
+import Products from './pages/Products';
 import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Checkout from './pages/Checkout';
@@ -65,6 +66,7 @@ function PublicLayout() {
   const isCheckoutPage = location.pathname === '/checkout';
   const isConfirmationPage = location.pathname.startsWith('/order-confirmation');
   const isProductPage = location.pathname.startsWith('/product/');
+  const isProductsPage = location.pathname === '/products';
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -154,6 +156,8 @@ function PublicLayout() {
           <OrderConfirmation />
         ) : isProductPage ? (
           <ProductDetails />
+        ) : isProductsPage ? (
+          <Products />
         ) : (
           <Home
             selectedCategory={category}
@@ -202,6 +206,7 @@ function App() {
                 <Route path="/store-locations" element={<PublicLayout />} />
                 <Route path="/checkout" element={<PublicLayout />} />
                 <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
+                <Route path="/products" element={<PublicLayout />} />
                 <Route path="/admin" element={<Admin />} />
               </Routes>
             </Router>

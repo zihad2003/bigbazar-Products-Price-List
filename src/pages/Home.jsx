@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkles, Truck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Search, ArrowRight, Award, Play, Instagram, Video, ShoppingBag, Sparkles, Truck, CreditCard, CheckCircle, ChevronRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
+import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import ProductModal from '../components/modals/ProductModal';
 import TickerAnnouncement from '../components/TickerAnnouncement';
 import { bigBazarApi, API_URL } from '../api/client';
@@ -78,107 +79,6 @@ const IconPremium = ({ size = 24 }) => (
   </svg>
 );
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ProductCard = ({ product, onClick }) => {
-  const { price, originalPrice, hasDiscount } = calculatePrice(product);
-  const hasVideo = !!product.video_url;
-
-  // Choose the best candidate for the display image
-  let sourceImage = product.image_url || product.images?.[0];
-
-  // If no image but has video, use video (normalization happens in getOptimizedUrl)
-  if (!sourceImage && hasVideo) {
-    sourceImage = product.video_url;
-  }
-
-  const { language } = useLanguage();
-
-  // Calculate discount percentage
-  const discountPercent = hasDiscount && originalPrice > 0 
-    ? Math.round(((originalPrice - price) / originalPrice) * 100) 
-    : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      onClick={() => onClick(product)}
-      className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
-    >
-      <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {sourceImage ? (
-          <div className="relative w-full h-full">
-            <img
-              src={getOptimizedUrl(sourceImage, mediaSizes.thumbnail)}
-              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500 ease-out"
-              alt={product.name}
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-full bg-neutral-50 flex items-center justify-center">
-            <Instagram size={22} className="text-zinc-200" />
-          </div>
-        )}
-        
-        {/* Corner Ribbon Sale Badge */}
-        {hasDiscount && (
-          <div className="absolute top-0 left-0">
-            <div className="bg-[#ce112d] text-white text-[9px] md:text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-br-lg shadow-md">
-              {discountPercent}% OFF
-            </div>
-          </div>
-        )}
-        
-        {product.is_sold_out && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center p-6 text-center">
-            <span className="text-xs font-bold uppercase text-neutral-900 border-2 border-neutral-900 px-4 py-2 rounded-xl">
-              {language === 'bn' ? 'স্টক নেই' : 'Sold Out'}
-            </span>
-          </div>
-        )}
-      </div>
-      
-      <div className="p-3.5 md:p-5 flex flex-col flex-1 gap-3">
-        <div className="space-y-1">
-          <p className="text-[9px] md:text-[10px] font-bold uppercase text-neutral-400 tracking-wider truncate">
-            {product.category || 'Clothing'}
-          </p>
-          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[40px]">{product.name}</h4>
-        </div>
-        
-        <div className="mt-auto flex items-center justify-between gap-1.5 pt-1 min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0 overflow-hidden">
-            <span className="text-sm sm:text-base md:text-lg font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>
-            {hasDiscount && (
-              <span className="text-[10px] sm:text-[11px] text-neutral-400 line-through font-semibold whitespace-nowrap">৳{originalPrice}</span>
-            )}
-          </div>
-          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-400 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm shrink-0">
-            <ArrowRight size={14} className="sm:w-4 sm:h-4" strokeWidth={2.5} />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-const ProductSkeleton = () => (
-  <div className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden border border-neutral-100 animate-pulse h-full">
-    <div className="aspect-[4/5] bg-neutral-200" />
-    <div className="p-3.5 md:p-5 space-y-3">
-      <div className="h-2 w-16 bg-neutral-100 rounded-full" />
-      <div className="h-4 w-full bg-neutral-200 rounded-lg" />
-      <div className="h-4 w-2/3 bg-neutral-100 rounded-lg" />
-      <div className="mt-8 flex justify-between items-end">
-        <div className="h-6 w-20 bg-neutral-100 rounded-lg" />
-        <div className="h-8 w-8 md:h-10 md:w-10 bg-neutral-200 rounded-xl" />
-      </div>
-    </div>
-  </div>
-);
 
 const DEFAULT_SLIDES = [];
 
@@ -301,7 +201,9 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Elite Hero Section — full-width banner, DB-controlled */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
         <section className="w-full relative">
-          <div className="w-full aspect-[16/9] sm:aspect-[21/9] min-h-[260px] sm:min-h-[360px] max-h-[580px] overflow-hidden bg-neutral-950 relative">
+          <div className="w-full overflow-hidden bg-neutral-950 relative"
+            style={{ height: 'clamp(280px, 56vw, 640px)' }}
+          >
             <HeroSlider slides={siteSettings.main_slides} />
           </div>
           {siteSettings.ticker_announcement?.position === 'bottom_slider' && (
@@ -310,37 +212,53 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
       )}
 
-      {/* Hero loading skeleton */}
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full aspect-[16/9] sm:aspect-[21/9] min-h-[260px] sm:min-h-[360px] max-h-[580px] bg-neutral-100 animate-pulse flex items-center justify-center">
+          <div className="w-full h-[60vh] md:h-[80vh] bg-neutral-100 animate-pulse flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
           </div>
         </section>
       )}
 
-      <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
-        {/* Local Delivery & Assurance Highlight Banner */}
-        <div className="p-4 md:p-5 bg-gradient-to-r from-[#ce112d]/5 via-red-50/40 to-zinc-50/50 rounded-2xl md:rounded-3xl border border-red-100/80 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-[#ce112d] text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-900/20">
-              <Truck size={22} strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="font-black text-neutral-900 uppercase text-xs md:text-sm tracking-tight">
-                {language === 'bn' ? 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি!' : 'Free Home Delivery in Mirsharai Upazila'}
-              </p>
-              <p className="text-[11px] md:text-xs text-neutral-500 font-medium leading-relaxed">
-                {language === 'bn' ? 'ক্যাশ অন ডেলিভারি সুবিধা চট্টগ্রাম ও সারা বাংলাদেশে • ১০০% সেরা ফেব্রিক কোয়ালিটি' : 'Cash on Delivery in Chattogram & Countrywide • 100% Guaranteed Quality Fabric'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="px-3.5 py-1.5 bg-white text-[#ce112d] text-[10px] font-black uppercase tracking-widest rounded-full border border-red-200 shadow-xs">
-              {language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery'}
-            </span>
+      {/* Trust Strip */}
+      <section className="w-full border-b border-zinc-100 bg-white shadow-sm">
+        <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-2 sm:px-0">
+          <div className="grid grid-cols-3 divide-x divide-zinc-100">
+            {[
+              { icon: <Truck size={16} strokeWidth={1.75} />, title: language === 'bn' ? 'ফ্রি ডেলিভারি' : 'Free Delivery', sub: language === 'bn' ? 'মীরসরাই এলাকায়' : 'Within Mirsarai' },
+              { icon: <CreditCard size={16} strokeWidth={1.75} />, title: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', sub: language === 'bn' ? 'হাতে পেয়ে পেমেন্ট' : 'Pay on receipt' },
+              { icon: <CheckCircle size={16} strokeWidth={1.75} />, title: language === 'bn' ? '১০০% গুণমান' : '100% Quality', sub: language === 'bn' ? 'প্রিমিয়াম ফেব্রিক' : 'Premium finish' },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col sm:flex-row items-center justify-center text-center sm:text-left gap-1.5 sm:gap-3 py-2.5 sm:py-3.5 px-1 sm:px-4">
+                <span className="text-[#ce112d] shrink-0">{item.icon}</span>
+                <div>
+                  <p className="text-[10px] sm:text-xs font-black text-zinc-900 uppercase tracking-tight sm:tracking-wide leading-tight">{item.title}</p>
+                  <p className="text-[9px] sm:text-[10px] text-zinc-400 font-medium leading-none mt-0.5">{item.sub}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+      </section>
+
+      {/* Wedding Collection Banner — Admin Controlled Canva Poster */}
+      {siteSettings.wedding_banner?.enabled && siteSettings.wedding_banner?.image_url && (
+        <section className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-6 md:mt-8">
+          <Link
+            to={`/products?category=${encodeURIComponent(siteSettings.wedding_banner.category_filter || 'Wedding')}`}
+            className="block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
+          >
+            <img
+              src={siteSettings.wedding_banner.image_url}
+              alt="Collection Banner"
+              className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
+              loading="lazy"
+            />
+          </Link>
+        </section>
+      )}
+
+      <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
         {/* Maintenance Notice */}
         {/* No Products Found */}
         {/* Smart Proportional Empty State */}

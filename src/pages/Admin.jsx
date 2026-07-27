@@ -43,6 +43,12 @@ export default function Admin() {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [formAlert, setFormAlert] = useState(null); // { title, message, type: 'error' | 'success' }
   const [customSizeInput, setCustomSizeInput] = useState('');
+  const [productLimit, setProductLimit] = useState(500);
+  const [hasMoreProducts, setHasMoreProducts] = useState(true);
+  const [showRangeDeleteModal, setShowRangeDeleteModal] = useState(false);
+  const [rangeStart, setRangeStart] = useState('1');
+  const [rangeEnd, setRangeEnd] = useState('200');
+  const [deletingRangeProgress, setDeletingRangeProgress] = useState(null);
 
   const copyToClipboard = (text, label) => {
     if (!text) return;
@@ -100,6 +106,17 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     contact_info: { whatsapp: '', facebook: '', instagram: '' },
     main_slides: [],
     category_visibility: { show_new: true, show_sale: true, show_exclusive: true },
+    wedding_banner: {
+      enabled: false,
+      image_url: '',
+      title_bn: 'ওয়েডিং কালেকশন',
+      title_en: 'Wedding Collection',
+      subtitle_bn: 'এক্সক্লুসিভ কালেকশন',
+      subtitle_en: 'Exclusive Collection',
+      cta_bn: 'কালেকশন দেখুন',
+      cta_en: 'Explore Collection',
+      category_filter: 'Wedding',
+    },
     announcement: {
       enabled: false,
       title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
@@ -142,14 +159,75 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     return () => clearInterval(statsTimer);
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (limitToFetch = productLimit) => {
     setLoading(true);
     const { data } = await bigBazarApi
       .from('products')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(200);
+      .limit(limitToFetch);
     setProducts(data || []);
+    setHasMoreProducts(data && data.length >= limitToFetch);
+    setLoading(false);
+  };
+
+  const handleLoadMoreProducts = () => {
+    const nextLimit = productLimit + 500;
+    setProductLimit(nextLimit);
+    fetchProducts(nextLimit);
+  };
+
+  const handleLoadAllProducts = () => {
+    const allLimit = 5000;
+    setProductLimit(allLimit);
+    fetchProducts(allLimit);
+  };
+
+  const handleBulkDeleteBySerialRange = async () => {
+    const start = parseInt(rangeStart);
+    const end = parseInt(rangeEnd);
+    if (isNaN(start) || isNaN(end) || start > end) {
+      setAlertModal({ isOpen: true, title: 'Invalid Range', message: 'Please enter valid serial numbers (e.g. From 1 To 200).', type: 'error' });
+      return;
+    }
+
+    setLoading(true);
+    // Fetch target products from DB in range
+    const { data: targetProducts } = await bigBazarApi
+      .from('products')
+      .select('id, serial_no, name')
+      .order('serial_no', { ascending: true })
+      .limit(5000);
+
+    const matching = (targetProducts || []).filter(p => p.serial_no >= start && p.serial_no <= end);
+
+    if (matching.length === 0) {
+      setLoading(false);
+      setAlertModal({ isOpen: true, title: 'No Products Found', message: `No products found with Serial numbers between #${start} and #${end}.`, type: 'error' });
+      return;
+    }
+
+    setConfirmation({
+      isOpen: true,
+      title: `Delete ${matching.length} Products?`,
+      message: `আপনি কি নিশ্চিত যে আপনি Serial #${start} থেকে #${end} পর্যন্ত ${matching.length}টি পণ্য স্থায়ীভাবে ডিলিট করতে চান?`,
+      confirmText: `Delete ${matching.length} Items`,
+      onConfirm: async () => {
+        setShowRangeDeleteModal(false);
+        setLoading(true);
+        setDeletingRangeProgress({ current: 0, total: matching.length });
+
+        for (let i = 0; i < matching.length; i++) {
+          await bigBazarApi.from('products').delete().eq('id', matching[i].id);
+          setDeletingRangeProgress({ current: i + 1, total: matching.length });
+        }
+
+        setDeletingRangeProgress(null);
+        setAlertModal({ isOpen: true, title: 'Bulk Delete Complete!', message: `Successfully deleted ${matching.length} products (Serial #${start} - #${end}).`, type: 'success' });
+        fetchProducts();
+        setLoading(false);
+      }
+    });
     setLoading(false);
   };
 
@@ -371,6 +449,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       if (themeData?.mode) setSiteTheme(themeData.mode);
       const catVis = getValue('category_visibility');
       if (catVis) settings.category_visibility = catVis;
+      const weddingBanner = getValue('wedding_banner');
+      if (weddingBanner) settings.wedding_banner = { ...settings.wedding_banner, ...weddingBanner };
 
       const visitors = getValue('site_visitors');
       if (visitors !== undefined && visitors !== null) {
@@ -979,7 +1059,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white">System <span className="text-[#ce112d]">Settings</span></h2>
-                <p className="text-zinc-500 text-xs mt-2 font-bold uppercase tracking-widest">Global configuration & site aesthetics</p>
+                <p className="text-zinc-500 text-xs mt-2 font-bold uppercase tracking-widest">Global configuration &amp; site aesthetics</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={fetchSiteSettings} className="p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-all text-zinc-400">
@@ -992,7 +1072,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home Slider <span className="text-[#ce112d]">Engine</span></h3>
-                  <p className="text-zinc-500 text-[10px] mt-2 font-black uppercase tracking-[0.2em]">Manage carousel visuals for your landing page</p>
+                  <p className="text-zinc-500 text-[10px] mt-2 font-black uppercase tracking-[0.2em]">Upload Canva-designed banners — each slide is fully clickable</p>
                 </div>
                 <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full text-[10px] font-black text-white/40 uppercase">
                   {siteSettings.main_slides?.length || 0} Slides Active
@@ -1014,123 +1094,38 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       </button>
                       <div className="absolute bottom-4 left-4 px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 italic">SLIDE {i + 1}</div>
                     </div>
-                    <div className="p-5 space-y-3 bg-gradient-to-b from-transparent to-[#0a0a0c]/60">
+                    <div className="p-4 space-y-3">
                       <div>
-                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Title (শিরোনাম)</label>
+                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1.5 block">
+                          Destination Link <span className="text-zinc-700 normal-case font-normal">(where clicking the banner goes)</span>
+                        </label>
                         <input
-                          value={slide.title || ''}
-                          placeholder="Headline (e.g. গায়ে হলুদের শাড়ি)"
+                          value={slide.button_link || slide.product_id || ''}
+                          placeholder="https://... or /products?category=... or product ID"
                           onChange={e => {
                             const updated = [...siteSettings.main_slides];
-                            updated[i] = { ...slide, title: e.target.value };
+                            updated[i] = { ...slide, button_link: e.target.value, product_id: e.target.value };
                             setSiteSettings({ ...siteSettings, main_slides: updated });
                           }}
-                          className="w-full bg-black/50 border border-white/10 h-10 px-3 rounded-xl text-xs font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all shadow-inner"
+                          className="w-full bg-black/60 border border-white/10 h-10 px-3 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all font-mono"
                         />
                       </div>
-
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Subtitle (উপ-শিরোনাম)</label>
-                        <input
-                          value={slide.subtitle || ''}
-                          placeholder="Subheading (e.g. ৫% ছাড় সকল শাড়িতে)"
-                          onChange={e => {
+                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                        <span className="text-[9px] font-black uppercase text-zinc-600">Image Fit</span>
+                        <button
+                          type="button"
+                          onClick={() => {
                             const updated = [...siteSettings.main_slides];
-                            updated[i] = { ...slide, subtitle: e.target.value };
+                            updated[i] = { ...slide, image_fit: slide.image_fit === 'contain' ? 'cover' : 'contain' };
                             setSiteSettings({ ...siteSettings, main_slides: updated });
                           }}
-                          className="w-full bg-black/50 border border-white/10 h-10 px-3 rounded-xl text-[11px] font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div>
-                          <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Button Text (বাটন টেক্সট)</label>
-                          <input
-                            value={slide.button_text || slide.cta || ''}
-                            placeholder="e.g. অর্ডার করুন / Shop Now"
-                            onChange={e => {
-                              const updated = [...siteSettings.main_slides];
-                              updated[i] = { ...slide, button_text: e.target.value, cta: e.target.value };
-                              setSiteSettings({ ...siteSettings, main_slides: updated });
-                            }}
-                            className="w-full bg-black/50 border border-white/10 h-9 px-3 rounded-xl text-[10px] font-bold text-[#ce112d] placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1 block">Button Link / Product ID</label>
-                          <input
-                            value={slide.button_link || slide.product_id || ''}
-                            placeholder="URL or Product ID"
-                            onChange={e => {
-                              const updated = [...siteSettings.main_slides];
-                              updated[i] = { ...slide, button_link: e.target.value, product_id: e.target.value };
-                              setSiteSettings({ ...siteSettings, main_slides: updated });
-                            }}
-                            className="w-full bg-black/50 border border-white/10 h-9 px-3 rounded-xl text-[10px] text-zinc-400 placeholder:text-zinc-800 outline-none focus:border-white/10 transition-all font-mono"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Align & Color & Fit controls */}
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 items-center">
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Text Alignment</label>
-                          <div className="flex bg-black/60 p-0.5 rounded-lg border border-white/5">
-                            {['left', 'center', 'right'].map(align => (
-                              <button
-                                key={align}
-                                type="button"
-                                onClick={() => {
-                                  const updated = [...siteSettings.main_slides];
-                                  updated[i] = { ...slide, text_align: align };
-                                  setSiteSettings({ ...siteSettings, main_slides: updated });
-                                }}
-                                className={`flex-1 py-1 rounded-md text-[8px] font-black uppercase transition-all ${(slide.text_align || 'center') === align
-                                    ? 'bg-[#ce112d] text-white shadow-md'
-                                    : 'text-zinc-500 hover:text-white'
-                                  }`}
-                              >
-                                {align[0].toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Text Color</label>
-                          <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-lg border border-white/5">
-                            <input
-                              type="color"
-                              value={slide.text_color || '#ffffff'}
-                              onChange={e => {
-                                const updated = [...siteSettings.main_slides];
-                                updated[i] = { ...slide, text_color: e.target.value };
-                                setSiteSettings({ ...siteSettings, main_slides: updated });
-                              }}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
-                            />
-                            <span className="text-[9px] font-mono text-zinc-400 uppercase">{slide.text_color || '#FFFFFF'}</span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[8px] font-black uppercase text-zinc-600 block mb-1">Picture Alignment</label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = [...siteSettings.main_slides];
-                              updated[i] = { ...slide, image_fit: slide.image_fit === 'contain' ? 'cover' : 'contain' };
-                              setSiteSettings({ ...siteSettings, main_slides: updated });
-                            }}
-                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase border transition-all ${slide.image_fit === 'contain'
-                                ? 'bg-zinc-800 border-white/20 text-white'
-                                : 'bg-[#ce112d]/20 border-[#ce112d]/40 text-[#ce112d]'
-                              }`}
-                          >
-                            {slide.image_fit === 'contain' ? 'Fit (Contain)' : 'Fill (Cover)'}
-                          </button>
-                        </div>
+                          className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border transition-all ${slide.image_fit === 'contain'
+                            ? 'bg-zinc-800 border-white/20 text-white'
+                            : 'bg-[#ce112d]/20 border-[#ce112d]/40 text-[#ce112d]'
+                          }`}
+                        >
+                          {slide.image_fit === 'contain' ? 'Contain' : 'Cover (Fill)'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1477,55 +1472,104 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               </div>
             </div>
 
-            <div className="space-y-8 pt-12 border-t border-white/5">
-              <div>
-                <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Category <span className="text-[#ce112d]">Filters</span></h3>
-                <p className="text-zinc-500 text-xs mt-1 font-medium">Show or hide category tabs on the homepage</p>
+            {/* Wedding Banner Section */}
+            <div className="space-y-6 pt-12 border-t border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Wedding <span className="text-[#ce112d]">Banner</span></h3>
+                  <p className="text-zinc-500 text-[10px] mt-1 font-black uppercase tracking-[0.2em]">Homepage promotional banner — image, text & category filter</p>
+                </div>
+                {/* Enable / Disable Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSiteSettings(prev => ({
+                    ...prev,
+                    wedding_banner: { ...prev.wedding_banner, enabled: !prev.wedding_banner?.enabled }
+                  }))}
+                  className="flex items-center gap-3"
+                >
+                  <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.wedding_banner?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}>
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.wedding_banner?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">
+                    {siteSettings.wedding_banner?.enabled ? 'ON' : 'OFF'}
+                  </span>
+                </button>
               </div>
-              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-4">
-                {[
-                  { key: 'show_new', label: 'New Arrivals Tab', desc: 'Shows the "New" filter on homepage', icon: <><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></> },
-                  { key: 'show_sale', label: 'Sale / Offers Tab', desc: 'Shows the "Sale" filter on homepage', icon: <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none" /></> },
-                  { key: 'show_exclusive', label: 'Premium Collections Tab', desc: 'Shows the "Premium" filter on homepage', icon: <><path d="M12 15l-2 5L9 9l11 4-5 2zm0 0l4 4M7.5 13.5L5 15l1 1M8.5 8L7 5l-1 1M15.5 8L17 5l1 1" /><path d="M12 7a5 5 0 100 10 5 5 0 000-10z" /></> },
-                ].map(({ key, label, desc, icon }) => {
-                  const isOn = (siteSettings.category_visibility || {})[key] !== false;
-                  return (
-                    <div key={key} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isOn ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">{label}</p>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{desc}</p>
-                        </div>
+
+              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-5 md:p-8 space-y-6">
+
+                {/* Poster Image */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block">Poster Image</label>
+                  {siteSettings.wedding_banner?.image_url ? (
+                    <div className="relative w-full aspect-[16/5] rounded-xl overflow-hidden group">
+                      <img src={siteSettings.wedding_banner.image_url} alt="Wedding Banner" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                        <label className="px-4 py-2 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-zinc-100 transition-all">
+                          Replace
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            setLoading(true);
+                            const url = await uploadSingleFile(file);
+                            if (url) setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
+                            setLoading(false);
+                          }} />
+                        </label>
+                        <button type="button" onClick={() => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: '' } }))}
+                          className="px-4 py-2 bg-[#ce112d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                          Remove
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSiteSettings(prev => ({ ...prev, category_visibility: { ...(prev.category_visibility || {}), [key]: !isOn } }))}
-                        className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${isOn ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
-                      >
-                        <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${isOn ? 'translate-x-6' : 'translate-x-0'}`} />
-                      </button>
                     </div>
-                  );
-                })}
-              </div>
-              <div className="flex pt-2">
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full aspect-[16/5] rounded-xl border-2 border-dashed border-zinc-700 hover:border-[#ce112d]/60 cursor-pointer transition-all group bg-zinc-950/50">
+                      <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-[#ce112d] group-hover:scale-110 transition-transform mb-3">
+                        <Plus size={22} strokeWidth={2.5} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Upload Poster Image</span>
+                      <span className="text-[9px] text-zinc-700 mt-1">Recommended: 1920×600px, landscape</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        setLoading(true);
+                        const url = await uploadSingleFile(file);
+                        if (url) setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
+                        setLoading(false);
+                      }} />
+                    </label>
+                  )}
+                </div>
+
+
+
+                {/* Category Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Category Filter Keyword</label>
+                  <p className="text-[9px] text-zinc-600">Products page will filter by this category name when banner is clicked</p>
+                  <input
+                    type="text"
+                    value={siteSettings.wedding_banner?.category_filter || ''}
+                    onChange={e => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, category_filter: e.target.value } }))}
+                    className="w-full bg-black/50 border border-zinc-800 focus:border-[#ce112d]/40 text-white text-sm font-bold px-4 h-11 rounded-xl outline-none transition-all"
+                    placeholder="e.g. Wedding"
+                  />
+                </div>
+
+                {/* Save Button */}
                 <button
                   type="button"
                   disabled={loading}
                   onClick={async () => {
                     setLoading(true);
-                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'category_visibility', value: siteSettings.category_visibility || {} }, { onConflict: 'key' });
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'wedding_banner', value: siteSettings.wedding_banner }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                    else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Category visibility updated.', type: 'success' });
+                    else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Wedding banner settings updated.', type: 'success' });
                     setLoading(false);
                   }}
                   className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
                 >
                   {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Visibility'}</span>
+                  <span>{loading ? 'Saving...' : 'Save Wedding Banner'}</span>
                 </button>
               </div>
             </div>
@@ -1940,76 +1984,171 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       )}
                     </div>
 
-                    {/* Colors & Mobile Color Picker */}
+                    {/* Colors & Color Picker — Redesigned */}
                     <div className="space-y-6 pt-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Add Color Variants (কালার অপশন)</label>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Tap a swatch on mobile/desktop or enter custom color</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const val = (form._newColorName || '').trim();
-                            if (!val) { setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Please enter or tap a color name first', type: 'error' }); return; }
-                            const hex = form._newColorHex || '#888888';
-                            setForm({ ...form, available_colors: [...(form.available_colors || []), { name: val, image: null, is_available: true, hex, sizes: [] }], _newColorHex: '#888888', _newColorName: '', _colorSuggestions: false });
-                          }}
-                          className="px-6 py-3 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
-                        >
-                          + Add Color
-                        </button>
+                      <div>
+                        <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Color Variants <span className="text-zinc-500 font-bold">(কালার অপশন)</span></label>
+                        <p className="text-[10px] text-zinc-600 font-medium mt-0.5">Select a swatch or enter name below, then click Add Color</p>
                       </div>
 
-                      {/* Mobile-Friendly Swatch Palette + Custom Input */}
-                      <div className="p-4 md:p-6 bg-black/40 border border-white/5 rounded-2xl md:rounded-[32px] space-y-5">
-                        <span className="text-[9px] font-black uppercase text-zinc-500 tracking-wider block">Tap Color Swatch (মোবাইল কালার প্যালেট):</span>
-                        <div className="grid grid-cols-7 sm:grid-cols-9 md:grid-cols-14 gap-2">
-                          {PRESET_SWATCHES.map((swatch, sIdx) => (
-                            <button
-                              key={sIdx}
-                              type="button"
-                              onClick={() => {
-                                setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en });
-                              }}
-                              className="aspect-square rounded-xl border-2 border-white/10 hover:border-white transition-all transform hover:scale-110 active:scale-95 relative group shadow-md"
-                              style={{ backgroundColor: swatch.hex }}
-                              title={`${swatch.en} (${swatch.bn})`}
-                            >
-                              {form._newColorHex === swatch.hex && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
-                                  <Check size={14} className={swatch.hex === '#FFFFFF' ? 'text-black' : 'text-white'} />
-                                </div>
-                              )}
-                            </button>
-                          ))}
+                      {/* Color Selection Panel */}
+                      <div className="p-4 md:p-6 bg-zinc-950/80 border border-white/[0.06] rounded-2xl md:rounded-3xl space-y-5">
+                        {/* Gradient Hue Strip — interactive */}
+                        <div className="space-y-2">
+                          <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">Pick from Gradient</span>
+                          <div
+                            className="relative h-10 md:h-12 rounded-xl overflow-hidden cursor-crosshair shadow-inner border border-white/10"
+                            style={{ background: 'linear-gradient(to right, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0088ff, #0000ff, #8800ff, #ff00ff, #ff0088, #ff0000)' }}
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                              // Map position to hue
+                              const hue = Math.round(x * 360);
+                              const hex = `hsl(${hue}, 85%, 50%)`;
+                              // Convert HSL to hex
+                              const tempEl = document.createElement('div');
+                              tempEl.style.color = hex;
+                              document.body.appendChild(tempEl);
+                              const rgb = window.getComputedStyle(tempEl).color;
+                              document.body.removeChild(tempEl);
+                              const match = rgb.match(/\d+/g);
+                              if (match) {
+                                const hexColor = '#' + match.slice(0, 3).map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+                                const matched = getColorName(hexColor);
+                                setForm({ ...form, _newColorHex: hexColor, _newColorName: matched.en });
+                              }
+                            }}
+                          >
+                            {/* Lightness overlay gradient */}
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.4) 100%)' }} />
+                            {/* Position indicator */}
+                            {form._newColorHex && form._newColorHex !== '#888888' && (
+                              <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 border-white shadow-lg pointer-events-none" style={{ backgroundColor: form._newColorHex, left: '50%' }} />
+                            )}
+                          </div>
                         </div>
 
-                        {/* Input Row for Custom Name & Custom Picker */}
-                        <div className="flex gap-3 md:gap-4 items-center pt-2">
-                          <label className="relative w-12 h-12 shrink-0 cursor-pointer rounded-2xl border-2 border-white/20 shadow-xl overflow-hidden transition-all hover:scale-105" style={{ backgroundColor: form._newColorHex || '#888888' }}>
-                            <input
-                              type="color"
-                              value={form._newColorHex || '#888888'}
-                              onChange={e => {
-                                const matched = getColorName(e.target.value);
-                                setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
-                              }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                          </label>
-                          <input
-                            value={form._newColorName || ''}
-                            placeholder="Selected or custom color name..."
-                            onChange={e => setForm({ ...form, _newColorName: e.target.value })}
-                            className="flex-1 bg-black/60 border-2 border-zinc-800 h-12 px-4 rounded-xl text-sm font-bold shadow-inner focus:border-[#ce112d]/50 outline-none transition-all text-white"
-                          />
-                          <input
-                            value={form._newColorHex || ''}
-                            placeholder="#HEX"
-                            onChange={e => setForm({ ...form, _newColorHex: e.target.value })}
-                            className="w-24 bg-black/60 border-2 border-zinc-800 h-12 px-3 rounded-xl text-xs font-mono font-bold text-zinc-400 outline-none uppercase"
-                          />
+                        {/* Categorized Swatches */}
+                        {[
+                          { label: 'Basics', filter: (s) => ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow'].includes(s.en) },
+                          { label: 'Warm', filter: (s) => ['Maroon', 'Burgundy', 'Pink', 'Dusty Rose', 'Orange', 'Gold', 'Mustard', 'Coral'].includes(s.en) },
+                          { label: 'Cool', filter: (s) => ['Navy', 'Royal Blue', 'Sky Blue', 'Teal', 'Purple', 'Lavender', 'Emerald'].includes(s.en) },
+                          { label: 'Neutrals', filter: (s) => ['Grey', 'Silver', 'Charcoal', 'Brown', 'Beige', 'Cream'].includes(s.en) },
+                        ].map(group => {
+                          const swatches = PRESET_SWATCHES.filter(group.filter);
+                          if (swatches.length === 0) return null;
+                          return (
+                            <div key={group.label} className="space-y-2">
+                              <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">{group.label}</span>
+                              <div className="flex flex-wrap gap-2 md:gap-2.5">
+                                {swatches.map((swatch, sIdx) => {
+                                  const isSelected = form._newColorHex === swatch.hex;
+                                  return (
+                                    <button
+                                      key={sIdx}
+                                      type="button"
+                                      onClick={() => {
+                                        setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en });
+                                      }}
+                                      className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 group/swatch ${isSelected ? 'scale-105' : ''}`}
+                                    >
+                                      <div
+                                        className={`w-10 h-10 md:w-11 md:h-11 rounded-xl shadow-lg transition-all ${
+                                          isSelected
+                                            ? 'ring-2 ring-[#ce112d] ring-offset-2 ring-offset-zinc-950 scale-110'
+                                            : 'border-2 border-white/10 hover:border-white/40 group-hover/swatch:scale-110'
+                                        }`}
+                                        style={{ backgroundColor: swatch.hex }}
+                                      >
+                                        {isSelected && (
+                                          <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-xl">
+                                            <Check size={16} className={swatch.hex === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <span className={`text-[8px] font-bold uppercase tracking-wide leading-none ${isSelected ? 'text-white' : 'text-zinc-600'}`}>
+                                        {swatch.en.length > 8 ? swatch.en.slice(0, 7) + '…' : swatch.en}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Custom Input + Preview */}
+                        <div className="pt-2 border-t border-white/5 space-y-3">
+                          <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">Custom / Selected Color</span>
+                          <div className="flex gap-3 items-stretch">
+                            {/* Color Preview + Native Picker */}
+                            <label className="relative w-14 h-14 shrink-0 cursor-pointer rounded-2xl border-2 border-white/15 shadow-xl overflow-hidden transition-all hover:scale-105 hover:border-white/30" style={{ backgroundColor: form._newColorHex || '#888888' }}>
+                              <input
+                                type="color"
+                                value={form._newColorHex || '#888888'}
+                                onChange={e => {
+                                  const matched = getColorName(e.target.value);
+                                  setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
+                                <Pipette size={10} className="text-white/60" />
+                              </div>
+                            </label>
+                            {/* Name + Hex Inputs */}
+                            <div className="flex-1 flex flex-col gap-2">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase text-zinc-600">Name</span>
+                                <input
+                                  value={form._newColorName || ''}
+                                  placeholder="Color name..."
+                                  onChange={e => setForm({ ...form, _newColorName: e.target.value })}
+                                  className="w-full bg-black/60 border border-zinc-800 h-10 pl-14 pr-3 rounded-xl text-sm font-bold shadow-inner focus:border-[#ce112d]/50 outline-none transition-all text-white"
+                                />
+                              </div>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase text-zinc-600">HEX</span>
+                                <input
+                                  value={form._newColorHex || ''}
+                                  placeholder="#000000"
+                                  onChange={e => {
+                                    const val = e.target.value;
+                                    setForm({ ...form, _newColorHex: val });
+                                    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                                      const matched = getColorName(val);
+                                      setForm(prev => ({ ...prev, _newColorHex: val, _newColorName: matched.en }));
+                                    }
+                                  }}
+                                  className="w-full bg-black/60 border border-zinc-800 h-10 pl-14 pr-3 rounded-xl text-xs font-mono font-bold text-zinc-400 outline-none uppercase focus:border-[#ce112d]/50 transition-all"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Live Preview Card */}
+                          {form._newColorName && (
+                            <div className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
+                              <div className="w-8 h-8 rounded-lg shadow-lg border border-white/10" style={{ backgroundColor: form._newColorHex || '#888888' }} />
+                              <div>
+                                <p className="text-xs font-bold text-white">{form._newColorName}</p>
+                                <p className="text-[9px] font-mono text-zinc-500 uppercase">{form._newColorHex || '#888888'}</p>
+                              </div>
+                              <span className="ml-auto text-[8px] font-black uppercase text-zinc-600 tracking-wider">Preview</span>
+                            </div>
+                          )}
+                          {/* Add Color Button — inline at bottom, matches Add Size pattern */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = (form._newColorName || '').trim();
+                              if (!val) { setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Please enter or tap a color name first', type: 'error' }); return; }
+                              const hex = form._newColorHex || '#888888';
+                              setForm({ ...form, available_colors: [...(form.available_colors || []), { name: val, image: null, is_available: true, hex, sizes: [] }], _newColorHex: '#888888', _newColorName: '', _colorSuggestions: false });
+                            }}
+                            className="w-full h-11 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg"
+                          >
+                            + Add Color
+                          </button>
                         </div>
                       </div>
 
@@ -2303,59 +2442,69 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-              <div className="bg-[#121215] border border-[#1d1d21] p-6 rounded-[32px] space-y-4 shadow-xl relative overflow-hidden group">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] -mr-16 -mt-16 rounded-full group-hover:bg-white/[0.02] transition-all" />
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Revenue</p>
-                <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
-                  const amount = parseFloat(o.total_amount) || 0;
-                  return acc + amount;
-                }, 0).toLocaleString()}</p>
+                <p className="text-[10px] md:text-xs font-semibold text-zinc-500 uppercase tracking-wide">Revenue</p>
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
+                    const amount = parseFloat(o.total_amount) || 0;
+                    return acc + amount;
+                  }, 0).toLocaleString()}</p>
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-green-500/20 relative z-10 shrink-0">
+                    <ShoppingBag size={16} className="md:w-5 md:h-5 text-green-500" />
+                  </div>
+                </div>
               </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-6 rounded-[32px] space-y-4 shadow-xl relative overflow-hidden group">
+              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-violet-400" />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/[0.03] -mr-16 -mt-16 rounded-full group-hover:bg-purple-500/[0.05] transition-all" />
-                <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">Advance</p>
-                <div className="flex items-end justify-between">
-                  <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
+                <p className="text-[10px] md:text-xs font-semibold text-purple-500 uppercase tracking-wide">Advance</p>
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
                     const charge = parseFloat(o.delivery_charge) || 0;
                     const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
                     return acc + adv;
                   }, 0).toLocaleString()}</p>
-                  <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 relative z-10">
-                    <ShieldCheck size={20} className="text-purple-500" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-purple-500/20 relative z-10 shrink-0">
+                    <ShieldCheck size={16} className="md:w-5 md:h-5 text-purple-500" />
                   </div>
                 </div>
               </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-6 rounded-[32px] space-y-4 shadow-xl relative overflow-hidden group">
+              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ce112d] to-rose-400" />
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#ce112d]/[0.03] -mr-16 -mt-16 rounded-full group-hover:bg-[#ce112d]/[0.05] transition-all" />
-                <p className="text-xs font-semibold text-[#ce112d] uppercase tracking-wide">Total Due</p>
-                <div className="flex items-end justify-between">
-                  <p className="text-3xl font-bold text-white tracking-tighter">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
+                <p className="text-[10px] md:text-xs font-semibold text-[#ce112d] uppercase tracking-wide">Total Due</p>
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
                     const totalAmount = parseFloat(o.total_amount) || 0;
                     const charge = parseFloat(o.delivery_charge) || 0;
                     const advanceAmount = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
                     return acc + (totalAmount - advanceAmount);
                   }, 0).toLocaleString()}</p>
-                  <div className="w-10 h-10 bg-[#ce112d]/10 rounded-2xl flex items-center justify-center border border-[#ce112d]/20 relative z-10">
-                    <span className="text-[#ce112d] font-bold text-sm">৳</span>
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-[#ce112d]/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-[#ce112d]/20 relative z-10 shrink-0">
+                    <span className="text-[#ce112d] font-bold text-xs md:text-sm">৳</span>
                   </div>
                 </div>
               </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Pending</p>
-                <div className="flex items-end justify-between">
-                  <p className="text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Pending').length}</p>
-                  <div className="w-10 h-10 bg-yellow-500/10 rounded-2xl flex items-center justify-center border border-yellow-500/20">
-                    <Clock size={20} className="text-yellow-500" />
+              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 to-amber-400" />
+                <p className="text-[10px] md:text-xs font-semibold text-yellow-500 uppercase tracking-wide">Pending</p>
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Pending').length}</p>
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-yellow-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-yellow-500/20 shrink-0">
+                    <Clock size={16} className="md:w-5 md:h-5 text-yellow-500" />
                   </div>
                 </div>
               </div>
-              <div className="bg-zinc-900 border border-white/5 p-6 rounded-[32px] space-y-4 shadow-xl">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Completed Items</p>
-                <div className="flex items-end justify-between">
-                  <p className="text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Delivered').length}</p>
-                  <div className="w-10 h-10 bg-green-500/10 rounded-2xl flex items-center justify-center border border-green-500/20">
-                    <CheckCircle2 size={20} className="text-green-500" />
+              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px] col-span-2 md:col-span-1">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-400" />
+                <p className="text-[10px] md:text-xs font-semibold text-emerald-500 uppercase tracking-wide">Completed</p>
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-xl md:text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Delivered').length}</p>
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-green-500/20 shrink-0">
+                    <CheckCircle2 size={16} className="md:w-5 md:h-5 text-green-500" />
                   </div>
                 </div>
               </div>
@@ -3251,7 +3400,41 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
               <div>
                 <h2 className="text-3xl font-bold uppercase tracking-tight text-white">{activeTab === 'published' ? 'Published' : activeTab === 'pending' ? 'Pending' : 'Sold Out'} <span className="text-[#ce112d]">Feed</span></h2>
-                <p className="text-zinc-500 text-xs mt-3 uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">{products.filter(p => p.status === (activeTab === 'soldout' ? p.status : activeTab)).length} Items Loaded</p>
+                <div className="flex items-center gap-3 flex-wrap mt-3">
+                  <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">
+                    {products.filter(p => p.status === (activeTab === 'soldout' ? p.status : activeTab)).length} Items Loaded
+                  </p>
+                  {hasMoreProducts && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreProducts}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-3.5 py-1.5 rounded-full border border-[#ce112d]/20 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        {loading ? <RotateCcw size={12} className="animate-spin" /> : <Plus size={12} />}
+                        <span>Load 500 More</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLoadAllProducts}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-white/10 transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Sparkles size={12} className="text-amber-400" />
+                        <span>Load All Products</span>
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowRangeDeleteModal(true)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-1.5 rounded-full border border-red-500/20 transition-all active:scale-95 ml-auto"
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete Serial Range</span>
+                  </button>
+                </div>
               </div>
               <div className="relative w-full sm:w-72 group">
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#ce112d] transition-colors" />
@@ -3432,6 +3615,28 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 );
               })}
             </div>
+
+            {hasMoreProducts && (
+              <div className="pt-6 pb-6 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleLoadMoreProducts}
+                  disabled={loading}
+                  className="flex items-center gap-2 bg-[#ce112d] hover:bg-[#b00e26] text-white px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {loading ? <RotateCcw size={16} className="animate-spin" /> : <Plus size={16} />}
+                  <span>Load More Products ({productLimit}+ Loaded)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadAllProducts}
+                  disabled={loading}
+                  className="text-xs text-zinc-400 hover:text-white font-semibold underline underline-offset-4"
+                >
+                  Load All Live &amp; Draft Products
+                </button>
+              </div>
+            )}
           </div>
         )
         }
@@ -3462,6 +3667,102 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         message={alertModal.message}
         type={alertModal.type}
       />
+
+      {/* Bulk Serial Range Delete Modal */}
+      {showRangeDeleteModal && (
+        <div className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setShowRangeDeleteModal(false)}>
+          <div className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-6 space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-xl font-bold uppercase tracking-tight text-white flex items-center gap-2">
+                  <Trash2 size={20} className="text-[#ce112d]" />
+                  Delete <span className="text-[#ce112d]">Serial Range</span>
+                </h3>
+                <p className="text-zinc-500 text-xs mt-1">Delete all products within a serial number range</p>
+              </div>
+              <button onClick={() => setShowRangeDeleteModal(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">Start Serial #</label>
+                  <input
+                    type="number"
+                    value={rangeStart}
+                    onChange={e => setRangeStart(e.target.value)}
+                    placeholder="e.g. 1"
+                    className="w-full bg-black border border-zinc-800 h-11 px-3 rounded-xl text-sm font-bold text-white outline-none focus:border-[#ce112d]/50"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider">End Serial #</label>
+                  <input
+                    type="number"
+                    value={rangeEnd}
+                    onChange={e => setRangeEnd(e.target.value)}
+                    placeholder="e.g. 200"
+                    className="w-full bg-black border border-zinc-800 h-11 px-3 rounded-xl text-sm font-bold text-white outline-none focus:border-[#ce112d]/50"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl space-y-1">
+                <p className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertCircle size={14} /> Warning: Permanent Action
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  This will permanently delete all products with Serial numbers between #{rangeStart || '1'} and #{rangeEnd || '200'} from the database.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRangeDeleteModal(false)}
+                className="flex-1 h-12 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleBulkDeleteBySerialRange}
+                className="flex-1 h-12 bg-[#ce112d] hover:bg-[#b00e26] text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? <RotateCcw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                <span>Delete #{rangeStart} - #{rangeEnd}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Overlay during Bulk Range Delete */}
+      {deletingRangeProgress && (
+        <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div className="w-16 h-16 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center justify-center mx-auto text-[#ce112d]">
+              <RotateCcw size={32} className="animate-spin" />
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-white uppercase tracking-tight">Deleting Products...</h4>
+              <p className="text-xs text-zinc-400 mt-1 font-mono">
+                Deleting item {deletingRangeProgress.current} of {deletingRangeProgress.total}
+              </p>
+            </div>
+            <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-[#ce112d] h-full transition-all duration-200"
+                style={{ width: `${(deletingRangeProgress.current / deletingRangeProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile/Shared Detail Modal restricted to appropriate tabs */}
       {selectedOrder && (activeTab !== 'orders' && activeTab !== 'pending-items') && (
