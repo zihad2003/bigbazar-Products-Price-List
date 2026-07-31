@@ -22,6 +22,8 @@ export default function ProductDetails() {
     const [loading, setLoading] = useState(true);
     const [showCartSuccess, setShowCartSuccess] = useState(false);
     const [messengerNotice, setMessengerNotice] = useState('');
+    const [showMessengerModal, setShowMessengerModal] = useState(false);
+    const [copiedText, setCopiedText] = useState('');
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [validationError, setValidationError] = useState('');
@@ -261,10 +263,8 @@ export default function ProductDetails() {
         }
 
         trackMessengerClick(product);
-        setMessengerNotice(language === 'bn' ? 'প্রোডাক্টের বিবরণ কপি করা হয়েছে! মেসেঞ্জারে পেস্ট করে পাঠাতে পারবেন।' : 'Product details copied! Paste it in Messenger chat.');
-        setTimeout(() => setMessengerNotice(''), 4500);
-
-        window.open('https://m.me/100063541603515', '_blank');
+        setCopiedText(orderText);
+        setShowMessengerModal(true);
     };
 
     const handleShare = () => {
@@ -568,12 +568,66 @@ export default function ProductDetails() {
                         <span className="text-[11px] font-black uppercase tracking-widest">{language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে' : 'Added to bag!'}</span>
                     </motion.div>
                 )}
-                {messengerNotice && (
-                    <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-                        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] bg-[#0084FF] text-white px-6 py-3.5 rounded-[30px] flex items-center gap-3 shadow-2xl text-xs font-bold w-[90%] max-w-md text-center justify-center"
+                {showMessengerModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[3000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setShowMessengerModal(false)}
                     >
-                        <Check size={18} strokeWidth={3} className="text-white shrink-0" />
-                        <span>{messengerNotice}</span>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="bg-white text-neutral-900 rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-5"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setShowMessengerModal(false)}
+                                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-sm font-bold"
+                            >
+                                ✕
+                            </button>
+
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-[#0084FF]/10 text-[#0084FF] flex items-center justify-center shrink-0">
+                                    <MessageCircle size={26} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-black text-neutral-900 leading-tight">
+                                        {language === 'bn' ? 'পণ্যের বিবরণ কপি হয়েছে!' : 'Product Details Copied!'}
+                                    </h3>
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-extrabold mt-1">
+                                        <Check size={12} /> {language === 'bn' ? 'ক্লিপবোর্ডে কপি করা হয়েছে' : 'Copied to clipboard'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-200 text-xs font-mono text-neutral-700 whitespace-pre-line leading-relaxed max-h-36 overflow-y-auto">
+                                {copiedText}
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
+                                <span className="text-base">💡</span>
+                                <p className="leading-relaxed font-semibold">
+                                    {language === 'bn'
+                                        ? 'মেসেঞ্জারে চ্যাট খুললে মেসেজ বক্সে চাপ দিয়ে ধরে Paste (পেস্ট) চাপুন এবং আমাদের সেন্ড করুন।'
+                                        : 'When Messenger opens, press and hold on the chat box, tap Paste, and send it to us.'}
+                                </p>
+                            </div>
+
+                            <a
+                                href="https://m.me/100063541603515"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => setShowMessengerModal(false)}
+                                className="w-full py-4 bg-[#0084FF] hover:bg-[#0073e6] text-white rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-all active:scale-95 no-underline"
+                            >
+                                <MessageCircle size={18} />
+                                <span>{language === 'bn' ? 'মেসেঞ্জারে চ্যাট শুরু করুন 💬' : 'Open Messenger Chat 💬'}</span>
+                            </a>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
