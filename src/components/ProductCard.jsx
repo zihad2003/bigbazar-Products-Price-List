@@ -25,10 +25,7 @@ export const ProductCard = ({ product, onClick }) => {
     : 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+    <div
       onClick={() => onClick(product)}
       className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
@@ -87,7 +84,7 @@ export const ProductCard = ({ product, onClick }) => {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
