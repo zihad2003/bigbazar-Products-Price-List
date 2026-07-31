@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart } from 'lucide-react';
+import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import ProductGallery from '../components/ProductGallery';
 import ProductTabs from '../components/ProductTabs';
@@ -21,6 +21,7 @@ export default function ProductDetails() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showCartSuccess, setShowCartSuccess] = useState(false);
+    const [messengerNotice, setMessengerNotice] = useState('');
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [validationError, setValidationError] = useState('');
@@ -239,6 +240,33 @@ export default function ProductDetails() {
         navigate('/checkout');
     };
 
+    const handleMessengerOrder = () => {
+        if (product.is_sold_out) return;
+        if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
+        if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
+        setValidationError('');
+
+        const orderText = `আসসালামু আলাইকুম! আমি এই পণ্যটি অর্ডার করতে চাই:\n\n` +
+            `📌 পণ্য: ${product.name}\n` +
+            `💰 মূল্য: ৳${price}\n` +
+            (selectedColor ? `🎨 কালার: ${selectedColor}\n` : '') +
+            (selectedSize ? `📏 সাইজ: ${selectedSize}\n` : '') +
+            `📦 পরিমাণ: ${quantity}\n` +
+            `🔗 লিংক: ${window.location.href}`;
+
+        try {
+            navigator.clipboard.writeText(orderText);
+        } catch (e) {
+            console.error('Clipboard copy failed:', e);
+        }
+
+        trackMessengerClick(product);
+        setMessengerNotice(language === 'bn' ? 'প্রোডাক্টের বিবরণ কপি করা হয়েছে! মেসেঞ্জারে পেস্ট করে পাঠাতে পারবেন।' : 'Product details copied! Paste it in Messenger chat.');
+        setTimeout(() => setMessengerNotice(''), 4500);
+
+        window.open('https://m.me/100063541603515', '_blank');
+    };
+
     const handleShare = () => {
         if (navigator.share) {
             navigator.share({
@@ -436,29 +464,44 @@ export default function ProductDetails() {
                                 </div>
 
                                 {/* Action Buttons - Primary vs Secondary distinction */}
-                                <div ref={mainActionsRef} className="flex flex-col sm:flex-row gap-3">
+                                <div ref={mainActionsRef} className="space-y-3">
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <button
+                                            onClick={handleMainOrder}
+                                            disabled={!canProceed()}
+                                            className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-center ${canProceed()
+                                                    ? 'bg-[#ce112d] text-white shadow-xl shadow-red-900/30 hover:bg-[#b00e26] active:scale-95'
+                                                    : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            {language === 'bn' ? 'এখনই অর্ডার করুন' : 'Order Now'}
+                                        </button>
+                                        <button
+                                            onClick={handleAddToCart}
+                                            disabled={!canProceed()}
+                                            className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart
+                                                    ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]'
+                                                    : canProceed()
+                                                        ? 'border-neutral-900 text-neutral-900 hover:bg-neutral-50'
+                                                        : 'border-neutral-200 text-neutral-400 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
+                                            {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
+                                        </button>
+                                    </div>
+
+                                    {/* Messenger Direct Order Button */}
                                     <button
-                                        onClick={handleMainOrder}
+                                        onClick={handleMessengerOrder}
                                         disabled={!canProceed()}
-                                        className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-center ${canProceed()
-                                                ? 'bg-[#ce112d] text-white shadow-xl shadow-red-900/30 hover:bg-[#b00e26] active:scale-95'
-                                                : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                                        className={`w-full py-3.5 px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2.5 border shadow-sm ${canProceed()
+                                                ? 'bg-[#0084FF] hover:bg-[#0073e6] text-white border-[#0084FF] shadow-blue-500/20 active:scale-98'
+                                                : 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
                                             }`}
                                     >
-                                        {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
-                                    </button>
-                                    <button
-                                        onClick={handleAddToCart}
-                                        disabled={!canProceed()}
-                                        className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart
-                                                ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]'
-                                                : canProceed()
-                                                    ? 'border-neutral-900 text-neutral-900 hover:bg-neutral-50'
-                                                    : 'border-neutral-200 text-neutral-400 cursor-not-allowed'
-                                            }`}
-                                    >
-                                        {isInCart ? <Check size={15} /> : <ShoppingCart size={15} />}
-                                        {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
+                                        <MessageCircle size={18} />
+                                        <span>{language === 'bn' ? 'মেসেঞ্জারে অর্ডার করুন (কপি ও চ্যাট)' : 'Order via Messenger (Copy & Chat)'}</span>
                                     </button>
                                 </div>
 
@@ -523,6 +566,14 @@ export default function ProductDetails() {
                     >
                         <Check size={18} strokeWidth={3} className="text-green-400" />
                         <span className="text-[11px] font-black uppercase tracking-widest">{language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে' : 'Added to bag!'}</span>
+                    </motion.div>
+                )}
+                {messengerNotice && (
+                    <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] bg-[#0084FF] text-white px-6 py-3.5 rounded-[30px] flex items-center gap-3 shadow-2xl text-xs font-bold w-[90%] max-w-md text-center justify-center"
+                    >
+                        <Check size={18} strokeWidth={3} className="text-white shrink-0" />
+                        <span>{messengerNotice}</span>
                     </motion.div>
                 )}
             </AnimatePresence>
