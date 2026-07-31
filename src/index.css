@@ -39,23 +39,31 @@ h4,
   letter-spacing: -0.02em;
 }
 
-/* Global Bengali Font Consistency: Ensures uniform Noto Sans Bengali rendering without letter-spacing gaps or uppercase distortion */
+/* Global Bengali Font Consistency for text content (excluding brand logos) */
 html[lang="bn"], :lang(bn) {
   font-family: 'Noto Sans Bengali', 'Inter', system-ui, sans-serif;
 }
 
-html[lang="bn"] button,
-html[lang="bn"] span,
-html[lang="bn"] p,
-html[lang="bn"] h1,
-html[lang="bn"] h2,
-html[lang="bn"] h3,
-html[lang="bn"] h4,
-html[lang="bn"] a,
-html[lang="bn"] label,
-html[lang="bn"] input {
+html[lang="bn"] button:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] span:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] p:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] h1:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] h2:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] h3:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] h4:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] a:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] label:not(.brand-logo *):not(.brand-logo),
+html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   letter-spacing: normal !important;
   text-transform: none !important;
+}
+
+/* Immutable Brand Logo Typography Across All Languages */
+.brand-logo,
+.brand-logo * {
+  font-family: 'Outfit', 'Inter', sans-serif !important;
+  font-style: italic !important;
+  letter-spacing: -0.05em !important;
 }
 
 @layer base {

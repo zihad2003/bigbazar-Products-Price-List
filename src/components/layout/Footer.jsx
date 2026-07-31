@@ -42,7 +42,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     <div className="lg:col-span-4 space-y-6">
                         <div className="space-y-3">
                             <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-block group">
-                                <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none">
+                                <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none brand-logo">
                                     <span className="text-[#ce112d]">BIG</span>
                                     <span className="text-zinc-900 ml-1">BAZAR</span>
                                 </h2>

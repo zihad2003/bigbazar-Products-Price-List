@@ -23,7 +23,7 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                             onClick={() => { onSelectCategory('All'); navigate('/'); }}
                             className="inline-block text-left relative"
                         >
-                            <h1 className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none">
+                            <h1 className="text-xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none brand-logo">
                                 <span className="text-[#ce112d]">BIG</span>
                                 <span className="text-zinc-900 ml-1">BAZAR</span>
                             </h1>
