@@ -242,7 +242,7 @@ export default function Products() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-5">
               {loading && page === 0
-                ? Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
+                ? Array.from({ length: 20 }).map((_, i) => <ProductSkeleton key={i} />)
                 : products.map(product => (
                     <ProductCard
                       key={product.id}

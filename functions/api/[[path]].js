@@ -653,51 +653,55 @@ function getTodayKey() {
 
 app.post('/analytics/ping', async (c) => {
   const body = await c.req.json().catch(() => ({}));
-  const sessionId = body.session_id || c.req.header('x-session-id') || 'anon-' + Math.random();
+  const sessionId = body.session_id || c.req.header('x-session-id') || ('anon-' + Math.random().toString(36).substring(2, 9));
   const isNewSession = !!body.is_new;
 
   const now = Date.now();
-  activeSessions.set(sessionId, now);
+  const conn = getDb(c.env);
 
-  // Periodic cleanup of stale sessions (> 60s)
-  if (Math.random() < 0.1) {
-    for (const [sId, lastSeen] of activeSessions.entries()) {
-      if (now - lastSeen > 60000) activeSessions.delete(sId);
+  try {
+    // 1. Update live session ping in DB
+    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'live_pings'");
+    let pings = {};
+    if (res.length > 0) {
+      try { pings = typeof res[0].value === 'string' ? JSON.parse(res[0].value) : (res[0].value || {}); } catch (e) {}
     }
-  }
+    pings[sessionId] = now;
+    // Clean stale sessions older than 90 seconds
+    const cutoff = now - 90000;
+    Object.keys(pings).forEach(s => {
+      if (pings[s] < cutoff) delete pings[s];
+    });
+    await conn.execute(
+      "INSERT INTO site_settings (`key`, value) VALUES ('live_pings', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+      [JSON.stringify(pings)]
+    );
 
-  if (isNewSession) {
-    const conn = getDb(c.env);
-    const todayKey = getTodayKey();
-    try {
-      // 1. Increment Today's Count
+    // 2. Increment Today & Lifetime Total Counters
+    if (isNewSession) {
+      const todayKey = getTodayKey();
       const tRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = ?", [todayKey]);
       let todayCount = 0;
       if (tRes.length > 0) {
-        try { todayCount = parseInt(typeof tRes[0].value === 'string' ? JSON.parse(tRes[0].value) : tRes[0].value) || 0; }
-        catch (e) { todayCount = parseInt(tRes[0].value) || 0; }
+        try { todayCount = parseInt(typeof tRes[0].value === 'string' ? JSON.parse(tRes[0].value) : tRes[0].value) || 0; } catch (e) { todayCount = parseInt(tRes[0].value) || 0; }
       }
-      const newToday = todayCount + 1;
       await conn.execute(
         "INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-        [todayKey, JSON.stringify(newToday)]
+        [todayKey, JSON.stringify(todayCount + 1)]
       );
 
-      // 2. Increment Lifetime Total Count
       const totRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
       let totalCount = 0;
       if (totRes.length > 0) {
-        try { totalCount = parseInt(typeof totRes[0].value === 'string' ? JSON.parse(totRes[0].value) : totRes[0].value) || 0; }
-        catch (e) { totalCount = parseInt(totRes[0].value) || 0; }
+        try { totalCount = parseInt(typeof totRes[0].value === 'string' ? JSON.parse(totRes[0].value) : totRes[0].value) || 0; } catch (e) { totalCount = parseInt(totRes[0].value) || 0; }
       }
-      const newTotal = totalCount + 1;
       await conn.execute(
         "INSERT INTO site_settings (`key`, value) VALUES ('site_visitors', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-        [JSON.stringify(newTotal)]
+        [JSON.stringify(totalCount + 1)]
       );
-    } catch (err) {
-      console.error('Analytics ping DB update error:', err);
     }
+  } catch (err) {
+    console.error('Analytics ping DB update error:', err);
   }
 
   return c.json({ success: true });
@@ -705,35 +709,35 @@ app.post('/analytics/ping', async (c) => {
 
 app.get('/analytics/stats', async (c) => {
   const now = Date.now();
-  let onlineNow = 0;
-  for (const [sId, lastSeen] of activeSessions.entries()) {
-    if (now - lastSeen <= 60000) onlineNow++;
-    else activeSessions.delete(sId);
-  }
-
   const conn = getDb(c.env);
   const todayKey = getTodayKey();
   let todayCount = 0;
   let totalCount = 0;
+  let onlineNow = 1;
 
   try {
     const res = await conn.execute(
-      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors')",
+      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors', 'live_pings')",
       [todayKey]
     );
     res.forEach(r => {
       let val = 0;
-      try { val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0; }
-      catch (e) { val = parseInt(r.value) || 0; }
-
-      if (r.key === todayKey) todayCount = val;
-      if (r.key === 'site_visitors') totalCount = val;
+      if (r.key === 'live_pings') {
+        try {
+          const pings = typeof r.value === 'string' ? JSON.parse(r.value) : (r.value || {});
+          const cutoff = now - 90000;
+          const activeCount = Object.keys(pings).filter(s => pings[s] >= cutoff).length;
+          if (activeCount > 0) onlineNow = activeCount;
+        } catch (e) {}
+      } else {
+        try { val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0; } catch (e) { val = parseInt(r.value) || 0; }
+        if (r.key === todayKey) todayCount = val;
+        if (r.key === 'site_visitors') totalCount = val;
+      }
     });
   } catch (err) {
     console.error('Analytics stats fetch error:', err);
   }
-
-  if (onlineNow === 0) onlineNow = 1;
 
   return c.json({
     success: true,
