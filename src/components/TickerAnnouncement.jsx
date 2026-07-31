@@ -15,14 +15,21 @@ const TickerAnnouncement = ({ ticker, className = '' }) => {
   const bgColor = ticker.bg_color || '#ce112d';
   const textColor = ticker.text_color || '#ffffff';
 
-  const items = Array.from({ length: 12 });
+  // Read speed from ticker settings set by Admin (in seconds)
+  const rawSpeed = parseInt(ticker.speed, 10);
+  const speedInSeconds = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : 35;
+
+  const items = Array.from({ length: 8 });
 
   return (
     <div 
       className={`w-full relative z-[1005] overflow-hidden py-2 shadow-sm border-b border-white/10 select-none flex whitespace-nowrap ${className}`}
       style={{ backgroundColor: bgColor, color: textColor }}
     >
-      <div className="flex shrink-0 animate-marquee items-center">
+      <div 
+        className="flex shrink-0 animate-marquee items-center"
+        style={{ animationDuration: `${speedInSeconds}s` }}
+      >
         {items.map((_, i) => (
           <div key={`a-${i}`} className="flex items-center gap-3 px-6 shrink-0">
             <Sparkles className="w-3.5 h-3.5 opacity-90 shrink-0 animate-pulse" />
@@ -31,7 +38,11 @@ const TickerAnnouncement = ({ ticker, className = '' }) => {
           </div>
         ))}
       </div>
-      <div className="flex shrink-0 animate-marquee items-center" aria-hidden="true">
+      <div 
+        className="flex shrink-0 animate-marquee items-center" 
+        style={{ animationDuration: `${speedInSeconds}s` }}
+        aria-hidden="true"
+      >
         {items.map((_, i) => (
           <div key={`b-${i}`} className="flex items-center gap-3 px-6 shrink-0">
             <Sparkles className="w-3.5 h-3.5 opacity-90 shrink-0 animate-pulse" />
