@@ -32,7 +32,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
     };
 
     return (
-        <footer className="pt-16 pb-28 md:pb-12 border-t transition-all font-sans text-xs md:text-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}>
+        <footer className="pt-16 pb-28 md:pb-12 border-t transition-all font-sans text-xs md:text-sm bg-white border-zinc-200 text-zinc-900">
             <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
                 
                 {/* Main Links Area — 12 Column Layout */}
@@ -42,10 +42,11 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     <div className="lg:col-span-4 space-y-6">
                         <div className="space-y-3">
                             <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="inline-block group">
-                                <h2 className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                                    <span className="text-[#ce112d]">BIG</span> BAZAR
+                                <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter cursor-pointer select-none leading-none">
+                                    <span className="text-[#ce112d]">BIG</span>
+                                    <span className="text-zinc-900 ml-1">BAZAR</span>
                                 </h2>
-                                <div className="h-[2px] bg-[#ce112d] w-10 mt-1 transition-all duration-300 group-hover:w-full" />
+                                <div className="h-[2px] bg-[#ce112d] w-10 mt-2 transition-all duration-300 group-hover:w-full" />
                             </Link>
                             <p className="text-zinc-500 font-medium leading-relaxed text-xs max-w-sm">
                                 Your premier destination for family fashion from top brands. Fixed-price shopping for men, women, kids, and bridal collections.
@@ -53,7 +54,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                         </div>
 
                         {/* Contact details */}
-                        <div className="space-y-3 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        <div className="space-y-3 text-xs font-semibold text-zinc-700">
                             <div className="flex items-center gap-3">
                                 <Phone size={15} className="text-[#ce112d] shrink-0" />
                                 <a href="tel:01857045449" className="hover:text-[#ce112d] transition-colors">01857045449</a>
@@ -81,7 +82,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                     href={social.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="w-9 h-9 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-[#ce112d] hover:border-[#ce112d] transition-all duration-300 shadow-sm active:scale-95"
+                                    className="w-9 h-9 rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-[#ce112d] hover:border-[#ce112d] transition-all duration-300 shadow-sm active:scale-95"
                                 >
                                     <social.icon size={14} />
                                 </a>
@@ -94,8 +95,8 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                         
                         {/* SHOP Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white border-b border-zinc-100 pb-2">SHOP</h4>
-                            <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">SHOP</h4>
+                            <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
                                 <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Men</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Women</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('Kids (Boys)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Kids (Boys)</button></li>
@@ -107,8 +108,8 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                         {/* HELP Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white border-b border-zinc-100 pb-2">HELP</h4>
-                            <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">HELP</h4>
+                            <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
                                 <li><Link to="/contact-us" className="hover:text-[#ce112d] transition-colors">Contact Us</Link></li>
                                 <li><Link to="/faq" className="hover:text-[#ce112d] transition-colors">FAQs</Link></li>
                                 <li><Link to="/size-guide" className="hover:text-[#ce112d] transition-colors">Size Guide</Link></li>
@@ -131,8 +132,8 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                         {/* COMPANY Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white border-b border-zinc-100 pb-2">COMPANY</h4>
-                            <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">COMPANY</h4>
+                            <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
                                 <li><Link to="/about-us" className="hover:text-[#ce112d] transition-colors">About Us</Link></li>
                                 <li><Link to="/store-locations" className="hover:text-[#ce112d] transition-colors">Store Locations</Link></li>
                             </ul>
@@ -140,8 +141,8 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                         {/* LEGAL Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 dark:text-white border-b border-zinc-100 pb-2">LEGAL</h4>
-                            <ul className="space-y-3 font-semibold text-zinc-500 text-xs flex flex-col items-start">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">LEGAL</h4>
+                            <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
                                 <li><Link to="/privacy-policy" className="hover:text-[#ce112d] transition-colors">Privacy Policy</Link></li>
                                 <li><Link to="/terms" className="hover:text-[#ce112d] transition-colors">Terms of Service</Link></li>
                                 <li><Link to="/refund" className="hover:text-[#ce112d] transition-colors">Refund Policy</Link></li>
@@ -153,7 +154,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                 </div>
 
                 {/* Bottom Credits & Payment Badges */}
-                <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-6" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="border-t border-zinc-200 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
                     
                     {/* Copyright */}
                     <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center md:text-left">
@@ -161,18 +162,18 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     </div>
 
                     {/* Language Switcher */}
-                    <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full p-1 h-10 w-44">
+                    <div className="flex items-center bg-zinc-100 border border-zinc-200 rounded-full p-1 h-10 w-44">
                         <button
                             type="button"
                             onClick={() => setLanguage('en')}
-                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'en' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'en' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
                         >
                             ENGLISH
                         </button>
                         <button
                             type="button"
                             onClick={() => setLanguage('bn')}
-                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'bn' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                            className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'bn' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
                         >
                             বাংলা
                         </button>
