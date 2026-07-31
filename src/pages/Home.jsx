@@ -372,21 +372,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           )}
         </section>
 
-        {/* Global Footer Accent - Clean & Minimal */}
-        <section className="py-16 text-center">
-          <div className="inline-flex flex-col items-center gap-8 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#ce112d]/5 rounded-full blur-3xl group-hover:bg-[#ce112d]/10 transition-colors" />
-              <div className="relative w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-2xl border border-zinc-50 transition-transform duration-1000 group-hover:rotate-[360deg]">
-                <Award size={40} className="text-[#ce112d]" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-black uppercase tracking-[0.6em] text-zinc-900 leading-none">Big Bazar</p>
-              <p className="text-[10px] uppercase font-black tracking-[0.3em] text-zinc-300 italic"> Baraiyarhat Mirsharai Chattagram</p>
-            </div>
-          </div>
-        </section>
+
       </div>
 
       <ProductModal
