@@ -12,12 +12,12 @@ const translations = {
         girls: 'বাচ্চাদের (মেয়ে)',
         track: 'ট্র্যাক করুন',
         tracking: 'ট্র্যাকিং',
-        cart: 'কার্ট',
+        cart: 'ব্যাগ',
         search: 'খুঁজুন',
 
         // Product Section
         buy_now: 'অর্ডার করুন',
-        add_to_cart: 'কার্টে যোগ করুন',
+        add_to_cart: 'ব্যাগে যোগ করুন',
         add_to_bag: 'ব্যাগে যোগ করুন',
         out_of_stock: 'স্টক নেই',
         sold_out: 'বিক্রি হয়ে গেছে',

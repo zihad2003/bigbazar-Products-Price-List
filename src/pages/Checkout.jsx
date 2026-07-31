@@ -120,7 +120,7 @@ export default function Checkout() {
 
     const handleConfirmOrder = async () => {
         if (items.length === 0) {
-            setError(language === 'bn' ? "আপনার কার্ট খালি বা পণ্য লোড করা হয়নি।" : "Your checkout items are empty.");
+            setError(language === 'bn' ? "আপনার ব্যাগটি খালি আছে। কিছু পণ্য ব্যাগে যুক্ত করুন।" : "Your shopping bag is empty. Please add items to proceed.");
             return;
         }
         if (!formData.name || !formData.phone || !formData.address) {

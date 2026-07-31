@@ -65,7 +65,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                                     </div>
                                     <div className="space-y-2">
                                         <p className="font-black uppercase tracking-widest text-xs text-neutral-800 dark:text-neutral-200">
-                                            {language === 'bn' ? 'কার্টটি খালি আছে' : 'Your bag is empty'}
+                                            {language === 'bn' ? 'আপনার ব্যাগটি খালি আছে' : 'Your bag is empty'}
                                         </p>
                                         <p className="text-[10px] font-bold text-neutral-400 max-w-[240px] mx-auto leading-relaxed">
                                             {language === 'bn' 
