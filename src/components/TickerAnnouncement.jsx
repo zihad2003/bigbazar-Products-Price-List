@@ -17,7 +17,7 @@ const TickerAnnouncement = ({ ticker, className = '' }) => {
 
   // Read speed from ticker settings set by Admin (in seconds)
   const rawSpeed = parseInt(ticker.speed, 10);
-  const speedInSeconds = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : 35;
+  const speedInSeconds = !isNaN(rawSpeed) && rawSpeed > 0 ? rawSpeed : 65;
 
   const items = Array.from({ length: 8 });
 

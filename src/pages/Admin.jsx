@@ -1429,10 +1429,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     </label>
                     <div className="flex items-center gap-2 flex-wrap">
                       {[
-                        { speed: 15, label: 'Fast (15s)' },
-                        { speed: 25, label: 'Normal (25s)' },
-                        { speed: 40, label: 'Slow (40s)' },
-                        { speed: 55, label: 'Very Slow (55s)' }
+                        { speed: 45, label: 'Normal (45s)' },
+                        { speed: 65, label: 'Slow (65s)' },
+                        { speed: 90, label: 'Very Slow (90s)' },
+                        { speed: 120, label: 'Ultra Slow (120s)' }
                       ].map(s => (
                         <button
                           key={s.speed}
@@ -1442,7 +1442,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             ticker_announcement: { ...siteSettings.ticker_announcement, speed: s.speed }
                           })}
                           className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                            (siteSettings.ticker_announcement?.speed || 25) === s.speed 
+                            (siteSettings.ticker_announcement?.speed || 65) === s.speed 
                               ? 'bg-white text-black border-white' 
                               : 'bg-black/40 text-zinc-400 border-white/5 hover:border-white/10'
                           }`}
