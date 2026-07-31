@@ -20,12 +20,15 @@ import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
 import SEOHead from './components/SEOHead';
+import MessengerFAB from './components/MessengerFAB';
 import { bigBazarApi, API_URL } from './api/client';
+import { initAnalytics, trackPageview } from './utils/analytics';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackPageview(pathname);
   }, [pathname]);
   return null;
 }
@@ -121,7 +124,7 @@ function PublicLayout() {
   const isTopTickerActive = tickerSettings?.enabled && tickerSettings?.text && (!tickerSettings?.position || tickerSettings?.position === 'top_navbar');
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-[#ce112d])' ? 'var(--text-primary)' : 'var(--text-primary)' }}>
       <SEOHead />
       <TrackOrderModal isOpen={isTrackOpen} onClose={() => handleCloseModal(setIsTrackOpen)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => handleCloseModal(setIsCartOpen)} />
@@ -179,11 +182,17 @@ function PublicLayout() {
         onOpenCategories={() => openModal(setIsCategoryOpen)}
         onOpenAuth={() => openModal(setIsAuthOpen)}
       />
+
+      {!isCheckoutPage && <MessengerFAB />}
     </div>
   );
 }
 
 function App() {
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   return (
     <ErrorBoundary>
       <LanguageProvider>

@@ -6,6 +6,7 @@ import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo 
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import BanglaQRPayment from '../components/BanglaQRPayment';
+import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
 
 export default function Checkout() {
     const { t, language } = useLanguage();
@@ -88,6 +89,14 @@ export default function Checkout() {
     const advanceAmount = isExclusiveOrder ? 500 : (deliveryInfo?.advance ?? deliveryCharge);
     const isConfirmationFee = !isExclusiveOrder && deliveryCharge === 0 && advanceAmount > 0;
 
+    const checkoutTrackedRef = useRef(false);
+    useEffect(() => {
+        if (!checkoutTrackedRef.current && items.length > 0) {
+            checkoutTrackedRef.current = true;
+            trackInitiateCheckout(items, subtotal);
+        }
+    }, [items, subtotal]);
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         if (name === 'senderNumber' || name === 'phone') {
@@ -131,7 +140,7 @@ export default function Checkout() {
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
-            setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
+            setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
         if (formData.paymentMethod === 'bangla_qr' && !formData.senderNumber) {
@@ -216,6 +225,7 @@ export default function Checkout() {
             }
 
             const newOrderId = insertedData?.order_id || insertedData?.id || (Array.isArray(insertedData) ? (insertedData[0]?.order_id || insertedData[0]?.id) : null) || `ORD-${Date.now().toString().slice(-6)}`;
+            trackPurchase(newOrderId, items, finalTotal);
             // Navigate to dedicated confirmation route
             navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {

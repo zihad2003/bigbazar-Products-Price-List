@@ -10,6 +10,7 @@ import AlertModal from '../components/modals/AlertModal';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { bigBazarApi } from '../api/client';
+import { trackViewItem, trackAddToCart, trackMessengerClick } from '../utils/analytics';
 
 export default function ProductDetails() {
     const { productId } = useParams();
@@ -58,6 +59,7 @@ export default function ProductDetails() {
                     if (res && res.data) {
                         const prod = res.data;
                         setProduct(prod);
+                        trackViewItem(prod);
 
                         // Save product to recently viewed list
                         try {
@@ -221,6 +223,7 @@ export default function ProductDetails() {
         if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
+        trackAddToCart({ ...product, price }, quantity);
         setShowCartSuccess(true);
         setTimeout(() => setShowCartSuccess(false), 2000);
         setValidationError('');
@@ -232,6 +235,7 @@ export default function ProductDetails() {
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         setValidationError('');
         addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
+        trackAddToCart({ ...product, price }, quantity);
         navigate('/checkout');
     };
 
