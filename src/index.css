@@ -32,11 +32,13 @@
 h1,
 h2,
 h3,
-h4,
+h4 {
+  font-family: 'Inter', 'Noto Sans Bengali', system-ui, sans-serif;
+  line-height: 1.2;
+}
+
 .font-outfit {
   font-family: 'Outfit', 'Noto Sans Bengali', sans-serif;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
 }
 
 /* Global Bengali Font Consistency for text content (excluding brand logos) */
