@@ -469,7 +469,9 @@ export default function ProductDetails() {
                                         <button
                                             onClick={handleMainOrder}
                                             disabled={!canProceed()}
-                                            className={`flex-1 py-4 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all text-center ${canProceed()
+                                            className={`flex-1 py-4 font-bold rounded-xl transition-all text-center ${
+                                                language === 'en' ? 'uppercase tracking-[0.2em] text-[11px] font-black' : 'text-xs md:text-sm tracking-wide'
+                                            } ${canProceed()
                                                     ? 'bg-[#ce112d] text-white shadow-xl shadow-red-900/30 hover:bg-[#b00e26] active:scale-95'
                                                     : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                                                 }`}
@@ -479,7 +481,9 @@ export default function ProductDetails() {
                                         <button
                                             onClick={handleAddToCart}
                                             disabled={!canProceed()}
-                                            className={`sm:w-44 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isInCart
+                                            className={`sm:w-44 py-4 border-2 font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                                                language === 'en' ? 'uppercase tracking-[0.2em] text-[11px] font-black' : 'text-xs md:text-sm tracking-wide'
+                                            } ${isInCart
                                                     ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]'
                                                     : canProceed()
                                                         ? 'border-neutral-900 text-neutral-900 hover:bg-neutral-50'
@@ -495,7 +499,7 @@ export default function ProductDetails() {
                                     <button
                                         onClick={handleMessengerOrder}
                                         disabled={!canProceed()}
-                                        className={`w-full py-3.5 px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2.5 border shadow-sm ${canProceed()
+                                        className={`w-full py-3.5 px-4 text-xs md:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2.5 border shadow-sm ${canProceed()
                                                 ? 'bg-[#0084FF] hover:bg-[#0073e6] text-white border-[#0084FF] shadow-blue-500/20 active:scale-98'
                                                 : 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
                                             }`}

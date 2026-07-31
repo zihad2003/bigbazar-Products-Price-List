@@ -319,6 +319,7 @@ app.get('/products', async (c) => {
   params.push(parseInt(limit), parseInt(page) * parseInt(limit));
 
   const res = await conn.execute(sql, params);
+  c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
   return c.json({ data: res.map(parseProductRow), count: total });
 });
 
@@ -326,6 +327,7 @@ app.get('/products/:id', async (c) => {
   const conn = getDb(c.env);
   const res = await conn.execute('SELECT * FROM products WHERE id = ?', [c.req.param('id')]);
   if (!res.length) return c.json({ error: 'Not found' }, 404);
+  c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
   return c.json({ data: parseProductRow(res[0]) });
 });
 
