@@ -1427,11 +1427,12 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] block">
                       Scroll Speed
                     </label>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {[
                         { speed: 15, label: 'Fast (15s)' },
                         { speed: 25, label: 'Normal (25s)' },
-                        { speed: 40, label: 'Slow (40s)' }
+                        { speed: 40, label: 'Slow (40s)' },
+                        { speed: 55, label: 'Very Slow (55s)' }
                       ].map(s => (
                         <button
                           key={s.speed}
