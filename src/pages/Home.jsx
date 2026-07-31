@@ -259,39 +259,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       )}
 
       <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
-        {/* Maintenance Notice */}
-        {/* No Products Found */}
-        {/* Smart Proportional Empty State */}
-        {!loading && products.length === 0 && (
-          <section className="px-2">
-            <div className="bg-gradient-to-b from-[#ce112d]/[0.03] via-zinc-50/50 to-white border border-zinc-200/80 rounded-[32px] p-8 md:p-14 flex flex-col items-center text-center gap-6 shadow-sm max-w-3xl mx-auto">
-              <div className="w-20 h-20 bg-gradient-to-b from-[#ce112d]/15 to-[#ce112d]/5 rounded-3xl flex items-center justify-center border border-[#ce112d]/20 text-[#ce112d] shadow-xl shadow-red-900/10 transform hover:scale-105 transition-transform">
-                <ShoppingBag size={36} strokeWidth={2} />
-              </div>
-              <div className="space-y-3">
-                <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase italic">
-                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Available'}
-                </h2>
-                <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
-                  {language === 'bn'
-                    ? 'দুঃখিত,কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।'
-                    : 'Sorry,no items matched. Try exploring all collections or clearing your search filter.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (setSelectedCategory) setSelectedCategory('All');
-                  if (onSearchChange) onSearchChange('');
-                }}
-                className="mt-2 px-8 py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-red-900/30 active:scale-95 transition-all flex items-center gap-2"
-              >
-                <span>{language === 'bn' ? 'সকল পণ্য দেখুন' : 'Explore All Collections'}</span>
-              </button>
-            </div>
-          </section>
-        )}
-
         {/* Category Grid */}
         <section>
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
@@ -311,7 +278,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
 
         {/* Search Bar - Left Aligned */}
-        <div className="max-w-sm">
+        <div id="search-section" className="max-w-sm">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-[#ce112d] transition-colors" size={18} />
             <input
@@ -324,29 +291,63 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           </div>
         </div>
 
-        {/* Dynamic Product Grid */}
-        <section className="space-y-8 pt-8">
+        {/* Dynamic Product Grid / Search Results */}
+        <section className="space-y-8 pt-4">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="space-y-4">
-              <h3 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
+            <div className="space-y-2">
+              <h3 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter leading-none text-zinc-900">
                 {searchQuery ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') : (selectedCategory === 'All' ? (language === 'bn' ? 'নতুন কালেকশন' : 'New Arrival') : selectedCategory)}
               </h3>
+              {searchQuery && (
+                <p className="text-xs text-zinc-400 font-bold">
+                  {language === 'bn' ? `"${searchQuery}" এর জন্য অনুসন্ধান করা হচ্ছে` : `Showing results for "${searchQuery}"`}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-            {loading && page === 0 ? (
-              Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
-            ) : (
-              products.map((product) => (
+          {loading && page === 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+              {Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)}
+            </div>
+          ) : products.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+              {products.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
                   onClick={() => navigate(`/product/${product.id}`)}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* Smart Proportional Empty State — Rendered right below search bar */
+            <div className="bg-gradient-to-b from-[#ce112d]/[0.03] via-zinc-50/50 to-white border border-zinc-200/80 rounded-[32px] p-8 md:p-14 flex flex-col items-center text-center gap-6 shadow-sm max-w-3xl mx-auto my-4">
+              <div className="w-20 h-20 bg-gradient-to-b from-[#ce112d]/15 to-[#ce112d]/5 rounded-3xl flex items-center justify-center border border-[#ce112d]/20 text-[#ce112d] shadow-xl shadow-red-900/10 transform hover:scale-105 transition-transform">
+                <ShoppingBag size={36} strokeWidth={2} />
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase italic">
+                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Available'}
+                </h2>
+                <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
+                  {searchQuery
+                    ? (language === 'bn' ? `"${searchQuery}" নামে কোনো পণ্য পাওয়া যায়নি। অন্য কোনো নাম লিখে চেষ্টা করুন।` : `Sorry, no items matched "${searchQuery}". Try exploring all collections or clearing search.`)
+                    : (language === 'bn' ? 'দুঃখিত, কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।' : 'Sorry, no items matched. Try exploring all collections or clearing your search filter.')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (setSelectedCategory) setSelectedCategory('All');
+                  if (onSearchChange) onSearchChange('');
+                }}
+                className="mt-2 px-8 py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-red-900/30 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <span>{language === 'bn' ? 'সকল পণ্য দেখুন' : 'Explore All Collections'}</span>
+              </button>
+            </div>
+          )}
 
           {loading && page > 0 && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
