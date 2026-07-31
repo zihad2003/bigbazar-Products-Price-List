@@ -49,7 +49,9 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                 <div className="h-[2px] bg-[#ce112d] w-10 mt-2 transition-all duration-300 group-hover:w-full" />
                             </Link>
                             <p className="text-zinc-500 font-medium leading-relaxed text-xs max-w-sm">
-                                Your premier destination for family fashion from top brands. Fixed-price shopping for men, women, kids, and bridal collections.
+                                {language === 'bn' 
+                                    ? 'বিগ বাজার — আপনার পরিবারের সব কেনাকাটার বিশ্বস্ত গন্তব্য। মীরসরাই বারইয়ারহাটে নির্দিষ্ট দামে কোয়ালিটি পণ্য।' 
+                                    : 'Your premier destination for family fashion from top brands. Fixed-price shopping for men, women, kids, and bridal collections.'}
                             </p>
                         </div>
 
@@ -65,7 +67,11 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                             </div>
                             <div className="flex items-start gap-3">
                                 <MapPin size={15} className="text-[#ce112d] shrink-0 mt-0.5" />
-                                <span className="leading-tight text-zinc-600 font-medium">2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsharai, Chattogram</span>
+                                <span className="leading-tight text-zinc-600 font-medium">
+                                    {language === 'bn' 
+                                        ? '২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই, চট্টগ্রাম' 
+                                        : '2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsharai, Chattogram'}
+                                </span>
                             </div>
                         </div>
 
@@ -95,26 +101,30 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                         
                         {/* SHOP Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">SHOP</h4>
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">
+                                {language === 'bn' ? 'কেনাকাটা' : 'SHOP'}
+                            </h4>
                             <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
-                                <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Men</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Women</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('Kids (Boys)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Kids (Boys)</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('Kids (Girls)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">Kids (Girls)</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('New')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">New Collection</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('Sale')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300 text-rose-500 font-bold uppercase tracking-wider">Sale</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('Men')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'ছেলেদের' : 'Men'}</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'মেয়েদের' : 'Women'}</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('Kids (Boys)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'বাচ্চাদের (ছেলে)' : 'Kids (Boys)'}</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('Kids (Girls)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'বাচ্চাদের (মেয়ে)' : 'Kids (Girls)'}</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('New')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'নতুন কালেকশন' : 'New Collection'}</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('Sale')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300 text-rose-500 font-bold uppercase tracking-wider">{language === 'bn' ? 'বিশেষ ছাড় (অফার)' : 'Sale'}</button></li>
                             </ul>
                         </div>
 
                         {/* HELP Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">HELP</h4>
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">
+                                {language === 'bn' ? 'সহায়তা' : 'HELP'}
+                            </h4>
                             <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
-                                <li><Link to="/contact-us" className="hover:text-[#ce112d] transition-colors">Contact Us</Link></li>
-                                <li><Link to="/faq" className="hover:text-[#ce112d] transition-colors">FAQs</Link></li>
-                                <li><Link to="/size-guide" className="hover:text-[#ce112d] transition-colors">Size Guide</Link></li>
-                                <li><Link to="/shipping" className="hover:text-[#ce112d] transition-colors">Shipping Info</Link></li>
-                                <li><Link to="/returns" className="hover:text-[#ce112d] transition-colors">Returns & Exchanges</Link></li>
+                                <li><Link to="/contact-us" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'যোগাযোগ করুন' : 'Contact Us'}</Link></li>
+                                <li><Link to="/faq" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'প্রশ্নোত্তর (FAQs)' : 'FAQs'}</Link></li>
+                                <li><Link to="/size-guide" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'সাইজ গাইড' : 'Size Guide'}</Link></li>
+                                <li><Link to="/shipping" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'শিপিং তথ্য' : 'Shipping Info'}</Link></li>
+                                <li><Link to="/returns" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'রিটার্ন ও এক্সচেঞ্জ' : 'Returns & Exchanges'}</Link></li>
                                 <li>
                                     <button
                                         type="button"
@@ -124,7 +134,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                         }}
                                         className="hover:text-[#ce112d] transition-colors text-left"
                                     >
-                                        Track Order
+                                        {language === 'bn' ? 'অর্ডার ট্র্যাকিং' : 'Track Order'}
                                     </button>
                                 </li>
                             </ul>
@@ -132,20 +142,24 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                         {/* COMPANY Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">COMPANY</h4>
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">
+                                {language === 'bn' ? 'প্রতিষ্ঠান' : 'COMPANY'}
+                            </h4>
                             <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
-                                <li><Link to="/about-us" className="hover:text-[#ce112d] transition-colors">About Us</Link></li>
-                                <li><Link to="/store-locations" className="hover:text-[#ce112d] transition-colors">Store Locations</Link></li>
+                                <li><Link to="/about-us" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'আমাদের পরিচিতি' : 'About Us'}</Link></li>
+                                <li><Link to="/store-locations" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'শোরুমের ঠিকানা' : 'Store Locations'}</Link></li>
                             </ul>
                         </div>
 
                         {/* LEGAL Column */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">LEGAL</h4>
+                            <h4 className="text-xs font-black uppercase tracking-widest text-zinc-900 border-b border-zinc-200 pb-2.5">
+                                {language === 'bn' ? 'পলিসি ও শর্তাবলী' : 'LEGAL'}
+                            </h4>
                             <ul className="space-y-3 font-semibold text-zinc-600 text-xs flex flex-col items-start">
-                                <li><Link to="/privacy-policy" className="hover:text-[#ce112d] transition-colors">Privacy Policy</Link></li>
-                                <li><Link to="/terms" className="hover:text-[#ce112d] transition-colors">Terms of Service</Link></li>
-                                <li><Link to="/refund" className="hover:text-[#ce112d] transition-colors">Refund Policy</Link></li>
+                                <li><Link to="/privacy-policy" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'প্রাইভেসি পলিসি' : 'Privacy Policy'}</Link></li>
+                                <li><Link to="/terms" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'সেবার শর্তাবলী' : 'Terms of Service'}</Link></li>
+                                <li><Link to="/refund" className="hover:text-[#ce112d] transition-colors">{language === 'bn' ? 'রিফান্ড পলিসি' : 'Refund Policy'}</Link></li>
                             </ul>
                         </div>
 
@@ -158,7 +172,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     
                     {/* Copyright */}
                     <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center md:text-left">
-                        © 2026 BIG BAZAR. All rights reserved.
+                        {language === 'bn' ? '© ২০২৬ বিগ বাজার। সর্বস্বত্ব সংরক্ষিত।' : '© 2026 BIG BAZAR. All rights reserved.'}
                     </div>
 
                     {/* Language Switcher */}
@@ -181,7 +195,9 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
 
                     {/* Payment methods */}
                     <div className="flex flex-wrap items-center justify-center gap-2">
-                        <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-2">WE ACCEPT:</span>
+                        <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-2">
+                            {language === 'bn' ? 'পেমেন্ট মাধ্যম:' : 'WE ACCEPT:'}
+                        </span>
                         
                         <div className="bg-white border border-rose-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-rose-500 h-7 select-none shadow-sm">
                             → BKASH
