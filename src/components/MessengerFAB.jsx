@@ -7,9 +7,7 @@ import { trackMessengerClick } from '../utils/analytics';
 const FB_PAGE_ID = '100063541603515';
 const MESSENGER_URL = `https://m.me/${FB_PAGE_ID}?ref=website_fab`;
 
-// Floating, always-visible button. Most orders currently happen over
-// Messenger chat rather than the website checkout — this makes that
-// path obvious instead of forcing everyone through checkout.
+// Floating, always-visible Messenger button. Positioned above bottom navigation bar on mobile.
 export default function MessengerFAB() {
     const { language } = useLanguage();
 
@@ -24,26 +22,10 @@ export default function MessengerFAB() {
             rel="noopener noreferrer"
             onClick={handleClick}
             aria-label={language === 'bn' ? 'মেসেঞ্জারে অর্ডার করুন' : 'Order on Messenger'}
-            style={{
-                position: 'fixed',
-                bottom: '20px',
-                right: '20px',
-                zIndex: 1000,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#0084FF',
-                color: '#fff',
-                padding: '12px 18px',
-                borderRadius: '999px',
-                boxShadow: '0 4px 16px rgba(0,132,255,0.4)',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '14px',
-            }}
+            className="fixed bottom-[80px] md:bottom-6 right-4 md:right-6 z-[1005] flex items-center gap-2 bg-[#0084FF] text-white px-3.5 py-3 md:px-4 md:py-3 rounded-full shadow-[0_4px_20px_rgba(0,132,255,0.45)] hover:scale-105 active:scale-95 transition-all duration-300 text-xs md:text-sm font-semibold no-underline"
         >
-            <MessageCircle size={20} />
-            <span>{language === 'bn' ? 'মেসেঞ্জারে অর্ডার করুন' : 'Order on Messenger'}</span>
+            <MessageCircle size={20} className="shrink-0" />
+            <span>{language === 'bn' ? 'মেসেঞ্জারে অর্ডার' : 'Order on Messenger'}</span>
         </a>
     );
 }
