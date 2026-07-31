@@ -124,6 +124,7 @@ export const LanguageProvider = ({ children }) => {
 
     useEffect(() => {
         localStorage.setItem('language', language);
+        document.documentElement.lang = language;
     }, [language]);
 
     const t = (key) => {

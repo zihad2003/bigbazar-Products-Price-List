@@ -361,12 +361,16 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             <div className="flex flex-col items-center justify-center pt-12 pb-6 gap-3">
               <button
                 onClick={() => setPage(prev => prev + 1)}
-                className="group inline-flex items-center gap-3 px-10 py-4 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-[0.2em] rounded-full shadow-xl hover:shadow-red-900/30 active:scale-95 transition-all duration-300 border border-white/10"
+                className={`group inline-flex items-center gap-3 px-10 py-4 bg-zinc-900 hover:bg-[#ce112d] text-white rounded-full shadow-xl hover:shadow-red-900/30 active:scale-95 transition-all duration-300 border border-white/10 ${
+                  language === 'en' ? 'text-xs font-black uppercase tracking-[0.2em]' : 'text-sm font-bold tracking-normal'
+                }`}
               >
                 <span>{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore More Designs'}</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </button>
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
+              <span className={`text-zinc-400 font-bold ${
+                language === 'en' ? 'text-[10px] uppercase tracking-[0.2em]' : 'text-xs tracking-normal'
+              }`}>
                 {language === 'bn' ? 'প্রিমিয়াম কালেকশন • ট্রেন্ডিং ডিজাইন' : 'Selective Edits • Premium Catalog'}
               </span>
             </div>
