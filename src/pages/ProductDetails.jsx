@@ -294,7 +294,7 @@ export default function ProductDetails() {
                     <span>/</span>
                     <span className="text-[#ce112d] font-bold">{product.category || 'Women'}</span>
                     <span>/</span>
-                    <span className="text-neutral-800 font-bold max-w-[220px] md:max-w-[320px] truncate">{product.name}</span>
+                    <span className="text-neutral-800 font-bold max-w-[220px] md:max-w-[320px] truncate capitalize">{product.name}</span>
                 </div>
                 <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-black transition-all">
                     <Share2 size={14} />
@@ -331,7 +331,7 @@ export default function ProductDetails() {
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">
                             {product.category || 'Clothing'}
                         </span>
-                        <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 italic leading-tight uppercase tracking-tight">
+                        <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 italic leading-tight capitalize tracking-tight">
                             {product.name}
                         </h1>
                         <div className="flex flex-wrap items-baseline gap-3 pt-1">

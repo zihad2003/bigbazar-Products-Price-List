@@ -69,7 +69,7 @@ export const ProductCard = ({ product, onClick }) => {
           <p className="text-[9px] md:text-[10px] font-bold uppercase text-neutral-400 tracking-wider truncate">
             {product.category || 'Clothing'}
           </p>
-          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[40px]">{product.name}</h4>
+          <h4 className="text-sm md:text-base font-bold text-neutral-800 line-clamp-2 leading-tight min-h-[40px] capitalize">{product.name}</h4>
         </div>
         
         <div className="mt-auto flex items-center justify-between gap-1.5 pt-1 min-w-0">

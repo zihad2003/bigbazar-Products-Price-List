@@ -173,9 +173,9 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                   <span>/</span>
                   <span className="text-[#ce112d] font-bold">{product.category || 'Women'}</span>
                   <span>/</span>
-                  <span className="text-neutral-700 truncate max-w-[180px] md:max-w-[280px]">{product.name}</span>
+                  <span className="text-neutral-700 truncate max-w-[180px] md:max-w-[280px] capitalize">{product.name}</span>
                </div>
-               <h2 className="text-2xl md:text-5xl font-black text-neutral-900 italic leading-tight">{product.name}</h2>
+               <h2 className="text-2xl md:text-5xl font-black text-neutral-900 italic leading-tight capitalize">{product.name}</h2>
                <div className="flex flex-wrap items-baseline gap-3">
                   <span className="text-2xl sm:text-3xl md:text-6xl font-black text-[#ce112d] italic whitespace-nowrap">৳{price}</span>
                   {hasDiscount && (

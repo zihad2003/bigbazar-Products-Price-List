@@ -68,7 +68,7 @@ export default function RecentlyViewed({ currentProductId }) {
                                     <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest truncate">
                                         {prod.category || 'Clothing'}
                                     </p>
-                                    <h4 className="text-xs md:text-sm font-bold text-neutral-800 truncate leading-tight group-hover:text-[#ce112d] transition-colors">
+                                    <h4 className="text-xs md:text-sm font-bold text-neutral-800 truncate leading-tight group-hover:text-[#ce112d] transition-colors capitalize">
                                         {prod.name}
                                     </h4>
                                 </div>

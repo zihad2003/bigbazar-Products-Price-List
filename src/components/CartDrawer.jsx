@@ -97,7 +97,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                                         <div className="flex-grow min-w-0 flex flex-col justify-between py-0.5">
                                             <div className="space-y-1">
                                                 <div className="flex justify-between items-start">
-                                                    <h4 className="font-black italic uppercase text-xs tracking-wider truncate pr-2 text-neutral-900 dark:text-white">
+                                                    <h4 className="font-black italic capitalize text-xs tracking-wider truncate pr-2 text-neutral-900 dark:text-white">
                                                         {item.name}
                                                     </h4>
                                                     <button
