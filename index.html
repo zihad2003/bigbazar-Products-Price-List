@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="bn">
 
 <head>
   <meta charset="UTF-8" />
   <script>
     try {
       var storedTheme = localStorage.getItem('site_theme');
-      document.documentElement.setAttribute('data-theme', storedTheme || 'dark');
+      document.documentElement.setAttribute('data-theme', storedTheme || 'light');
+      var storedLang = localStorage.getItem('language');
+      document.documentElement.lang = storedLang || 'bn';
     } catch (e) { }
   </script>
   <link rel="icon" type="image/jpeg" href="/b.jpg" />
