@@ -82,7 +82,7 @@ const IconPremium = ({ size = 24 }) => (
 
 const DEFAULT_SLIDES = [];
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 12;
 
 const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChange }) => {
   const { t, language } = useLanguage();
@@ -307,11 +307,11 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           </div>
 
           {loading && page === 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-              {Array.from({ length: 24 }).map((_, i) => <ProductSkeleton key={i} />)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 md:gap-8">
+              {Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)}
             </div>
           ) : products.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 md:gap-8">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

@@ -5,7 +5,7 @@ import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { bigBazarApi } from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 16;
 
 const BASE_CATEGORIES = [
   { id: 'All',          en: 'All',            bn: 'সকল' },
@@ -240,7 +240,7 @@ export default function Products() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 md:gap-6">
               {loading && page === 0
                 ? Array.from({ length: 20 }).map((_, i) => <ProductSkeleton key={i} />)
                 : products.map(product => (
