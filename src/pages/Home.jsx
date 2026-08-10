@@ -19,6 +19,10 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [siteSettings, setSiteSettings] = useState(() => {
     try {
       const cached = localStorage.getItem('bb_site_settings_cache');
@@ -33,7 +37,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       category_visibility: { show_new: true, show_sale: true, show_exclusive: true }
     };
   });
-  const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(!siteSettings.main_slides?.length);
 
   const [subCounts, setSubCounts] = useState({});
