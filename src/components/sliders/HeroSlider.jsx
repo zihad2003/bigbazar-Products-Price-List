@@ -26,7 +26,26 @@ export default function HeroSlider({ slides = [] }) {
     goTo((current - 1 + total) % total, -1);
   }, [current, total, goTo]);
 
-  // Preload all slider images so slide transitions are instant
+  // Preload first slide banner image in head immediately for lightning fast hero load
+  useEffect(() => {
+    if (slides && slides[0]?.image) {
+      const firstUrl = getOptimizedUrl(slides[0].image, mediaSizes.banner);
+      if (firstUrl) {
+        let link = document.querySelector("link[data-hero-preload='true']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.setAttribute('data-hero-preload', 'true');
+          link.setAttribute('fetchpriority', 'high');
+          document.head.appendChild(link);
+        }
+        link.href = firstUrl;
+      }
+    }
+  }, [slides]);
+
+  // Preload remaining slider images so slide transitions are instant
   useEffect(() => {
     if (!slides || slides.length === 0) return;
     slides.forEach((s) => {

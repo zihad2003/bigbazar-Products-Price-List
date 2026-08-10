@@ -19,16 +19,21 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [settingsLoading, setSettingsLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [subcategoriesData, setSubcategoriesData] = useState(null);
-  const [siteSettings, setSiteSettings] = useState({
-    main_slides: [],
-    announcement: '',
-    category_visibility: { show_new: true, show_sale: true, show_exclusive: true }
+  const [siteSettings, setSiteSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('bb_site_settings_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.main_slides?.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return {
+      main_slides: [],
+      announcement: '',
+      category_visibility: { show_new: true, show_sale: true, show_exclusive: true }
+    };
   });
+  const [settingsLoading, setSettingsLoading] = useState(!siteSettings.main_slides?.length);
 
   const [subCounts, setSubCounts] = useState({});
 
@@ -54,27 +59,33 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     ? rawSubcategories.filter(sub => (subCounts[sub.id] || 0) > 0)
     : rawSubcategories;
 
-  // Fetch settings
+  // Fetch settings & cache locally
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const { data } = await bigBazarApi.from('site_settings').select('*');
+        let newSettings = null;
         if (data && typeof data === 'object' && !Array.isArray(data)) {
-          setSiteSettings(prev => ({
-            ...prev,
+          newSettings = {
             ...data,
             main_slides: Array.isArray(data.main_slides) ? data.main_slides : [],
-          }));
+          };
           if (data.subcategories && typeof data.subcategories === 'object') {
             setSubcategoriesData(data.subcategories);
           }
         } else if (data && Array.isArray(data)) {
           const settingsMap = {};
           data.forEach(item => { settingsMap[item.key] = item.value; });
-          setSiteSettings(prev => ({ ...prev, ...settingsMap }));
+          newSettings = settingsMap;
           if (settingsMap.subcategories && typeof settingsMap.subcategories === 'object') {
             setSubcategoriesData(settingsMap.subcategories);
           }
+        }
+        if (newSettings) {
+          setSiteSettings(prev => ({ ...prev, ...newSettings }));
+          try {
+            localStorage.setItem('bb_site_settings_cache', JSON.stringify(newSettings));
+          } catch (e) {}
         }
       } catch (err) {
         console.error('Settings fetch failed', err);

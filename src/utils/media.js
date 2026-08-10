@@ -89,7 +89,7 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
  * Reusable helper for common sizes
  */
 export const mediaSizes = {
-    thumbnail: { w: 300, h: 450 }, // For product grid cards
-    banner: { w: 1200, q: 85 },    // For home banners
-    gallery: { w: 800, q: 80 }      // For product modal gallery
+    thumbnail: { w: 300, h: 450, q: 75 }, // For product grid cards
+    banner: { w: 1080, q: 75 },            // For home hero banners (fast load)
+    gallery: { w: 800, q: 75 }              // For product modal gallery
 };
