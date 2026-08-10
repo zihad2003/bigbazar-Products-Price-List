@@ -17,32 +17,12 @@ export const TOP_CATEGORIES = [
   { id: 'Kids (Girls)', en: 'Kids (Girls)', bn: 'বাচ্চাদের (মেয়ে)' },
 ];
 
-// Seed subcategory data — used as defaults until admin overrides via dashboard.
-// The `id` field is what gets stored in products.subcategory and must remain stable.
+// Seed subcategory data — empty by default so only admin-created subcategories are used.
 export const SEED_SUBCATEGORIES = {
-  'Women': [
-    { id: 'Sari', name_en: 'Sari', name_bn: 'শাড়ি', image_url: '', sort_order: 0 },
-    { id: 'Three-piece', name_en: 'Three-piece', name_bn: 'থ্রি-পিস', image_url: '', sort_order: 1 },
-    { id: 'Borka/Abaya/Hijab', name_en: 'Borka & Abaya', name_bn: 'বোরকা', image_url: '', sort_order: 2 },
-    { id: 'Western', name_en: 'Western', name_bn: 'ওয়েস্টার্ন', image_url: '', sort_order: 3 },
-    { id: 'Frock/Dress', name_en: 'Frock Dress', name_bn: 'ফ্রক ড্রেস', image_url: '', sort_order: 4 },
-  ],
-  'Men': [
-    { id: 'Panjabi', name_en: 'Panjabi', name_bn: 'পাঞ্জাবি', image_url: '', sort_order: 0 },
-    { id: 'Three-piece', name_en: 'Three-piece', name_bn: 'থ্রি-পিস', image_url: '', sort_order: 1 },
-  ],
-  'Kids (Boys)': [
-    { id: 'Panjabi/Pajama', name_en: 'Panjabi & Pajama', name_bn: 'পাঞ্জাবি ও পায়জামা', image_url: '', sort_order: 0 },
-    { id: 'Polo/T-Shirt', name_en: 'Polo & T-Shirt', name_bn: 'পোলো ও টি-শার্ট', image_url: '', sort_order: 1 },
-    { id: 'Shirt/Trouser', name_en: 'Shirt & Trouser', name_bn: 'শার্ট ও ট্রাউজার', image_url: '', sort_order: 2 },
-    { id: 'Festive Wear', name_en: 'Festive Wear', name_bn: 'উৎসবের পোশাক', image_url: '', sort_order: 3 },
-  ],
-  'Kids (Girls)': [
-    { id: 'Frock/Dress', name_en: 'Frock & Dress', name_bn: 'ফ্রক ও ড্রেস', image_url: '', sort_order: 0 },
-    { id: 'Lehenga/Gown', name_en: 'Lehenga & Gown', name_bn: 'লেহেঙ্গা ও গাউন', image_url: '', sort_order: 1 },
-    { id: 'Three-piece/Salwar', name_en: 'Three-piece & Salwar', name_bn: 'থ্রি-পিস ও সালওয়ার', image_url: '', sort_order: 2 },
-    { id: 'Top/Pants', name_en: 'Top & Pants', name_bn: 'টপ ও প্যান্ট', image_url: '', sort_order: 3 },
-  ],
+  'Women': [],
+  'Men': [],
+  'Kids (Boys)': [],
+  'Kids (Girls)': [],
 };
 
 /**
