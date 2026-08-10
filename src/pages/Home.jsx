@@ -33,6 +33,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       category_visibility: { show_new: true, show_sale: true, show_exclusive: true }
     };
   });
+  const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(!siteSettings.main_slides?.length);
 
   const [subCounts, setSubCounts] = useState({});
