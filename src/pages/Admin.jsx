@@ -521,16 +521,16 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     e.preventDefault();
     setLoading(true);
 
-    // Auto-increment Serial Number Calculation
+    // Auto-increment Serial Number Calculation if not manually specified
     let finalSerialNo = form.serial_no;
-    if (!editingProduct) {
+    if (!finalSerialNo && !editingProduct) {
       const { data: maxSerialData } = await bigBazarApi
         .from('products')
         .select('serial_no')
         .order('serial_no', { ascending: false })
         .limit(1);
 
-      const maxSerial = maxSerialData && maxSerialData.length > 0 ? maxSerialData[0].serial_no : 0;
+      const maxSerial = maxSerialData && maxSerialData.length > 0 ? (parseInt(maxSerialData[0].serial_no) || 0) : 0;
       finalSerialNo = maxSerial + 1;
     }
 
@@ -1928,42 +1928,55 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 pt-4">
                         <div className="group">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Original Price</label>
+                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Original Price</label>
                           <div className="relative">
-                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-700 font-black text-xl italic">৳</span>
+                            <span className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-zinc-600 font-black text-base md:text-xl italic">৳</span>
                             <input
                               type="number"
                               value={form.original_price || ''}
                               placeholder="1850"
-                              className="w-full bg-black/40 border-2 border-zinc-800 pl-10 md:pl-12 pr-4 md:pr-6 h-12 md:h-16 rounded-2xl md:rounded-3xl text-lg md:text-xl font-black focus:border-white/20 outline-none transition-all placeholder:text-zinc-800 text-zinc-400 italic"
+                              className="w-full bg-black/40 border-2 border-zinc-800 pl-7 md:pl-12 pr-2 md:pr-4 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-white/20 outline-none transition-all placeholder:text-zinc-800 text-zinc-400 italic"
                               onChange={e => setForm({ ...form, original_price: e.target.value })}
                             />
                           </div>
                         </div>
                         <div className="group">
-                          <label className="text-[10px] font-black uppercase text-[#ce112d] mb-3 block tracking-[0.2em] px-1">Sale Price</label>
+                          <label className="text-[10px] font-black uppercase text-[#ce112d] mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Sale Price *</label>
                           <div className="relative">
-                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[#ce112d] font-black text-xl italic animate-pulse">৳</span>
+                            <span className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-[#ce112d] font-black text-base md:text-xl italic animate-pulse">৳</span>
                             <input
                               type="number"
+                              required
                               value={form.price || ''}
                               placeholder="1450"
-                              className="w-full bg-black/40 border-2 border-[#ce112d]/30 pl-10 md:pl-12 pr-4 md:pr-6 h-12 md:h-16 rounded-2xl md:rounded-3xl text-xl md:text-2xl font-black focus:border-[#ce112d] outline-none transition-all placeholder:text-zinc-800 text-[#ce112d] italic shadow-[0_0_30px_rgba(206,17,45,0.1)]"
+                              className="w-full bg-black/40 border-2 border-[#ce112d]/30 pl-7 md:pl-12 pr-2 md:pr-4 h-12 md:h-16 rounded-xl md:rounded-3xl text-lg md:text-2xl font-black focus:border-[#ce112d] outline-none transition-all placeholder:text-zinc-800 text-[#ce112d] italic shadow-[0_0_30px_rgba(206,17,45,0.1)]"
                               onChange={e => setForm({ ...form, price: e.target.value })}
                             />
                           </div>
                         </div>
                         <div className="group">
-                          <label className="text-[10px] font-black uppercase text-emerald-400 mb-3 block tracking-[0.2em] px-1">Stock Quantity (স্টক)</label>
+                          <label className="text-[10px] font-black uppercase text-emerald-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Stock (স্টক)</label>
                           <div className="relative">
                             <input
                               type="number"
                               value={form.stock_count !== undefined && form.stock_count !== null ? form.stock_count : ''}
                               placeholder="e.g. 50"
-                              className="w-full bg-black/40 border-2 border-emerald-500/30 px-6 h-12 md:h-16 rounded-2xl md:rounded-3xl text-xl font-black focus:border-emerald-400 outline-none transition-all placeholder:text-zinc-800 text-emerald-400 italic"
+                              className="w-full bg-black/40 border-2 border-emerald-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-emerald-400 outline-none transition-all placeholder:text-zinc-800 text-emerald-400 italic"
                               onChange={e => setForm({ ...form, stock_count: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="group">
+                          <label className="text-[10px] font-black uppercase text-sky-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Code / Serial #</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={form.serial_no || ''}
+                              placeholder="Auto (#)"
+                              className="w-full bg-black/40 border-2 border-sky-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-sky-400 outline-none transition-all placeholder:text-zinc-800 text-sky-400 italic"
+                              onChange={e => setForm({ ...form, serial_no: e.target.value })}
                             />
                           </div>
                         </div>
@@ -2570,6 +2583,17 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 </button>
                 <button type="button" onClick={cancelEdit} className="w-full h-14 md:h-16 border-2 border-zinc-800 rounded-2xl md:rounded-[32px] uppercase text-[11px] md:text-xs font-bold tracking-[0.15em] md:tracking-[0.2em] text-zinc-500 hover:text-red-500 hover:border-red-900/50 hover:bg-red-950/50 transition-all active:scale-[0.98]">
                   Discard
+                </button>
+              </div>
+
+              {/* Mobile Sticky Save Action Bar */}
+              <div className="fixed bottom-0 left-0 right-0 p-3 bg-zinc-950/95 border-t border-white/10 backdrop-blur-xl z-50 lg:hidden flex items-center gap-3 shadow-2xl">
+                <button type="button" onClick={cancelEdit} className="px-4 h-12 border border-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                  Discard
+                </button>
+                <button type="submit" disabled={loading} className="flex-1 bg-[#ce112d] h-12 rounded-xl font-black uppercase text-xs text-white tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-900/50 disabled:opacity-50">
+                  {loading ? <RotateCcw size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>{loading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Save Product')}</span>
                 </button>
               </div>
             </div>
