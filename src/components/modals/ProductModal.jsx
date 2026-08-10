@@ -279,7 +279,7 @@ const ProductModal = ({ product, flashSale, isOpen, onClose }) => {
                      <div className="flex flex-col gap-3">
                        <button onClick={handleMainOrder}
                          className="w-full py-5 bg-[#ce112d] text-white text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_15px_35px_rgba(206,17,45,0.15)] active:scale-95 transition-all">
-                         {language === 'bn' ? 'অর্ডার করতে এখনই কিনুন' : 'Order Now'}
+                         {language === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
                        </button>
                        <button onClick={handleAddToCart}
                          className={`w-full py-5 border-2 text-[11px] md:text-xs font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isInCart ? 'bg-neutral-100 border-neutral-100 text-[#ce112d]' : 'border-neutral-900 text-neutral-900'}`}>

@@ -254,8 +254,81 @@ const parseProductRow = (row) => {
   };
 };
 
+// Map of subcategories & exact keywords for resilient searching & counting
+const SUB_KEYWORDS_MAP = {
+  'panjabi': ['panjabi', 'punjabi', 'পাঞ্জাবি', 'পাঞ্জাবী', 'kabli', 'কাবলি'],
+  'panjabi/pajama': ['panjabi', 'punjabi', 'পাঞ্জাবি', 'পাঞ্জাবী', 'kabli', 'কাবলি', 'pajama'],
+  'formal shirt': ['formal shirt', 'ফরমাল শার্ট', 'dress shirt'],
+  'formal wear': ['formal shirt', 'ফরমাল শার্ট', 'dress shirt'],
+  'casual wear': ['polo', 't-shirt', 'tshirt', 't shirt', 'টি-শার্ট', 'পোলো'],
+  'jeans/trousers': ['jeans', 'trouser', 'trousers', 'pant', 'pants', 'জিন্স', 'প্যান্ট', 'ট্রাউজার'],
+  'sari': ['sari', 'saree', 'শাড়ি', 'শাড়ি', 'jamdani', 'কাটান', 'কাতান'],
+  'three-piece': ['three-piece', 'three piece', '3 piece', '3-piece', 'থ্রি-পিস', 'থ্রি পিস', 'salwar'],
+  'three-piece/salwar': ['three-piece', 'three piece', '3 piece', '3-piece', 'থ্রি-পিস', 'থ্রি পিস', 'salwar'],
+  'borka/abaya/hijab': ['borka', 'abaya', 'hijab', 'বোরকা', 'আবায়া', 'হিজাব', 'khimar'],
+  'western': ['western', 'tunic', 'ওয়েস্টার্ন'],
+  'frock/dress': ['frock', 'dress', 'ফ্রক', 'ড্রেস'],
+  'polo/t-shirt': ['polo', 't-shirt', 'tshirt', 't shirt', 'টি-শার্ট', 'পোলো'],
+  'shirt/trouser': ['shirt', 'trouser', 'pant', 'শার্ট', 'ট্রাউজার', 'প্যান্ট'],
+  'lehenga/gown': ['lehenga', 'gown', 'লেহেঙ্গা', 'গাউন'],
+};
+
+// ── Subcategory Counts Endpoint ──
+app.get('/products/subcategory-counts', async (c) => {
+  const { category } = c.req.query();
+  const conn = getDb(c.env);
+  let sql = `SELECT id, name, category, subcategory FROM products
+             WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)`;
+  const params = [];
+  if (category && category !== 'All') {
+    const maps = {
+      'Men': ['Men', 'ছেলেদের'],
+      'Women': ['Women', 'মেয়েদের'],
+      'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+      'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+    };
+    const catList = category.split(',').map(c => c.trim()).filter(Boolean);
+    const allCats = new Set();
+    catList.forEach(c => {
+      const mapped = maps[c];
+      if (mapped) mapped.forEach(m => allCats.add(m));
+      else allCats.add(c);
+    });
+    const cats = [...allCats];
+    sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
+    params.push(...cats);
+  }
+  const products = await conn.execute(sql, params);
+  
+  // Calculate counts per subcategory (matching DB subcategory OR name keywords)
+  const countsMap = {};
+  products.forEach(p => {
+    const subCol = p.subcategory ? p.subcategory.trim() : '';
+    const nameLower = (p.name || '').toLowerCase();
+
+    if (subCol) {
+      countsMap[subCol] = (countsMap[subCol] || 0) + 1;
+    }
+
+    // Check keyword map matches
+    for (const [subKey, keywords] of Object.entries(SUB_KEYWORDS_MAP)) {
+      if (keywords.some(kw => nameLower.includes(kw))) {
+        // Map back to standard capitalized subcategory name
+        const normKey = subKey.charAt(0).toUpperCase() + subKey.slice(1);
+        if (!subCol || subCol.toLowerCase() !== subKey) {
+          countsMap[normKey] = (countsMap[normKey] || 0) + 1;
+        }
+      }
+    }
+  });
+
+  const res = Object.entries(countsMap).map(([subcategory, count]) => ({ subcategory, count }));
+  c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+  return c.json({ data: res });
+});
+
 app.get('/products', async (c) => {
-  const { status, category, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
+  const { status, category, subcategory, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
   const conn = getDb(c.env);
 
   let sql = 'SELECT * FROM products WHERE 1=1';
@@ -301,6 +374,23 @@ app.get('/products', async (c) => {
       sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
       params.push(...cats);
     }
+  }
+  if (subcategory) {
+    const rawSub = String(subcategory).trim();
+    const normalizedSub = rawSub.replace(/-/g, ' ').toLowerCase();
+    const keywords = SUB_KEYWORDS_MAP[normalizedSub] || SUB_KEYWORDS_MAP[rawSub.toLowerCase()] || [normalizedSub];
+
+    const conditions = ['subcategory = ?', 'LOWER(subcategory) = ?'];
+    params.push(rawSub, normalizedSub);
+
+    keywords.forEach(kw => {
+      if (kw.length >= 2) {
+        conditions.push('LOWER(name) LIKE ?');
+        params.push(`%${kw.toLowerCase()}%`);
+      }
+    });
+
+    sql += ` AND (${conditions.join(' OR ')})`;
   }
   if (search) {
     sql += ' AND (name LIKE ? OR description LIKE ?)';

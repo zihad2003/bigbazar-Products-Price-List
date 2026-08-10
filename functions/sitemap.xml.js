@@ -49,7 +49,7 @@ export async function onRequest(context) {
 
   // Attempt fetching products from API or static all_products.json fallback
   try {
-    const prodRes = await fetch(`${domain}/public/all_products.json`);
+    const prodRes = await fetch(`${domain}/all_products.json`);
     if (prodRes.ok) {
       const products = await prodRes.json();
       if (Array.isArray(products)) {

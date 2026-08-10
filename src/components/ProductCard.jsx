@@ -27,7 +27,7 @@ export const ProductCard = ({ product, onClick }) => {
   return (
     <div
       onClick={() => onClick(product)}
-      className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
+      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
         {sourceImage ? (
@@ -89,7 +89,7 @@ export const ProductCard = ({ product, onClick }) => {
 };
 
 export const ProductSkeleton = () => (
-  <div className="bg-white rounded-[20px] md:rounded-[28px] overflow-hidden border border-neutral-100 animate-pulse h-full">
+  <div className="bg-white rounded-2xl overflow-hidden border border-neutral-100 animate-pulse h-full">
     <div className="aspect-[4/5] bg-neutral-200" />
     <div className="p-3.5 md:p-5 space-y-3">
       <div className="h-2 w-16 bg-neutral-100 rounded-full" />

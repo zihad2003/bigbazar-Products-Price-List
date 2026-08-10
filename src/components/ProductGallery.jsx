@@ -3,11 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ZoomIn, X } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 
-const ProductGallery = ({ images }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+const ProductGallery = ({ images, activeImageIndex = 0 }) => {
+  const [currentIndex, setCurrentIndex] = useState(activeImageIndex);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (activeImageIndex >= 0 && activeImageIndex < (images?.length || 0)) {
+      setCurrentIndex(activeImageIndex);
+    }
+  }, [activeImageIndex, images]);
 
   const minSwipeDistance = 50;
 

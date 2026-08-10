@@ -154,6 +154,44 @@ export default function ProductDetails() {
         };
     }, [product]);
 
+    const selectedColorObj = React.useMemo(() => {
+        if (!selectedColor || !product || !product.available_colors) return null;
+        return product.available_colors.find(c => {
+            const name = typeof c === 'object' ? c.name : c;
+            return name === selectedColor;
+        });
+    }, [selectedColor, product]);
+
+    const activeImageIndex = React.useMemo(() => {
+        if (!selectedColorObj) return 0;
+        const colorImg = selectedColorObj.image || selectedColorObj.image_url;
+        if (!colorImg) return 0;
+        const idx = images.findIndex(img => img === colorImg);
+        return idx >= 0 ? idx : 0;
+    }, [selectedColorObj, images]);
+
+    // Active size options based on selected color or fallback to available_sizes
+    const activeSizes = React.useMemo(() => {
+        if (!product) return [];
+        if (selectedColorObj && Array.isArray(selectedColorObj.sizes) && selectedColorObj.sizes.length > 0) {
+            return selectedColorObj.sizes;
+        }
+        return product.available_sizes || [];
+    }, [product, selectedColorObj]);
+
+    // Auto reset selectedSize if not valid for newly selected color
+    useEffect(() => {
+        if (selectedColor && activeSizes.length > 0 && selectedSize) {
+            const sizeObj = activeSizes.find(s => (typeof s === 'object' ? s.name : s) === selectedSize);
+            if (!sizeObj) {
+                setSelectedSize('');
+            } else if (typeof sizeObj === 'object') {
+                const isAvail = sizeObj.is_available !== false && (sizeObj.stock === undefined || parseInt(sizeObj.stock) > 0);
+                if (!isAvail) setSelectedSize('');
+            }
+        }
+    }, [selectedColor, activeSizes]);
+
     if (loading) {
         return (
             <div className="max-w-7xl mx-auto px-4 md:px-12 py-32 text-center flex flex-col items-center justify-center gap-4">
@@ -195,17 +233,16 @@ export default function ProductDetails() {
         ? Math.round(((originalPrice - price) / originalPrice) * 100)
         : 0;
 
+    const isOutOfStock = product.is_sold_out || (product.stock_count !== null && product.stock_count <= 0);
+
     const hasValidColors = product.available_colors?.some(c => {
         const name = typeof c === 'object' ? c.name : c;
         return name && String(name).trim() !== '';
     });
-    const hasValidSizes = product.available_sizes?.some(s => {
+    const hasValidSizes = activeSizes?.some(s => {
         const name = typeof s === 'object' ? s.name : s;
         return name && String(name).trim() !== '';
     });
-
-    // Stock validation - if product is sold out, disable all options
-    const isOutOfStock = product.is_sold_out;
 
     // Check if required selections are made
     const canProceed = () => {
@@ -222,7 +259,7 @@ export default function ProductDetails() {
     };
 
     const handleAddToCart = () => {
-        if (product.is_sold_out) return;
+        if (isOutOfStock) return;
         if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
@@ -233,7 +270,7 @@ export default function ProductDetails() {
     };
 
     const handleMainOrder = () => {
-        if (product.is_sold_out) return;
+        if (isOutOfStock) return;
         if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         setValidationError('');
@@ -243,7 +280,7 @@ export default function ProductDetails() {
     };
 
     const handleMessengerOrder = () => {
-        if (product.is_sold_out) return;
+        if (isOutOfStock) return;
         if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         setValidationError('');
@@ -307,7 +344,7 @@ export default function ProductDetails() {
                 {/* Media Column - Gallery */}
                 <div className="w-full md:w-[50%] lg:w-[48%]">
                     <div className="relative">
-                        <ProductGallery images={images} />
+                        <ProductGallery images={images} activeImageIndex={activeImageIndex} />
 
                         {/* Badges */}
                         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-[10]">
@@ -357,29 +394,26 @@ export default function ProductDetails() {
                                         }).map((c, i) => {
                                             const name = typeof c === 'object' ? c.name : c;
                                             const hex = typeof c === 'object' ? c.hex : null;
-                                            const isDisabled = isOutOfStock;
+                                            const cIsAvailable = typeof c === 'object' ? c.is_available !== false : true;
+                                            const isDisabled = isOutOfStock || !cIsAvailable;
                                             return (
                                                 <button
                                                     key={i}
+                                                    type="button"
                                                     onClick={() => { if (!isDisabled) { setSelectedColor(name); setValidationError(''); } }}
                                                     disabled={isDisabled}
-                                                    className={`group relative flex items-center gap-2 px-3 py-2 border-[2px] rounded-lg transition-all ${isDisabled
-                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                                                    className={`group relative flex items-center gap-2 px-3.5 py-2 border-[2px] rounded-xl transition-all ${isDisabled
+                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 line-through cursor-not-allowed'
                                                             : selectedColor === name
-                                                                ? 'border-neutral-900 bg-neutral-900 text-white'
-                                                                : 'border-neutral-100 hover:border-neutral-200'
+                                                                ? 'border-neutral-900 bg-neutral-900 text-white shadow-md'
+                                                                : 'border-neutral-100 hover:border-neutral-300 text-neutral-700'
                                                         }`}
                                                 >
                                                     {hex && (
-                                                        <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: hex }}></span>
+                                                        <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0" style={{ backgroundColor: hex }}></span>
                                                     )}
-                                                    <span className="text-[10px] font-black uppercase tracking-wider">{name}</span>
-                                                    {selectedColor === name && <Check size={10} className="ml-1" />}
-                                                    {isDisabled && (
-                                                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-neutral-400 whitespace-nowrap">
-                                                            {language === 'bn' ? 'স্টক নেই' : 'Out of stock'}
-                                                        </span>
-                                                    )}
+                                                    <span className="text-[11px] font-black uppercase tracking-wider">{name}</span>
+                                                    {selectedColor === name && <Check size={12} className="ml-0.5" />}
                                                 </button>
                                             );
                                         })}
@@ -393,22 +427,25 @@ export default function ProductDetails() {
                                         {language === 'bn' ? 'সাইজ সিলেক্ট করুন' : 'Select Size'}
                                     </p>
                                     <div className="grid grid-cols-4 gap-2">
-                                        {product.available_sizes?.filter(s => {
+                                        {activeSizes.filter(s => {
                                             const name = typeof s === 'object' ? s.name : s;
                                             return name && String(name).trim() !== '';
                                         }).map((s, i) => {
                                             const name = typeof s === 'object' ? s.name : s;
-                                            const isDisabled = isOutOfStock;
+                                            const sStock = typeof s === 'object' ? (s.stock !== undefined ? parseInt(s.stock) : 1) : 1;
+                                            const sAvail = typeof s === 'object' ? (s.is_available !== false) : true;
+                                            const isDisabled = isOutOfStock || !sAvail || sStock <= 0;
                                             return (
                                                 <button
                                                     key={i}
+                                                    type="button"
                                                     onClick={() => { if (!isDisabled) { setSelectedSize(name); setValidationError(''); } }}
                                                     disabled={isDisabled}
-                                                    className={`py-2.5 border-[2px] text-[10px] md:text-xs font-black tracking-wider transition-all rounded-lg ${isDisabled
-                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 cursor-not-allowed'
+                                                    className={`py-3 border-[2px] text-xs font-black tracking-wider transition-all rounded-xl relative ${isDisabled
+                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 line-through cursor-not-allowed opacity-60'
                                                             : selectedSize === name
-                                                                ? 'bg-neutral-900 text-white border-neutral-900 shadow-lg'
-                                                                : 'border-neutral-100 text-neutral-500 hover:border-neutral-200'
+                                                                ? 'bg-neutral-900 text-white border-neutral-900 shadow-md'
+                                                                : 'border-neutral-100 text-neutral-700 hover:border-neutral-300'
                                                         }`}
                                                 >
                                                     {name}
@@ -476,7 +513,7 @@ export default function ProductDetails() {
                                                     : 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                                                 }`}
                                         >
-                                            {language === 'bn' ? 'এখনই অর্ডার করুন' : 'Order Now'}
+                                            {language === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
                                         </button>
                                         <button
                                             onClick={handleAddToCart}

@@ -1,6 +1,6 @@
 import React from 'react'; 
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, Globe, LayoutGrid, Tag, User, ClipboardList } from 'lucide-react';
+import { Home, LayoutGrid, Globe, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../contexts/CartContext';
 
@@ -29,10 +29,10 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
             active: location.pathname === '/' && !location.search
         },
         {
-            id: 'offers',
-            icon: <Tag size={22} />,
-            label: language === 'bn' ? 'অফার' : 'Offers',
-            onClick: () => { if (onSelectCategory) onSelectCategory('Sale'); navigate('/'); },
+            id: 'categories',
+            icon: <LayoutGrid size={22} />,
+            label: language === 'bn' ? 'ক্যাটাগরি' : 'Categories',
+            onClick: onOpenCategories,
             active: false
         },
         {
@@ -95,7 +95,7 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
                             </button>
                         )}
                         {/* Placeholder for center spacing */}
-                        {item.id === 'offers' && <div className="flex-1 pointer-events-none" />}
+                        {item.id === 'categories' && <div className="flex-1 pointer-events-none" />}
                     </React.Fragment>
                 ))}
             </div>

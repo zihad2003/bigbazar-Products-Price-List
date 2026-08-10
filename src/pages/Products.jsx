@@ -1,48 +1,54 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ArrowRight, ShoppingBag, X } from 'lucide-react';
+import { Search, ArrowRight, ShoppingBag, X, Check } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { bigBazarApi } from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getSubcategoriesForCategory, TOP_CATEGORIES } from '../data/categories';
 
 const PAGE_SIZE = 16;
 
 const BASE_CATEGORIES = [
   { id: 'All',          en: 'All',            bn: 'সকল' },
-  { id: 'Men',          en: 'Men',            bn: 'ছেলেদের' },
-  { id: 'Women',        en: 'Women',          bn: 'মেয়েদের' },
-  { id: 'Kids (Boys)',  en: 'Boys',           bn: 'ছেলে শিশু' },
-  { id: 'Kids (Girls)', en: 'Girls',          bn: 'মেয়ে শিশু' },
+  ...TOP_CATEGORIES.map(c => ({ id: c.id, en: c.en, bn: c.bn })),
 ];
 
 export default function Products() {
   const { language } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [weddingConfig, setWeddingConfig] = useState(null); // from site_settings
+  const [weddingConfig, setWeddingConfig] = useState(null);
+  const [subcategoriesData, setSubcategoriesData] = useState(null);
 
-  const initialCategory = searchParams.get('category') || 'All';
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  // Source of truth from URL params
+  const selectedCategory = searchParams.get('category') || 'All';
+  const selectedSubcategory = searchParams.get('subcategory') || '';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const searchRef = useRef(null);
 
-  // Fetch admin settings for wedding banner config
+  // Fetch admin settings
   useEffect(() => {
     bigBazarApi.from('site_settings').select('*').then(({ data }) => {
       if (!data) return;
-      const wb = Array.isArray(data)
-        ? data.find(s => s.key === 'wedding_banner')?.value
-        : data.wedding_banner;
+      const isArray = Array.isArray(data);
+      const getValue = (key) => isArray ? data.find(s => s.key === key)?.value : data[key];
+      
+      const wb = getValue('wedding_banner');
       if (wb?.enabled && wb?.category_filter) setWeddingConfig(wb);
+      
+      const subcats = getValue('subcategories');
+      if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
     });
   }, []);
 
-  // Build category list — add wedding tab only if admin enabled it
+  // Build category list
   const CATEGORIES = [
     ...BASE_CATEGORIES,
     ...(weddingConfig ? [{
@@ -52,28 +58,37 @@ export default function Products() {
     }] : []),
   ];
 
-  // Sync category with URL param
-  useEffect(() => {
-    const cat = searchParams.get('category');
-    if (cat && cat !== selectedCategory) {
-      setSelectedCategory(cat);
-      setPage(0);
-    }
-  }, [searchParams]);
-
   const handleCategoryChange = (cat) => {
-    setSelectedCategory(cat);
+    if (cat === selectedCategory && !selectedSubcategory) return;
     setPage(0);
-    setProducts([]);
-    if (cat === 'All') setSearchParams({});
-    else setSearchParams({ category: cat });
+    setIsFiltering(true);
+    if (cat === 'All') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ category: cat });
+    }
   };
 
-  // Fetch products
+  const handleSubcategoryChange = (subId) => {
+    const nextSub = selectedSubcategory === subId ? '' : subId;
+    setPage(0);
+    setIsFiltering(true);
+    const params = {};
+    if (selectedCategory && selectedCategory !== 'All') params.category = selectedCategory;
+    if (nextSub) params.subcategory = nextSub;
+    setSearchParams(params);
+  };
+
+  // Fetch products cleanly without flickering layout
   useEffect(() => {
     let isMounted = true;
     const fetchProducts = async () => {
-      setLoading(true);
+      if (page === 0 && products.length === 0) {
+        setLoading(true);
+      } else {
+        setIsFiltering(true);
+      }
+
       const start = page * PAGE_SIZE;
       const end = start + PAGE_SIZE - 1;
 
@@ -85,10 +100,8 @@ export default function Products() {
         .range(start, end);
 
       if (selectedCategory && selectedCategory !== 'All') {
-        // Check if this matches the admin-configured wedding category filter
         const isWeddingCat = weddingConfig && selectedCategory === weddingConfig.category_filter;
         if (isWeddingCat) {
-          // Use a broad ilike search on the filter keyword
           const kw = weddingConfig.category_filter.toLowerCase();
           query = query.or(`category.ilike.%${kw}%,is_exclusive.eq.true`);
         } else {
@@ -100,6 +113,10 @@ export default function Products() {
           };
           query = query.in('category', catMap[selectedCategory] || [selectedCategory]);
         }
+      }
+
+      if (selectedSubcategory) {
+        query = query.eq('subcategory', selectedSubcategory);
       }
 
       if (searchQuery) {
@@ -116,20 +133,45 @@ export default function Products() {
           setTotalCount(count || 0);
         }
         setLoading(false);
+        setIsFiltering(false);
       }
     };
 
     fetchProducts();
     return () => { isMounted = false; };
-  }, [page, selectedCategory, searchQuery]);
+  }, [page, selectedCategory, selectedSubcategory, searchQuery]);
 
+  const [subCounts, setSubCounts] = useState({});
+
+  // Fetch subcategory counts to filter out empty subcategories
   useEffect(() => {
-    setPage(0);
-    setProducts([]);
-  }, [selectedCategory, searchQuery]);
+    let query = bigBazarApi.from('subcategory-counts').select('*');
+    if (selectedCategory && selectedCategory !== 'All') {
+      query = query.eq('category', selectedCategory);
+    }
+    query.then(({ data }) => {
+      if (data && Array.isArray(data)) {
+        const countsMap = {};
+        data.forEach(item => {
+          if (item.subcategory) countsMap[item.subcategory] = item.count;
+        });
+        setSubCounts(countsMap);
+      }
+    });
+  }, [selectedCategory]);
 
   const currentCat = CATEGORIES.find(c => c.id === selectedCategory);
   const catLabel = currentCat ? (language === 'bn' ? currentCat.bn : currentCat.en) : 'All';
+  const allSubcategories = getSubcategoriesForCategory(selectedCategory, subcategoriesData);
+  // Filter subcategories to only show those with actual products
+  const availableSubcategories = Object.keys(subCounts).length > 0
+    ? allSubcategories.filter(sub => (subCounts[sub.id] || 0) > 0)
+    : allSubcategories;
+
+  const resetAllFilters = () => {
+    handleCategoryChange('All');
+    setSearchQuery('');
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -138,15 +180,9 @@ export default function Products() {
         <div className="w-full max-w-[1920px] mx-auto px-4 md:px-12 py-6 md:py-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d] mb-1">Big Bazar</p>
-              <h1 className="text-2xl sm:text-3xl md:text-5xl font-black italic uppercase tracking-tighter text-zinc-900 leading-none">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-zinc-900 leading-none">
                 {catLabel}
               </h1>
-              {!loading && (
-                <p className="text-xs text-zinc-400 font-medium mt-2">
-                  {totalCount.toLocaleString()} {language === 'bn' ? 'পণ্য পাওয়া গেছে' : 'products found'}
-                </p>
-              )}
             </div>
 
             {/* Search */}
@@ -176,49 +212,113 @@ export default function Products() {
           {/* Desktop Sidebar */}
           <aside className="hidden md:block w-44 lg:w-52 shrink-0">
             <div className="sticky top-24 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 px-3 pb-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-3 pb-2">
                 {language === 'bn' ? 'ক্যাটাগরি' : 'Category'}
               </p>
               {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategoryChange(cat.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all duration-200 ${
-                    selectedCategory === cat.id
-                      ? 'bg-zinc-900 text-white'
-                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
-                  }`}
-                >
-                  {language === 'bn' ? cat.bn : cat.en}
-                  {selectedCategory === cat.id && (
-                    <span className="float-right w-1.5 h-1.5 rounded-full bg-[#ce112d] mt-1" />
+                <div key={cat.id} className="space-y-1">
+                  <button
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                      selectedCategory === cat.id
+                        ? 'bg-zinc-900 text-white'
+                        : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                    }`}
+                  >
+                    {language === 'bn' ? cat.bn : cat.en}
+                    {selectedCategory === cat.id && (
+                      <span className="float-right w-1.5 h-1.5 rounded-full bg-[#ce112d] mt-1.5" />
+                    )}
+                  </button>
+                  {selectedCategory === cat.id && availableSubcategories.length > 0 && (
+                    <div className="pl-3 space-y-1 py-1 border-l-2 border-zinc-100 ml-3">
+                      {availableSubcategories.map(sub => {
+                        const isSubSelected = selectedSubcategory === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => handleSubcategoryChange(sub.id)}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-2 ${
+                              isSubSelected
+                                ? 'bg-rose-50 text-[#ce112d] font-black'
+                                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                            }`}
+                          >
+                            {sub.image_url && (
+                              <img src={sub.image_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0 border border-zinc-200" />
+                            )}
+                            <span>{language === 'bn' ? (sub.name_bn || sub.bn) : (sub.name_en || sub.en)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           </aside>
 
-          {/* Mobile Filter Bar */}
-          <div className="md:hidden w-full mb-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryChange(cat.id)}
-                className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all border ${
-                  selectedCategory === cat.id
-                    ? 'bg-zinc-900 text-white border-zinc-900'
-                    : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
-                }`}
-              >
-                {language === 'bn' ? cat.bn : cat.en}
-              </button>
-            ))}
-          </div>
-
-          {/* Product Grid */}
+          {/* Product Grid Container */}
           <div className="flex-1 min-w-0">
-            {/* Empty State */}
-            {!loading && products.length === 0 && (
+            {/* Mobile Filter Bar & Subcategory Chips */}
+            <div className="mb-4 space-y-2">
+              <div className="md:hidden w-full flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scrollbar-hide">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryChange(cat.id)}
+                    className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all border ${
+                      selectedCategory === cat.id
+                        ? 'bg-zinc-900 text-white border-zinc-900'
+                        : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400'
+                    }`}
+                  >
+                    {language === 'bn' ? cat.bn : cat.en}
+                  </button>
+                ))}
+              </div>
+
+              {availableSubcategories.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scrollbar-hide">
+                  <span className="text-[10px] font-black uppercase text-zinc-400 shrink-0 mr-1">
+                    {language === 'bn' ? 'পোশাকের ধরন:' : 'Type:'}
+                  </span>
+                  <button
+                    onClick={() => handleSubcategoryChange('')}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase transition-all border ${
+                      !selectedSubcategory
+                        ? 'bg-[#ce112d] text-white border-[#ce112d]'
+                        : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-300'
+                    }`}
+                  >
+                    {language === 'bn' ? 'সব' : 'All'}
+                  </button>
+                  {availableSubcategories.map(sub => {
+                    const isSubSelected = selectedSubcategory === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => handleSubcategoryChange(sub.id)}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all border flex items-center gap-1.5 ${
+                          isSubSelected
+                            ? 'bg-[#ce112d] text-white border-[#ce112d] shadow-sm'
+                            : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-300'
+                        }`}
+                      >
+                        {sub.image_url && (
+                          <img src={sub.image_url} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                        )}
+                        <span>{language === 'bn' ? (sub.name_bn || sub.bn) : (sub.name_en || sub.en)}</span>
+                        {isSubSelected && <Check size={10} strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Clean In-Page Empty State (No Popup Modal) */}
+            {!loading && !isFiltering && products.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300">
                   <ShoppingBag size={28} strokeWidth={1.5} />
@@ -232,25 +332,28 @@ export default function Products() {
                   </p>
                 </div>
                 <button
-                  onClick={() => { handleCategoryChange('All'); setSearchQuery(''); }}
-                  className="px-6 py-2.5 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-widest rounded-full transition-all"
+                  onClick={resetAllFilters}
+                  className="px-6 py-2.5 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-wider rounded-full transition-all"
                 >
                   {language === 'bn' ? 'সকল পণ্য' : 'View All'}
                 </button>
               </div>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-4 md:gap-6">
-              {loading && page === 0
-                ? Array.from({ length: 20 }).map((_, i) => <ProductSkeleton key={i} />)
-                : products.map(product => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onClick={() => navigate(`/product/${product.id}`)}
-                    />
-                  ))
-              }
+            {/* Product Grid with Smooth Transition */}
+            <div className={`transition-opacity duration-300 ${isFiltering ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {loading && page === 0
+                  ? Array.from({ length: 16 }).map((_, i) => <ProductSkeleton key={i} />)
+                  : products.map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onClick={() => navigate(`/product/${product.id}`)}
+                      />
+                    ))
+                }
+              </div>
             </div>
 
             {loading && page > 0 && (
@@ -264,7 +367,7 @@ export default function Products() {
               <div className="flex justify-center pt-10 pb-4">
                 <button
                   onClick={() => setPage(p => p + 1)}
-                  className="group inline-flex items-center gap-2.5 px-8 py-3 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-[0.2em] rounded-full transition-all duration-300 active:scale-95"
+                  className="group inline-flex items-center gap-2.5 px-8 py-3 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-wider rounded-full transition-all duration-300 active:scale-95"
                 >
                   <span>{language === 'bn' ? 'আরো দেখুন' : 'Load More'}</span>
                   <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />

@@ -214,6 +214,11 @@ class QueryBuilder {
             }
         }
         
+        if (this._table === 'subcategory-counts') {
+            if (this._filters.category) params.set('category', this._filters.category);
+            if (this._inFilters.category) params.set('category', this._inFilters.category.join(','));
+        }
+        
         if (this._table === 'orders') {
             if (this._orFilter) params.set('search', this._extractSearchFromOr());
         }
@@ -316,6 +321,7 @@ class QueryBuilder {
     _getEndpoint() {
         const map = {
             products: '/api/products',
+            'subcategory-counts': '/api/products/subcategory-counts',
             orders: '/api/orders',
             reviews: '/api/reviews',
             site_settings: '/api/settings'

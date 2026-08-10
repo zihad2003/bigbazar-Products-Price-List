@@ -17,6 +17,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import ModeratorEntry from '../components/ModeratorEntry';
 import AdminReports from '../components/admin/AdminReports';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
+import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -26,6 +27,10 @@ export default function Admin() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
+  const [subcategoriesData, setSubcategoriesData] = useState(null);
+  const [editingSubcat, setEditingSubcat] = useState(null);
+  const [subcatForm, setSubcatForm] = useState({ id: '', name_en: '', name_bn: '', image_url: '', sort_order: 0 });
+  const [subcatCategory, setSubcatCategory] = useState('Women');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
@@ -97,7 +102,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
     images: [], video_url: '', is_sale: false, is_hot: false,
-    is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
+    is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women', subcategory: '',
     status: 'published', platform_id: '', serial_no: '',
     available_sizes: [], available_colors: [], stock_count: ''
   });
@@ -452,6 +457,12 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       if (catVis) settings.category_visibility = catVis;
       const weddingBanner = getValue('wedding_banner');
       if (weddingBanner) settings.wedding_banner = { ...settings.wedding_banner, ...weddingBanner };
+
+      // Load dynamic subcategories
+      const subcats = getValue('subcategories');
+      if (subcats && typeof subcats === 'object') {
+        setSubcategoriesData(subcats);
+      }
 
       const visitors = getValue('site_visitors');
       if (visitors !== undefined && visitors !== null) {
@@ -862,7 +873,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setForm({
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
-      is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women',
+      is_new: false, is_sold_out: false, is_exclusive: false, category: 'Women', subcategory: '',
       status: 'published', platform_id: '', serial_no: '',
       available_sizes: [], available_colors: [], stock_count: ''
     });
@@ -1005,6 +1016,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
               { id: 'soldout', icon: <AlertCircle size={18} />, label: 'Sold Out', count: products.filter(p => p && p.is_sold_out).length },
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
+              { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories' },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
             ].map(tab => (
               <button
@@ -1012,9 +1024,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 onClick={() => {
                   setActiveTab(tab.id);
                   setIsMobileMenuOpen(false);
-                  if (tab.id === 'settings') {
+                  if (tab.id === 'settings' || tab.id === 'subcategories') {
                     fetchSiteSettings();
-                    fetchPendingCodes();
+                    if (tab.id === 'settings') fetchPendingCodes();
                   }
                 }}
                 className={`w-full flex items-center gap-3.5 p-3.5 rounded-2xl text-[11px] font-bold tracking-wider transition-all duration-300 ${tab.special && activeTab !== tab.id ? 'border-2 border-dashed border-[#ce112d]/40 text-[#ce112d] hover:bg-[#ce112d]/10 hover:border-[#ce112d]' : activeTab === tab.id ? 'bg-gradient-to-r from-[#ce112d] to-[#ff1c3a] text-white shadow-xl shadow-red-900/30 ring-1 ring-white/10' : 'hover:bg-white/[0.03] text-zinc-500 hover:text-zinc-200'}`}
@@ -1058,6 +1070,226 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       <main className="flex-1 p-4 md:p-12 overflow-y-auto no-scrollbar bg-[#0a0a0c]">
         {activeTab === 'reports' ? (
           <AdminReports orders={orders} products={products} reviews={reviews} />
+        ) : activeTab === 'subcategories' ? (
+          /* ═══ SUBCATEGORY MANAGER ═══ */
+          <div className="max-w-4xl space-y-8 pb-20">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">Subcategory <span className="text-[#ce112d]">Manager</span></h2>
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mt-1">Manage subcategories with photos for each category</p>
+            </div>
+
+            {/* Category Selector */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {TOP_CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSubcatCategory(cat.id)}
+                  className={`py-3 px-4 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border-2 active:scale-95 ${
+                    subcatCategory === cat.id
+                      ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-lg shadow-red-900/30'
+                      : 'bg-white/5 border-white/10 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  {cat.en}
+                </button>
+              ))}
+            </div>
+
+            {/* Current Subcategories List */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase text-zinc-300 tracking-wider">
+                  {subcatCategory} Subcategories ({getSubcategoriesForCategory(subcatCategory, subcategoriesData).length})
+                </h3>
+              </div>
+
+              {getSubcategoriesForCategory(subcatCategory, subcategoriesData).map((sub, idx) => (
+                <div key={sub.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/10 rounded-2xl hover:border-white/15 transition-all">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10 shrink-0 flex items-center justify-center">
+                    {sub.image_url ? (
+                      <img src={sub.image_url} alt={sub.name_en} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-black text-zinc-500">{(sub.name_en || '?')[0]}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{sub.name_en}</p>
+                    <p className="text-[11px] text-zinc-400 truncate">{sub.name_bn}</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-zinc-600 uppercase">#{sub.sort_order || idx}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSubcat(sub.id);
+                      setSubcatForm({ id: sub.id, name_en: sub.name_en || '', name_bn: sub.name_bn || '', image_url: sub.image_url || '', sort_order: sub.sort_order || idx });
+                    }}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const merged = mergeWithDynamic(subcategoriesData);
+                      const updated = { ...merged };
+                      updated[subcatCategory] = (updated[subcatCategory] || []).filter(s => s.id !== sub.id);
+                      await bigBazarApi.from('site_settings').upsert({ key: 'subcategories', value: updated });
+                      setSubcategoriesData(updated);
+                      setAlertModal({ isOpen: true, title: 'Deleted', message: 'Subcategory deleted successfully.', type: 'success' });
+                    }}
+                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+
+              {getSubcategoriesForCategory(subcatCategory, subcategoriesData).length === 0 && (
+                <div className="text-center py-10 text-zinc-600">
+                  <Box size={32} className="mx-auto mb-3 text-zinc-700" />
+                  <p className="text-xs font-bold uppercase tracking-wider">No subcategories yet for {subcatCategory}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Add/Edit Subcategory Form */}
+            <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-6 space-y-5">
+              <h3 className="text-sm font-black uppercase text-[#ce112d] tracking-wider">
+                {editingSubcat ? 'Edit Subcategory' : 'Add New Subcategory'}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block mb-1.5">English Name</label>
+                  <input
+                    type="text"
+                    value={subcatForm.name_en}
+                    onChange={e => setSubcatForm(p => ({ ...p, name_en: e.target.value }))}
+                    placeholder="e.g. Sari"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block mb-1.5">Bengali Name</label>
+                  <input
+                    type="text"
+                    value={subcatForm.name_bn}
+                    onChange={e => setSubcatForm(p => ({ ...p, name_bn: e.target.value }))}
+                    placeholder="e.g. শাড়ি"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block mb-1.5">Photo URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={subcatForm.image_url}
+                      onChange={e => setSubcatForm(p => ({ ...p, image_url: e.target.value }))}
+                      placeholder="https://... or upload"
+                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#ce112d]/50 transition-all"
+                    />
+                    <label className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer flex items-center gap-2">
+                      <Upload size={16} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            const compressed = await compressImage(file, COMPRESS_PRESETS.thumbnail);
+                            const { data, error } = await bigBazarApi.storage.from('products').upload(`subcategory-${Date.now()}.webp`, compressed);
+                            if (data?.fullPath) setSubcatForm(p => ({ ...p, image_url: data.fullPath }));
+                            else if (data?.path) {
+                              const { data: urlData } = bigBazarApi.storage.from('products').getPublicUrl(data.path);
+                              setSubcatForm(p => ({ ...p, image_url: urlData.publicUrl }));
+                            }
+                          } catch (err) { console.error('Upload error:', err); }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {subcatForm.image_url && (
+                    <div className="mt-2 w-10 h-10 rounded-full overflow-hidden border border-white/20">
+                      <img src={subcatForm.image_url} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block mb-1.5">Sort Order</label>
+                  <input
+                    type="number"
+                    value={subcatForm.sort_order}
+                    onChange={e => setSubcatForm(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#ce112d]/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!subcatForm.name_en.trim()) return;
+                    const merged = mergeWithDynamic(subcategoriesData);
+                    const updated = { ...merged };
+                    const catSubs = [...(updated[subcatCategory] || [])];
+
+                    const subObj = {
+                      id: editingSubcat || subcatForm.name_en.trim().replace(/[\s/]+/g, '-'),
+                      name_en: subcatForm.name_en.trim(),
+                      name_bn: subcatForm.name_bn.trim(),
+                      image_url: subcatForm.image_url.trim(),
+                      sort_order: subcatForm.sort_order,
+                    };
+
+                    if (editingSubcat) {
+                      const idx = catSubs.findIndex(s => s.id === editingSubcat);
+                      if (idx >= 0) catSubs[idx] = subObj;
+                      else catSubs.push(subObj);
+                    } else {
+                      if (catSubs.some(s => s.id === subObj.id)) {
+                        setAlertModal({ isOpen: true, title: 'Duplicate', message: `A subcategory with ID "${subObj.id}" already exists.`, type: 'error' });
+                        return;
+                      }
+                      catSubs.push(subObj);
+                    }
+
+                    catSubs.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+                    updated[subcatCategory] = catSubs;
+
+                    await bigBazarApi.from('site_settings').upsert({ key: 'subcategories', value: updated });
+                    setSubcategoriesData(updated);
+                    setEditingSubcat(null);
+                    setSubcatForm({ id: '', name_en: '', name_bn: '', image_url: '', sort_order: catSubs.length });
+                    setAlertModal({ isOpen: true, title: 'Saved!', message: 'Subcategory saved successfully.', type: 'success' });
+                  }}
+                  className="px-8 py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all active:scale-95 shadow-lg shadow-red-900/30 flex items-center gap-2"
+                >
+                  <Save size={16} />
+                  {editingSubcat ? 'Save & Update Subcategory' : 'Save & Add Subcategory'}
+                </button>
+                {editingSubcat && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSubcat(null);
+                      setSubcatForm({ id: '', name_en: '', name_bn: '', image_url: '', sort_order: 0 });
+                    }}
+                    className="px-6 py-3.5 bg-white/5 border border-white/10 text-zinc-400 text-xs font-black uppercase tracking-wider rounded-xl transition-all hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         ) : activeTab === 'settings' ? (
           <div className="max-w-4xl space-y-12 pb-20">
             <div className="flex items-center justify-between">
@@ -1671,7 +1903,23 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-[40px] p-4 md:p-10 shadow-2xl space-y-6 md:space-y-10">
                     <div className="space-y-6">
                       <div className="group">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1 group-focus-within:text-[#ce112d] transition-colors">Product Name</label>
+                        <div className="flex items-center justify-between mb-3 px-1">
+                          <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.2em] group-focus-within:text-[#ce112d] transition-colors">Product Name</label>
+                          {form.subcategory && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const subName = form.subcategory.split('/')[0].trim();
+                                if (!form.name.toLowerCase().includes(subName.toLowerCase())) {
+                                  setForm(prev => ({ ...prev, name: `${subName} ${prev.name}`.trim() }));
+                                }
+                              }}
+                              className="text-[10px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <span>💡 Prefix subcategory "{form.subcategory.split('/')[0]}"</span>
+                            </button>
+                          )}
+                        </div>
                         <input
                           value={form.name}
                           placeholder="e.g. Premium Mirror Work Panjabi 2024"
@@ -1721,25 +1969,56 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         </div>
                       </div>
 
-                      <div className="pt-6">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 mb-4 block tracking-[0.2em] px-1">Category</label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-                          {[
-                            { id: 'Men', label: 'Men' },
-                            { id: 'Women', label: 'Women' },
-                            { id: 'Kids (Boys)', label: 'Boys' },
-                            { id: 'Kids (Girls)', label: 'Girls' }
-                          ].map(cat => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => setForm({ ...form, category: cat.id })}
-                              className={`py-3 md:py-5 px-3 rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.1em] transition-all border-2 shadow-xl hover:scale-[1.02] active:scale-95 ${form.category === cat.id ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-4 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
-                            >
-                              {cat.label}
-                            </button>
-                          ))}
+                      <div className="pt-6 space-y-6">
+                        <div>
+                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                            {[
+                              { id: 'Men', label: 'Men' },
+                              { id: 'Women', label: 'Women' },
+                              { id: 'Kids (Boys)', label: 'Boys' },
+                              { id: 'Kids (Girls)', label: 'Girls' }
+                            ].map(cat => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, category: cat.id, subcategory: '' }))}
+                                className={`py-3 md:py-4 px-3 rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.1em] transition-all border-2 shadow-xl hover:scale-[1.02] active:scale-95 ${form.category === cat.id ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-4 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
+                              >
+                                {cat.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
+
+                        {form.category && (
+                          <div className="pt-2">
+                            <label className="text-[10px] font-black uppercase text-rose-400 mb-3 block tracking-[0.2em] px-1">Subcategory / Garment Type (সাব-ক্যাটাগরি / পোশাকের ধরন)</label>
+                            <div className="flex flex-wrap gap-2 md:gap-3">
+                              {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => {
+                                const isSelected = form.subcategory === sub.id;
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => setForm(prev => ({ ...prev, subcategory: isSelected ? '' : sub.id }))}
+                                    className={`px-4 py-2.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black transition-all border-2 flex items-center gap-2 active:scale-95 ${isSelected ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-900/40 ring-2 ring-rose-500/30' : 'bg-zinc-900/60 border-zinc-700/60 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
+                                  >
+                                    {sub.image_url && <img src={sub.image_url} alt="" className="w-5 h-5 rounded-full object-cover border border-white/20" />}
+                                    <span>{sub.name_en || sub.en} ({sub.name_bn || sub.bn})</span>
+                                    {isSelected && <Check size={12} className="stroke-[3]" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {!form.subcategory && (
+                              <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold flex items-center gap-2">
+                                <AlertCircle size={14} className="shrink-0 text-amber-400" />
+                                <span>সাব-ক্যাটাগরি সিলেক্ট করা হয়নি (No subcategory selected — product will remain in general category)</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-6 group">

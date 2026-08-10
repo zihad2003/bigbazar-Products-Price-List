@@ -38,7 +38,72 @@ export async function onRequest(context) {
   let ogImage = `${domain}/b.jpg`;
 
   // Route-specific customizations
-  if (path === '/about-us') {
+  let productJsonLd = null;
+
+  if (path.startsWith('/product/')) {
+    const productId = path.replace('/product/', '').trim();
+    try {
+      const prodRes = await fetch(`${domain}/all_products.json`);
+      if (prodRes.ok) {
+        const products = await prodRes.json();
+        const prod = Array.isArray(products) ? products.find(p => String(p.id) === String(productId)) : null;
+        if (prod) {
+          pageTitle = `${prod.name} — Big Bazar Baraiyarhat`;
+          const rawDesc = prod.description ? prod.description.replace(/\s+/g, ' ').trim() : '';
+          pageDesc = rawDesc ? (rawDesc.length > 160 ? rawDesc.substring(0, 157) + '...' : rawDesc) : `${prod.name} - Buy online at Big Bazar Baraiyarhat with Cash on Delivery and Free Mirsharai Delivery.`;
+          
+          const img = prod.image_url || prod.image || (prod.images && prod.images[0]);
+          if (img) ogImage = img;
+
+          const isOutOfStock = !!prod.is_sold_out || (prod.stock_count !== null && prod.stock_count <= 0);
+
+          productJsonLd = {
+            "@type": "Product",
+            "@id": `${domain}${path}#product`,
+            "name": prod.name,
+            "description": pageDesc,
+            "image": ogImage,
+            "sku": String(prod.id),
+            "category": prod.subcategory ? `${prod.category} > ${prod.subcategory}` : prod.category,
+            "brand": {
+              "@type": "Brand",
+              "name": "Big Bazar"
+            },
+            "offers": {
+              "@type": "Offer",
+              "url": canonicalUrl,
+              "priceCurrency": "BDT",
+              "price": parseFloat(prod.price || 0),
+              "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+              "seller": {
+                "@type": "Organization",
+                "name": "Big Bazar Baraiyarhat"
+              }
+            }
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Edge pre-render product fetch warning:', err);
+    }
+    if (!productJsonLd) {
+      pageTitle = "Exclusive Collection | Big Bazar Baraiyarhat";
+      pageDesc = "Shop authentic fashion collections at Big Bazar Baraiyarhat with fast Cash on Delivery across Bangladesh.";
+    }
+  } else if (path === '/products') {
+    const categoryParam = url.searchParams.get('category');
+    const subcategoryParam = url.searchParams.get('subcategory');
+    if (subcategoryParam) {
+      pageTitle = `${subcategoryParam} Collection — Big Bazar Baraiyarhat`;
+      pageDesc = `Browse authentic ${subcategoryParam} collection${categoryParam ? ' for ' + categoryParam : ''} at Big Bazar Baraiyarhat. Best prices and Free Home Delivery in Mirsharai.`;
+    } else if (categoryParam && categoryParam !== 'All') {
+      pageTitle = `${categoryParam} Collection — Big Bazar Baraiyarhat`;
+      pageDesc = `Explore signature ${categoryParam} fashion collections at Big Bazar Baraiyarhat. Fixed-price family shopping with Cash on Delivery across Bangladesh.`;
+    } else {
+      pageTitle = "All Products Collection — Big Bazar Baraiyarhat";
+      pageDesc = "Browse all family fashion, Modest Wear, Gents Wear, Kids Wear, and Biyer Sajani bridal items at Big Bazar Baraiyarhat.";
+    }
+  } else if (path === '/about-us') {
     pageTitle = "About Us — Big Bazar Baraiyarhat | 65,000+ Community Trusted Store";
     pageDesc = "Discover Big Bazar at Jomidar Plaza, Baraiyarhat. Serving 65,000+ community followers with complete family fashion solutions, Biyer Sajani wedding collections, and Free Home Delivery across Mirsharai.";
   } else if (path === '/store-locations') {
@@ -53,9 +118,6 @@ export async function onRequest(context) {
   } else if (path === '/returns') {
     pageTitle = "Returns & Exchange Policy — Big Bazar Baraiyarhat";
     pageDesc = "Hassle-free return and exchange policy within 24 hours for defective items or sizing issues at Big Bazar Baraiyarhat.";
-  } else if (path.startsWith('/product/')) {
-    pageTitle = "Exclusive Collection | Big Bazar Baraiyarhat";
-    pageDesc = "Shop authentic fashion collections at Big Bazar Baraiyarhat with fast Cash on Delivery across Bangladesh.";
   }
 
   // Schema.org JSON-LD microdata graph
@@ -114,6 +176,7 @@ export async function onRequest(context) {
           ]
         }
       },
+      ...(productJsonLd ? [productJsonLd] : []),
       {
         "@type": "FAQPage",
         "@id": `${domain}/#faq`,

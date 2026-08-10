@@ -56,7 +56,7 @@ function PublicLayout() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId, is_new: isNew })
-      }).catch(() => {});
+      }).catch(() => { });
     };
 
     sendPing(isNewSession);
@@ -134,6 +134,7 @@ function PublicLayout() {
         onClose={() => handleCloseModal(setIsCategoryOpen)}
         selectedCategory={category}
         onSelectCategory={setCategory}
+        isTopTickerActive={isTopTickerActive}
       />
 
       <header className="fixed top-0 left-0 right-0 z-[1010] flex flex-col">
@@ -146,6 +147,14 @@ function PublicLayout() {
           onTrackOrder={() => openModal(setIsTrackOpen)}
           onOpenCart={() => openModal(setIsCartOpen)}
           onOpenAuth={() => openModal(setIsAuthOpen)}
+          onOpenCategories={() => {
+            if (isCategoryOpen) {
+              handleCloseModal(setIsCategoryOpen);
+            } else {
+              openModal(setIsCategoryOpen);
+            }
+          }}
+          isCategoryOpen={isCategoryOpen}
         />
       </header>
 
