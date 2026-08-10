@@ -47,8 +47,11 @@ class ErrorBoundary extends React.Component {
                         <div className="flex flex-col gap-3 pt-2">
                             <button
                                 onClick={() => {
-                                    this.setState({ hasError: false });
-                                    window.location.reload();
+                                    try {
+                                        localStorage.removeItem('bb_site_settings_cache');
+                                        sessionStorage.clear();
+                                    } catch (e) {}
+                                    window.location.href = '/?refresh=' + Date.now();
                                 }}
                                 className="w-full py-4 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-red-900/40 active:scale-95 transition-all"
                             >
@@ -56,9 +59,12 @@ class ErrorBoundary extends React.Component {
                             </button>
                             <button
                                 onClick={() => {
-                                    window.location.href = '/';
+                                    try {
+                                        localStorage.removeItem('bb_site_settings_cache');
+                                    } catch (e) {}
+                                    window.location.href = '/?refresh=' + Date.now();
                                 }}
-                                className="w-full py-3.5 bg-black/50 hover:bg-black text-zinc-400 hover:text-white border border-white/10 text-xs font-bold uppercase tracking-widest rounded-2xl transition-all"
+                                className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold uppercase tracking-wider rounded-2xl transition-all border border-white/5"
                             >
                                 Return to Homepage
                             </button>
