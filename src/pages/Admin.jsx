@@ -16,6 +16,7 @@ import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import ModeratorEntry from '../components/ModeratorEntry';
 import AdminReports from '../components/admin/AdminReports';
+import AdminConversations from '../components/admin/AdminConversations';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
 
@@ -521,6 +522,23 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     e.preventDefault();
     setLoading(true);
 
+    // Validation: Product must have an image
+    if (!form.images?.length && !form.image_url) {
+      setLoading(false);
+      setAlertModal({ isOpen: true, title: 'Image Required', message: 'অনুগ্রহ করে পণ্যের ছবি যুক্ত করুন (Product image must be provided).', type: 'error' });
+      return;
+    }
+
+    // Validation: Every added color must have an image
+    if (form.available_colors && form.available_colors.length > 0) {
+      const missingColorImage = form.available_colors.find(c => !c.image);
+      if (missingColorImage) {
+        setLoading(false);
+        setAlertModal({ isOpen: true, title: 'Color Image Required', message: `অনুগ্রহ করে '${missingColorImage.name || 'রঙ'}' এর জন্য একটি ছবি যুক্ত করুন।`, type: 'error' });
+        return;
+      }
+    }
+
     // Auto-increment Serial Number Calculation if not manually specified
     let finalSerialNo = form.serial_no;
     if (!finalSerialNo && !editingProduct) {
@@ -1010,6 +1028,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               { id: 'pending-items', icon: <Package size={18} />, label: 'Pending Items', count: orders.filter(o => o && o.status === 'Pending').length },
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics' },
+              { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations' },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
               { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
@@ -1070,6 +1089,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       <main className="flex-1 p-4 md:p-12 overflow-y-auto no-scrollbar bg-[#0a0a0c]">
         {activeTab === 'reports' ? (
           <AdminReports orders={orders} products={products} reviews={reviews} />
+        ) : activeTab === 'conversations' ? (
+          <AdminConversations />
         ) : activeTab === 'subcategories' ? (
           /* ═══ SUBCATEGORY MANAGER ═══ */
           <div className="max-w-4xl space-y-8 pb-20">
