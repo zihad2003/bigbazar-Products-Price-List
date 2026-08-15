@@ -229,7 +229,8 @@ export default function Checkout() {
             // Navigate to dedicated confirmation route
             navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {
-            setError(language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
+            const errorMsg = err?.message || (language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
+            setError(errorMsg);
             console.error("Order submission Error:", err);
         } finally {
             setIsSubmitting(false);
