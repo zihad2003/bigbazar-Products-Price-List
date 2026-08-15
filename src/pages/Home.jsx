@@ -228,7 +228,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         {/* Photo-Based Subcategory Rail */}
         {activeSubcategories.length > 0 && (
           <section>
-            <div className="flex items-center justify-start sm:justify-center gap-3 sm:gap-5 md:gap-8 overflow-x-auto pb-2 pt-1 no-scrollbar scrollbar-hide px-2">
+            <div className="flex items-center justify-start sm:justify-center gap-4 sm:gap-8 md:gap-12 overflow-x-auto pb-4 pt-2 no-scrollbar scrollbar-hide px-4">
               {activeSubcategories.map((sub) => (
                 <button
                   key={sub.id}
@@ -243,7 +243,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                   }}
                   className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0"
                 >
-                  <div className="w-11 h-11 sm:w-13 sm:h-13 md:w-16 md:h-16 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
                     {sub.image_url ? (
                       <img
                         src={sub.image_url}
@@ -252,14 +252,14 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#ce112d]/10 via-rose-50 to-white flex items-center justify-center border border-[#ce112d]/15">
-                        <span className="text-base sm:text-xl md:text-2xl font-black text-[#ce112d]">
+                      <div className="w-full h-full bg-gradient-to-br from-[#ce112d]/10 via-rose-50 to-white flex items-center justify-center border border-[#ce112d]/15 shrink-0">
+                        <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#ce112d]">
                           {(sub.name_en || sub.name_bn || '?')[0]}
                         </span>
                       </div>
                     )}
                   </div>
-                  <span className="block text-[10px] sm:text-[11px] font-bold text-zinc-700 text-center leading-tight max-w-[80px] sm:max-w-[90px] md:max-w-[100px] line-clamp-2">
+                  <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug max-w-[100px] sm:max-w-[130px] md:max-w-[150px] line-clamp-2">
                     {language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn)}
                   </span>
                 </button>
