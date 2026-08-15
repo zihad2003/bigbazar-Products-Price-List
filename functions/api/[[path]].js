@@ -176,6 +176,42 @@ const requireAdmin = async (c, next) => {
   await next();
 };
 
+/**
+ * Customer auth middleware — verifies JWT with type='customer'.
+ * Attaches user info to context but does NOT require admin role.
+ */
+const requireCustomerAuth = async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return c.json({ error: 'Authentication required' }, 401);
+  try {
+    const secret = getJwtSecret(c);
+    const decoded = jwt.verify(token, secret);
+    if (decoded.type !== 'customer') return c.json({ error: 'Customer auth required' }, 403);
+    c.set('customer', decoded);
+    await next();
+  } catch (err) {
+    return c.json({ error: 'Invalid or expired token' }, 401);
+  }
+};
+
+/**
+ * Optional customer auth — attaches user info if present, but doesn't block.
+ * Used on routes like POST /orders where login is optional.
+ */
+const optionalCustomerAuth = async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '');
+  if (token) {
+    try {
+      const secret = getJwtSecret(c);
+      const decoded = jwt.verify(token, secret);
+      if (decoded.type === 'customer') {
+        c.set('customer', decoded);
+      }
+    } catch (_) { /* Ignore invalid tokens for optional auth */ }
+  }
+  await next();
+};
+
 // ============================================
 // AUTH ROUTES
 // ============================================
@@ -1193,41 +1229,6 @@ async function verifyGoogleIdToken(idToken, googleClientId) {
   return payload;
 }
 
-/**
- * Customer auth middleware — verifies JWT with type='customer'.
- * Attaches user info to context but does NOT require admin role.
- */
-const requireCustomerAuth = async (c, next) => {
-  const token = c.req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return c.json({ error: 'Authentication required' }, 401);
-  try {
-    const secret = getJwtSecret(c);
-    const decoded = jwt.verify(token, secret);
-    if (decoded.type !== 'customer') return c.json({ error: 'Customer auth required' }, 403);
-    c.set('customer', decoded);
-    await next();
-  } catch (err) {
-    return c.json({ error: 'Invalid or expired token' }, 401);
-  }
-};
-
-/**
- * Optional customer auth — attaches user info if present, but doesn't block.
- * Used on routes like POST /orders where login is optional.
- */
-const optionalCustomerAuth = async (c, next) => {
-  const token = c.req.header('Authorization')?.replace('Bearer ', '');
-  if (token) {
-    try {
-      const secret = getJwtSecret(c);
-      const decoded = jwt.verify(token, secret);
-      if (decoded.type === 'customer') {
-        c.set('customer', decoded);
-      }
-    } catch (_) { /* Ignore invalid tokens for optional auth */ }
-  }
-  await next();
-};
 
 // POST /auth/google — "Continue with Google" login
 app.post('/auth/google', async (c) => {
