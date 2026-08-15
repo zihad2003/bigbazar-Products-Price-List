@@ -579,10 +579,10 @@ app.post('/products', requireAuth, requireAdmin, async (c) => {
   const name = toTitleCase(p.name);
   try {
     await conn.execute(
-      `INSERT INTO products (serial_no, id, created_at, name, price, original_price, description, category, images, image_url, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive)
-       VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (serial_no, id, created_at, name, price, original_price, description, category, subcategory, images, image_url, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive)
+       VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        p.serial_no || null, id, name, p.price, p.original_price || null, p.description || '', p.category || 'Women',
+        p.serial_no || null, id, name, p.price, p.original_price || null, p.description || '', p.category || 'Women', p.subcategory || null,
         JSON.stringify(p.images || []), p.image_url || null, p.video_url || '', p.status || 'published', p.platform_id || null,
         p.is_sale ? 1 : 0, p.is_hot ? 1 : 0, p.is_new ? 1 : 0, p.is_sold_out ? 1 : 0, p.is_deleted ? 1 : 0,
         JSON.stringify(p.available_sizes || []), JSON.stringify(p.available_colors || []), p.stock_count ?? 3, p.is_exclusive ? 1 : 0
@@ -605,7 +605,7 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
   const params = [];
   
   const fields = {
-    name: p.name ? toTitleCase(p.name) : p.name, price: p.price, original_price: p.original_price, description: p.description, category: p.category,
+    name: p.name ? toTitleCase(p.name) : p.name, price: p.price, original_price: p.original_price, description: p.description, category: p.category, subcategory: p.subcategory,
     images: p.images !== undefined ? JSON.stringify(p.images) : undefined, image_url: p.image_url, video_url: p.video_url,
     status: p.status, is_sale: p.is_sale !== undefined ? (p.is_sale ? 1 : 0) : undefined,
     is_hot: p.is_hot !== undefined ? (p.is_hot ? 1 : 0) : undefined, is_new: p.is_new !== undefined ? (p.is_new ? 1 : 0) : undefined,
