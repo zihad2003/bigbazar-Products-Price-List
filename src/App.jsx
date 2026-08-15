@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -13,6 +14,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
 import ProductDetails from './pages/ProductDetails';
+import AccountPage from './pages/AccountPage';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
@@ -21,6 +23,7 @@ import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
 import SEOHead from './components/SEOHead';
 import MessengerFAB from './components/MessengerFAB';
+import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
 import { initAnalytics, trackPageview } from './utils/analytics';
 
@@ -70,6 +73,7 @@ function PublicLayout() {
   const isConfirmationPage = location.pathname.startsWith('/order-confirmation');
   const isProductPage = location.pathname.startsWith('/product/');
   const isProductsPage = location.pathname === '/products';
+  const isAccountPage = location.pathname === '/account';
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -170,6 +174,8 @@ function PublicLayout() {
           <ProductDetails />
         ) : isProductsPage ? (
           <Products />
+        ) : isAccountPage ? (
+          <AccountPage />
         ) : (
           <Home
             selectedCategory={category}
@@ -192,7 +198,11 @@ function PublicLayout() {
         onOpenAuth={() => openModal(setIsAuthOpen)}
       />
 
-      {!isCheckoutPage && <MessengerFAB />}
+      {!isCheckoutPage && (
+        import.meta.env.VITE_ENABLE_CHAT_WIDGET !== 'false'
+          ? <ChatWidget />
+          : <MessengerFAB />
+      )}
     </div>
   );
 }
@@ -207,27 +217,30 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <CartProvider>
-            <Router>
-              <ScrollToTop />
-              <Routes>
-                <Route path="/" element={<PublicLayout />} />
-                <Route path="/product/:productId" element={<PublicLayout />} />
-                <Route path="/about-us" element={<PublicLayout />} />
-                <Route path="/privacy-policy" element={<PublicLayout />} />
-                <Route path="/terms" element={<PublicLayout />} />
-                <Route path="/refund" element={<PublicLayout />} />
-                <Route path="/contact-us" element={<PublicLayout />} />
-                <Route path="/faq" element={<PublicLayout />} />
-                <Route path="/size-guide" element={<PublicLayout />} />
-                <Route path="/shipping" element={<PublicLayout />} />
-                <Route path="/returns" element={<PublicLayout />} />
-                <Route path="/store-locations" element={<PublicLayout />} />
-                <Route path="/checkout" element={<PublicLayout />} />
-                <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
-                <Route path="/products" element={<PublicLayout />} />
-                <Route path="/admin" element={<Admin />} />
-              </Routes>
-            </Router>
+            <AuthProvider>
+              <Router>
+                <ScrollToTop />
+                <Routes>
+                  <Route path="/" element={<PublicLayout />} />
+                  <Route path="/product/:productId" element={<PublicLayout />} />
+                  <Route path="/about-us" element={<PublicLayout />} />
+                  <Route path="/privacy-policy" element={<PublicLayout />} />
+                  <Route path="/terms" element={<PublicLayout />} />
+                  <Route path="/refund" element={<PublicLayout />} />
+                  <Route path="/contact-us" element={<PublicLayout />} />
+                  <Route path="/faq" element={<PublicLayout />} />
+                  <Route path="/size-guide" element={<PublicLayout />} />
+                  <Route path="/shipping" element={<PublicLayout />} />
+                  <Route path="/returns" element={<PublicLayout />} />
+                  <Route path="/store-locations" element={<PublicLayout />} />
+                  <Route path="/checkout" element={<PublicLayout />} />
+                  <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
+                  <Route path="/products" element={<PublicLayout />} />
+                  <Route path="/account" element={<PublicLayout />} />
+                  <Route path="/admin" element={<Admin />} />
+                </Routes>
+              </Router>
+            </AuthProvider>
           </CartProvider>
         </ThemeProvider>
       </LanguageProvider>

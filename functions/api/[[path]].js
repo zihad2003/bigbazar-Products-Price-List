@@ -1355,136 +1355,84 @@ app.get('/account/orders', requireCustomerAuth, async (c) => {
 // AI SHOPPING ASSISTANT & CONVERSATIONS (Part 3 & 3b)
 // ============================================
 
-/**
- * Keyword & Regex Intent Classification Gate.
- * Runs BEFORE any expensive product or order DB reads.
- */
-function classifyIntent(message) {
-  const text = (message || '').toLowerCase().trim();
+// ============================================
+// GROQ AI SHOPPING ASSISTANT & CONVERSATIONS
+// ============================================
 
-  // Order status pattern
-  if (
-    text.includes('where is my order') ||
-    text.includes('order status') ||
-    text.includes('অর্ডার স্ট্যাটাস') ||
-    text.includes('অর্ডার কোথায়') ||
-    text.includes('আমার অর্ডার') ||
-    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}\b/i.test(text)
-  ) {
-    return 'order_status';
+const groqTools = [
+  {
+    type: "function",
+    function: {
+      name: "search_products",
+      description: "Search products by keyword, category, subcategory, or price range",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "optional free-text search" },
+          category: { type: "string" },
+          subcategory: { type: "string" },
+          min_price: { type: "number" },
+          max_price: { type: "number" },
+          limit: { type: "number" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_categories",
+      description: "List categories, or subcategories under a given parent category",
+      parameters: {
+        type: "object",
+        properties: { parent_category: { type: "string" } }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_best_sellers",
+      description: "Get trending/best-selling products",
+      parameters: {
+        type: "object",
+        properties: { limit: { type: "number" } }
+      }
+    }
   }
+];
 
-  // Order intent pattern
-  if (
-    text.includes('buy') ||
-    text.includes('order') ||
-    text.includes('অর্ডার করব') ||
-    text.includes('কিনতে চাই') ||
-    text.includes('অর্ডার দিতে চাই') ||
-    text.includes('bkash') ||
-    text.includes(' বিকাশ') ||
-    text.includes('cod') ||
-    text.includes('ক্যাশ অন ডেলিভারি') ||
-    text.includes('checkout')
-  ) {
-    return 'order_intent';
-  }
+const systemPrompt = `You are BigBazar's shopping assistant. Detect the customer's language from their message (English, Bangla script, or Banglish) and always reply in that same style. Keep replies to 1-3 short sentences. Product details are shown as visual cards below your reply, so do not list prices or descriptions in your text — just introduce what you found and invite the customer to look or ask more. Only describe products returned by a tool call. Never invent product names, prices, or availability. If the request is vague, ask one clarifying question or call get_best_sellers.`;
 
-  // Product search pattern
-  if (
-    text.includes('saree') || text.includes('শাড়ি') || text.includes('শাড়ি') ||
-    text.includes('borka') || text.includes('বোরকা') || text.includes('abaya') || text.includes('আবায়া') ||
-    text.includes('panjabi') || text.includes('পাঞ্জাবি') || text.includes('kabli') ||
-    text.includes('three-piece') || text.includes('থ্রি-পিস') || text.includes('dress') || text.includes('ফ্রক') ||
-    text.includes('kids') || text.includes('বাচ্চা') || text.includes('shirt') || text.includes('pant') ||
-    text.includes('price') || text.includes('দাম') || text.includes('কত') || text.includes('কলেকশন') ||
-    text.includes('collection') || text.includes('show') || text.includes('দেখান') || text.includes('আছে')
-  ) {
-    return 'product_search';
-  }
-
-  // Chit-chat pattern (greetings, thanks, basic queries)
-  if (
-    text.length < 15 ||
-    /^(hi|hello|hey|assalamu|হাই|হ্যালো|সালাম|কেমন আছেন|ধন্যবাদ|thanks|thank you|bye|আল্লাহ হাফেজ|ok|ঠিক আছে)$/i.test(text) ||
-    !/[a-z0-9\u0980-\u09FF]/.test(text)
-  ) {
-    return 'chit_chat';
-  }
-
-  return 'product_search'; // default fallback for detailed messages
-}
-
-/**
- * Execute DB helper tools for AI Assistant
- */
-async function executeAssistantTool(conn, toolName, args, c) {
+async function executeGroqTool(conn, toolName, args) {
   if (toolName === 'search_products') {
-    const { query = '', category = '', max_price = null } = args;
+    const { query = '', category = '', subcategory = '', min_price, max_price, limit = 5 } = args;
     let sql = "SELECT * FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)";
     const params = [];
-    if (category && category !== 'All') {
-      sql += ' AND category LIKE ?';
-      params.push(`%${category}%`);
-    }
-    if (max_price) {
-      sql += ' AND price <= ?';
-      params.push(parseFloat(max_price));
-    }
-    if (query) {
-      sql += ' AND (name LIKE ? OR description LIKE ? OR subcategory LIKE ?)';
-      params.push(`%${query}%`, `%${query}%`, `%${query}%`);
-    }
-    sql += ' ORDER BY is_hot DESC, created_at DESC LIMIT 6';
+    if (category && category !== 'All') { sql += ' AND category LIKE ?'; params.push(`%${category}%`); }
+    if (subcategory) { sql += ' AND subcategory LIKE ?'; params.push(`%${subcategory}%`); }
+    if (min_price) { sql += ' AND price >= ?'; params.push(parseFloat(min_price)); }
+    if (max_price) { sql += ' AND price <= ?'; params.push(parseFloat(max_price)); }
+    if (query) { sql += ' AND (name LIKE ? OR description LIKE ? OR subcategory LIKE ?)'; params.push(`%${query}%`, `%${query}%`, `%${query}%`); }
+    sql += ' ORDER BY is_hot DESC, created_at DESC LIMIT ?';
+    params.push(Math.min(parseInt(limit)||5, 10));
+    
     const rows = await conn.execute(sql, params);
-    return rows.map(parseProductRow);
+    return { type: 'products', data: rows.map(parseProductRow) };
   }
 
-  if (toolName === 'check_order_status') {
-    const { order_number } = args;
-    if (!order_number) return [];
-    const rows = await conn.execute(
-      'SELECT id, status, total_amount, created_at, delivery_area FROM orders WHERE id LIKE ? OR customer_phone LIKE ? ORDER BY created_at DESC LIMIT 3',
-      [`%${order_number}%`, `%${order_number}%`]
-    );
-    return rows;
+  if (toolName === 'get_categories') {
+    return { type: 'categories', data: ['Women', 'Men', 'Kids', 'Beauty', 'Saree', 'Panjabi', 'Borka', 'Three-piece'] };
   }
 
-  if (toolName === 'place_order') {
-    const aiOrdersEnabled = (c.env?.ENABLE_AI_ORDERS === 'true') || (typeof process !== 'undefined' && process.env?.ENABLE_AI_ORDERS === 'true');
-    if (!aiOrdersEnabled) {
-      return {
-        status: 'disabled',
-        message: 'Order creation via AI is currently soft-launched in inquiry mode. Customer details noted!'
-      };
-    }
-    // Call order placement logic if enabled
-    const { product_id, quantity = 1, size = null, color = null, customer_name, phone, address, payment_method = 'cod' } = args;
-    if (!product_id || !customer_name || !phone || !address) {
-      return { error: 'Missing required order fields (product_id, name, phone, address)' };
-    }
-    const orderId = crypto.randomUUID();
-    const prods = await conn.execute('SELECT name, price FROM products WHERE id = ?', [product_id]);
-    if (prods.length === 0) return { error: 'Product not found' };
-
-    const prod = prods[0];
-    const subtotal = parseFloat(prod.price || 0) * (parseInt(quantity) || 1);
-    const delCharge = address.toLowerCase().includes('mirsharai') || address.toLowerCase().includes('মিরসরাই') ? 0 : 150;
-    const total = subtotal + delCharge;
-
-    await conn.execute(
-      `INSERT INTO orders (id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, payment_status, customer_note)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'Unpaid', ?)`,
-      [
-        orderId, product_id, `${prod.name} (Qty: ${quantity})`, subtotal, customer_name, phone, address,
-        delCharge === 0 ? 'mirsarai' : 'outside', delCharge, total, payment_method.toUpperCase(), 'Pending',
-        size, color, `Placed via AI Assistant (${payment_method})`
-      ]
-    );
-    return { success: true, order_id: orderId, total_amount: total };
+  if (toolName === 'get_best_sellers') {
+    const { limit = 5 } = args;
+    const sql = "SELECT * FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY is_hot DESC, created_at DESC LIMIT ?";
+    const rows = await conn.execute(sql, [Math.min(parseInt(limit)||5, 10)]);
+    return { type: 'products', data: rows.map(parseProductRow) };
   }
 
-  return null;
+  return { error: 'Tool not found' };
 }
 
 // POST /api/assistant — Main AI Shopping Assistant Endpoint
@@ -1492,11 +1440,20 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
   if (!checkRateLimit(ip, 'assistant', 20, 60000)) {
     return c.json({
-      reply: "আপনি খুব বেশি মেসেজ পাঠাচ্ছেন। অনুগ্রহ করে ১ মিনিট পর আবার চেষ্টা করুন। (Too many messages. Please try again in 1 minute.)",
+      reply: "আপনি খুব বেশি মেসেজ পাঠাচ্ছেন। অনুগ্রহ করে ১ মিনিট পর আবার চেষ্টা করুন।",
       products: [],
       quick_replies: ["শাড়ি কালেকশন", "পাঞ্জাবি কালেকশন", "বাচ্চাদের পোশাক"],
       order_confirmation: null
     }, 429);
+  }
+
+  const groqApiKey = c.env?.GROQ_API_KEY || (typeof process !== 'undefined' && process.env?.GROQ_API_KEY);
+  if (!groqApiKey || groqApiKey === 'your_groq_api_key_here') {
+    return c.json({
+      reply: "System Notice: GROQ_API_KEY is not configured in the server environment. Please add it to your .env or Cloudflare Pages.",
+      products: [],
+      quick_replies: []
+    });
   }
 
   const body = await c.req.json().catch(() => ({}));
@@ -1566,60 +1523,102 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     console.error('Conversation logging error:', err);
   }
 
-  // 1. Intent Gate
-  const intent = classifyIntent(userMessage);
+  // Load Past History
+  let pastRows = [];
+  try {
+    if (conversationId) {
+      pastRows = await conn.execute('SELECT role, content FROM messages WHERE conversation_id = ? AND role IN ("user", "assistant") ORDER BY created_at DESC LIMIT 10', [conversationId]);
+      pastRows.reverse(); // old to new
+    }
+  } catch (_) {}
+
+  const groqMessages = [{ role: 'system', content: systemPrompt }];
+  pastRows.forEach(r => {
+    if (r.content && r.content.trim()) {
+      groqMessages.push({ role: r.role, content: r.content });
+    }
+  });
 
   let replyText = "";
   let productsRes = [];
   let quickReplies = ["শাড়ি কালেকশন", "বোরকা ও আবায়া", "পাঞ্জাবি", "বাচ্চাদের ড্রেস"];
-  let orderConfirm = null;
 
   try {
-    if (intent === 'chit_chat') {
-      const lower = userMessage.toLowerCase();
-      if (lower.includes('সালাম') || lower.includes('assalamu') || lower.includes('hi') || lower.includes('hello')) {
-        replyText = "আসসালামু আলাইকুম! BigBazar AI শপিং অ্যাসিস্ট্যান্টে স্বাগতম। 🛍️ আজ আপনাকে কী কালেকশন দেখাতে পারি?";
-      } else if (lower.includes('কেমন') || lower.includes('how are you')) {
-        replyText = "আলহামদুলিল্লাহ্‌ ভালো আছি! আপনি কেমন আছেন? আমাদের নতুন শাড়ি, পাঞ্জাবি ও বাচ্চাদের ড্রেস কালেকশন দেখতে পারেন।";
-      } else if (lower.includes('ধন্যবাদ') || lower.includes('thanks')) {
-        replyText = "আপনাকেও অসংখ্য ধন্যবাদ! BigBazar-এ ভিজিট করার জন্য কৃতজ্ঞ। যেকোনো প্রয়োজনে আমাদের জানান। 😊";
-      } else {
-        replyText = "BigBazar-এ আপনাকে স্বাগতম! আমাদের সেরা লেটেস্ট শাড়ি, বোরকা, পাঞ্জাবি ও বাচ্চাদের পোশাক দেখতে যেকোনো একটি সিলেক্ট করুন বা লিখে জানান।";
-      }
-    } else if (intent === 'order_status') {
-      const statusResults = await executeAssistantTool(conn, 'check_order_status', { order_number: userMessage }, c);
-      if (statusResults && statusResults.length > 0) {
-        const ord = statusResults[0];
-        replyText = `আপনার অর্ডার ID: **${ord.id.substring(0, 8)}...**\nস্ট্যাটাস: **${ord.status}**\nমোট মূল্য: ৳${ord.total_amount}`;
-      } else {
-        replyText = "আপনার অর্ডারের সঠিক ট্র্যাকিং নম্বর বা মোবাইল নম্বরটি দিন। আমরা স্ট্যাটাস চেক করে দিচ্ছি।";
-      }
-      quickReplies = ["অর্ডার ট্র্যাকিং সাহায্য", "নতুন কেনাকাটা করুন", "কাস্টমার কেয়ার"];
-    } else {
-      // product_search or order_intent -> Fetch top matching products
-      const searchResults = await executeAssistantTool(conn, 'search_products', { query: userMessage }, c);
-      productsRes = searchResults || [];
-
-      if (productsRes.length > 0) {
-        const names = productsRes.slice(0, 3).map(p => `**${p.name}**`).join(', ');
-        replyText = `আমাদের **BigBazar Premium Collection** থেকে আপনার পছন্দের কিছু আইটেম:\n${names}\n\nআপনার পছন্দের সাইজ ও কালার সিলেক্ট করে সরাসরি ব্যাগ এ যুক্ত করুন অথবা আমাদের এখানে জানাতে পারেন।`;
-      } else {
-        replyText = "দুঃখিত, এই মুহূর্তে এই আইটেমটি আমাদের স্টক এ খুঁজে পাওয়া যায়নি। তবে আমাদের জনপ্রিয় শাড়ি, বোরকা বা পাঞ্জাবি কালেকশন দেখতে পারেন!";
-      }
-
-      if (intent === 'order_intent') {
-        replyText += "\n\nঅর্ডার করতে চাইলে আপনার নাম, ফোন নম্বর, ঠিকানা এবং সাইজটি মেসেজে লিখুন।";
-      }
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqApiKey}` },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        messages: groqMessages,
+        tools: groqTools,
+        tool_choice: 'auto'
+      })
+    });
+    
+    if (!groqRes.ok) {
+      const errTxt = await groqRes.text();
+      throw new Error("Groq API error: " + errTxt);
     }
+    
+    const groqData = await groqRes.json();
+    const responseMessage = groqData.choices?.[0]?.message;
+
+    if (responseMessage?.tool_calls) {
+      groqMessages.push(responseMessage);
+      
+      for (const toolCall of responseMessage.tool_calls) {
+        let args = {};
+        try { args = JSON.parse(toolCall.function.arguments); } catch(e) {}
+        
+        const toolResult = await executeGroqTool(conn, toolCall.function.name, args);
+        
+        if (toolResult.type === 'products' && toolResult.data) {
+          productsRes.push(...toolResult.data);
+        } else if (toolResult.type === 'categories' && toolResult.data) {
+          quickReplies = toolResult.data.slice(0, 4);
+        }
+
+        groqMessages.push({ 
+          role: 'tool', 
+          tool_call_id: toolCall.id, 
+          name: toolCall.function.name, 
+          content: JSON.stringify(toolResult.data || toolResult) 
+        });
+      }
+      
+      const groqRes2 = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqApiKey}` },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: groqMessages,
+        })
+      });
+      
+      const groqData2 = await groqRes2.json();
+      replyText = groqData2.choices?.[0]?.message?.content || "আমি বুঝতে পেরেছি, ধন্যবাদ!";
+      
+    } else {
+      replyText = responseMessage?.content || "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।";
+    }
+
   } catch (err) {
-    console.error('AI assistant processing error:', err);
+    console.error('Groq assistant processing error:', err);
     replyText = "দুঃখিত, তথ্য প্রসেস করতে সাময়িক সমস্যা হয়েছে। আপনি আবার চেষ্টা করতে পারেন বা সরাসরি মেসেঞ্জারে যোগাযোগ করতে পারেন।";
   }
 
-  // Format response JSON
+  const uniqueProducts = [];
+  const seenIds = new Set();
+  for (const p of productsRes) {
+    if (!seenIds.has(p.id)) {
+      uniqueProducts.push(p);
+      seenIds.add(p.id);
+    }
+  }
+
   const finalResponse = {
     reply: replyText,
-    products: productsRes.map(p => ({
+    products: uniqueProducts.slice(0, 5).map(p => ({
       id: p.id,
       name: p.name,
       price: p.price,
@@ -1627,7 +1626,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
       description: p.description || ''
     })),
     quick_replies: quickReplies,
-    order_confirmation: orderConfirm
+    order_confirmation: null
   };
 
   // Log Assistant Response

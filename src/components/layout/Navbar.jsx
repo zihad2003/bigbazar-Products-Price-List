@@ -1,12 +1,14 @@
 import { Globe, User, Bell, Menu, X, LayoutGrid } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, onOpenAuth, onOpenCategories, isCategoryOpen }) => {
     const { cartCount } = useCart();
     const { language, toggleLanguage, t } = useLanguage();
+    const { user, isLoggedIn } = useAuth();
     const navigate = useNavigate();
 
     const categories = [
@@ -85,6 +87,19 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                             className="w-11 h-11 rounded-xl bg-zinc-50 flex items-center justify-center active:scale-95 transition-all text-zinc-900 border border-transparent hover:border-zinc-200"
                         >
                             <span className="text-[10px] font-black">{language === 'bn' ? 'EN' : 'বাং'}</span>
+                        </button>
+
+                        {/* Account */}
+                        <button
+                            onClick={() => navigate('/account')}
+                            className="w-11 h-11 rounded-xl bg-zinc-50 flex items-center justify-center active:scale-95 transition-all border border-transparent hover:border-zinc-200 overflow-hidden"
+                            aria-label={isLoggedIn ? 'Account' : 'Sign in'}
+                        >
+                            {isLoggedIn && user?.avatar_url ? (
+                                <img src={user.avatar_url} alt="" className="w-full h-full rounded-xl object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                                <User size={18} className="text-zinc-600" />
+                            )}
                         </button>
 
                         {/* Cart */}

@@ -1,0 +1,71 @@
+/* ChatWidget.css - Brand-Aligned Animations & Styles */
+
+@keyframes pulse-subtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bounce-dots {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+.chat-widget-fab {
+  animation: pulse-subtle 4s infinite ease-in-out;
+  touch-action: manipulation;
+}
+
+.chat-panel-container {
+  animation: slide-up-fade 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(9, 9, 11, 0.08);
+}
+
+[data-theme='dark'] .chat-panel-container,
+.dark-dashboard .chat-panel-container {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.typing-dot {
+  animation: bounce-dots 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Custom scrollbar & scroll containment for chat area */
+.chat-scroll-area {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-scroll-area::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(9, 9, 11, 0.15);
+  border-radius: 9999px;
+}
+
+[data-theme='dark'] .chat-scroll-area::-webkit-scrollbar-thumb,
+.dark-dashboard .chat-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Prevent mobile iOS zoom on input focus */
+@media (max-width: 768px) {
+  .chat-panel-container input {
+    font-size: 16px !important;
+  }
+}
+
