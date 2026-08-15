@@ -59,9 +59,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     ? getSubcategoriesForCategory(selectedCategory, subcategoriesData)
     : getAllSubcategories(subcategoriesData, 12);
 
-  const activeSubcategories = Object.keys(subCounts).length > 0
-    ? rawSubcategories.filter(sub => (subCounts[sub.id] || 0) > 0)
-    : rawSubcategories;
+  const activeSubcategories = rawSubcategories;
 
   // Fetch settings & cache locally
   useEffect(() => {

@@ -199,9 +199,7 @@ function PublicLayout() {
       />
 
       {!isCheckoutPage && (
-        import.meta.env.VITE_ENABLE_CHAT_WIDGET !== 'false'
-          ? <ChatWidget />
-          : <MessengerFAB />
+        <MessengerFAB />
       )}
     </div>
   );

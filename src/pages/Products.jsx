@@ -163,10 +163,7 @@ export default function Products() {
   const currentCat = CATEGORIES.find(c => c.id === selectedCategory);
   const catLabel = currentCat ? (language === 'bn' ? currentCat.bn : currentCat.en) : 'All';
   const allSubcategories = getSubcategoriesForCategory(selectedCategory, subcategoriesData);
-  // Filter subcategories to only show those with actual products
-  const availableSubcategories = Object.keys(subCounts).length > 0
-    ? allSubcategories.filter(sub => (subCounts[sub.id] || 0) > 0)
-    : allSubcategories;
+  const availableSubcategories = allSubcategories;
 
   const resetAllFilters = () => {
     handleCategoryChange('All');
