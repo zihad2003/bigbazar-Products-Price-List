@@ -31,6 +31,29 @@ async function setup() {
         `);
         console.log('Created admin_users table');
 
+        // Create site_settings table
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS site_settings (
+                \`key\` VARCHAR(100) PRIMARY KEY,
+                value JSON
+            )
+        `);
+        console.log('Created site_settings table');
+
+        // Create reviews table
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS reviews (
+                id VARCHAR(36) PRIMARY KEY,
+                rating INT DEFAULT 5,
+                comment TEXT,
+                customer_name VARCHAR(255),
+                product_id VARCHAR(36),
+                product_name VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Created reviews table');
+
         // Create Default Admin
         const hash = await bcrypt.hash('admin', 10);
         try {
