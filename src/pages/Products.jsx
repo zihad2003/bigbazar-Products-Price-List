@@ -5,6 +5,8 @@ import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import { bigBazarApi } from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getSubcategoriesForCategory, TOP_CATEGORIES } from '../data/categories';
+import { useDebounce } from '../hooks/useDebounce';
+import { sanitizeInput } from '../utils/security';
 
 const PAGE_SIZE = 16;
 
@@ -25,6 +27,7 @@ export default function Products() {
   const selectedSubcategory = searchParams.get('subcategory') || '';
 
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
@@ -119,8 +122,9 @@ export default function Products() {
         query = query.eq('subcategory', selectedSubcategory);
       }
 
-      if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      const cleanSearch = sanitizeInput(debouncedSearchQuery);
+      if (cleanSearch) {
+        query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }
 
       const { data, count } = await query;
@@ -139,7 +143,7 @@ export default function Products() {
 
     fetchProducts();
     return () => { isMounted = false; };
-  }, [page, selectedCategory, selectedSubcategory, searchQuery]);
+  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery]);
 
   const [subCounts, setSubCounts] = useState({});
 

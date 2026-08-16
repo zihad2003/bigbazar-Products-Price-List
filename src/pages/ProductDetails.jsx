@@ -326,14 +326,36 @@ export default function ProductDetails() {
         <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12 bg-white">
             {/* Breadcrumbs */}
             <div className="mb-6 flex items-center justify-between text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                <div className="flex items-center gap-2">
-                    <Link to="/" className="hover:text-black transition-colors">Home</Link>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Link to="/" className="hover:text-neutral-900 transition-colors">
+                        {language === 'bn' ? 'হোম' : 'Home'}
+                    </Link>
                     <span>/</span>
-                    <span className="text-[#ce112d] font-bold">{product.category || 'Women'}</span>
-                    <span>/</span>
-                    <span className="text-neutral-800 font-bold max-w-[220px] md:max-w-[320px] truncate capitalize">{product.name}</span>
+                    {product.category && (
+                        <>
+                            <Link 
+                                to={`/products?category=${encodeURIComponent(product.category)}`} 
+                                className="text-[#ce112d] font-bold hover:underline transition-all"
+                            >
+                                {product.category}
+                            </Link>
+                            <span>/</span>
+                        </>
+                    )}
+                    {product.subcategory && (
+                        <>
+                            <Link 
+                                to={`/products?category=${encodeURIComponent(product.category || '')}&subcategory=${encodeURIComponent(product.subcategory)}`} 
+                                className="text-neutral-600 font-bold hover:text-neutral-900 transition-colors"
+                            >
+                                {product.subcategory}
+                            </Link>
+                            <span>/</span>
+                        </>
+                    )}
+                    <span className="text-neutral-800 font-bold max-w-[200px] sm:max-w-[300px] md:max-w-[400px] truncate capitalize">{product.name}</span>
                 </div>
-                <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-black transition-all">
+                <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-black transition-all shrink-0">
                     <Share2 size={14} />
                     <span>{language === 'bn' ? 'শেয়ার করুন' : 'Share'}</span>
                 </button>

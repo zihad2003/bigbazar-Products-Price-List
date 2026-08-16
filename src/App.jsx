@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
@@ -7,14 +7,8 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
-import Admin from './pages/Admin';
-import Products from './pages/Products';
 import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import Checkout from './pages/Checkout';
-import OrderConfirmation from './pages/OrderConfirmation';
-import ProductDetails from './pages/ProductDetails';
-import AccountPage from './pages/AccountPage';
 import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
@@ -26,6 +20,21 @@ import MessengerFAB from './components/MessengerFAB';
 import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
 import { initAnalytics, trackPageview } from './utils/analytics';
+
+// Lazy loaded page components for optimal initial bundle size
+const Admin = lazy(() => import('./pages/Admin'));
+const Products = lazy(() => import('./pages/Products'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+
+const PageLoadingFallback = () => (
+  <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+    <div className="w-9 h-9 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
+    <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest animate-pulse">Loading...</span>
+  </div>
+);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -164,27 +173,29 @@ function PublicLayout() {
 
       {/* Main Content */}
       <main className={`flex-grow ${isTopTickerActive ? 'pt-24 md:pt-28' : 'pt-16 md:pt-20'} pb-24 md:pb-0`}>
-        {isStaticPage ? (
-          <StaticPage path={location.pathname} />
-        ) : isCheckoutPage ? (
-          <Checkout />
-        ) : isConfirmationPage ? (
-          <OrderConfirmation />
-        ) : isProductPage ? (
-          <ProductDetails />
-        ) : isProductsPage ? (
-          <Products />
-        ) : isAccountPage ? (
-          <AccountPage />
-        ) : (
-          <Home
-            selectedCategory={category}
-            setSelectedCategory={setCategory}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            tickerSettings={tickerSettings}
-          />
-        )}
+        <Suspense fallback={<PageLoadingFallback />}>
+          {isStaticPage ? (
+            <StaticPage path={location.pathname} />
+          ) : isCheckoutPage ? (
+            <Checkout />
+          ) : isConfirmationPage ? (
+            <OrderConfirmation />
+          ) : isProductPage ? (
+            <ProductDetails />
+          ) : isProductsPage ? (
+            <Products />
+          ) : isAccountPage ? (
+            <AccountPage />
+          ) : (
+            <Home
+              selectedCategory={category}
+              setSelectedCategory={setCategory}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              tickerSettings={tickerSettings}
+            />
+          )}
+        </Suspense>
       </main>
 
       <Footer onTrackOrder={() => openModal(setIsTrackOpen)} onSelectCategory={setCategory} />
@@ -218,25 +229,27 @@ function App() {
             <AuthProvider>
               <Router>
                 <ScrollToTop />
-                <Routes>
-                  <Route path="/" element={<PublicLayout />} />
-                  <Route path="/product/:productId" element={<PublicLayout />} />
-                  <Route path="/about-us" element={<PublicLayout />} />
-                  <Route path="/privacy-policy" element={<PublicLayout />} />
-                  <Route path="/terms" element={<PublicLayout />} />
-                  <Route path="/refund" element={<PublicLayout />} />
-                  <Route path="/contact-us" element={<PublicLayout />} />
-                  <Route path="/faq" element={<PublicLayout />} />
-                  <Route path="/size-guide" element={<PublicLayout />} />
-                  <Route path="/shipping" element={<PublicLayout />} />
-                  <Route path="/returns" element={<PublicLayout />} />
-                  <Route path="/store-locations" element={<PublicLayout />} />
-                  <Route path="/checkout" element={<PublicLayout />} />
-                  <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
-                  <Route path="/products" element={<PublicLayout />} />
-                  <Route path="/account" element={<PublicLayout />} />
-                  <Route path="/admin" element={<Admin />} />
-                </Routes>
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <Routes>
+                    <Route path="/" element={<PublicLayout />} />
+                    <Route path="/product/:productId" element={<PublicLayout />} />
+                    <Route path="/about-us" element={<PublicLayout />} />
+                    <Route path="/privacy-policy" element={<PublicLayout />} />
+                    <Route path="/terms" element={<PublicLayout />} />
+                    <Route path="/refund" element={<PublicLayout />} />
+                    <Route path="/contact-us" element={<PublicLayout />} />
+                    <Route path="/faq" element={<PublicLayout />} />
+                    <Route path="/size-guide" element={<PublicLayout />} />
+                    <Route path="/shipping" element={<PublicLayout />} />
+                    <Route path="/returns" element={<PublicLayout />} />
+                    <Route path="/store-locations" element={<PublicLayout />} />
+                    <Route path="/checkout" element={<PublicLayout />} />
+                    <Route path="/order-confirmation/:orderId" element={<PublicLayout />} />
+                    <Route path="/products" element={<PublicLayout />} />
+                    <Route path="/account" element={<PublicLayout />} />
+                    <Route path="/admin" element={<Admin />} />
+                  </Routes>
+                </Suspense>
               </Router>
             </AuthProvider>
           </CartProvider>

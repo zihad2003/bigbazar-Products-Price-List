@@ -11,12 +11,15 @@ import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
 import { extractInstagramId } from '../utils/instagram';
 import { getSubcategoriesForCategory, getAllSubcategories } from '../data/categories';
+import { useDebounce } from '../hooks/useDebounce';
+import { sanitizeInput } from '../utils/security';
 
 const PAGE_SIZE = 12;
 
 const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChange }) => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -137,8 +140,9 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         }
       }
 
-      if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      const cleanSearch = sanitizeInput(debouncedSearchQuery);
+      if (cleanSearch) {
+        query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }
 
       const { data, error, count } = await query;
@@ -155,12 +159,12 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
     fetchProducts();
     return () => { isMounted = false; };
-  }, [page, selectedCategory, searchQuery]);
+  }, [page, selectedCategory, debouncedSearchQuery]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, debouncedSearchQuery]);
 
   return (
     <div className="min-h-screen bg-white pb-16">

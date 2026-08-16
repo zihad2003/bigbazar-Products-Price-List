@@ -109,12 +109,17 @@ html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   letter-spacing: -0.05em !important;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 @layer base {
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-overflow-scrolling: touch;
     overflow-x: hidden;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
@@ -170,6 +175,19 @@ html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   .group:hover .group-hover\:bg-accent {
     background-color: var(--hover-bg, var(--accent-color));
     border-color: var(--hover-bg, var(--accent-color));
+  }
+
+  /* GPU Hardware Acceleration Utilities */
+  .gpu-accelerate,
+  .hardware-accelerated {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    will-change: transform, opacity;
+  }
+
+  .smooth-transition {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }
 
