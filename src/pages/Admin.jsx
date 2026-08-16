@@ -1989,18 +1989,18 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             />
                           </div>
                         </div>
-                        <div className="group">
-                          <label className="text-[10px] font-black uppercase text-sky-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Code / Serial #</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={form.serial_no || ''}
-                              placeholder="Auto (#)"
-                              className="w-full bg-black/40 border-2 border-sky-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-sky-400 outline-none transition-all placeholder:text-zinc-800 text-sky-400 italic"
-                              onChange={e => setForm({ ...form, serial_no: e.target.value })}
-                            />
+                          <div className="group">
+                            <label className="text-[10px] font-black uppercase text-sky-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Code / Serial #</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={form.serial_no || ''}
+                                placeholder={!editingProduct && products && products.length > 0 ? `Auto (#${Math.max(...products.map(p => parseInt(p.serial_no) || 0), 0) + 1})` : "Auto (#)"}
+                                className="w-full bg-black/40 border-2 border-sky-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-sky-400 outline-none transition-all placeholder:text-zinc-800 text-sky-400 italic"
+                                onChange={e => setForm({ ...form, serial_no: e.target.value })}
+                              />
+                            </div>
                           </div>
-                        </div>
                       </div>
 
                       <div className="pt-6 space-y-6">

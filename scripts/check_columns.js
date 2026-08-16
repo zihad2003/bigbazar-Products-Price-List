@@ -6,7 +6,7 @@ dotenv.config();
 async function check() {
     try {
         const db = getDb(process.env);
-        const rows = await db.execute('DESCRIBE orders');
+        const rows = await db.execute('DESCRIBE products');
         console.log('Columns:', JSON.stringify(rows, null, 2));
     } catch (err) {
         console.error('Error:', err.message);
