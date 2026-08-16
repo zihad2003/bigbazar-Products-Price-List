@@ -322,20 +322,42 @@ export default function ProductDetails() {
         (item.selectedSize === selectedSize || (!item.selectedSize && !selectedSize))
     );
 
+    const [subcategoriesData, setSubcategoriesData] = useState(null);
+
+    useEffect(() => {
+        bigBazarApi.from('site_settings').select('*').then(({ data }) => {
+            if (!data) return;
+            const isArray = Array.isArray(data);
+            const subcats = isArray ? data.find(s => s.key === 'subcategories')?.value : data.subcategories;
+            if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
+        });
+    }, []);
+
+    const formatSubcategoryName = (subId) => {
+        if (!subId) return '';
+        if (subcategoriesData && product?.category && subcategoriesData[product.category]) {
+            const match = subcategoriesData[product.category].find(s => s.id?.toLowerCase() === subId.toLowerCase());
+            if (match && match.name_en) {
+                return match.name_en;
+            }
+        }
+        return subId.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12 bg-white">
-            {/* Breadcrumbs */}
+            {/* Breadcrumbs (Fashion Brand All-English Standard) */}
             <div className="mb-6 flex items-center justify-between text-xs text-neutral-400 font-bold uppercase tracking-widest">
                 <div className="flex flex-wrap items-center gap-2">
                     <Link to="/" className="hover:text-neutral-900 transition-colors">
-                        {language === 'bn' ? 'হোম' : 'Home'}
+                        Home
                     </Link>
                     <span>/</span>
                     {product.category && (
                         <>
                             <Link 
                                 to={`/products?category=${encodeURIComponent(product.category)}`} 
-                                className="text-[#ce112d] font-bold hover:underline transition-all"
+                                className="hover:text-neutral-900 transition-colors"
                             >
                                 {product.category}
                             </Link>
@@ -346,14 +368,16 @@ export default function ProductDetails() {
                         <>
                             <Link 
                                 to={`/products?category=${encodeURIComponent(product.category || '')}&subcategory=${encodeURIComponent(product.subcategory)}`} 
-                                className="text-neutral-600 font-bold hover:text-neutral-900 transition-colors"
+                                className="hover:text-neutral-900 transition-colors"
                             >
-                                {product.subcategory}
+                                {formatSubcategoryName(product.subcategory)}
                             </Link>
                             <span>/</span>
                         </>
                     )}
-                    <span className="text-neutral-800 font-bold max-w-[200px] sm:max-w-[300px] md:max-w-[400px] truncate capitalize">{product.name}</span>
+                    <span className="text-[#ce112d] font-bold max-w-[200px] sm:max-w-[300px] md:max-w-[400px] truncate capitalize">
+                        {product.name}
+                    </span>
                 </div>
                 <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-black transition-all shrink-0">
                     <Share2 size={14} />
