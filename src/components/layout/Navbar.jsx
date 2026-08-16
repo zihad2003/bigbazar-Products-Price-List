@@ -20,6 +20,8 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
 
     const handleCategoryClick = (catId) => {
         onSelectCategory(catId);
+        if (catId === 'All') navigate('/');
+        else navigate(`/products?category=${encodeURIComponent(catId)}`);
     };
 
     return (

@@ -7,6 +7,9 @@
  * @returns {Object} { price, original_price, discount_percent, has_discount, is_flash_sale }
  */
 export const calculatePrice = (product, flashSale) => {
+    if (!product) {
+        return { price: 0, originalPrice: null, discountPercent: 0, hasDiscount: false, isFlashSale: false };
+    }
     // defaults
     let price = parseFloat(product.price || 0);
     let originalPrice = parseFloat(product.original_price || 0);
