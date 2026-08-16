@@ -30,7 +30,17 @@ export default function ProductDetails() {
     const [quantity, setQuantity] = useState(1);
     const [showAlert, setShowAlert] = useState(false);
     const [showStickyBar, setShowStickyBar] = useState(false);
+    const [subcategoriesData, setSubcategoriesData] = useState(null);
     const mainActionsRef = React.useRef(null);
+
+    useEffect(() => {
+        bigBazarApi.from('site_settings').select('*').then(({ data }) => {
+            if (!data) return;
+            const isArray = Array.isArray(data);
+            const subcats = isArray ? data.find(s => s.key === 'subcategories')?.value : data.subcategories;
+            if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
+        });
+    }, []);
 
     const images = React.useMemo(() => {
         if (!product) return [];
@@ -321,17 +331,6 @@ export default function ProductDetails() {
         (item.selectedColor === selectedColor || (!item.selectedColor && !selectedColor)) &&
         (item.selectedSize === selectedSize || (!item.selectedSize && !selectedSize))
     );
-
-    const [subcategoriesData, setSubcategoriesData] = useState(null);
-
-    useEffect(() => {
-        bigBazarApi.from('site_settings').select('*').then(({ data }) => {
-            if (!data) return;
-            const isArray = Array.isArray(data);
-            const subcats = isArray ? data.find(s => s.key === 'subcategories')?.value : data.subcategories;
-            if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
-        });
-    }, []);
 
     const formatSubcategoryName = (subId) => {
         if (!subId) return '';
