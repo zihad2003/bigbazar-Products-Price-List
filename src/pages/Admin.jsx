@@ -161,8 +161,11 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchSiteSettings();
     fetchAnalyticsStats();
 
-    // Refresh live visitor analytics every 30 seconds while admin dashboard is open
-    const statsTimer = setInterval(fetchAnalyticsStats, 30000);
+    // Refresh live visitor analytics every 30 seconds only while admin tab is active/visible
+    const statsTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchAnalyticsStats();
+    }, 30000);
     return () => clearInterval(statsTimer);
   }, []);
 

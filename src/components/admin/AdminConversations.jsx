@@ -41,7 +41,10 @@ export default function AdminConversations() {
   useEffect(() => {
     fetchStats();
     fetchConversations();
-    const interval = setInterval(fetchStats, 30000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchStats();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
