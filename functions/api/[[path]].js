@@ -110,8 +110,7 @@ app.onError((err, c) => {
   });
 
   return c.json({ 
-    error: 'Internal Server Error', 
-    message: err.message
+    error: 'Internal Server Error'
   }, 500);
 });
 
@@ -809,20 +808,152 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
   }
 });
 
+async function restoreOrderStock(tx, order) {
+  if (!order) return;
+
+  const parseLine = (str) => {
+    const res = { name: str, size: null, color: null, sku: null, qty: 1 };
+    const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+    const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
+    const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
+    const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
+    if (colorMatch) res.color = colorMatch[1].trim();
+    if (sizeMatch) res.size = sizeMatch[1].trim();
+    if (skuMatch) res.sku = skuMatch[1].trim();
+    if (qtyMatch) res.qty = parseInt(qtyMatch[1], 10) || 1;
+    res.name = str.split('(')[0].trim();
+    return res;
+  };
+
+  const parsedLines = (order.product_name || '').split(' + ').map(parseLine);
+
+  for (let i = 0; i < parsedLines.length; i++) {
+    const item = parsedLines[i];
+    const qty = item.qty || 1;
+    const selectedColor = item.color || order.color || null;
+    const selectedSize = item.size || order.size || null;
+
+    let productId = (i === 0 && order.product_id) ? order.product_id : null;
+
+    if (!productId && item.sku) {
+      const pBySku = await tx.execute('SELECT id FROM products WHERE platform_id = ? OR serial_no = ? LIMIT 1', [item.sku, item.sku]);
+      if (pBySku.length > 0) productId = pBySku[0].id;
+    }
+
+    if (!productId && item.name) {
+      const pByName = await tx.execute('SELECT id FROM products WHERE name = ? LIMIT 1', [item.name]);
+      if (pByName.length > 0) productId = pByName[0].id;
+    }
+
+    if (!productId && order.product_id) {
+      productId = order.product_id;
+    }
+
+    if (!productId) continue;
+
+    // Lock product row inside transaction
+    const products = await tx.execute(
+      'SELECT stock_count, is_sold_out, available_colors FROM products WHERE id = ? FOR UPDATE',
+      [productId]
+    );
+
+    if (products.length === 0) continue;
+
+    const product = products[0];
+    const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
+
+    // 1. Increment global stock count
+    let updatedGlobalStock = product.stock_count;
+    if (hadRealStock) {
+      updatedGlobalStock = product.stock_count + qty;
+    }
+
+    // 2. Increment color/size variant stock
+    let availableColorsParsed = [];
+    try {
+      availableColorsParsed = typeof product.available_colors === 'string'
+        ? JSON.parse(product.available_colors)
+        : (product.available_colors || []);
+    } catch (e) {
+      availableColorsParsed = [];
+    }
+
+    if (selectedColor && availableColorsParsed.length > 0) {
+      availableColorsParsed = availableColorsParsed.map(color => {
+        const colorName = typeof color === 'object' ? color.name : color;
+        if (colorName === selectedColor && color.sizes?.length > 0) {
+          const updatedSizes = color.sizes.map(sz => {
+            const szName = typeof sz === 'object' ? sz.name : sz;
+            if (szName === selectedSize) {
+              return { ...sz, stock: (sz.stock || 0) + qty };
+            }
+            return sz;
+          });
+          return { ...color, sizes: updatedSizes };
+        }
+        return color;
+      });
+    }
+
+    // 3. Update product in DB and reset is_sold_out to 0 if stock is restored
+    await tx.execute(
+      'UPDATE products SET stock_count = ?, is_sold_out = ?, available_colors = ? WHERE id = ?',
+      [
+        updatedGlobalStock,
+        hadRealStock && updatedGlobalStock > 0 ? 0 : product.is_sold_out,
+        JSON.stringify(availableColorsParsed),
+        productId
+      ]
+    );
+  }
+}
+
 app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const o = await c.req.json();
   const id = c.req.param('id');
   const conn = getDb(c.env);
-  const setClauses = [];
-  const params = [];
-  const fields = { status: o.status, is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined, payment_status: o.payment_status, delivery_charge: o.delivery_charge, total_amount: o.total_amount };
-  for (const [key, val] of Object.entries(fields)) {
-    if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
+
+  const tx = await conn.begin();
+  try {
+    // 1. Fetch current order with row lock
+    const currentOrders = await tx.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [id]);
+    if (currentOrders.length === 0) {
+      await tx.rollback();
+      return c.json({ error: 'Order not found' }, 404);
+    }
+    const currentOrder = currentOrders[0];
+
+    // 2. If transitioning INTO Cancelled from a non-cancelled status, restore stock
+    const isTransitioningToCancelled = o.status === 'Cancelled' && currentOrder.status !== 'Cancelled';
+    if (isTransitioningToCancelled) {
+      await restoreOrderStock(tx, currentOrder);
+    }
+
+    // 3. Update fields
+    const setClauses = [];
+    const params = [];
+    const fields = {
+      status: o.status,
+      is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined,
+      payment_status: o.payment_status,
+      delivery_charge: o.delivery_charge,
+      total_amount: o.total_amount
+    };
+    for (const [key, val] of Object.entries(fields)) {
+      if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
+    }
+    if (setClauses.length > 0) {
+      params.push(id);
+      await tx.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
+    }
+
+    await tx.commit();
+    return c.json({ success: true });
+  } catch (err) {
+    await tx.rollback();
+    console.error('Order update transaction error:', err);
+    return c.json({ error: err.message }, 500);
   }
-  if (!setClauses.length) return c.json({ success: true });
-  params.push(id);
-  await conn.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
-  return c.json({ success: true });
 });
 
 // Bulk delete by status — used by Admin "Empty Bin" feature
@@ -837,25 +968,27 @@ app.delete('/orders', requireAuth, requireAdmin, async (c) => {
 app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   const id = c.req.param('id');
+  const tx = await conn.begin();
   try {
-    // 1. Get product_id from order
-    const orders = await conn.execute('SELECT product_id FROM orders WHERE id = ?', [id]);
+    // 1. Fetch order with row lock
+    const orders = await tx.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [id]);
     if (orders.length > 0) {
-      const productId = orders[0].product_id;
-      
-      // 2. Delete order
-      await conn.execute('DELETE FROM orders WHERE id = ?', [id]);
-      
-      // 3. Re-increment stock and reset is_sold_out status if it was set
-      if (productId) {
-        await conn.execute(
-          'UPDATE products SET stock_count = stock_count + 1, is_sold_out = 0 WHERE id = ?',
-          [productId]
-        );
+      const order = orders[0];
+
+      // 2. Only restore stock if order was NOT already Cancelled
+      // (If already Cancelled, stock was already restored when cancelled)
+      if (order.status !== 'Cancelled') {
+        await restoreOrderStock(tx, order);
       }
+
+      // 3. Delete order
+      await tx.execute('DELETE FROM orders WHERE id = ?', [id]);
     }
+    await tx.commit();
     return c.json({ success: true });
   } catch (err) {
+    await tx.rollback();
+    console.error('Order deletion transaction error:', err);
     return c.json({ error: err.message }, 500);
   }
 });
