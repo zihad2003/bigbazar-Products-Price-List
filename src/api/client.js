@@ -39,6 +39,43 @@ function headers() {
     return h;
 }
 
+// In-memory Client Cache & Request Deduplication (prevents parallel identical queries across components)
+const _inMemoryCache = new Map();
+const _inFlightRequests = new Map();
+
+function getCachedOrFetch(cacheKey, ttlMs, fetchFn) {
+    const now = Date.now();
+    const cached = _inMemoryCache.get(cacheKey);
+    if (cached && (now - cached.time < ttlMs)) {
+        return Promise.resolve(cached.data);
+    }
+    if (_inFlightRequests.has(cacheKey)) {
+        return _inFlightRequests.get(cacheKey);
+    }
+    const promise = fetchFn().then(result => {
+        _inFlightRequests.delete(cacheKey);
+        if (result && !result.error) {
+            _inMemoryCache.set(cacheKey, { data: result, time: Date.now() });
+        }
+        return result;
+    }).catch(err => {
+        _inFlightRequests.delete(cacheKey);
+        throw err;
+    });
+    _inFlightRequests.set(cacheKey, promise);
+    return promise;
+}
+
+export function invalidateClientCache(prefix) {
+    if (!prefix) {
+        _inMemoryCache.clear();
+        return;
+    }
+    for (const key of _inMemoryCache.keys()) {
+        if (key.includes(prefix)) _inMemoryCache.delete(key);
+    }
+}
+
 // ============================================
 // Auth API (replaces bigBazarApi.auth)
 // ============================================
@@ -248,6 +285,20 @@ class QueryBuilder {
         }
         
         const url = `${API_BASE}${endpoint}?${params.toString()}`;
+
+        // Cache static endpoints like site_settings and subcategory-counts in-memory for 5 minutes (prevents duplicate queries across components)
+        if (this._table === 'site_settings' || this._table === 'subcategory-counts') {
+            return getCachedOrFetch(url, 300000, async () => {
+                const res = await fetch(url, { headers: headers() });
+                const json = await res.json();
+                if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
+                let data = json.data;
+                const count = json.count || (Array.isArray(data) ? data.length : (data ? 1 : 0));
+                if (this._single) data = Array.isArray(data) ? data[0] || null : data;
+                return { data, error: null, count };
+            });
+        }
+
         const res = await fetch(url, { headers: headers() });
         const json = await res.json();
         
@@ -271,6 +322,7 @@ class QueryBuilder {
 
     // Internal Executors
     async _executeInsert() {
+        invalidateClientCache();
         const endpoint = this._getEndpoint();
         const items = Array.isArray(this._records) ? this._records : [this._records];
         const results = [];
@@ -288,6 +340,7 @@ class QueryBuilder {
     }
 
     async _executeUpdate() {
+        invalidateClientCache();
         const id = this._filters.id;
         if (!id) return { data: null, error: { message: 'No ID filter for update' } };
         const endpoint = this._getEndpoint();
@@ -302,6 +355,7 @@ class QueryBuilder {
     }
 
     async _executeDelete() {
+        invalidateClientCache();
         const id = this._filters.id;
         const key = this._filters.key;
         const status = this._filters.status;

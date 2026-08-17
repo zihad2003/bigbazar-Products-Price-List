@@ -1043,19 +1043,19 @@ app.get('/settings', async (c) => {
   const cacheKey = 'cache:settings';
   const cached = await kvGet(c, cacheKey);
   if (cached) {
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=600');
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
     return c.json(cached);
   }
 
   const conn = getDb(c.env);
-  const res = await conn.execute('SELECT * FROM site_settings');
+  const res = await conn.execute("SELECT `key`, value FROM site_settings WHERE `key` NOT LIKE 'ping:%'");
   const settings = {};
   res.forEach(r => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
   });
   const responseData = { data: settings };
   await kvSet(c, cacheKey, responseData, 600);
-  c.header('Cache-Control', 'public, max-age=60, s-maxage=600');
+  c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
   return c.json(responseData);
 });
 
