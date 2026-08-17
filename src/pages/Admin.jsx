@@ -161,8 +161,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchSiteSettings();
     fetchAnalyticsStats();
 
-    // Refresh live visitor analytics every 10 seconds while admin dashboard is open
-    const statsTimer = setInterval(fetchAnalyticsStats, 10000);
+    // Refresh live visitor analytics every 30 seconds while admin dashboard is open
+    const statsTimer = setInterval(fetchAnalyticsStats, 30000);
     return () => clearInterval(statsTimer);
   }, []);
 

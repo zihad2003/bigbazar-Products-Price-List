@@ -64,6 +64,9 @@ function PublicLayout() {
     }
 
     const sendPing = (isNew) => {
+      // Do not send recurring heartbeat pings when the browser tab is hidden/minimized
+      if (!isNew && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
       fetch(`${API_URL}/api/analytics/ping`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,8 +75,21 @@ function PublicLayout() {
     };
 
     sendPing(isNewSession);
-    const timer = setInterval(() => sendPing(false), 30000);
-    return () => clearInterval(timer);
+
+    // Heartbeat every 120s (2 minutes) instead of aggressive 30s
+    const timer = setInterval(() => sendPing(false), 120000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        sendPing(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];

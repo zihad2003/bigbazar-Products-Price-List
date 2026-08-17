@@ -951,53 +951,35 @@ app.post('/analytics/ping', async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const sessionId = body.session_id || c.req.header('x-session-id') || ('anon-' + Math.random().toString(36).substring(2, 9));
   const isNewSession = !!body.is_new;
-
   const now = Date.now();
-  const conn = getDb(c.env);
+  const kv = c.env?.BIGBAZAR_CACHE;
 
   try {
-    // 1. Update live session ping in DB
-    const res = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'live_pings'");
-    let pings = {};
-    if (res.length > 0) {
-      try { pings = typeof res[0].value === 'string' ? JSON.parse(res[0].value) : (res[0].value || {}); } catch (e) {}
-    }
-    pings[sessionId] = now;
-    // Clean stale sessions older than 90 seconds
-    const cutoff = now - 90000;
-    Object.keys(pings).forEach(s => {
-      if (pings[s] < cutoff) delete pings[s];
-    });
-    await conn.execute(
-      "INSERT INTO site_settings (`key`, value) VALUES ('live_pings', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-      [JSON.stringify(pings)]
-    );
-
-    // 2. Increment Today & Lifetime Total Counters
-    if (isNewSession) {
-      const todayKey = getTodayKey();
-      const tRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = ?", [todayKey]);
-      let todayCount = 0;
-      if (tRes.length > 0) {
-        try { todayCount = parseInt(typeof tRes[0].value === 'string' ? JSON.parse(tRes[0].value) : tRes[0].value) || 0; } catch (e) { todayCount = parseInt(tRes[0].value) || 0; }
-      }
+    // 1. Live Session Tracking:
+    // Prefer Cloudflare KV when available (180s TTL, 0 DB queries, 0 TiDB RUs)
+    if (kv) {
+      await kv.put(`ping:${sessionId}`, String(now), { expirationTtl: 180 });
+    } else {
+      // Fallback in TiDB: single cheap atomic upsert per session without any prior SELECT
+      const conn = getDb(c.env);
       await conn.execute(
         "INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-        [todayKey, JSON.stringify(todayCount + 1)]
+        [`ping:${sessionId}`, String(now)]
       );
+    }
 
-      const totRes = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'site_visitors'");
-      let totalCount = 0;
-      if (totRes.length > 0) {
-        try { totalCount = parseInt(typeof totRes[0].value === 'string' ? JSON.parse(totRes[0].value) : totRes[0].value) || 0; } catch (e) { totalCount = parseInt(totRes[0].value) || 0; }
-      }
+    // 2. Increment Today & Lifetime Visitor Counters:
+    // Runs only ONCE per new session via a SINGLE atomic SQL statement without any prior SELECT
+    if (isNewSession) {
+      const conn = getDb(c.env);
+      const todayKey = getTodayKey();
       await conn.execute(
-        "INSERT INTO site_settings (`key`, value) VALUES ('site_visitors', ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-        [JSON.stringify(totalCount + 1)]
+        "INSERT INTO site_settings (`key`, value) VALUES (?, '1'), ('site_visitors', '1') ON DUPLICATE KEY UPDATE value = CAST(COALESCE(value, '0') AS UNSIGNED) + 1",
+        [todayKey]
       );
     }
   } catch (err) {
-    console.error('Analytics ping DB update error:', err);
+    console.error('Analytics ping update error:', err);
   }
 
   return c.json({ success: true });
@@ -1007,30 +989,45 @@ app.get('/analytics/stats', async (c) => {
   const now = Date.now();
   const conn = getDb(c.env);
   const todayKey = getTodayKey();
+  const kv = c.env?.BIGBAZAR_CACHE;
   let todayCount = 0;
   let totalCount = 0;
   let onlineNow = 1;
 
   try {
+    // 1. Online count from KV if bound
+    if (kv && kv.list) {
+      const list = await kv.list({ prefix: 'ping:' });
+      onlineNow = Math.max(1, (list.keys || []).length);
+    }
+
+    // 2. Fetch visitor counts from DB
     const res = await conn.execute(
-      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors', 'live_pings')",
+      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors') OR `key` LIKE 'ping:%'",
       [todayKey]
     );
+
+    let dbActivePings = 0;
+    const cutoff = now - 180000; // 3-minute active window
+
     res.forEach(r => {
-      let val = 0;
-      if (r.key === 'live_pings') {
-        try {
-          const pings = typeof r.value === 'string' ? JSON.parse(r.value) : (r.value || {});
-          const cutoff = now - 90000;
-          const activeCount = Object.keys(pings).filter(s => pings[s] >= cutoff).length;
-          if (activeCount > 0) onlineNow = activeCount;
-        } catch (e) {}
+      if (r.key.startsWith('ping:')) {
+        const pingTime = parseInt(r.value) || 0;
+        if (pingTime >= cutoff) dbActivePings++;
       } else {
-        try { val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0; } catch (e) { val = parseInt(r.value) || 0; }
+        const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
         if (r.key === todayKey) todayCount = val;
         if (r.key === 'site_visitors') totalCount = val;
       }
     });
+
+    if (!kv) {
+      onlineNow = Math.max(1, dbActivePings);
+      // Clean up stale TiDB pings (probabilistic ~10% of stats requests to prevent burning RUs)
+      if (Math.random() < 0.1) {
+        conn.execute("DELETE FROM site_settings WHERE `key` LIKE 'ping:%' AND CAST(value AS UNSIGNED) < ?", [cutoff]).catch(() => {});
+      }
+    }
   } catch (err) {
     console.error('Analytics stats fetch error:', err);
   }
@@ -1040,6 +1037,8 @@ app.get('/analytics/stats', async (c) => {
     online_now: onlineNow,
     today_count: todayCount,
     total_count: totalCount
+  }, 200, {
+    'Cache-Control': 'public, max-age=15, s-maxage=15'
   });
 });
 
