@@ -1,3 +1,0 @@
-[    6224ms] [LOG] Hi there! You're looking at Render version f7c23723c. @ https://dashboard.render.com/assets/errors-EbfpO6xb.js:1
-[   16273ms] [LOG] Download the Apollo DevTools for a better development experience: %s https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm @ https://dashboard.render.com/assets/errors-EbfpO6xb.js:1
-[   19847ms] [WARNING] [Intercom] The App ID in your code snippet has not been set. Set it to your App ID found in settings to complete installation: https://app.intercom.com/a/apps/_/settings/web @ https://js.intercomcdn.com/frame-modern.40aacdf2.js:0

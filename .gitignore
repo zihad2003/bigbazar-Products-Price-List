@@ -21,6 +21,15 @@
 .env.test.local
 .env.production.local
 
+# Cloudflare & Wrangler cache
+.wrangler/
+
+# IDE & AI Tool configs
+.claude/
+.playwright-mcp/
+.cursorrules
+.kilocode/
+
 # server uploads
 server/uploads/
 
