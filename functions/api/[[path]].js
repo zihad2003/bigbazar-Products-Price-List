@@ -994,14 +994,23 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
 });
 
 app.get('/orders/track', async (c) => {
-  const query = c.req.query('query');
+  const query = (c.req.query('query') || '').trim();
   if (!query) return c.json({ data: [] });
+
+  const cacheKey = `cache:orders:track:${query}`;
+  const cached = await kvGet(c, cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
   const conn = getDb(c.env);
   const res = await conn.execute(
     'SELECT * FROM orders WHERE customer_phone = ? OR id = ? ORDER BY created_at DESC',
     [query, query]
   );
-  return c.json({ data: res });
+  const responseData = { data: res };
+  await kvSet(c, cacheKey, responseData, 60);
+  return c.json(responseData);
 });
 
 // ============================================
@@ -1384,24 +1393,6 @@ app.post('/auth/google', async (c) => {
     const name = payload.name || '';
     const avatarUrl = payload.picture || '';
 
-    // Upsert into users table
-    const conn = getDb(c.env);
-
-    // Try to create the users table if it doesn't exist
-    try {
-      await conn.execute(`CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(36) PRIMARY KEY,
-        google_id VARCHAR(128) UNIQUE NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        name VARCHAR(255),
-        avatar_url TEXT,
-        phone VARCHAR(20) DEFAULT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_google (google_id),
-        INDEX idx_email (email)
-      )`);
-    } catch (_) { /* Table may already exist */ }
-
     // Check if user exists
     const existing = await conn.execute('SELECT * FROM users WHERE google_id = ?', [googleId]);
     let userId;
@@ -1420,6 +1411,7 @@ app.post('/auth/google', async (c) => {
         [userId, googleId, email, name, avatarUrl]
       );
     }
+    await kvDelete(c, `cache:user:${userId}`);
 
     // Issue JWT
     const jwtSecret = getJwtSecret(c);
@@ -1442,11 +1434,19 @@ app.post('/auth/google', async (c) => {
 // GET /account/me — Current logged-in customer profile
 app.get('/account/me', requireCustomerAuth, async (c) => {
   const customer = c.get('customer');
+  const cacheKey = `cache:user:${customer.id}`;
+  const cached = await kvGet(c, cacheKey);
+  if (cached) {
+    return c.json(cached);
+  }
+
   const conn = getDb(c.env);
   try {
     const rows = await conn.execute('SELECT id, name, email, avatar_url, phone, created_at FROM users WHERE id = ?', [customer.id]);
     if (rows.length === 0) return c.json({ error: 'User not found' }, 404);
-    return c.json({ user: rows[0] });
+    const responseData = { user: rows[0] };
+    await kvSet(c, cacheKey, responseData, 120);
+    return c.json(responseData);
   } catch (err) {
     return c.json({ error: 'Failed to load profile' }, 500);
   }
@@ -1459,6 +1459,7 @@ app.put('/account/me', requireCustomerAuth, async (c) => {
   const conn = getDb(c.env);
   try {
     await conn.execute('UPDATE users SET phone = ? WHERE id = ?', [phone || null, customer.id]);
+    await kvDelete(c, `cache:user:${customer.id}`);
     return c.json({ success: true });
   } catch (err) {
     return c.json({ error: 'Failed to update profile' }, 500);
@@ -1537,9 +1538,14 @@ const groqTools = [
 
 const systemPrompt = `You are BigBazar's shopping assistant. Detect the customer's language from their message (English, Bangla script, or Banglish) and always reply in that same style. Keep replies to 1-3 short sentences. Product details are shown as visual cards below your reply, so do not list prices or descriptions in your text — just introduce what you found and invite the customer to look or ask more. Only describe products returned by a tool call. Never invent product names, prices, or availability. If the request is vague, ask one clarifying question or call get_best_sellers.`;
 
-async function executeGroqTool(conn, toolName, args) {
+async function executeGroqTool(c, conn, toolName, args) {
   if (toolName === 'search_products') {
     const { query = '', category = '', subcategory = '', min_price, max_price, limit = 5 } = args;
+    const safeLimit = Math.min(parseInt(limit) || 5, 10);
+    const cacheKey = `cache:assistant:search:${encodeURIComponent(query)}:${encodeURIComponent(category)}:${encodeURIComponent(subcategory)}:${min_price || ''}:${max_price || ''}:${safeLimit}`;
+    const cached = await kvGet(c, cacheKey);
+    if (cached) return cached;
+
     let sql = "SELECT * FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)";
     const params = [];
     if (category && category !== 'All') { sql += ' AND category LIKE ?'; params.push(`%${category}%`); }
@@ -1548,10 +1554,12 @@ async function executeGroqTool(conn, toolName, args) {
     if (max_price) { sql += ' AND price <= ?'; params.push(parseFloat(max_price)); }
     if (query) { sql += ' AND (name LIKE ? OR description LIKE ? OR subcategory LIKE ?)'; params.push(`%${query}%`, `%${query}%`, `%${query}%`); }
     sql += ' ORDER BY is_hot DESC, created_at DESC LIMIT ?';
-    params.push(Math.min(parseInt(limit)||5, 10));
+    params.push(safeLimit);
     
     const rows = await conn.execute(sql, params);
-    return { type: 'products', data: rows.map(parseProductRow) };
+    const result = { type: 'products', data: rows.map(parseProductRow) };
+    await kvSet(c, cacheKey, result, 120);
+    return result;
   }
 
   if (toolName === 'get_categories') {
@@ -1559,10 +1567,16 @@ async function executeGroqTool(conn, toolName, args) {
   }
 
   if (toolName === 'get_best_sellers') {
-    const { limit = 5 } = args;
+    const safeLimit = Math.min(parseInt(args.limit) || 5, 10);
+    const cacheKey = `cache:assistant:bestsellers:${safeLimit}`;
+    const cached = await kvGet(c, cacheKey);
+    if (cached) return cached;
+
     const sql = "SELECT * FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY is_hot DESC, created_at DESC LIMIT ?";
-    const rows = await conn.execute(sql, [Math.min(parseInt(limit)||5, 10)]);
-    return { type: 'products', data: rows.map(parseProductRow) };
+    const rows = await conn.execute(sql, [safeLimit]);
+    const result = { type: 'products', data: rows.map(parseProductRow) };
+    await kvSet(c, cacheKey, result, 120);
+    return result;
   }
 
   return { error: 'Tool not found' };
@@ -1606,32 +1620,9 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
 
   const conn = getDb(c.env);
 
-  // Ensure conversations & messages tables exist
-  try {
-    await conn.execute(`CREATE TABLE IF NOT EXISTS conversations (
-      id VARCHAR(36) PRIMARY KEY,
-      session_id VARCHAR(64) NOT NULL,
-      user_id VARCHAR(36) DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      has_order BOOLEAN DEFAULT FALSE,
-      order_id VARCHAR(36) DEFAULT NULL,
-      INDEX idx_session (session_id),
-      INDEX idx_updated (updated_at DESC)
-    )`);
-    await conn.execute(`CREATE TABLE IF NOT EXISTS messages (
-      id VARCHAR(36) PRIMARY KEY,
-      conversation_id VARCHAR(36) NOT NULL,
-      role ENUM('user', 'assistant', 'system') NOT NULL,
-      content TEXT NOT NULL,
-      metadata JSON DEFAULT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_conversation (conversation_id, created_at)
-    )`);
-  } catch (_) {}
-
-  // Get or Create Conversation
+  // Get or Create Conversation (Table creation moved to one-time migration/setup script)
   let conversationId;
+  let isNewConv = false;
   try {
     const existing = await conn.execute('SELECT id FROM conversations WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1', [sessionId]);
     if (existing.length > 0) {
@@ -1640,6 +1631,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
         await conn.execute('UPDATE conversations SET user_id = ? WHERE id = ?', [userId, conversationId]);
       }
     } else {
+      isNewConv = true;
       conversationId = crypto.randomUUID();
       await conn.execute(
         'INSERT INTO conversations (id, session_id, user_id) VALUES (?, ?, ?)',
@@ -1656,14 +1648,14 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     console.error('Conversation logging error:', err);
   }
 
-  // Load Past History
+  // Load Past History (only needed if conversation existed prior to this turn)
   let pastRows = [];
-  try {
-    if (conversationId) {
-      pastRows = await conn.execute('SELECT role, content FROM messages WHERE conversation_id = ? AND role IN ("user", "assistant") ORDER BY created_at DESC LIMIT 10', [conversationId]);
+  if (conversationId && !isNewConv) {
+    try {
+      pastRows = await conn.execute('SELECT role, content FROM messages WHERE conversation_id = ? AND role IN ("user", "assistant") ORDER BY created_at DESC LIMIT 6', [conversationId]);
       pastRows.reverse(); // old to new
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 
   const groqMessages = [{ role: 'system', content: systemPrompt }];
   pastRows.forEach(r => {
@@ -1703,7 +1695,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
         let args = {};
         try { args = JSON.parse(toolCall.function.arguments); } catch(e) {}
         
-        const toolResult = await executeGroqTool(conn, toolCall.function.name, args);
+        const toolResult = await executeGroqTool(c, conn, toolCall.function.name, args);
         
         if (toolResult.type === 'products' && toolResult.data) {
           productsRes.push(...toolResult.data);

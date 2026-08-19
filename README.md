@@ -153,7 +153,13 @@ CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-### 4. Run Development Server
+### 4. Initialize Database Schema (One-Time)
+Run the automated schema setup script to initialize tables (`admin_users`, `site_settings`, `reviews`, `customers`, `products`, `orders`, `users`, `conversations`, `messages`):
+```bash
+node scripts/setup_db.js
+```
+
+### 5. Run Development Server
 ```bash
 pnpm run dev
 ```

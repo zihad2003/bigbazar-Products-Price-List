@@ -39,6 +39,52 @@ async function createMissingTables() {
         `);
         console.log('Created reviews table.');
         
+        // Create Users Table (Google Auth & Profiles)
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR(36) PRIMARY KEY,
+                google_id VARCHAR(128) UNIQUE NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                name VARCHAR(255),
+                avatar_url TEXT,
+                phone VARCHAR(20) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_google (google_id),
+                INDEX idx_email (email)
+            )
+        `);
+        console.log('Created users table.');
+
+        // Create Conversations Table (AI Shopping Assistant)
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS conversations (
+                id VARCHAR(36) PRIMARY KEY,
+                session_id VARCHAR(64) NOT NULL,
+                user_id VARCHAR(36) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                has_order BOOLEAN DEFAULT FALSE,
+                order_id VARCHAR(36) DEFAULT NULL,
+                INDEX idx_session (session_id),
+                INDEX idx_updated (updated_at DESC)
+            )
+        `);
+        console.log('Created conversations table.');
+
+        // Create Messages Table (AI Shopping Assistant)
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id VARCHAR(36) PRIMARY KEY,
+                conversation_id VARCHAR(36) NOT NULL,
+                role ENUM('user', 'assistant', 'system') NOT NULL,
+                content TEXT NOT NULL,
+                metadata JSON DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_conversation (conversation_id, created_at)
+            )
+        `);
+        console.log('Created messages table.');
+
         // Let's insert the default hero banner setting so it doesn't crash if it expects it
         await db.execute(`
             INSERT IGNORE INTO site_settings (\`key\`, value) VALUES 
