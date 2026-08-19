@@ -12,9 +12,7 @@ import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
-import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
-import ModeratorEntry from '../components/ModeratorEntry';
 import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
@@ -2622,12 +2620,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               </div>
             </div>
           </form>
-        ) : activeTab === 'moderator' ? (
-          <ModeratorEntry
-            products={products}
-            onSuccess={() => { fetchOrders(); setActiveTab('orders'); }}
-            onCancel={() => setActiveTab('orders')}
-          />
         ) : activeTab === 'pending-items' ? (
           <div className="space-y-12 pb-24">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -2757,12 +2749,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 </div>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={() => setActiveTab('moderator')}
-                  className="flex items-center justify-center gap-2 px-6 h-12 bg-[#121215] border border-[#1d1d21] rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all text-zinc-400 group shadow-lg"
-                >
-                  <Plus size={16} className="text-[#ce112d] group-hover:text-white" /> Create Entry
-                </button>
                 <button
                   onClick={handleExportCSV}
                   className="flex items-center justify-center gap-2 px-6 h-12 bg-[#121215] border border-[#1d1d21] rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group text-zinc-400 shadow-lg"
