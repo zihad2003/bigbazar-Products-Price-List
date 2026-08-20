@@ -211,6 +211,17 @@ const optionalCustomerAuth = async (c, next) => {
   await next();
 };
 
+// Health check endpoint
+app.get('/health', async (c) => {
+  try {
+    const conn = getDb(c.env);
+    const r = await conn.execute('SELECT 1 as ok');
+    return c.json({ status: 'ok', db: r[0]?.ok === 1 });
+  } catch (err) {
+    return c.json({ status: 'error', message: err.message }, 500);
+  }
+});
+
 // ============================================
 // AUTH ROUTES
 // ============================================
