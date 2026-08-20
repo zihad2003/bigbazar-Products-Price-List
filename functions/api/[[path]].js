@@ -216,9 +216,76 @@ app.get('/health', async (c) => {
   try {
     const conn = getDb(c.env);
     const r = await conn.execute('SELECT 1 as ok');
-    return c.json({ status: 'ok', db: r[0]?.ok === 1 });
+    return c.json({ status: 'ok', db: !!r[0] });
   } catch (err) {
     return c.json({ status: 'error', message: err.message }, 500);
+  }
+});
+
+// ============================================
+// IMAGE CDN ENDPOINT — serves product images from KV cache
+// ============================================
+app.get('/img/:id', async (c) => {
+  const id = c.req.param('id');
+  const kv = c.env?.BIGBAZAR_CACHE;
+
+  // 1. Try KV binary cache first (fastest)
+  if (kv) {
+    try {
+      const cached = await kv.get(`img:${id}`, 'arrayBuffer');
+      if (cached) {
+        return new Response(cached, {
+          headers: {
+            'Content-Type': 'image/webp',
+            'Cache-Control': 'public, max-age=604800, s-maxage=2592000, immutable',
+            'CDN-Cache-Control': 'max-age=2592000',
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  // 2. Read from DB, convert, cache in KV
+  try {
+    const conn = getDb(c.env);
+    const rows = await conn.execute('SELECT image_url FROM products WHERE id = ?', [id]);
+    if (!rows[0]?.image_url) return c.json({ error: 'Image not found' }, 404);
+
+    const base64Str = rows[0].image_url;
+
+    // If it's a URL (not base64), redirect
+    if (!base64Str.startsWith('data:')) {
+      return c.redirect(base64Str, 302);
+    }
+
+    // Extract base64 data
+    const match = base64Str.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return c.json({ error: 'Invalid image format' }, 400);
+
+    const contentType = match[1];
+    const raw = match[2];
+    const binaryStr = atob(raw);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+
+    // Cache in KV for 30 days
+    if (kv) {
+      try {
+        await kv.put(`img:${id}`, bytes.buffer, { expirationTtl: 2592000 });
+      } catch (_) {}
+    }
+
+    return new Response(bytes, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=604800, s-maxage=2592000, immutable',
+        'CDN-Cache-Control': 'max-age=2592000',
+      }
+    });
+  } catch (err) {
+    return c.json({ error: 'Failed to load image' }, 500);
   }
 });
 
@@ -352,6 +419,31 @@ const parseProductRow = (row) => {
   };
 };
 
+/**
+ * Lightweight product row parser for listings — replaces heavy base64
+ * image data with CDN URLs. This reduces JSON payload from ~1.5MB to ~3KB.
+ */
+const parseProductRowLite = (row) => {
+  if (!row) return null;
+  const tryParse = (val) => {
+    try { return typeof val === 'string' ? JSON.parse(val) : val; } catch (e) { return []; }
+  };
+  const cdnUrl = `/api/img/${row.id}`;
+  return {
+    ...row,
+    image_url: cdnUrl,
+    images: [cdnUrl],
+    available_sizes: tryParse(row.available_sizes),
+    available_colors: tryParse(row.available_colors),
+    is_sale: !!row.is_sale,
+    is_hot: !!row.is_hot,
+    is_new: !!row.is_new,
+    is_sold_out: !!row.is_sold_out,
+    is_deleted: !!row.is_deleted,
+    is_exclusive: !!row.is_exclusive
+  };
+};
+
 // Map of subcategories & exact keywords for resilient searching & counting
 const SUB_KEYWORDS_MAP = {
   'panjabi': ['panjabi', 'punjabi', 'পাঞ্জাবি', 'পাঞ্জাবী', 'kabli', 'কাবলি'],
@@ -470,8 +562,8 @@ app.get('/products', async (c) => {
   try {
     if (id) {
       const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
-      const singleData = { data: parseProductRow(res[0]) || null, count: res.length };
-      await kvSet(c, cacheKey, singleData, 120);
+      const singleData = { data: parseProductRowLite(res[0]) || null, count: res.length };
+      await kvSet(c, cacheKey, singleData, 300);
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
       return c.json(singleData);
     }
@@ -480,8 +572,8 @@ app.get('/products', async (c) => {
       const list = ids.split(',').filter(Boolean);
       if (!list.length) return c.json({ data: [], count: 0 });
       const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
-      const listData = { data: res.map(parseProductRow), count: res.length };
-      await kvSet(c, cacheKey, listData, 120);
+      const listData = { data: res.map(parseProductRowLite), count: res.length };
+      await kvSet(c, cacheKey, listData, 300);
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
       return c.json(listData);
     }
@@ -561,8 +653,8 @@ app.get('/products', async (c) => {
       }
     }
 
-    const resultData = { data: rows.map(parseProductRow), count: total };
-    await kvSet(c, cacheKey, resultData, 120);
+    const resultData = { data: rows.map(parseProductRowLite), count: total };
+    await kvSet(c, cacheKey, resultData, 300);
     c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
     return c.json(resultData);
   } catch (err) {
@@ -572,7 +664,8 @@ app.get('/products', async (c) => {
 });
 
 app.get('/products/:id', async (c) => {
-  if (!(await checkRateLimitKV(c, 'product_details', 100, 60000))) {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'product_details', 100, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
   const pid = c.req.param('id');
@@ -583,13 +676,23 @@ app.get('/products/:id', async (c) => {
     return c.json(cached);
   }
 
-  const conn = getDb(c.env);
-  const res = await conn.execute('SELECT * FROM products WHERE id = ?', [pid]);
-  if (!res.length) return c.json({ error: 'Not found' }, 404);
-  const resultData = { data: parseProductRow(res[0]) };
-  await kvSet(c, cacheKey, resultData, 120);
-  c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-  return c.json(resultData);
+  try {
+    const conn = getDb(c.env);
+    // Exclude heavy base64 columns — images served via /api/img/:id
+    const res = await conn.execute(
+      'SELECT id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive FROM products WHERE id = ?',
+      [pid]
+    );
+    if (!res.length) return c.json({ error: 'Not found' }, 404);
+    const parsed = parseProductRowLite(res[0]);
+    const resultData = { data: parsed };
+    await kvSet(c, cacheKey, resultData, 300);
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    return c.json(resultData);
+  } catch (err) {
+    console.error('Product detail error:', err);
+    return c.json({ error: 'Internal error' }, 500);
+  }
 });
 
 const toTitleCase = (str) => {
