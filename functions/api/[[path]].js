@@ -229,23 +229,24 @@ app.get('/img/:id', async (c) => {
   const id = c.req.param('id');
   const kv = c.env?.BIGBAZAR_CACHE;
 
-  // 1. Try KV binary cache first (fastest)
+  // 1. Try KV binary cache first (sub-50ms instant response)
   if (kv) {
     try {
-      const cached = await kv.get(`img:${id}`, 'arrayBuffer');
+      const cached = await kv.get(`img:${id}`, { type: 'arrayBuffer' });
       if (cached) {
         return new Response(cached, {
           headers: {
             'Content-Type': 'image/webp',
-            'Cache-Control': 'public, max-age=604800, s-maxage=2592000, immutable',
-            'CDN-Cache-Control': 'max-age=2592000',
+            'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
+            'CDN-Cache-Control': 'max-age=31536000',
+            'Cloudflare-CDN-Cache-Control': 'max-age=31536000',
           }
         });
       }
     } catch (_) {}
   }
 
-  // 2. Read from DB, convert, cache in KV
+  // 2. Read from DB, convert base64 to binary, and cache in KV
   try {
     const conn = getDb(c.env);
     const rows = await conn.execute('SELECT image_url FROM products WHERE id = ?', [id]);
@@ -270,7 +271,7 @@ app.get('/img/:id', async (c) => {
       bytes[i] = binaryStr.charCodeAt(i);
     }
 
-    // Cache in KV for 30 days
+    // Cache binary in KV for 30 days
     if (kv) {
       try {
         await kv.put(`img:${id}`, bytes.buffer, { expirationTtl: 2592000 });
@@ -280,8 +281,9 @@ app.get('/img/:id', async (c) => {
     return new Response(bytes, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=604800, s-maxage=2592000, immutable',
-        'CDN-Cache-Control': 'max-age=2592000',
+        'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
+        'CDN-Cache-Control': 'max-age=31536000',
+        'Cloudflare-CDN-Cache-Control': 'max-age=31536000',
       }
     });
   } catch (err) {
