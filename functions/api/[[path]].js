@@ -578,8 +578,8 @@ app.get('/products', async (c) => {
       return c.json(listData);
     }
 
-    // Lightweight column selection for listings (omits redundant images array column for 3x smaller payload)
-    let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, image_url, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
+    // Lightweight column selection for listings (omits heavy base64 image columns for ultra-fast query)
+    let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
     let whereSql = ' WHERE 1=1';
     const params = [];
 
