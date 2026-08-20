@@ -438,7 +438,8 @@ app.get('/products/subcategory-counts', async (c) => {
 });
 
 app.get('/products', async (c) => {
-  if (!(await checkRateLimitKV(c, 'products', 100, 60000))) {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'products', 150, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
 
@@ -460,100 +461,114 @@ app.get('/products', async (c) => {
   const cacheKey = `cache:products:${safeParams.toString()}`;
   const cached = await kvGet(c, cacheKey);
   if (cached) {
-    c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
     return c.json(cached);
   }
 
   const conn = getDb(c.env);
 
-  let sql = 'SELECT * FROM products WHERE 1=1';
-  const params = [];
-
-  if (id) {
-    const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
-    const singleData = { data: parseProductRow(res[0]) || null, count: res.length };
-    await kvSet(c, cacheKey, singleData, 60);
-    c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
-    return c.json(singleData);
-  }
-
-  if (ids) {
-    const list = ids.split(',').filter(Boolean);
-    if (!list.length) return c.json({ data: [], count: 0 });
-    const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
-    const listData = { data: res.map(parseProductRow), count: res.length };
-    await kvSet(c, cacheKey, listData, 60);
-    c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
-    return c.json(listData);
-  }
-
-  if (status) { sql += ' AND status = ?'; params.push(status); }
-  if (category && category !== 'All') {
-    if (category === 'New') {
-      sql += ' AND is_new = 1';
-    } else if (category === 'Sale') {
-      sql += ' AND is_sale = 1';
-    } else if (category === 'Premium') {
-      sql += ' AND is_exclusive = 1';
-    } else {
-      // Support comma-separated categories (e.g., "Men,ছেলেদের")
-      const catList = category.split(',').map(c => c.trim()).filter(Boolean);
-      const maps = { 
-        'Men': ['Men', 'ছেলেদের'], 
-        'Women': ['Women', 'মেয়েদের'], 
-        'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 
-        'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] 
-      };
-      // Expand all categories through the map, dedup
-      const allCats = new Set();
-      catList.forEach(c => {
-        const mapped = maps[c];
-        if (mapped) mapped.forEach(m => allCats.add(m));
-        else allCats.add(c);
-      });
-      const cats = [...allCats];
-      sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
-      params.push(...cats);
+  try {
+    if (id) {
+      const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
+      const singleData = { data: parseProductRow(res[0]) || null, count: res.length };
+      await kvSet(c, cacheKey, singleData, 120);
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      return c.json(singleData);
     }
-  }
-  if (subcategory) {
-    const rawSub = String(subcategory).trim();
-    const normalizedSub = rawSub.replace(/-/g, ' ').toLowerCase();
-    const keywords = SUB_KEYWORDS_MAP[normalizedSub] || SUB_KEYWORDS_MAP[rawSub.toLowerCase()] || [normalizedSub];
 
-    const conditions = ['subcategory = ?', 'LOWER(subcategory) = ?'];
-    params.push(rawSub, normalizedSub);
+    if (ids) {
+      const list = ids.split(',').filter(Boolean);
+      if (!list.length) return c.json({ data: [], count: 0 });
+      const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
+      const listData = { data: res.map(parseProductRow), count: res.length };
+      await kvSet(c, cacheKey, listData, 120);
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      return c.json(listData);
+    }
 
-    keywords.forEach(kw => {
-      if (kw.length >= 2) {
-        conditions.push('LOWER(name) LIKE ?');
-        params.push(`%${kw.toLowerCase()}%`);
+    // Lightweight column selection for listings (omits redundant images array column for 3x smaller payload)
+    let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, image_url, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
+    let whereSql = ' WHERE 1=1';
+    const params = [];
+
+    if (status) { whereSql += ' AND status = ?'; params.push(status); }
+    if (category && category !== 'All') {
+      if (category === 'New') {
+        whereSql += ' AND is_new = 1';
+      } else if (category === 'Sale') {
+        whereSql += ' AND is_sale = 1';
+      } else if (category === 'Premium') {
+        whereSql += ' AND is_exclusive = 1';
+      } else {
+        const catList = category.split(',').map(c => c.trim()).filter(Boolean);
+        const maps = { 
+          'Men': ['Men', 'ছেলেদের'], 
+          'Women': ['Women', 'মেয়েদের'], 
+          'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 
+          'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] 
+        };
+        const allCats = new Set();
+        catList.forEach(c => {
+          const mapped = maps[c];
+          if (mapped) mapped.forEach(m => allCats.add(m));
+          else allCats.add(c);
+        });
+        const cats = [...allCats];
+        whereSql += ` AND category IN (${cats.map(() => '?').join(',')})`;
+        params.push(...cats);
       }
-    });
+    }
+    if (subcategory) {
+      const rawSub = String(subcategory).trim();
+      const normalizedSub = rawSub.replace(/-/g, ' ').toLowerCase();
+      const keywords = SUB_KEYWORDS_MAP[normalizedSub] || SUB_KEYWORDS_MAP[rawSub.toLowerCase()] || [normalizedSub];
 
-    sql += ` AND (${conditions.join(' OR ')})`;
+      const conditions = ['subcategory = ?', 'LOWER(subcategory) = ?'];
+      params.push(rawSub, normalizedSub);
+
+      keywords.forEach(kw => {
+        if (kw.length >= 2) {
+          conditions.push('LOWER(name) LIKE ?');
+          params.push(`%${kw.toLowerCase()}%`);
+        }
+      });
+
+      whereSql += ` AND (${conditions.join(' OR ')})`;
+    }
+    if (search) {
+      whereSql += ' AND (name LIKE ? OR description LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    const pageNum = Math.max(0, parseInt(page) || 0);
+    const limitNum = Math.max(1, Math.min(parseInt(limit) || 12, 100));
+    const dir = ascending === 'true' ? 'ASC' : 'DESC';
+    const orderCol = order_by === 'created_at' ? 'created_at' : 'serial_no';
+
+    const querySql = `SELECT ${selectFields} FROM products${whereSql} ORDER BY ${orderCol} ${dir} LIMIT ? OFFSET ?`;
+    const queryParams = [...params, limitNum, pageNum * limitNum];
+
+    const rows = await conn.execute(querySql, queryParams);
+
+    // Fast count: if on page 0 and rows < limit, count equals rows.length without extra DB roundtrip
+    let total = rows.length;
+    if (pageNum > 0 || rows.length >= limitNum) {
+      try {
+        const countRes = await conn.execute(`SELECT COUNT(*) as total FROM products${whereSql}`, params);
+        total = countRes[0]?.total || rows.length;
+      } catch (_) {
+        total = rows.length;
+      }
+    }
+
+    const resultData = { data: rows.map(parseProductRow), count: total };
+    await kvSet(c, cacheKey, resultData, 120);
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    return c.json(resultData);
+  } catch (err) {
+    console.error('Products API Error:', err);
+    return c.json({ data: [], count: 0, error: err.message }, 500);
   }
-  if (search) {
-    sql += ' AND (name LIKE ? OR description LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  // Count
-  const countSQL = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
-  const countRes = await conn.execute(countSQL, params);
-  const total = countRes[0].total;
-
-  // Paginate
-  const dir = ascending === 'true' ? 'ASC' : 'DESC';
-  sql += ` ORDER BY ${order_by === 'created_at' ? 'created_at' : 'serial_no'} ${dir}`;
-  sql += ' LIMIT ? OFFSET ?';
-  params.push(parseInt(limit), parseInt(page) * parseInt(limit));
-
-  const res = await conn.execute(sql, params);
-  const resultData = { data: res.map(parseProductRow), count: total };
-  await kvSet(c, cacheKey, resultData, 60);
-  c.header('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300');
-  return c.json(resultData);
 });
 
 app.get('/products/:id', async (c) => {
