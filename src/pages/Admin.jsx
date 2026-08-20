@@ -12,6 +12,7 @@ import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
