@@ -286,9 +286,17 @@ class QueryBuilder {
         
         const url = `${API_BASE}${endpoint}?${params.toString()}`;
 
-        // Cache static endpoints like site_settings and subcategory-counts in-memory for 5 minutes (prevents duplicate queries across components)
-        if (this._table === 'site_settings' || this._table === 'subcategory-counts') {
-            return getCachedOrFetch(url, 300000, async () => {
+        // Cache endpoints in-memory to prevent duplicate parallel queries across components:
+        // - site_settings & subcategory-counts: 5 mins
+        // - products & reviews: 30 secs
+        const cacheTtl = (this._table === 'site_settings' || this._table === 'subcategory-counts')
+            ? 300000
+            : (this._table === 'products' || this._table === 'reviews')
+                ? 30000
+                : 0;
+
+        if (cacheTtl > 0) {
+            return getCachedOrFetch(url, cacheTtl, async () => {
                 const res = await fetch(url, { headers: headers() });
                 const json = await res.json();
                 if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
