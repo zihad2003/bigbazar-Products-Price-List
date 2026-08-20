@@ -159,13 +159,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchReviews();
     fetchSiteSettings();
     fetchAnalyticsStats();
-
-    // Refresh live visitor analytics every 60 seconds only while admin tab is active/visible
-    const statsTimer = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      fetchAnalyticsStats();
-    }, 60000);
-    return () => clearInterval(statsTimer);
   }, []);
 
   const fetchProducts = async (limitToFetch = productLimit) => {
