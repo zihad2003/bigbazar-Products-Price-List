@@ -160,11 +160,11 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchSiteSettings();
     fetchAnalyticsStats();
 
-    // Refresh live visitor analytics every 30 seconds only while admin tab is active/visible
+    // Refresh live visitor analytics every 60 seconds only while admin tab is active/visible
     const statsTimer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchAnalyticsStats();
-    }, 30000);
+    }, 60000);
     return () => clearInterval(statsTimer);
   }, []);
 

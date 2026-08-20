@@ -1128,44 +1128,66 @@ app.post('/analytics/ping', async (c) => {
 });
 
 app.get('/analytics/stats', async (c) => {
-  const now = Date.now();
-  const conn = getDb(c.env);
-  const todayKey = getTodayKey();
   const kv = c.env?.BIGBAZAR_CACHE;
+
+  // ── KV Response Cache: return cached stats instantly (avoids ALL DB queries) ──
+  if (kv) {
+    const cachedStats = await kvGet(c, 'cache:analytics:stats');
+    if (cachedStats) {
+      return c.json(cachedStats, 200, {
+        'Cache-Control': 'public, max-age=15, s-maxage=30'
+      });
+    }
+  }
+
+  const now = Date.now();
+  const todayKey = getTodayKey();
   let todayCount = 0;
   let totalCount = 0;
   let onlineNow = 1;
 
   try {
-    // 1. Online count from KV if bound
+    // 1. Online count: use KV list (no DB) when available
     if (kv && kv.list) {
       const list = await kv.list({ prefix: 'ping:' });
       onlineNow = Math.max(1, (list.keys || []).length);
     }
 
-    // 2. Fetch visitor counts from DB
-    const res = await conn.execute(
-      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors') OR `key` LIKE 'ping:%'",
-      [todayKey]
-    );
-
-    let dbActivePings = 0;
-    const cutoff = now - 180000; // 3-minute active window
-
-    res.forEach(r => {
-      if (r.key.startsWith('ping:')) {
-        const pingTime = parseInt(r.value) || 0;
-        if (pingTime >= cutoff) dbActivePings++;
-      } else {
+    // 2. Fetch ONLY today + lifetime counters from DB (cheap indexed lookup, NO full table scan)
+    //    When KV is available we SKIP the expensive `LIKE 'ping:%'` query entirely.
+    if (kv) {
+      // Lightweight: only 2 specific keys via IN clause (indexed, ~1 RU)
+      const conn = getDb(c.env);
+      const res = await conn.execute(
+        "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors')",
+        [todayKey]
+      );
+      res.forEach(r => {
         const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
         if (r.key === todayKey) todayCount = val;
         if (r.key === 'site_visitors') totalCount = val;
-      }
-    });
-
-    if (!kv) {
+      });
+    } else {
+      // No KV fallback: need full scan for ping-based online count
+      const conn = getDb(c.env);
+      const res = await conn.execute(
+        "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors') OR `key` LIKE 'ping:%'",
+        [todayKey]
+      );
+      let dbActivePings = 0;
+      const cutoff = now - 180000;
+      res.forEach(r => {
+        if (r.key.startsWith('ping:')) {
+          const pingTime = parseInt(r.value) || 0;
+          if (pingTime >= cutoff) dbActivePings++;
+        } else {
+          const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
+          if (r.key === todayKey) todayCount = val;
+          if (r.key === 'site_visitors') totalCount = val;
+        }
+      });
       onlineNow = Math.max(1, dbActivePings);
-      // Clean up stale TiDB pings (probabilistic ~10% of stats requests to prevent burning RUs)
+      // Probabilistic cleanup of stale pings (~10% chance)
       if (Math.random() < 0.1) {
         conn.execute("DELETE FROM site_settings WHERE `key` LIKE 'ping:%' AND CAST(value AS UNSIGNED) < ?", [cutoff]).catch(() => {});
       }
@@ -1174,13 +1196,20 @@ app.get('/analytics/stats', async (c) => {
     console.error('Analytics stats fetch error:', err);
   }
 
-  return c.json({
+  const responseData = {
     success: true,
     online_now: onlineNow,
     today_count: todayCount,
     total_count: totalCount
-  }, 200, {
-    'Cache-Control': 'public, max-age=15, s-maxage=15'
+  };
+
+  // Cache the full response in KV for 30 seconds to prevent repeated DB hits
+  if (kv) {
+    await kvSet(c, 'cache:analytics:stats', responseData, 30);
+  }
+
+  return c.json(responseData, 200, {
+    'Cache-Control': 'public, max-age=15, s-maxage=30'
   });
 });
 
