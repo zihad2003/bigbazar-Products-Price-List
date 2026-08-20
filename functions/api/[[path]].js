@@ -1057,7 +1057,7 @@ app.get('/settings', async (c) => {
   }
 
   const conn = getDb(c.env);
-  const res = await conn.execute("SELECT `key`, value FROM site_settings WHERE `key` NOT LIKE 'ping:%'");
+  const res = await conn.execute("SELECT `key`, value FROM site_settings WHERE `key` NOT LIKE 'ping:%' AND `key` NOT LIKE 'rl:%' AND `key` NOT LIKE 'site_visitors%'");
   const settings = {};
   res.forEach(r => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
