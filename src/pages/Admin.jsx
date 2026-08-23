@@ -2056,9 +2056,42 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       </div>
 
                       <div className="pt-6 space-y-6">
-                        <div>
-                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
+                        {/* Top-Level Category Dropdown & Quick Select */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.2em] px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
+                            {form.category && (
+                              <button
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, category: '', subcategory: '' }))}
+                                className="text-[10px] font-bold text-red-400 hover:underline"
+                              >
+                                Clear Category
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Category Dropdown */}
+                          <div className="relative group">
+                            <select
+                              value={form.category || ''}
+                              onChange={e => setForm(prev => ({ ...prev, category: e.target.value, subcategory: '' }))}
+                              className={`w-full bg-black/40 border-2 px-4 md:px-5 h-12 md:h-14 rounded-2xl text-xs md:text-sm font-black outline-none transition-all appearance-none cursor-pointer pr-10 text-white ${
+                                form.category ? 'border-[#ce112d]/50 bg-[#ce112d]/5 focus:border-[#ce112d]' : 'border-zinc-800 hover:border-zinc-700 focus:border-[#ce112d]'
+                              }`}
+                            >
+                              <option value="" className="bg-zinc-900 text-amber-400 font-bold">⚠️ Uncategorized (ক্যাটাগরি নেই)</option>
+                              {TOP_CATEGORIES.map(cat => (
+                                <option key={cat.id} value={cat.id} className="bg-zinc-900 text-white">
+                                  {cat.en} ({cat.bn})
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-[#ce112d] transition-colors" />
+                          </div>
+
+                          {/* Category Quick Pills */}
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3 pt-1">
                             {[
                               { id: 'Men', label: 'Men' },
                               { id: 'Women', label: 'Women' },
@@ -2072,7 +2105,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                   key={cat.id || 'uncat'}
                                   type="button"
                                   onClick={() => setForm(prev => ({ ...prev, category: cat.id, subcategory: '' }))}
-                                  className={`py-3 md:py-4 px-2 rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.05em] transition-all border-2 shadow-xl hover:scale-[1.02] active:scale-95 ${isSelected ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-4 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
+                                  className={`py-2.5 md:py-3 px-2 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.05em] transition-all border-2 shadow-sm hover:scale-[1.02] active:scale-95 ${isSelected ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-2 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
                                 >
                                   {cat.label}
                                 </button>
@@ -2081,10 +2114,43 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           </div>
                         </div>
 
+                        {/* Subcategory Dropdown & Quick Select */}
                         {form.category && (
-                          <div className="pt-2">
-                            <label className="text-[10px] font-black uppercase text-rose-400 mb-3 block tracking-[0.2em] px-1">Subcategory / Garment Type (সাব-ক্যাটাগরি / পোশাকের ধরন)</label>
-                            <div className="flex flex-wrap gap-2 md:gap-3">
+                          <div className="pt-2 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-black uppercase text-rose-400 block tracking-[0.2em] px-1">Subcategory / Garment Type (সাব-ক্যাটাগরি / পোশাকের ধরন)</label>
+                              {form.subcategory && (
+                                <button
+                                  type="button"
+                                  onClick={() => setForm(prev => ({ ...prev, subcategory: '' }))}
+                                  className="text-[10px] font-bold text-rose-400 hover:underline"
+                                >
+                                  Clear Subcategory
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Subcategory Dropdown */}
+                            <div className="relative group">
+                              <select
+                                value={form.subcategory || ''}
+                                onChange={e => setForm(prev => ({ ...prev, subcategory: e.target.value }))}
+                                className={`w-full bg-black/40 border-2 px-4 md:px-5 h-12 md:h-14 rounded-2xl text-xs md:text-sm font-black outline-none transition-all appearance-none cursor-pointer pr-10 text-white ${
+                                  form.subcategory ? 'border-rose-500/50 bg-rose-500/5 focus:border-rose-500' : 'border-zinc-800 hover:border-zinc-700 focus:border-rose-500'
+                                }`}
+                              >
+                                <option value="" className="bg-zinc-900 text-amber-400 font-bold">⚠️ No Subcategory (সাব-ক্যাটাগরি নেই)</option>
+                                {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => (
+                                  <option key={sub.id} value={sub.id} className="bg-zinc-900 text-white">
+                                    {sub.name_en || sub.en} ({sub.name_bn || sub.bn})
+                                  </option>
+                                ))}
+                              </select>
+                              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-rose-500 transition-colors" />
+                            </div>
+
+                            {/* Subcategory Quick Pills */}
+                            <div className="flex flex-wrap gap-2 md:gap-3 pt-1">
                               {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => {
                                 const isSelected = form.subcategory === sub.id;
                                 return (
@@ -2092,17 +2158,18 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                     key={sub.id}
                                     type="button"
                                     onClick={() => setForm(prev => ({ ...prev, subcategory: isSelected ? '' : sub.id }))}
-                                    className={`px-4 py-2.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black transition-all border-2 flex items-center gap-2 active:scale-95 ${isSelected ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-900/40 ring-2 ring-rose-500/30' : 'bg-zinc-900/60 border-zinc-700/60 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
+                                    className={`px-3.5 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all border-2 flex items-center gap-2 active:scale-95 ${isSelected ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-900/40 ring-2 ring-rose-500/30' : 'bg-zinc-900/60 border-zinc-700/60 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
                                   >
-                                    {sub.image_url && <img src={sub.image_url} alt="" className="w-5 h-5 rounded-full object-cover border border-white/20" />}
+                                    {sub.image_url && <img src={sub.image_url} alt="" className="w-4 h-4 rounded-full object-cover border border-white/20" />}
                                     <span>{sub.name_en || sub.en} ({sub.name_bn || sub.bn})</span>
                                     {isSelected && <Check size={12} className="stroke-[3]" />}
                                   </button>
                                 );
                               })}
                             </div>
+
                             {!form.subcategory && (
-                              <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold flex items-center gap-2">
+                              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold flex items-center gap-2">
                                 <AlertCircle size={14} className="shrink-0 text-amber-400" />
                                 <span>সাব-ক্যাটাগরি সিলেক্ট করা হয়নি (No subcategory selected — product will remain in general category)</span>
                               </div>
