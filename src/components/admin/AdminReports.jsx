@@ -3,7 +3,7 @@ import {
   BarChart3, Calendar, Download, Printer, TrendingUp, DollarSign,
   ShoppingBag, Package, Users, CheckCircle2, Clock, XCircle, Truck,
   Sparkles, Filter, ChevronRight, Search, FileText, ArrowUpRight,
-  PieChart, CreditCard, AlertCircle, RotateCcw, ChevronDown, Layers
+  PieChart, CreditCard, AlertCircle, RotateCcw, ChevronDown, Layers, X
 } from 'lucide-react';
 
 export default function AdminReports({ orders = [], products = [], reviews = [] }) {
@@ -411,11 +411,11 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       {/* Navigation Sub-Tabs for Reports */}
       <div className="flex border-b border-white/10 gap-2 sm:gap-6 overflow-x-auto no-scrollbar pb-1">
         {[
-          { id: 'monthly', label: '📅 Month-Wise Data Report', count: monthlyDataReport.length },
-          { id: 'sales', label: '📊 Sales & Revenue Analytics' },
-          { id: 'products', label: '📦 Product & Inventory Trends', count: productPerformance.length },
-          { id: 'customers', label: '👤 Delivery & Customer Insights' },
-          { id: 'financial', label: '💵 Financial Cash Flow Statement' }
+          { id: 'monthly', label: 'Month-Wise Data Report', icon: Calendar, count: monthlyDataReport.length },
+          { id: 'sales', label: 'Sales & Revenue Analytics', icon: BarChart3 },
+          { id: 'products', label: 'Product & Inventory Trends', icon: Package, count: productPerformance.length },
+          { id: 'customers', label: 'Delivery & Customer Insights', icon: Users },
+          { id: 'financial', label: 'Financial Cash Flow Statement', icon: DollarSign }
         ].map(tab => (
           <button
             key={tab.id}
@@ -426,6 +426,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 : 'border-transparent text-zinc-500 hover:text-zinc-300'
             }`}
           >
+            <tab.icon size={15} className="shrink-0" />
             <span>{tab.label}</span>
             {typeof tab.count === 'number' && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -887,8 +888,8 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 <h3 className="text-xl font-bold uppercase tracking-tight text-white">Print Executive Report</h3>
                 <p className="text-zinc-500 text-xs">Print or save as PDF for record keeping</p>
               </div>
-              <button onClick={() => setShowPrintModal(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5">
-                ✕
+              <button onClick={() => setShowPrintModal(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 flex items-center justify-center">
+                <X size={18} />
               </button>
             </div>
 

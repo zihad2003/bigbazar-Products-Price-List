@@ -84,9 +84,9 @@ const EidAnnouncementModal = () => {
                             <div className="space-y-3">
                                 <h3 className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter leading-none text-white">
                                     {isExpired ? (
-                                        <>Booking <span className="text-amber-500">Closed</span> ⚠️</>
+                                        <>Booking <span className="text-amber-500">Closed</span></>
                                     ) : (
-                                        <>Eid Delivery <span className="text-[#ce112d]">& Update</span> 🌙</>
+                                        <>Eid Delivery <span className="text-[#ce112d]">& Update</span></>
                                     )}
                                 </h3>
                                 <p className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.3em] opacity-60">

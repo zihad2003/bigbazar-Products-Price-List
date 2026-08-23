@@ -286,7 +286,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Order Reference</p>
                                <div className="flex items-center justify-between gap-4">
                                   <h3 className="text-2xl font-black text-neutral-900 italic tracking-tighter">#{String(formData.orderId).toUpperCase()}</h3>
-                                  <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/10">CONFIRMED ✅</div>
+                                  <div className="px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-500/10 flex items-center gap-1.5"><Check size={12} /> CONFIRMED</div>
                                </div>
                            </div>
 
@@ -407,8 +407,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
 
                         {/* ===== Customer Info ===== */}
                         <div className="space-y-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                👤 {language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}
+                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                <User size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span>{language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}</span>
                             </h4>
                             <div className="relative">
                                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
@@ -432,8 +433,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
 
                         {/* ===== Delivery Area Selection ===== */}
                         <div className="space-y-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                📍 {language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                <MapPin size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
                             </h4>
 
                             {/* District + Upazila in a row */}
@@ -451,15 +453,15 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                     >
                                         <option value="">{language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}</option>
                                         {allDistricts.map(d => (
-                                            <option key={d} value={d}>{d}</option>
+                                            <option key={d} value={d} className="text-neutral-900 bg-white">{d}</option>
                                         ))}
                                     </select>
-                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                                 </div>
 
                                 {/* Upazila — only for Chattogram */}
                                 {needsUpazila && (
-                                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="relative">
+                                    <div className="relative">
                                         <select
                                             value={formData.upazila}
                                             onChange={(e) => {
@@ -471,35 +473,28 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                         >
                                             <option value="">{language === 'bn' ? 'উপজেলা নির্বাচন করুন' : 'Select Upazila'}</option>
                                             {chattogramUpazilas.map(u => (
-                                                <option key={u} value={u}>{u}</option>
+                                                <option key={u} value={u} className="text-neutral-900 bg-white">{u}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                                    </motion.div>
+                                        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                                    </div>
                                 )}
                             </div>
 
                             {/* Auto-detected delivery charge badge */}
                             {deliveryInfo && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl ${deliveryInfo.charge === 0
-                                        ? 'bg-green-500/10 border border-green-500/20'
-                                        : 'bg-[#ce112d]/5 border border-[#ce112d]/10'
-                                        }`}
-                                >
-                                    <MapPin size={14} className={deliveryInfo.charge === 0 ? 'text-green-500' : 'text-[#ce112d]'} />
-                                    <span className={`text-xs font-black ${deliveryInfo.charge === 0 ? 'text-green-500' : 'text-[#ce112d]'}`}>
+                                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#ce112d]/5 border border-[#ce112d]/15">
+                                    <Truck size={14} className="text-[#ce112d]" />
+                                    <span className="text-xs font-black text-[#ce112d]">
                                         {deliveryInfo.label}
                                     </span>
-                                </motion.div>
+                                </div>
                             )}
                         </div>
 
                         {/* ===== Note (Optional) ===== */}
                         <div>
-                            <input type="text" name="note" placeholder={language === 'bn' ? "📝 বিশেষ নোট (ঐচ্ছিক)" : "📝 Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
+                            <input type="text" name="note" placeholder={language === 'bn' ? "বিশেষ নোট (ঐচ্ছিক)" : "Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
                                 className="w-full border rounded-xl py-3 px-4 text-sm focus:border-[#ce112d] outline-none transition-all"
                                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                         </div>
@@ -529,13 +524,13 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                         <div className="rounded-2xl border p-4 space-y-2.5" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                             {selectedSize && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>📏 {t('size')}</span>
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{t('size')}</span>
                                     <span className="font-black text-[#ce112d] bg-[#ce112d]/10 px-3 py-1 rounded-lg text-xs uppercase">{selectedSize}</span>
                                 </div>
                             )}
                             {selectedColor && (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>🎨 {t('color')}</span>
+                                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{t('color')}</span>
                                     <span className="font-black px-3 py-1 rounded-lg text-xs uppercase border" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>{selectedColor}</span>
                                 </div>
                             )}
@@ -554,7 +549,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                             <div className="flex justify-between items-center text-sm">
                                 <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{t('delivery_charge')}</span>
                                 <span className="font-black" style={{ color: deliveryInfo?.charge === 0 ? '#22c55e' : 'var(--text-primary)' }}>
-                                    {deliveryInfo ? (deliveryInfo.charge === 0 ? (language === 'bn' ? 'ফ্রি ✅' : 'Free ✅') : `৳${deliveryInfo.charge}`) : '—'}
+                                    {deliveryInfo ? (deliveryInfo.charge === 0 ? (language === 'bn' ? 'ফ্রি' : 'Free') : `৳${deliveryInfo.charge}`) : '—'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center pt-2.5 border-t" style={{ borderColor: 'var(--border-color)' }}>
@@ -565,8 +560,9 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
 
                         {/* ===== Payment Method ===== */}
                         <div className="space-y-3">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                💳 {language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}
+                            <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                <CreditCard size={13} style={{ color: 'var(--text-muted)' }} />
+                                <span>{language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</span>
                             </h4>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
@@ -633,7 +629,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                             <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
                                 <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
                                 <p className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                                    {language === 'bn' ? 'পণ্য হাতে পেয়ে পেমেন্ট করুন। কোনো অগ্রিম দরকার নেই! ✅' : 'Cash on Delivery. No advance needed! ✅'}
+                                    {language === 'bn' ? 'পণ্য হাতে পেয়ে পেমেন্ট করুন। কোনো অগ্রিম দরকার নেই!' : 'Cash on Delivery. No advance needed!'}
                                 </p>
                             </div>
                         )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Phone, Mail, FileText, HelpCircle, Shield, RefreshCw, Info, ShoppingBag, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Mail, FileText, HelpCircle, Shield, RefreshCw, Info, ShoppingBag, MessageCircle, Clock } from 'lucide-react';
 
 const pageData = {
   '/about-us': {
@@ -235,8 +235,9 @@ const pageData = {
           <p className="text-zinc-500 text-xs md:text-sm leading-relaxed font-semibold">
             বারইয়ারহাট পৌরসভা বাজার রোড, মীরসরাই উপজেলা, চট্টগ্রাম বিভাগ, বাংলাদেশ।
           </p>
-          <div className="pt-4 border-t border-zinc-200 text-zinc-400 text-xs font-bold uppercase tracking-wider flex items-center gap-4">
-            <span>🕘 খোলা থাকে: প্রতিদিন সকাল ৯:০০ - রাত ৯:০০ টা পর্যন্ত</span>
+          <div className="pt-4 border-t border-zinc-200 text-zinc-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+            <Clock size={14} className="text-zinc-400 shrink-0" />
+            <span>খোলা থাকে: প্রতিদিন সকাল ৯:০০ - রাত ৯:০০ টা পর্যন্ত</span>
           </div>
         </div>
       </div>

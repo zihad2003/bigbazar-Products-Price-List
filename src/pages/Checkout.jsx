@@ -282,8 +282,9 @@ export default function Checkout() {
 
                     {/* Customer form inputs */}
                     <div className="space-y-4 bg-zinc-50/50 p-6 rounded-3xl border border-neutral-100">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400">
-                            👤 {language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}
+                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400 flex items-center gap-1.5">
+                            <User size={13} className="text-neutral-400" />
+                            <span>{language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}</span>
                         </h4>
                         <div className="relative">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
@@ -304,8 +305,9 @@ export default function Checkout() {
 
                     {/* Location selector */}
                     <div className="space-y-3 bg-zinc-50/50 p-6 rounded-3xl border border-neutral-100">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400">
-                            📍 {language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400 flex items-center gap-1.5">
+                            <MapPin size={13} className="text-neutral-400" />
+                            <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
                         </h4>
                         <div className={`grid gap-3 ${needsUpazila ? 'grid-cols-2' : 'grid-cols-1'}`}>
                             <div className="relative">
@@ -336,7 +338,7 @@ export default function Checkout() {
                         )}
 
                         <div className="pt-2">
-                            <input type="text" name="note" placeholder={language === 'bn' ? "📝 বিশেষ নোট (ঐচ্ছিক)" : "📝 Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
+                            <input type="text" name="note" placeholder={language === 'bn' ? "বিশেষ নোট (ঐচ্ছিক)" : "Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
                                 className="w-full border border-neutral-200 rounded-xl py-3.5 px-4 text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
                         </div>
                     </div>
@@ -392,7 +394,10 @@ export default function Checkout() {
 
                     {/* Payment methods choice */}
                     <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-sm">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-400">💳 {language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</h4>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                            <CreditCard size={13} className="text-neutral-400" />
+                            <span>{language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</span>
+                        </h4>
                         <div className="grid grid-cols-3 gap-2">
                             {[
                                 { id: 'cod', label: language === 'bn' ? 'ক্যাশ অন ক্যাশ' : 'Cash on Delivery', icon: <Truck size={16} /> },

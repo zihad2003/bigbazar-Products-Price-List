@@ -44,11 +44,11 @@ export default function ChatWidget() {
           id: 'welcome',
           role: 'assistant',
           content: language === 'bn' 
-            ? "আসসালামু আলাইকুম! 👋 **BigBazar AI** শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি আজ কী খুঁজছেন? আমাদের মেসেঞ্জারেও অর্ডার করতে পারেন।"
-            : "Hello! 👋 Welcome to **BigBazar AI** Shopping Assistant. What are you looking for today? You can also message us directly on Messenger.",
+            ? "আসসালামু আলাইকুম! **BigBazar AI** শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি আজ কী খুঁজছেন? আমাদের মেসেঞ্জারেও অর্ডার করতে পারেন।"
+            : "Hello! Welcome to **BigBazar AI** Shopping Assistant. What are you looking for today? You can also message us directly on Messenger.",
           quick_replies: language === 'bn'
-            ? ["শাড়ি কালেকশন", "বোরকা ও আবায়া", "পাঞ্জাবি", "💬 মেসেঞ্জারে অর্ডার করুন"]
-            : ["Shop sarees", "Borka & Abaya", "Men's Panjabi", "💬 Order on Messenger"],
+            ? ["শাড়ি কালেকশন", "বোরকা ও আবায়া", "পাঞ্জাবি", "মেসেঞ্জারে অর্ডার করুন"]
+            : ["Shop sarees", "Borka & Abaya", "Men's Panjabi", "Order on Messenger"],
           products: []
         }
       ]);
@@ -125,7 +125,7 @@ export default function ChatWidget() {
           role: 'assistant',
           content: language === 'bn' ? "দুঃখিত, সংযোগে সমস্যা হয়েছে।" : "Sorry, connection error occurred.",
           products: [],
-          quick_replies: ["💬 মেসেঞ্জারে অর্ডার করুন"]
+          quick_replies: ["মেসেঞ্জারে অর্ডার করুন"]
         }
       ]);
     } finally {

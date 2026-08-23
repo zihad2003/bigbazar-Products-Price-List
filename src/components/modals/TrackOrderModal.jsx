@@ -390,7 +390,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                 <div className="flex items-center gap-2 p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl">
                                                     <CheckCircle2 size={14} className="text-green-500" />
                                                     <div>
-                                                        <p className="text-[9px] md:text-[10px] font-black uppercase text-green-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট নিশ্চিত হয়েছে ✅' : 'Payment Confirmed ✅'}</p>
+                                                        <p className="text-[9px] md:text-[10px] font-black uppercase text-green-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট নিশ্চিত হয়েছে' : 'Payment Confirmed'}</p>
                                                         <p className="text-[8px] md:text-[9px] font-medium text-green-500/70">
                                                             {order.is_exclusive_order
                                                                 ? (language === 'bn' ? 'আপনার ৳৫০০ অগ্রিম (Premium) পেমেন্ট পেয়েছি।' : 'We have received your ৳500 advance (Premium) payment.')

@@ -354,7 +354,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 )}
 
                                 <div>
-                                    <textarea name="note" placeholder="📝 বিশেষ অনুরোধ (Optional)" value={formData.note} onChange={handleInputChange} rows="1"
+                                    <textarea name="note" placeholder="বিশেষ অনুরোধ (Optional)" value={formData.note} onChange={handleInputChange} rows="1"
                                         className="w-full border rounded-xl py-3 px-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
                                         style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                 </div>
@@ -371,8 +371,9 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                 )}
 
                                 <div className="space-y-3">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest ml-1" style={{ color: 'var(--text-muted)' }}>
-                                        💳 {language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                        <CreditCard size={13} style={{ color: 'var(--text-muted)' }} />
+                                        <span>{language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</span>
                                     </h4>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[

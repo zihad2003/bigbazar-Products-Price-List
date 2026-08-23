@@ -48,7 +48,7 @@ const StickyBanner = () => {
                                     <Clock size={16} />
                                 </div>
                                 <span className="text-[13px] sm:text-[15px] font-black italic tracking-tight uppercase leading-none">
-                                    🌙 ঈদের আগে পার্সেল হাতে পেতে অর্ডার কনফার্ম করুন আর মাত্র
+                                    ঈদের আগে পার্সেল হাতে পেতে অর্ডার কনফার্ম করুন আর মাত্র
                                 </span>
                             </div>
                             
@@ -87,7 +87,7 @@ const StickyBanner = () => {
                                 <AlertTriangle size={20} />
                             </div>
                             <p className="text-[13px] sm:text-[14px] font-bold leading-relaxed tracking-tight text-center sm:text-left">
-                                ⚠️ কুরিয়ার সার্ভিসের ছুটির কারণে ঈদের আগের ডেলিভারির জন্য নতুন অর্ডার নেওয়া বন্ধ রয়েছে। এখনকার সকল অর্ডার ঈদের পর ডেলিভারি করা হবে।
+                                কুরিয়ার সার্ভিসের ছুটির কারণে ঈদের আগের ডেলিভারির জন্য নতুন অর্ডার নেওয়া বন্ধ রয়েছে। এখনকার সকল অর্ডার ঈদের পর ডেলিভারি করা হবে।
                             </p>
                         </div>
                     )}

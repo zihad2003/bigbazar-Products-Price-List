@@ -46,7 +46,7 @@ const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
                                     : 'bg-[#ce112d] text-white hover:brightness-110 shadow-red-900/40'
                                 }`}
                             >
-                                {type === 'success' ? 'Continue ✓' : 'Dismiss'}
+                                {type === 'success' ? 'Continue' : 'Dismiss'}
                             </button>
                         </div>
 

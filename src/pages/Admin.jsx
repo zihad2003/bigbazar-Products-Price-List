@@ -82,7 +82,7 @@ export default function Admin() {
     const total = Number(order.total_amount) || 0;
     const due = order.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
 
-    const text = `📦 BIG BAZAR ORDER DETAILS
+    const text = `BIG BAZAR ORDER DETAILS
 ━━━━━━━━━━━━━━━━━━━━
 Order Ref: #${order.id.toString().slice(-6).toUpperCase()}
 Date: ${new Date(order.created_at).toLocaleDateString()}
@@ -756,7 +756,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         setSiteSettings(prev => ({ ...prev, hero_banner: { ...prev.hero_banner, image_url: url } }));
         setAlertModal({
           isOpen: true,
-          title: 'Banner Uploaded ✓',
+          title: 'Banner Uploaded',
           message: `Size: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${Math.round((1 - totalAfter / totalBefore) * 100)}%)`,
           type: 'success'
         });
@@ -803,7 +803,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
         setAlertModal({
           isOpen: true,
-          title: `${uploadedUrls.length} Slide${uploadedUrls.length > 1 ? 's' : ''} Uploaded ✓`,
+          title: `${uploadedUrls.length} Slide${uploadedUrls.length > 1 ? 's' : ''} Uploaded`,
           message: `Compressed total: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${savings}%)${failedReasons.length > 0 ? `. ${failedReasons.length} issue(s): ${failedReasons.join(' | ')}` : ''}`,
           type: 'success'
         });
@@ -859,7 +859,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
         setAlertModal({
           isOpen: true,
-          title: `${uploadedUrls.length} Photo${uploadedUrls.length > 1 ? 's' : ''} Uploaded ✓`,
+          title: `${uploadedUrls.length} Photo${uploadedUrls.length > 1 ? 's' : ''} Uploaded`,
           message: `Optimized: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${savings}%)${failedReasons.length > 0 ? `. skipped: ${failedReasons.join(', ')}` : ''}`,
           type: 'success'
         });
@@ -1652,7 +1652,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   </label>
                   <input
                     value={siteSettings.ticker_announcement?.text || ''}
-                    placeholder="Enter your announcement (e.g. 🎉 Free Delivery for Mirsharai on orders over 1000 BDT! | 10% OFF on Eid Collection)"
+                    placeholder="Enter your announcement (e.g. Free Delivery for Mirsharai on orders over 1000 BDT! | 10% OFF on Eid Collection)"
                     onChange={e => setSiteSettings({
                       ...siteSettings,
                       ticker_announcement: { ...siteSettings.ticker_announcement, text: e.target.value }
@@ -1989,7 +1989,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                               }}
                               className="text-[10px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/30 transition-all flex items-center gap-1.5"
                             >
-                              <span>💡 Prefix subcategory "{form.subcategory.split('/')[0]}"</span>
+                              <span>Prefix subcategory "{form.subcategory.split('/')[0]}"</span>
                             </button>
                           )}
                         </div>
@@ -2056,7 +2056,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       </div>
 
                       <div className="pt-6 space-y-6">
-                        {/* Top-Level Category Dropdown & Quick Select */}
+                        {/* Top-Level Category Dropdown */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.2em] px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
@@ -2080,7 +2080,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                 form.category ? 'border-[#ce112d]/50 bg-[#ce112d]/5 focus:border-[#ce112d]' : 'border-zinc-800 hover:border-zinc-700 focus:border-[#ce112d]'
                               }`}
                             >
-                              <option value="" className="bg-zinc-900 text-amber-400 font-bold">⚠️ Uncategorized (ক্যাটাগরি নেই)</option>
+                              <option value="" className="bg-zinc-900 text-amber-400 font-bold">Uncategorized (ক্যাটাগরি নেই)</option>
                               {TOP_CATEGORIES.map(cat => (
                                 <option key={cat.id} value={cat.id} className="bg-zinc-900 text-white">
                                   {cat.en} ({cat.bn})
@@ -2089,32 +2089,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             </select>
                             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-[#ce112d] transition-colors" />
                           </div>
-
-                          {/* Category Quick Pills */}
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3 pt-1">
-                            {[
-                              { id: 'Men', label: 'Men' },
-                              { id: 'Women', label: 'Women' },
-                              { id: 'Kids (Boys)', label: 'Boys' },
-                              { id: 'Kids (Girls)', label: 'Girls' },
-                              { id: '', label: 'Uncategorized' }
-                            ].map(cat => {
-                              const isSelected = (!cat.id && (!form.category || form.category === 'Uncategorized')) || (form.category === cat.id);
-                              return (
-                                <button
-                                  key={cat.id || 'uncat'}
-                                  type="button"
-                                  onClick={() => setForm(prev => ({ ...prev, category: cat.id, subcategory: '' }))}
-                                  className={`py-2.5 md:py-3 px-2 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black uppercase tracking-[0.05em] transition-all border-2 shadow-sm hover:scale-[1.02] active:scale-95 ${isSelected ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-2 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
-                                >
-                                  {cat.label}
-                                </button>
-                              );
-                            })}
-                          </div>
                         </div>
 
-                        {/* Subcategory Dropdown & Quick Select */}
+                        {/* Subcategory Dropdown */}
                         {form.category && (
                           <div className="pt-2 space-y-3">
                             <div className="flex items-center justify-between">
@@ -2139,7 +2116,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                   form.subcategory ? 'border-rose-500/50 bg-rose-500/5 focus:border-rose-500' : 'border-zinc-800 hover:border-zinc-700 focus:border-rose-500'
                                 }`}
                               >
-                                <option value="" className="bg-zinc-900 text-amber-400 font-bold">⚠️ No Subcategory (সাব-ক্যাটাগরি নেই)</option>
+                                <option value="" className="bg-zinc-900 text-amber-400 font-bold">No Subcategory (সাব-ক্যাটাগরি নেই)</option>
                                 {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => (
                                   <option key={sub.id} value={sub.id} className="bg-zinc-900 text-white">
                                     {sub.name_en || sub.en} ({sub.name_bn || sub.bn})
@@ -2148,32 +2125,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                               </select>
                               <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-rose-500 transition-colors" />
                             </div>
-
-                            {/* Subcategory Quick Pills */}
-                            <div className="flex flex-wrap gap-2 md:gap-3 pt-1">
-                              {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => {
-                                const isSelected = form.subcategory === sub.id;
-                                return (
-                                  <button
-                                    key={sub.id}
-                                    type="button"
-                                    onClick={() => setForm(prev => ({ ...prev, subcategory: isSelected ? '' : sub.id }))}
-                                    className={`px-3.5 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all border-2 flex items-center gap-2 active:scale-95 ${isSelected ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-900/40 ring-2 ring-rose-500/30' : 'bg-zinc-900/60 border-zinc-700/60 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
-                                  >
-                                    {sub.image_url && <img src={sub.image_url} alt="" className="w-4 h-4 rounded-full object-cover border border-white/20" />}
-                                    <span>{sub.name_en || sub.en} ({sub.name_bn || sub.bn})</span>
-                                    {isSelected && <Check size={12} className="stroke-[3]" />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {!form.subcategory && (
-                              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold flex items-center gap-2">
-                                <AlertCircle size={14} className="shrink-0 text-amber-400" />
-                                <span>সাব-ক্যাটাগরি সিলেক্ট করা হয়নি (No subcategory selected — product will remain in general category)</span>
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -2382,7 +2333,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                     : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/20'
                                   }`}
                               >
-                                {isAdded ? `✓ ${s}` : `+ ${s}`}
+                                {isAdded ? <span className="inline-flex items-center gap-1"><Check size={11} /> {s}</span> : <span className="inline-flex items-center gap-1"><Plus size={11} /> {s}</span>}
                               </button>
                             );
                           })}
@@ -3169,10 +3120,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           </div>
                           <div className="flex flex-col gap-2 relative z-10">
                             <button onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')} className={`h-11 px-6 rounded-2xl text-[9px] font-black uppercase transition-all shadow-xl ${selectedOrder.is_advance_paid ? 'bg-white text-[#ce112d]' : 'bg-black/30 text-white/60 border border-white/10'}`}>
-                              {selectedOrder.is_advance_paid ? 'ADVANCE PAID ✓' : 'SET ADVANCE'}
+                              {selectedOrder.is_advance_paid ? 'ADVANCE PAID' : 'SET ADVANCE'}
                             </button>
                             <button onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')} className={`h-11 px-6 rounded-2xl text-[9px] font-black uppercase transition-all shadow-xl ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-white text-[#ce112d]' : 'bg-black/30 text-white/60 border border-white/10'}`}>
-                              {selectedOrder.payment_status === 'Fully Paid' ? 'FULLY PAID ✓' : 'SET PAID'}
+                              {selectedOrder.payment_status === 'Fully Paid' ? 'FULLY PAID' : 'SET PAID'}
                             </button>
                           </div>
                         </div>
@@ -3529,13 +3480,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                 onClick={(e) => { e.stopPropagation(); togglePaymentStatus(selectedOrder, 'Advance Paid'); }}
                                 className={`px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedOrder.is_advance_paid ? 'bg-white text-[#ce112d] shadow-xl' : 'bg-black/20 text-white/50 border border-white/10 hover:bg-black/30'}`}
                               >
-                                {selectedOrder.is_advance_paid ? 'Advance Paid✓' : 'Mark Advance Paid'}
+                                {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark Advance Paid'}
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); togglePaymentStatus(selectedOrder, 'Fully Paid'); }}
                                 className={`px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-white text-[#ce112d] shadow-xl' : 'bg-black/20 text-white/50 border border-white/10 hover:bg-black/30'}`}
                               >
-                                {selectedOrder.payment_status === 'Fully Paid' ? 'Fully Paid✓' : 'Mark Fully Paid'}
+                                {selectedOrder.payment_status === 'Fully Paid' ? 'Fully Paid' : 'Mark Fully Paid'}
                               </button>
                             </div>
                           </div>
@@ -3922,7 +3873,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       </option>
                     ))}
                     <option value="__uncategorized__" className="bg-zinc-900 text-amber-400 font-bold">
-                      ⚠️ Uncategorized (ক্যাটাগরি নেই)
+                      Uncategorized (ক্যাটাগরি নেই)
                     </option>
                   </select>
                   <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
@@ -3961,7 +3912,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       ));
                     })()}
                     <option value="__no_subcategory__" className="bg-zinc-900 text-amber-400 font-bold">
-                      ⚠️ No Subcategory / Uncategorized (সাব-ক্যাটাগরি নেই)
+                      No Subcategory / Uncategorized (সাব-ক্যাটাগরি নেই)
                     </option>
                   </select>
                   <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />

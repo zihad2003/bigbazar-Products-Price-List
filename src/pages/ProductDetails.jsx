@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle, X, Lightbulb } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import ProductGallery from '../components/ProductGallery';
 import ProductTabs from '../components/ProductTabs';
@@ -296,12 +296,12 @@ export default function ProductDetails() {
         setValidationError('');
 
         const orderText = `আসসালামু আলাইকুম! আমি এই পণ্যটি অর্ডার করতে চাই:\n\n` +
-            `📌 পণ্য: ${product.name}\n` +
-            `💰 মূল্য: ৳${price}\n` +
-            (selectedColor ? `🎨 কালার: ${selectedColor}\n` : '') +
-            (selectedSize ? `📏 সাইজ: ${selectedSize}\n` : '') +
-            `📦 পরিমাণ: ${quantity}\n` +
-            `🔗 লিংক: ${window.location.href}`;
+            `• পণ্য: ${product.name}\n` +
+            `• মূল্য: ৳${price}\n` +
+            (selectedColor ? `• কালার: ${selectedColor}\n` : '') +
+            (selectedSize ? `• সাইজ: ${selectedSize}\n` : '') +
+            `• পরিমাণ: ${quantity}\n` +
+            `• লিংক: ${window.location.href}`;
 
         try {
             navigator.clipboard.writeText(orderText);
@@ -671,9 +671,9 @@ export default function ProductDetails() {
                         >
                             <button
                                 onClick={() => setShowMessengerModal(false)}
-                                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-sm font-bold"
+                                className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center transition-all"
                             >
-                                ✕
+                                <X size={16} />
                             </button>
 
                             <div className="flex items-center gap-3">
@@ -695,7 +695,7 @@ export default function ProductDetails() {
                             </div>
 
                             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-blue-900">
-                                <span className="text-base">💡</span>
+                                <Lightbulb size={16} className="text-blue-600 shrink-0 mt-0.5" />
                                 <p className="leading-relaxed font-semibold">
                                     {language === 'bn'
                                         ? 'মেসেঞ্জারে চ্যাট খুললে মেসেজ বক্সে চাপ দিয়ে ধরে Paste (পেস্ট) চাপুন এবং আমাদের সেন্ড করুন।'
@@ -711,7 +711,7 @@ export default function ProductDetails() {
                                 className="w-full py-4 bg-[#0084FF] hover:bg-[#0073e6] text-white rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-all active:scale-95 no-underline"
                             >
                                 <MessageCircle size={18} />
-                                <span>{language === 'bn' ? 'মেসেঞ্জারে চ্যাট শুরু করুন 💬' : 'Open Messenger Chat 💬'}</span>
+                                <span>{language === 'bn' ? 'মেসেঞ্জারে চ্যাট শুরু করুন' : 'Open Messenger Chat'}</span>
                             </a>
                         </motion.div>
                     </motion.div>
