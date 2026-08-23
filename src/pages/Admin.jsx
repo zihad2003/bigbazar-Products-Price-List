@@ -6,11 +6,12 @@ import {
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
+import { captureVideoFrame, generateVideoPoster } from '../utils/videoUtils';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -32,6 +33,8 @@ export default function Admin() {
   const [subcatForm, setSubcatForm] = useState({ id: '', name_en: '', name_bn: '', image_url: '', sort_order: 0 });
   const [subcatCategory, setSubcatCategory] = useState('Women');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
+  const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState('All');
   const [editingProduct, setEditingProduct] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -497,30 +500,71 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   };
 
   const handleVideoBlur = async () => {
-    if (!form.video_url || (!form.video_url.includes('instagram.com') && !form.video_url.includes('instagr.am'))) return;
-    setLoading(true);
-    const data = await fetchInstagramData(form.video_url);
-    if (data) {
-      setForm(prev => ({
-        ...prev,
-        platform_id: data.platform_id,
-        images: data.thumbnail ? [data.thumbnail] : prev.images,
-        description: prev.description || data.caption
-      }));
-    } else {
-      setAlertModal({ isOpen: true, title: 'Instagram Error', message: "Could not extract Instagram ID. Please check the URL format.", type: 'error' });
+    if (!form.video_url) return;
+    
+    // Direct Instagram URL handling
+    if (form.video_url.includes('instagram.com') || form.video_url.includes('instagr.am')) {
+      const igId = extractInstagramId(form.video_url);
+      if (igId) {
+        setForm(prev => {
+          const hasImage = (prev.images && prev.images.length > 0) || prev.image_url;
+          const poster = hasImage ? null : generateVideoPoster(prev.name || 'Big Bazar Reel');
+          return {
+            ...prev,
+            platform_id: igId,
+            images: hasImage ? prev.images : [poster],
+            image_url: hasImage ? prev.image_url : poster
+          };
+        });
+      }
+      return;
     }
-    setLoading(false);
+
+    // Direct Video File / URL - capture frame using HTML5 Canvas
+    if (form.video_url.startsWith('http') || form.video_url.startsWith('blob:')) {
+      try {
+        const capturedFrame = await captureVideoFrame(form.video_url);
+        if (capturedFrame) {
+          setForm(prev => ({
+            ...prev,
+            images: (prev.images && prev.images.length > 0) ? prev.images : [capturedFrame],
+            image_url: prev.image_url || capturedFrame
+          }));
+          setPreviewImage(capturedFrame);
+        } else if (!form.images?.length && !form.image_url) {
+          const poster = generateVideoPoster(form.name || 'Big Bazar Video');
+          setForm(prev => ({
+            ...prev,
+            images: [poster],
+            image_url: poster
+          }));
+          setPreviewImage(poster);
+        }
+      } catch (_) {
+        if (!form.images?.length && !form.image_url) {
+          const poster = generateVideoPoster(form.name || 'Big Bazar Video');
+          setForm(prev => ({ ...prev, images: [poster], image_url: poster }));
+          setPreviewImage(poster);
+        }
+      }
+    }
   };
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    // Validation: Product must have an image
-    if (!form.images?.length && !form.image_url) {
-      setLoading(false);
-      setAlertModal({ isOpen: true, title: 'Image Required', message: 'অনুগ্রহ করে পণ্যের ছবি যুক্ত করুন (Product image must be provided).', type: 'error' });
+    // If product has a video URL but no manual image, auto-generate video frame poster
+    let currentImages = [...(form.images || [])];
+    let currentImageUrl = form.image_url;
+    if (!currentImages.length && !currentImageUrl && form.video_url) {
+      const videoPoster = generateVideoPoster(form.name || 'Big Bazar Video');
+      currentImages = [videoPoster];
+      currentImageUrl = videoPoster;
+    }
+
+    // Validation: Product must have an image or video poster
+    if (!currentImages.length && !currentImageUrl) {
+      setAlertModal({ isOpen: true, title: 'Image or Video Required', message: 'অনুগ্রহ করে পণ্যের ছবি বা ভিডিও লিঙ্ক যুক্ত করুন (Product image or video must be provided).', type: 'error' });
       return;
     }
 
@@ -528,7 +572,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     if (form.available_colors && form.available_colors.length > 0) {
       const missingColorImage = form.available_colors.find(c => !c.image);
       if (missingColorImage) {
-        setLoading(false);
         setAlertModal({ isOpen: true, title: 'Color Image Required', message: `অনুগ্রহ করে '${missingColorImage.name || 'রঙ'}' এর জন্য একটি ছবি যুক্ত করুন।`, type: 'error' });
         return;
       }
@@ -537,75 +580,89 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     // Auto-increment Serial Number Calculation if not manually specified
     let finalSerialNo = form.serial_no;
     if (!finalSerialNo && !editingProduct) {
-      const { data: maxSerialData } = await bigBazarApi
-        .from('products')
-        .select('serial_no')
-        .order('serial_no', { ascending: false })
-        .limit(1);
-
-      const maxSerial = maxSerialData && maxSerialData.length > 0 ? (parseInt(maxSerialData[0].serial_no) || 0) : 0;
+      const maxSerial = products && products.length > 0
+        ? Math.max(...products.map(p => parseInt(p.serial_no) || 0), 0)
+        : 0;
       finalSerialNo = maxSerial + 1;
     }
 
     const { _newColorHex, _newColorName, _colorSuggestions, ...formData } = form;
     const productData = {
       ...formData,
+      images: currentImages,
+      image_url: currentImages.length > 0 ? currentImages[0] : (currentImageUrl || null),
       price: parseFloat(form.price) || 0,
       original_price: form.original_price ? parseFloat(form.original_price) : null,
-      serial_no: parseInt(finalSerialNo),
-      stock_count: form.stock_count !== '' ? parseInt(form.stock_count) : null,
+      serial_no: parseInt(finalSerialNo) || 1,
+      stock_count: form.stock_count !== '' && form.stock_count !== null && form.stock_count !== undefined ? parseInt(form.stock_count) : null,
       is_exclusive: form.is_exclusive || false,
-      // platform_id can be null; video_url & description must stay as empty string (DB NOT NULL)
       platform_id: form.platform_id || null,
       video_url: form.video_url || '',
       description: form.description || '',
-      image_url: (form.images && form.images.length > 0) ? form.images[0] : (form.image_url || null),
     };
 
-    let error;
     if (editingProduct) {
-      const { error: err } = await bigBazarApi.from('products').update(productData).eq('id', editingProduct.id);
-      error = err;
-    } else {
-      const { error: err } = await bigBazarApi.from('products').insert([productData]);
-      error = err;
-    }
-
-    if (error) {
-      console.error("Detailed Error:", error);
-      let message = error.message || error.details || "Failed to save product to database.";
-      let title = "Save Failed";
-
-      if (error.message?.includes("duplicate key") || error.code === '23505') {
-        title = "Duplicate Entry";
-        message = "A product with this serial number or name already exists.";
-      } else if (error.message?.includes("null value") || error.code === '23502') {
-        title = "Missing Details";
-        const colMatch = error.message?.match(/column "(\w+)"/);
-        const colName = colMatch ? colMatch[1] : null;
-        message = colName
-          ? `The field "${colName}" is required.`
-          : "Please fill in all required fields (Product Name, Price).";
-      } else if (error.message?.includes("network")) {
-        title = "Connection Error";
-        message = "Network error. Please check your internet connection.";
-      }
-
-      setFormAlert({ title, message, type: 'error' });
-      setAlertModal({ isOpen: true, title, message, type: 'error' });
-    } else {
-      const msg = editingProduct ? "Product updated successfully!" : "New product added successfully!";
-      setFormAlert({ title: "Success!", message: msg, type: 'success' });
+      // ── OPTIMISTIC INSTANT UPDATE (<50ms UI response) ──
+      const updatedProduct = {
+        ...editingProduct,
+        ...productData,
+        id: editingProduct.id
+      };
+      setProducts(prev => prev.map(p => p.id === editingProduct.id ? updatedProduct : p));
+      cancelEdit();
+      setActiveTab('published');
       setAlertModal({
         isOpen: true,
-        title: "Success!",
-        message: msg,
-        type: 'success'
+        title: "Updated!",
+        message: "Product updated successfully!",
+        type: "success"
       });
+
+      // Background DB sync
+      bigBazarApi.from('products').update(productData).eq('id', editingProduct.id).then(({ error }) => {
+        if (error) {
+          console.error("Background update error:", error);
+          setAlertModal({
+            isOpen: true,
+            title: "Sync Error",
+            message: "Failed to sync update to database: " + error.message,
+            type: "error"
+          });
+          fetchProducts();
+        }
+      });
+    } else {
+      // ── OPTIMISTIC INSTANT INSERT (<50ms UI response) ──
+      const newId = crypto.randomUUID();
+      const newProduct = {
+        ...productData,
+        id: newId,
+        created_at: new Date().toISOString()
+      };
+      setProducts(prev => [newProduct, ...prev]);
       cancelEdit();
-      fetchProducts();
+      setActiveTab('published');
+      setAlertModal({
+        isOpen: true,
+        title: "Added!",
+        message: "New product added successfully!",
+        type: "success"
+      });
+
+      // Background DB sync
+      bigBazarApi.from('products').insert([{ ...productData, id: newId }]).then(({ error }) => {
+        if (error) {
+          console.error("Background insert error:", error);
+          setAlertModal({
+            isOpen: true,
+            title: "Save Failed",
+            message: error.message || "Failed to save product to database.",
+            type: "error"
+          });
+          fetchProducts();
+        }
+      });
     }
-    setLoading(false);
   };
 
   const handleBannerUpdate = async (e) => {
@@ -2001,22 +2058,26 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       <div className="pt-6 space-y-6">
                         <div>
                           <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
                             {[
                               { id: 'Men', label: 'Men' },
                               { id: 'Women', label: 'Women' },
                               { id: 'Kids (Boys)', label: 'Boys' },
-                              { id: 'Kids (Girls)', label: 'Girls' }
-                            ].map(cat => (
-                              <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => setForm(prev => ({ ...prev, category: cat.id, subcategory: '' }))}
-                                className={`py-3 md:py-4 px-3 rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.1em] transition-all border-2 shadow-xl hover:scale-[1.02] active:scale-95 ${form.category === cat.id ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-4 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
-                              >
-                                {cat.label}
-                              </button>
-                            ))}
+                              { id: 'Kids (Girls)', label: 'Girls' },
+                              { id: '', label: 'Uncategorized' }
+                            ].map(cat => {
+                              const isSelected = (!cat.id && (!form.category || form.category === 'Uncategorized')) || (form.category === cat.id);
+                              return (
+                                <button
+                                  key={cat.id || 'uncat'}
+                                  type="button"
+                                  onClick={() => setForm(prev => ({ ...prev, category: cat.id, subcategory: '' }))}
+                                  className={`py-3 md:py-4 px-2 rounded-2xl md:rounded-[24px] text-[10px] md:text-[11px] font-black uppercase tracking-[0.05em] transition-all border-2 shadow-xl hover:scale-[1.02] active:scale-95 ${isSelected ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-red-900/30 ring-4 ring-red-900/20' : 'bg-black/40 border-white/5 text-zinc-500 hover:border-white/10'}`}
+                                >
+                                  {cat.label}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -3708,66 +3769,223 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
           </div>
         ) : (
-          <div className="space-y-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-              <div>
-                <h2 className="text-3xl font-bold uppercase tracking-tight text-white">{activeTab === 'published' ? 'Published' : activeTab === 'pending' ? 'Pending' : 'Sold Out'} <span className="text-[#ce112d]">Feed</span></h2>
-                <div className="flex items-center gap-3 flex-wrap mt-3">
-                  <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">
-                    {products.filter(p => p.status === (activeTab === 'soldout' ? p.status : activeTab)).length} Items Loaded
-                  </p>
-                  {hasMoreProducts && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleLoadMoreProducts}
-                        disabled={loading}
-                        className="flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-3.5 py-1.5 rounded-full border border-[#ce112d]/20 transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {loading ? <RotateCcw size={12} className="animate-spin" /> : <Plus size={12} />}
-                        <span>Load 500 More</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleLoadAllProducts}
-                        disabled={loading}
-                        className="flex items-center gap-1.5 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-white/10 transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        <Sparkles size={12} className="text-amber-400" />
-                        <span>Load All Products</span>
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowRangeDeleteModal(true)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-1.5 rounded-full border border-red-500/20 transition-all active:scale-95 ml-auto"
-                  >
-                    <Trash2 size={12} />
-                    <span>Delete Serial Range</span>
-                  </button>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
+                <div>
+                  <h2 className="text-3xl font-bold uppercase tracking-tight text-white">
+                    {activeTab === 'published' ? 'Published' : activeTab === 'pending' ? 'Pending' : 'Sold Out'} <span className="text-[#ce112d]">Feed</span>
+                  </h2>
+                  <div className="flex items-center gap-3 flex-wrap mt-3">
+                    <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">
+                      {products.filter(p => {
+                        if (!p) return false;
+                        if (activeTab === 'soldout') return p.is_sold_out;
+                        return p.status === activeTab && !p.is_sold_out;
+                      }).length} Items in Tab
+                    </p>
+                    {hasMoreProducts && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleLoadMoreProducts}
+                          disabled={loading}
+                          className="flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-3.5 py-1.5 rounded-full border border-[#ce112d]/20 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {loading ? <RotateCcw size={12} className="animate-spin" /> : <Plus size={12} />}
+                          <span>Load 500 More</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleLoadAllProducts}
+                          disabled={loading}
+                          className="flex items-center gap-1.5 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-white/10 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <Sparkles size={12} className="text-amber-400" />
+                          <span>Load All Products</span>
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowRangeDeleteModal(true)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-1.5 rounded-full border border-red-500/20 transition-all active:scale-95 ml-auto"
+                    >
+                      <Trash2 size={12} />
+                      <span>Delete Serial Range</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="relative w-full sm:w-72 group">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#ce112d] transition-colors" />
-                <input
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 pl-12 pr-4 h-12 rounded-2xl text-sm font-medium focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition-all placeholder:text-zinc-700"
-                  placeholder="Search products..."
-                />
+
+              {/* ── Filter Controls Bar: Search + Category Dropdown + Subcategory Dropdown ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-zinc-900/60 p-3.5 rounded-2xl border border-white/5 backdrop-blur-md">
+                {/* Search Bar */}
+                <div className="sm:col-span-4 relative group">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#ce112d] transition-colors" />
+                  <input
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full bg-black/50 border border-zinc-800 pl-10 pr-4 h-11 rounded-xl text-xs font-medium focus:border-zinc-500 outline-none transition-all placeholder:text-zinc-600 text-white"
+                    placeholder="Search name, SKU, serial..."
+                  />
+                  {searchTerm && (
+                    <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Dropdown Filter */}
+                <div className="sm:col-span-4 relative">
+                  <select
+                    value={selectedCategoryFilter}
+                    onChange={e => {
+                      setSelectedCategoryFilter(e.target.value);
+                      setSelectedSubcategoryFilter('All'); // Reset subcategory when category changes
+                    }}
+                    className={`w-full bg-black/50 border h-11 px-3.5 rounded-xl text-xs font-bold outline-none transition-all appearance-none cursor-pointer pr-9 ${
+                      selectedCategoryFilter !== 'All' ? 'border-[#ce112d] text-white bg-[#ce112d]/10' : 'border-zinc-800 text-zinc-300'
+                    }`}
+                  >
+                    <option value="All" className="bg-zinc-900 text-white">All Categories (সব ক্যাটাগরি)</option>
+                    {TOP_CATEGORIES.map(cat => (
+                      <option key={cat.id} value={cat.id} className="bg-zinc-900 text-white">
+                        {cat.en} ({cat.bn})
+                      </option>
+                    ))}
+                    <option value="__uncategorized__" className="bg-zinc-900 text-amber-400 font-bold">
+                      ⚠️ Uncategorized (ক্যাটাগরি নেই)
+                    </option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                </div>
+
+                {/* Subcategory Dropdown Filter */}
+                <div className="sm:col-span-4 relative">
+                  <select
+                    value={selectedSubcategoryFilter}
+                    onChange={e => setSelectedSubcategoryFilter(e.target.value)}
+                    className={`w-full bg-black/50 border h-11 px-3.5 rounded-xl text-xs font-bold outline-none transition-all appearance-none cursor-pointer pr-9 ${
+                      selectedSubcategoryFilter !== 'All' ? 'border-rose-500 text-white bg-rose-500/10' : 'border-zinc-800 text-zinc-300'
+                    }`}
+                  >
+                    <option value="All" className="bg-zinc-900 text-white">All Subcategories (সব সাব-ক্যাটাগরি)</option>
+                    {(() => {
+                      const merged = mergeWithDynamic(subcategoriesData);
+                      let subsToDisplay = [];
+                      if (selectedCategoryFilter && selectedCategoryFilter !== 'All' && selectedCategoryFilter !== '__uncategorized__') {
+                        subsToDisplay = merged[selectedCategoryFilter] || [];
+                      } else {
+                        const seen = new Set();
+                        Object.values(merged).forEach(list => {
+                          (list || []).forEach(sub => {
+                            if (!seen.has(sub.id)) {
+                              seen.add(sub.id);
+                              subsToDisplay.push(sub);
+                            }
+                          });
+                        });
+                      }
+                      return subsToDisplay.map(sub => (
+                        <option key={sub.id} value={sub.id} className="bg-zinc-900 text-white">
+                          {sub.name_en || sub.en} ({sub.name_bn || sub.bn})
+                        </option>
+                      ));
+                    })()}
+                    <option value="__no_subcategory__" className="bg-zinc-900 text-amber-400 font-bold">
+                      ⚠️ No Subcategory / Uncategorized (সাব-ক্যাটাগরি নেই)
+                    </option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                </div>
               </div>
+
+              {/* Active Filter Indicators */}
+              {(selectedCategoryFilter !== 'All' || selectedSubcategoryFilter !== 'All' || searchTerm) && (
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <span className="text-zinc-500 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <Filter size={12} className="text-[#ce112d]" /> Filters Active:
+                  </span>
+                  {selectedCategoryFilter !== 'All' && (
+                    <span className="px-2.5 py-1 rounded-lg bg-[#ce112d]/15 border border-[#ce112d]/30 text-white text-[11px] font-bold flex items-center gap-1.5">
+                      Cat: {selectedCategoryFilter === '__uncategorized__' ? 'Uncategorized' : selectedCategoryFilter}
+                      <button onClick={() => setSelectedCategoryFilter('All')} className="hover:text-red-300"><X size={12} /></button>
+                    </span>
+                  )}
+                  {selectedSubcategoryFilter !== 'All' && (
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-white text-[11px] font-bold flex items-center gap-1.5">
+                      Subcat: {selectedSubcategoryFilter === '__no_subcategory__' ? 'No Subcategory' : selectedSubcategoryFilter}
+                      <button onClick={() => setSelectedSubcategoryFilter('All')} className="hover:text-rose-300"><X size={12} /></button>
+                    </span>
+                  )}
+                  {searchTerm && (
+                    <span className="px-2.5 py-1 rounded-lg bg-zinc-800 border border-white/10 text-zinc-300 text-[11px] font-bold flex items-center gap-1.5">
+                      Search: "{searchTerm}"
+                      <button onClick={() => setSearchTerm('')} className="hover:text-white"><X size={12} /></button>
+                    </span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedCategoryFilter('All');
+                      setSelectedSubcategoryFilter('All');
+                      setSearchTerm('');
+                    }}
+                    className="text-[10px] font-bold text-zinc-400 hover:text-white underline underline-offset-2 ml-1"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               {products.filter(p => {
                 if (!p) return false;
-                const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase());
-                if (activeTab === 'soldout') return p.is_sold_out && matchesSearch;
-                if (activeTab === 'pending' || activeTab === 'published') {
-                  return p.status === activeTab && !p.is_sold_out && matchesSearch;
+                
+                // Status filter based on active tab
+                if (activeTab === 'soldout') {
+                  if (!p.is_sold_out) return false;
+                } else if (activeTab === 'pending' || activeTab === 'published') {
+                  if (p.status !== activeTab || p.is_sold_out) return false;
+                } else {
+                  return false;
                 }
-                return false;
+
+                // Search term matching
+                const term = searchTerm.toLowerCase().trim();
+                const matchesSearch = !term ||
+                  (p.name && p.name.toLowerCase().includes(term)) ||
+                  (p.description && p.description.toLowerCase().includes(term)) ||
+                  (p.platform_id && p.platform_id.toLowerCase().includes(term)) ||
+                  (p.serial_no && String(p.serial_no).includes(term));
+                if (!matchesSearch) return false;
+
+                // Category filter matching (including uncategorized)
+                if (selectedCategoryFilter !== 'All') {
+                  if (selectedCategoryFilter === '__uncategorized__') {
+                    const isUncategorized = !p.category || p.category.trim() === '' || p.category === 'Uncategorized';
+                    if (!isUncategorized) return false;
+                  } else {
+                    if (p.category !== selectedCategoryFilter) return false;
+                  }
+                }
+
+                // Subcategory filter matching (including no subcategory)
+                if (selectedSubcategoryFilter !== 'All') {
+                  if (selectedSubcategoryFilter === '__no_subcategory__') {
+                    const hasNoSub = !p.subcategory || p.subcategory.trim() === '' || p.subcategory === 'Uncategorized';
+                    if (!hasNoSub) return false;
+                  } else {
+                    const matchesSub = p.subcategory && (
+                      p.subcategory.toLowerCase() === selectedSubcategoryFilter.toLowerCase() ||
+                      p.subcategory.toLowerCase().includes(selectedSubcategoryFilter.toLowerCase())
+                    );
+                    if (!matchesSub) return false;
+                  }
+                }
+
+                return true;
               }).map(p => {
                 let displayImage = getOptimizedUrl(p.image_url || p.images?.[0], mediaSizes.thumbnail);
                 if (!displayImage || displayImage.includes('via.placeholder')) {
@@ -4464,6 +4682,25 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             );
           })()}
         </div>
+      )}
+
+      {/* Floating Action Button (FAB) for Add Product */}
+      {activeTab !== 'add' && (
+        <button
+          type="button"
+          onClick={() => {
+            cancelEdit();
+            setActiveTab('add');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#ce112d] via-[#e61535] to-[#ff1c3a] text-white rounded-full font-black uppercase text-xs tracking-wider shadow-[0_10px_35px_rgba(206,17,45,0.55)] hover:shadow-[0_15px_45px_rgba(206,17,45,0.75)] hover:scale-105 active:scale-95 transition-all group ring-4 ring-white/10 hover:ring-white/20"
+          title="Add New Product (নতুন পণ্য যুক্ত করুন)"
+        >
+          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
+            <Plus size={14} strokeWidth={3.5} />
+          </div>
+          <span className="font-bold tracking-widest text-[11px] drop-shadow-md">Add Product</span>
+        </button>
       )}
 
       {/* Confirmation Modal */}

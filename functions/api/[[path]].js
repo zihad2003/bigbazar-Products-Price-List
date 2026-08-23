@@ -1214,6 +1214,18 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 // VISITOR ANALYTICS (3-TIER: LIVE ONLINE, TODAY, LIFETIME TOTAL)
 // ============================================
 const activeSessions = new Map();
+let lastSessionCleanup = Date.now();
+
+function cleanupStaleSessions() {
+  const now = Date.now();
+  if (now - lastSessionCleanup > 60000) {
+    const cutoff = now - 180000; // 3 minutes TTL
+    for (const [id, ts] of activeSessions.entries()) {
+      if (ts < cutoff) activeSessions.delete(id);
+    }
+    lastSessionCleanup = now;
+  }
+}
 
 function getTodayKey() {
   const d = new Date(Date.now() + 6 * 3600 * 1000); // UTC+6 (Bangladesh Time)
@@ -1228,31 +1240,26 @@ app.post('/analytics/ping', async (c) => {
   const kv = c.env?.BIGBAZAR_CACHE;
 
   try {
-    // 1. Live Session Tracking:
-    // Prefer Cloudflare KV when available (180s TTL, 0 DB queries, 0 TiDB RUs)
+    // 1. Live Session Tracking: In-memory Map + KV (0 SQL writes, 0 TiDB RUs)
+    cleanupStaleSessions();
+    activeSessions.set(sessionId, now);
+
     if (kv) {
-      await kv.put(`ping:${sessionId}`, String(now), { expirationTtl: 180 });
-    } else {
-      // Fallback in TiDB: single cheap atomic upsert per session without any prior SELECT
-      const conn = getDb(c.env);
-      await conn.execute(
-        "INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)",
-        [`ping:${sessionId}`, String(now)]
-      );
+      await kv.put(`ping:${sessionId}`, String(now), { expirationTtl: 180 }).catch(() => {});
     }
 
     // 2. Increment Today & Lifetime Visitor Counters:
-    // Runs only ONCE per new session via a SINGLE atomic SQL statement without any prior SELECT
+    // Runs ONLY ONCE per brand new session (when is_new is true)
     if (isNewSession) {
       const conn = getDb(c.env);
       const todayKey = getTodayKey();
       await conn.execute(
         "INSERT INTO site_settings (`key`, value) VALUES (?, '1'), ('site_visitors', '1') ON DUPLICATE KEY UPDATE value = CAST(COALESCE(value, '0') AS UNSIGNED) + 1",
         [todayKey]
-      );
+      ).catch(() => {});
     }
   } catch (err) {
-    console.error('Analytics ping update error:', err);
+    console.error('Analytics ping error:', err);
   }
 
   return c.json({ success: true });
@@ -1271,58 +1278,35 @@ app.get('/analytics/stats', async (c) => {
     }
   }
 
+  cleanupStaleSessions();
   const now = Date.now();
   const todayKey = getTodayKey();
   let todayCount = 0;
   let totalCount = 0;
-  let onlineNow = 1;
+  let onlineNow = Math.max(1, activeSessions.size);
 
   try {
-    // 1. Online count: use KV list (no DB) when available
+    // 1. Online count: use KV list if available
     if (kv && kv.list) {
-      const list = await kv.list({ prefix: 'ping:' });
-      onlineNow = Math.max(1, (list.keys || []).length);
+      try {
+        const list = await kv.list({ prefix: 'ping:' });
+        if (list?.keys?.length) {
+          onlineNow = Math.max(1, list.keys.length);
+        }
+      } catch (_) {}
     }
 
-    // 2. Fetch ONLY today + lifetime counters from DB (cheap indexed lookup, NO full table scan)
-    //    When KV is available we SKIP the expensive `LIKE 'ping:%'` query entirely.
-    if (kv) {
-      // Lightweight: only 2 specific keys via IN clause (indexed, ~1 RU)
-      const conn = getDb(c.env);
-      const res = await conn.execute(
-        "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors')",
-        [todayKey]
-      );
-      res.forEach(r => {
-        const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
-        if (r.key === todayKey) todayCount = val;
-        if (r.key === 'site_visitors') totalCount = val;
-      });
-    } else {
-      // No KV fallback: need full scan for ping-based online count
-      const conn = getDb(c.env);
-      const res = await conn.execute(
-        "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors') OR `key` LIKE 'ping:%'",
-        [todayKey]
-      );
-      let dbActivePings = 0;
-      const cutoff = now - 180000;
-      res.forEach(r => {
-        if (r.key.startsWith('ping:')) {
-          const pingTime = parseInt(r.value) || 0;
-          if (pingTime >= cutoff) dbActivePings++;
-        } else {
-          const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
-          if (r.key === todayKey) todayCount = val;
-          if (r.key === 'site_visitors') totalCount = val;
-        }
-      });
-      onlineNow = Math.max(1, dbActivePings);
-      // Probabilistic cleanup of stale pings (~10% chance)
-      if (Math.random() < 0.1) {
-        conn.execute("DELETE FROM site_settings WHERE `key` LIKE 'ping:%' AND CAST(value AS UNSIGNED) < ?", [cutoff]).catch(() => {});
-      }
-    }
+    // 2. Fetch ONLY today + lifetime counters from DB (indexed key lookup, ~1 RU)
+    const conn = getDb(c.env);
+    const res = await conn.execute(
+      "SELECT `key`, value FROM site_settings WHERE `key` IN (?, 'site_visitors')",
+      [todayKey]
+    );
+    res.forEach(r => {
+      const val = parseInt(typeof r.value === 'string' ? JSON.parse(r.value) : r.value) || 0;
+      if (r.key === todayKey) todayCount = val;
+      if (r.key === 'site_visitors') totalCount = val;
+    });
   } catch (err) {
     console.error('Analytics stats fetch error:', err);
   }
@@ -1334,7 +1318,7 @@ app.get('/analytics/stats', async (c) => {
     total_count: totalCount
   };
 
-  // Cache the full response in KV for 30 seconds to prevent repeated DB hits
+  // Cache the response in KV for 30 seconds
   if (kv) {
     await kvSet(c, 'cache:analytics:stats', responseData, 30);
   }
