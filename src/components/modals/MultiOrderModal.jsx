@@ -297,7 +297,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             {error && (
                                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-3.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold">
                                     <AlertCircle size={16} />
-                                    {error}
+                                    {typeof error === 'object' ? (error?.message || 'ত্রুটি হয়েছে') : String(error)}
                                 </motion.div>
                             )}
 

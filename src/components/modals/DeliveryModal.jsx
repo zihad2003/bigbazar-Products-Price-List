@@ -400,7 +400,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                     className="p-3.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold"
                                 >
                                     <AlertCircle size={16} className="flex-shrink-0" />
-                                    {error}
+                                    {typeof error === 'object' ? (error?.message || 'ত্রুটি হয়েছে') : String(error)}
                                 </motion.div>
                             )}
                         </AnimatePresence>

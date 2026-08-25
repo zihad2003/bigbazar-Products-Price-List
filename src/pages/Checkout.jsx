@@ -276,7 +276,7 @@ export default function Checkout() {
                     {error && (
                         <div ref={errorRef} className="p-4 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold">
                             <AlertCircle size={16} className="shrink-0" />
-                            <span>{error}</span>
+                            <span>{typeof error === 'object' ? (error?.message || JSON.stringify(error)) : String(error)}</span>
                         </div>
                     )}
 

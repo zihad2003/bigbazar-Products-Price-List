@@ -193,7 +193,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     className="p-4 bg-red-50 rounded-2xl flex items-center gap-3 text-red-600 text-xs font-bold"
                   >
                     <AlertCircle size={16} />
-                    <span>{error}</span>
+                    <span>{typeof error === 'object' ? (error?.message || 'ত্রুটি হয়েছে') : String(error)}</span>
                   </motion.div>
                 )}
 
