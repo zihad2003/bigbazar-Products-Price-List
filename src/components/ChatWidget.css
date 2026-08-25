@@ -1,4 +1,4 @@
-/* ChatWidget.css - BigBazar AI Shopping Assistant Light Theme Styles */
+/* ChatWidget.css - BigBazar AI Shopping Assistant Strict Light Theme Styles */
 
 @keyframes pulse-subtle {
   0%, 100% { transform: scale(1); }
@@ -8,7 +8,7 @@
 @keyframes slide-up-fade {
   from { 
     opacity: 0; 
-    transform: translateY(24px) scale(0.97); 
+    transform: translateY(20px) scale(0.97); 
   }
   to { 
     opacity: 1; 
@@ -19,7 +19,7 @@
 @keyframes message-appear {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(8px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -33,10 +33,10 @@
 }
 
 .animate-message-in {
-  animation: message-appear 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: message-appear 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Floating Launcher Button (Modern Light with Crimson Gradient Accent) */
+/* Floating Launcher Button - Modern Minimalist Light Pill */
 .chat-widget-fab {
   position: fixed;
   bottom: 24px;
@@ -44,7 +44,10 @@
   z-index: 1015;
   animation: pulse-subtle 4s infinite ease-in-out;
   touch-action: manipulation;
-  box-shadow: 0 10px 30px -5px rgba(206, 17, 45, 0.4), 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
 @media (max-width: 640px) {
@@ -54,26 +57,27 @@
   }
 }
 
-/* Desktop Fixed Floating Panel - Ultra Modern Clean Light Theme */
+/* Desktop Fixed Floating Panel - Strict Pure Light Theme */
 .chat-panel-container {
   position: fixed !important;
   bottom: 24px !important;
   right: 24px !important;
   left: auto !important;
   top: auto !important;
-  width: 410px !important;
+  width: 400px !important;
   max-width: calc(100vw - 32px) !important;
-  height: 640px !important;
+  height: 620px !important;
   max-height: calc(100vh - 48px) !important;
-  border-radius: 28px !important;
+  border-radius: 24px !important;
   z-index: 1020 !important;
   display: flex !important;
   flex-direction: column !important;
-  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
   border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
   overflow: hidden !important;
-  animation: slide-up-fade 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slide-up-fade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Mobile Bottom Sheet / Full Screen */
@@ -88,6 +92,11 @@
     border-radius: 0 !important;
     border: none !important;
   }
+}
+
+/* Chat Canvas Light Background */
+.chat-canvas-bg {
+  background-color: #f8fafc !important;
 }
 
 /* Chat Custom Scrollbar */
