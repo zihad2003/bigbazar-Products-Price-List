@@ -2030,47 +2030,84 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     }
   }
 
-  // ── Step 3: Google Gemini for General Inquiries (with ample token limit) ──
-  if (!replyText) {
-    try {
-      const systemPrompt = `You are BigBazar AI Shopping Assistant for a Bangladeshi fashion store (BigBazar, Baraiyarhat, Mirsarai).
+  // ── Step 3: Google Gemini (gemini-2.0-flash / gemini-1.5-flash) with Groq Fallback ──
+  if (!replyText && (geminiApiKey || groqApiKey)) {
+    const systemPrompt = `You are BigBazar AI Shopping Assistant for a premier Bangladeshi family fashion store (BigBazar, 2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsarai, Chittagong).
 RULES:
-1. Always reply in 1-2 complete, polite Bengali sentences. Never cut off or leave sentences incomplete.
-2. If customer asks about products or shopping, invite them to browse our categories or visit our showroom (2nd Floor, Jomidar Plaza, Baraiyarhat).`;
+1. Always reply in 1-2 fluent, polite, helpful Bengali sentences (or English if customer speaks English).
+2. Never leave sentences unfinished. Never use emojis.
+3. If customer asks about bargaining/discounts ("kom hobe?", "discount ache?"), explain politely that Big Bazar is a fixed-price shop where fair prices and top quality are guaranteed.
+4. If customer asks about delivery, mention Mirsarai is 100% free delivery, Ctg is 100 Tk, whole Bangladesh is 150 Tk.
+5. If customer asks for product recommendations or random style questions, give a warm, fashionable and helpful reply.`;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`;
-      const prompt = `Customer asks: "${userMessage}". Reply politely in complete Bengali sentences:`;
+    if (geminiApiKey) {
+      try {
+        const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        for (const model of geminiModels) {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+          const gRes = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+              generationConfig: { maxOutputTokens: 500, temperature: 0.4 }
+            })
+          });
+          const gData = await gRes.json();
+          const candidateText = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (candidateText) {
+            replyText = candidateText;
+            break;
+          }
+        }
+      } catch (e) {
+        console.error('Gemini call error:', e);
+      }
+    }
 
-      const gRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 600, temperature: 0.3 }
-        })
-      });
-      const gData = await gRes.json();
-      replyText = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    } catch (e) {
-      console.error('Gemini error:', e);
+    if (!replyText && groqApiKey) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage }
+            ],
+            max_tokens: 300,
+            temperature: 0.4
+          })
+        });
+        const groqData = await groqRes.json();
+        replyText = groqData.choices?.[0]?.message?.content?.trim() || '';
+      } catch (e) {
+        console.error('Groq fallback error:', e);
+      }
     }
   }
 
+  // ── Step 4: Smart Conversational Fallbacks for Random Queries (when AI is offline) ──
   if (!replyText) {
-    replyText = 'আমি কীভাবে আপনাকে সহায়তা করতে পারি? নিচে আমাদের ক্যাটাগরি বা বিষয়গুলো দেখতে পারেন।';
-  }
-
-  // Dynamic contextual quick replies
-  let categoryQuickReplies = [];
-  if (matchedCategory === 'Men') {
-    categoryQuickReplies = ['পাঞ্জাবি কালেকশন', 'শার্ট কালেকশন', 'কাবলি সেট', 'টি-শার্ট কালেকশন'];
-  } else if (matchedCategory === 'Women') {
-    categoryQuickReplies = ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'কুর্তি কালেকশন', 'বোরকা ও আবায়া'];
-  } else if (matchedCategory?.includes('Kids')) {
-    categoryQuickReplies = ['কিডস ফ্রক', 'কিডস পাঞ্জাবি', 'বাবা স্যুট'];
-  } else {
-    categoryQuickReplies = ['মেয়েদের কালেকশন', 'ছেলেদের কালেকশন', 'বাচ্চাদের কালেকশন', 'বিয়ের সাজনি'];
+    const norm = lowerMsg.replace(/[^\w\s\u0980-\u09FF]/g, ' ');
+    if (/kom|discount|dam\s*kom|char|bargain|ফিক্সড|কম|ছাড়|ডিসকাউন্ট/i.test(norm)) {
+      replyText = 'বিগ বাজার একটি ফিক্সড প্রাইস ফ্যাশন শপ। আমাদের প্রতিটি পণ্যের কোয়ালিটি অনুযায়ী ন্যায্য ও নির্দিষ্ট মূল্য নির্ধারণ করা থাকে। তাই আলাদা কোনো দরদাম বা ছাড়ের সুযোগ নেই।';
+    } else if (/kemon|kemon\s*achen|valo|hi|hello|salam|সালাম|কেমন/i.test(norm)) {
+      replyText = 'আসসালামু আলাইকুম! আলহামদুলিল্লাহ, ভালো আছি। বিগ বাজারে আপনাকে স্বাগতম। আপনি আজ কী ধরনের পোশাক দেখতে চান?';
+    } else if (/thikana|kothay|location|dokandari|কোথায়|ঠিকানা|শোরুম/i.test(norm)) {
+      replyText = 'আমাদের শোরুমের ঠিকানা: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট পৌরসভা, মীরসরাই, চট্টগ্রাম। প্রতিদিন সকাল ৯:০০ টা থেকে রাত ৯:০০ টা পর্যন্ত খোলা থাকে।';
+    } else if (/delivery|charge|deli|ডেলিভারি|খরচ/i.test(norm)) {
+      replyText = 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি! চট্টগ্রাম জেলায় ১০০ টাকা এবং সারা বাংলাদেশে ১৫০ টাকা ডেলিভারি চার্জ প্রযোজ্য।';
+    } else if (/quality|original|fabric|কোয়ালিটি|ফেব্রিক/i.test(norm)) {
+      replyText = 'বিগ বাজারে আমরা প্রিমিয়াম কোয়ালিটির ফেব্রিক ও নিখুঁত ফিনিশিং নিশ্চিত করি। আপনি শতভাগ আস্থার সাথে কেনাকাটা করতে পারেন।';
+    } else {
+      replyText = 'আমি আপনার মেসেজটি বুঝতে পেরেছি। পোশাকের কালেকশন দেখতে ক্যাটাগরি বেছে নিন অথবা আমাদের হেল্পলাইনে (01857045449) সরাসরি যোগাযোগ করুন।';
+    }
   }
 
   return c.json({
@@ -2080,7 +2117,7 @@ RULES:
     has_more: hasMore,
     current_offset: requestedOffset,
     category_query: matchedCategory || searchTerm || '',
-    quick_replies: categoryQuickReplies,
+    quick_replies: [],
     handoff: false
   });
 });
