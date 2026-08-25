@@ -15,6 +15,7 @@ function assistantDevPlugin() {
               const body = JSON.parse(bodyStr || '{}');
               const env = loadEnv('development', process.cwd(), '');
               const geminiApiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+              const groqApiKey = env.GROQ_API_KEY || process.env.GROQ_API_KEY;
               const dbUrl = env.DATABASE_URL || process.env.DATABASE_URL;
 
               const { FAQ_KB, matchFAQ } = await import('./functions/api/assistant-kb.js');
@@ -171,38 +172,79 @@ function assistantDevPlugin() {
                 }
               }
 
-              // Step 3: Google Gemini (gemini-2.0-flash / gemini-1.5-flash)
-              if (!replyText && geminiApiKey) {
-                try {
-                  const systemPrompt = `You are BigBazar AI Shopping Assistant for a premier Bangladeshi family fashion store (BigBazar, 2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsarai, Chittagong).
+              // Step 3: AI Inference (Groq Ultra-Fast LPU & Google Gemini)
+              if (!replyText && (geminiApiKey || groqApiKey)) {
+                const systemPrompt = `You are BigBazar AI Shopping Assistant for Big Bazar, a leading family fashion retail store located at 2nd Floor, Jomidar Plaza, Baraiyarhat Bazar, Mirsarai, Chittagong.
+BRAND KNOWLEDGE:
+- Facebook: https://facebook.com/bigbazar15
+- WhatsApp: 01824950082 (call/text for live video view, custom sizing or sharing photos)
+- Helpline: 01857045449
+- Opening hours: Everyday 9:30 AM to 9:30 PM
+- Pricing: Strict fixed-price shop ensuring fair prices and premium fabric quality.
+- Delivery: Mirsarai Upazila 100% Free delivery (100 Tk advance confirmation fee), Chittagong District 100 Tk, All Bangladesh 150 Tk. Cash on delivery available.
+- Bridal Zone: 'Biyer Sajani' (Exclusive bridal sarees, katan, lehenga, sherwani, kabli set, blazers).
 RULES:
-1. Always reply in 1-2 fluent, polite, helpful Bengali sentences (or English if customer speaks English).
-2. Never leave sentences unfinished. Never use emojis.
-3. If customer asks about bargaining/discounts ("kom hobe?", "discount ache?"), explain politely that Big Bazar is a fixed-price shop where fair prices and top quality are guaranteed.
-4. If customer asks about delivery, mention Mirsarai is 100% free delivery, Ctg is 100 Tk, whole Bangladesh is 150 Tk.
-5. If customer asks for product recommendations or random style questions, give a warm, fashionable and helpful reply.`;
+1. Always reply in 1-2 fluent, polite, helpful Bengali sentences.
+2. Understand customer conversational context (loyalty, bargaining, social links, videos, photo sharing, location, timings, delivery).
+3. Never use any emojis. Never output unfinished thoughts.`;
 
-                  const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-                  for (const model of geminiModels) {
-                    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-                    const gRes = await fetch(geminiUrl, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: systemPrompt }] },
-                        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-                        generationConfig: { maxOutputTokens: 500, temperature: 0.4 }
-                      })
-                    });
-                    const gData = await gRes.json();
-                    const candidateText = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                    if (candidateText) {
-                      replyText = candidateText;
-                      break;
+                if (groqApiKey) {
+                  const groqModels = ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b'];
+                  for (const m of groqModels) {
+                    try {
+                      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${groqApiKey}`
+                        },
+                        body: JSON.stringify({
+                          model: m,
+                          messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userMessage }
+                          ],
+                          max_tokens: 350,
+                          temperature: 0.3
+                        })
+                      });
+                      const groqData = await groqRes.json();
+                      let text = groqData.choices?.[0]?.message?.content?.trim() || '';
+                      text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                      if (text) {
+                        replyText = text;
+                        break;
+                      }
+                    } catch (e) {
+                      console.error(`Dev Groq error for ${m}:`, e);
                     }
                   }
-                } catch (e) {
-                  console.error('Dev Gemini error:', e);
+                }
+
+                if (!replyText && geminiApiKey) {
+                  try {
+                    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+                    for (const model of geminiModels) {
+                      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+                      const gRes = await fetch(geminiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          systemInstruction: { parts: [{ text: systemPrompt }] },
+                          contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+                          generationConfig: { maxOutputTokens: 500, temperature: 0.3 }
+                        })
+                      });
+                      const gData = await gRes.json();
+                      const candidateText = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                      if (candidateText) {
+                        replyText = candidateText;
+                        break;
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Dev Gemini error:', e);
+                  }
                 }
               }
 
