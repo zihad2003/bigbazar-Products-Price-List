@@ -686,22 +686,22 @@ export default function ProductDetails() {
             <AnimatePresence>
                 {showCartSuccess && (
                     <motion.div
-                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="fixed bottom-24 sm:bottom-28 right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-3 flex items-center justify-between gap-3 text-zinc-900 max-w-sm w-[calc(100vw-24px)] sm:w-84"
+                        className="fixed bottom-[130px] right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[280px] sm:max-w-sm"
                     >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-                                <Check size={16} strokeWidth={3} />
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                                <Check size={14} strokeWidth={3} />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-zinc-900 leading-tight">
-                                    {language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে!' : 'Added to bag!'}
+                                <p className="text-[11px] font-bold text-zinc-900 leading-tight">
+                                    {language === 'bn' ? 'ব্যাগে যোগ হয়েছে!' : 'Added to bag!'}
                                 </p>
-                                <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">
-                                    {product?.name} • ৳{price}
+                                <p className="text-[9px] text-zinc-500 font-medium truncate mt-0.5">
+                                    ৳{price}
                                 </p>
                             </div>
                         </div>
@@ -711,10 +711,10 @@ export default function ProductDetails() {
                                 navigate('/checkout');
                                 setShowCartSuccess(false);
                             }}
-                            className="px-3 py-1.5 bg-[#ce112d] hover:bg-[#b30e25] text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all shrink-0 shadow-2xs flex items-center gap-1"
+                            className="px-2.5 py-1.5 bg-[#ce112d] hover:bg-[#b30e25] text-white text-[10px] font-bold rounded-xl active:scale-95 transition-all shrink-0 shadow-2xs flex items-center gap-1"
                         >
-                            <span>{language === 'bn' ? 'অর্ডার করুন' : 'Checkout'}</span>
-                            <ChevronRight size={12} />
+                            <span>{language === 'bn' ? 'অর্ডার' : 'Checkout'}</span>
+                            <ChevronRight size={11} />
                         </button>
                     </motion.div>
                 )}
@@ -782,38 +782,39 @@ export default function ProductDetails() {
                 )}
             </AnimatePresence>
 
-            {/* Mobile Floating Sticky Quick-Order Bar - Clean Light UI */}
+            {/* Mobile Floating Sticky Quick-Order Bar - Compact Floating above Right-Side Chat Widget */}
             <AnimatePresence>
                 {showStickyBar && !loading && product && (
                     <motion.div
-                        initial={{ opacity: 0, y: 100 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 100 }}
-                        transition={{ duration: 0.3, ease: 'easeOut' }}
-                        className="md:hidden fixed bottom-[70px] left-3 right-3 z-[990] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-xl flex items-center justify-between gap-3 text-zinc-900"
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                        className="md:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-xl flex items-center gap-2.5 text-zinc-900 max-w-[270px]"
                     >
-                        <div className="flex flex-col pl-1 shrink-0">
-                            <span className="text-xs font-black text-[#ce112d]">৳{price}</span>
-                            <span className="text-[9px] text-zinc-500 font-bold truncate max-w-[90px]">
+                        <div className="flex flex-col pl-1 min-w-0">
+                            <span className="text-xs font-black text-[#ce112d] leading-none">৳{price}</span>
+                            <span className="text-[9px] text-zinc-500 font-bold truncate max-w-[70px] mt-0.5">
                                 {selectedColor || selectedSize
                                     ? `${selectedColor} ${selectedSize}`.trim()
-                                    : (language === 'bn' ? 'অপশন বেছে নিন' : 'Select options')}
+                                    : (language === 'bn' ? 'অপশন' : 'Options')}
                             </span>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 shrink-0">
                             <button
                                 onClick={handleAddToCart}
-                                className="p-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl active:scale-95 transition-all flex items-center justify-center shrink-0 border border-zinc-200"
+                                className="w-8 h-8 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl active:scale-95 transition-all flex items-center justify-center shrink-0 border border-zinc-200"
                                 title={language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag'}
                             >
-                                {isInCart ? <Check size={16} className="text-emerald-600" /> : <ShoppingCart size={16} />}
+                                {isInCart ? <Check size={14} className="text-emerald-600" /> : <ShoppingCart size={14} />}
                             </button>
                             <button
                                 onClick={handleMainOrder}
-                                className="flex-1 py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md shadow-red-900/20 active:scale-95 transition-all text-center truncate"
+                                className="py-2 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md shadow-red-900/20 active:scale-95 transition-all flex items-center gap-1 shrink-0"
                             >
-                                {language === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
+                                <ShoppingBag size={12} />
+                                <span>{language === 'bn' ? 'অর্ডার' : 'Order'}</span>
                             </button>
                         </div>
                     </motion.div>
