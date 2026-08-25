@@ -873,8 +873,8 @@ export default function ChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer Input Area - Ultra Minimalist Clean */}
-          <div className="p-3 bg-white border-t border-zinc-100 shrink-0">
+          {/* Footer Input Area - Ultra Minimalist Clean with Mobile Safe Area */}
+          <div className="p-3 bg-white border-t border-zinc-100 shrink-0 chat-panel-footer">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -889,12 +889,12 @@ export default function ChatWidget() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="পোশাক বা অর্ডার সম্পর্কে লিখুন..."
                 disabled={isLoading}
-                className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d] focus:bg-white transition-all disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-zinc-200 rounded-full text-xs font-medium focus:outline-none focus:border-[#ce112d] focus:bg-white transition-all disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading}
-                className="w-9 h-9 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-xl flex items-center justify-center transition-all shadow-2xs active:scale-95 disabled:opacity-40 disabled:pointer-events-none shrink-0"
+                className="w-10 h-10 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-full flex items-center justify-center transition-all shadow-2xs active:scale-95 disabled:opacity-40 disabled:pointer-events-none shrink-0"
               >
                 <Send size={15} />
               </button>

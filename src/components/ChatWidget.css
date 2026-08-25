@@ -52,8 +52,9 @@
 
 @media (max-width: 640px) {
   .chat-widget-fab {
-    bottom: 78px;
-    right: 16px;
+    bottom: 74px;
+    right: 12px;
+    padding: 8px 14px;
   }
 }
 
@@ -91,6 +92,10 @@
     max-height: 100dvh !important;
     border-radius: 0 !important;
     border: none !important;
+    z-index: 1050 !important;
+  }
+  .chat-panel-footer {
+    padding-bottom: max(env(safe-area-inset-bottom, 14px), 14px) !important;
   }
 }
 

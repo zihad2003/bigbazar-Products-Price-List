@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle, X, Lightbulb } from 'lucide-react';
+import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle, X, Lightbulb, ChevronRight } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import ProductGallery from '../components/ProductGallery';
@@ -685,11 +685,37 @@ export default function ProductDetails() {
 
             <AnimatePresence>
                 {showCartSuccess && (
-                    <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
-                        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] bg-zinc-950 text-white px-8 py-4 rounded-[30px] flex items-center gap-4 shadow-2xl"
+                    <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                        className="fixed bottom-24 sm:bottom-28 right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-3 flex items-center justify-between gap-3 text-zinc-900 max-w-sm w-[calc(100vw-24px)] sm:w-84"
                     >
-                        <Check size={18} strokeWidth={3} className="text-green-400" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">{language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে' : 'Added to bag!'}</span>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                                <Check size={16} strokeWidth={3} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-zinc-900 leading-tight">
+                                    {language === 'bn' ? 'ব্যাগে যোগ করা হয়েছে!' : 'Added to bag!'}
+                                </p>
+                                <p className="text-[10px] text-zinc-500 font-medium truncate mt-0.5">
+                                    {product?.name} • ৳{price}
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                navigate('/checkout');
+                                setShowCartSuccess(false);
+                            }}
+                            className="px-3 py-1.5 bg-[#ce112d] hover:bg-[#b30e25] text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all shrink-0 shadow-2xs flex items-center gap-1"
+                        >
+                            <span>{language === 'bn' ? 'অর্ডার করুন' : 'Checkout'}</span>
+                            <ChevronRight size={12} />
+                        </button>
                     </motion.div>
                 )}
                 {showMessengerModal && (
@@ -756,7 +782,7 @@ export default function ProductDetails() {
                 )}
             </AnimatePresence>
 
-            {/* Mobile Floating Sticky Quick-Order Bar */}
+            {/* Mobile Floating Sticky Quick-Order Bar - Clean Light UI */}
             <AnimatePresence>
                 {showStickyBar && !loading && product && (
                     <motion.div
@@ -764,11 +790,11 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
                         transition={{ duration: 0.3, ease: 'easeOut' }}
-                        className="md:hidden fixed bottom-16 left-3 right-3 z-[990] bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 shadow-2xl flex items-center justify-between gap-3 text-white"
+                        className="md:hidden fixed bottom-[70px] left-3 right-3 z-[990] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-xl flex items-center justify-between gap-3 text-zinc-900"
                     >
                         <div className="flex flex-col pl-1 shrink-0">
                             <span className="text-xs font-black text-[#ce112d]">৳{price}</span>
-                            <span className="text-[9px] text-zinc-400 font-medium truncate max-w-[100px]">
+                            <span className="text-[9px] text-zinc-500 font-bold truncate max-w-[90px]">
                                 {selectedColor || selectedSize
                                     ? `${selectedColor} ${selectedSize}`.trim()
                                     : (language === 'bn' ? 'অপশন বেছে নিন' : 'Select options')}
@@ -778,14 +804,14 @@ export default function ProductDetails() {
                         <div className="flex items-center gap-2 flex-1 justify-end">
                             <button
                                 onClick={handleAddToCart}
-                                className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl active:scale-95 transition-all flex items-center justify-center shrink-0 border border-white/10"
+                                className="p-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl active:scale-95 transition-all flex items-center justify-center shrink-0 border border-zinc-200"
                                 title={language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag'}
                             >
-                                {isInCart ? <Check size={16} className="text-green-400" /> : <ShoppingCart size={16} />}
+                                {isInCart ? <Check size={16} className="text-emerald-600" /> : <ShoppingCart size={16} />}
                             </button>
                             <button
                                 onClick={handleMainOrder}
-                                className="flex-1 py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-lg shadow-red-900/30 active:scale-95 transition-all text-center truncate"
+                                className="flex-1 py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-[11px] font-black uppercase tracking-wider rounded-xl shadow-md shadow-red-900/20 active:scale-95 transition-all text-center truncate"
                             >
                                 {language === 'bn' ? 'অর্ডার করুন' : 'Order Now'}
                             </button>
