@@ -1,6 +1,11 @@
-// BigBazar AI Assistant - FAQ Knowledge Base (Zero Emojis, Clean Format)
+// BigBazar AI Assistant - FAQ Knowledge Base (Official Links matching Footer)
 
 export const FAQ_KB = {
+  social_links: {
+    keywords: ["facebook", "fb", "insta", "instagram", "tiktok", "tik tok", "video", "youtube", "social", "ফেসবুক", "ইনস্টাগ্রাম", "টিকটক", "ভিডিও"],
+    answer_bn: "আমাদের অফিশিয়াল সোশ্যাল লিংকসমূহ:\n• ফেসবুক: https://www.facebook.com/profile.php?id=100063541603515\n• ইনস্টাগ্রাম: https://www.instagram.com/big_bazar_25/\n• টিকটক ও ভিডিও: https://www.tiktok.com/@big.bazar2\n• হোয়াটসঅ্যাপ: https://wa.me/8801824950082",
+    answer_en: "Our Official Social Links:\n- Facebook: https://www.facebook.com/profile.php?id=100063541603515\n- Instagram: https://www.instagram.com/big_bazar_25/\n- TikTok: https://www.tiktok.com/@big.bazar2\n- WhatsApp: https://wa.me/8801824950082"
+  },
   fixed_price: {
     keywords: ["kom", "discount", "dam kom", "kom hobe", "kom rakha", "char", "bargain", "fixed", "দরদাম", "কম হবে", "ডিসকাউন্ট", "ছাড়", "ফিক্সড"],
     answer_bn: "বিগ বাজার একটি ফিক্সড প্রাইস ফ্যাশন শপ। আমাদের প্রতিটি পণ্যের কোয়ালিটি অনুযায়ী ন্যায্য ও নির্দিষ্ট মূল্য নির্ধারণ করা থাকে। তাই আলাদা কোনো দরদাম বা ছাড়ের সুযোগ নেই।",
@@ -38,8 +43,8 @@ export const FAQ_KB = {
   },
   contact_info: {
     keywords: ["contact", "phone", "number", "showroom", "address", "location", "hours", "open", "whatsapp", "email", "call", "যোগাযোগ", "ফোন", "নাম্বার", "শোরুম"],
-    answer_bn: "যোগাযোগ ও শোরুম:\nহেল্পলাইন: 01857045449\nহোয়াটসঅ্যাপ: 01824950082\nইমেইল: infobigbazar01@gmail.com\nশোরুম: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই।\nসময়: প্রতিদিন সকাল ৯:০০ টা - রাত ৯:০০ টা।",
-    answer_en: "Contact Info: Phone 01857045449 | WhatsApp 01824950082 | Email infobigbazar01@gmail.com. Showroom: 2nd Floor Jomidar Plaza, Baraiyarhat. Open 9AM - 9PM daily."
+    answer_bn: "যোগাযোগ ও শোরুম:\nহেল্পলাইন: 01857045449\nহোয়াটসঅ্যাপ: 01824950082\nইমেইল: infobigbazar01@gmail.com\nশোরুম: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই।\nসময়: প্রতিদিন সকাল ৯:৩০ টা - রাত ৯:৩০ টা।",
+    answer_en: "Contact Info: Phone 01857045449 | WhatsApp 01824950082 | Email infobigbazar01@gmail.com. Showroom: 2nd Floor Jomidar Plaza, Baraiyarhat. Open 9:30 AM - 9:30 PM daily."
   },
   how_to_order: {
     keywords: ["order", "korbo", "how to", "kivabe", "confirm", "checkout", "buy", "অর্ডার", "কিভাবে করব", "কেনাকাটা"],

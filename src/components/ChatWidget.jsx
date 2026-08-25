@@ -611,261 +611,158 @@ export default function ChatWidget() {
               </div>
             ))}
 
-            {/* In-Chat Interactive Order Form Wizard */}
+            {/* Cart-Style Quick Order & Bag Modal inside Chat */}
             {orderModalProduct && (
-              <div className="bg-white border border-zinc-200 rounded-2xl p-3.5 shadow-md space-y-3 animate-message-in">
+              <div className="bg-white border border-zinc-200 rounded-2xl p-3.5 shadow-lg space-y-3 animate-message-in">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
-                    <ShoppingBag size={14} className="text-[#ce112d]" />
-                    <span>অর্ডার কনফার্মেশন</span>
+                  <div className="flex items-center gap-1.5 text-xs font-black text-zinc-900">
+                    <ShoppingCart size={15} className="text-[#ce112d]" />
+                    <span>ব্যাগ ও অর্ডার</span>
                   </div>
                   <button
                     onClick={() => setOrderModalProduct(null)}
-                    className="text-zinc-400 hover:text-zinc-600 p-1"
+                    className="text-zinc-400 hover:text-zinc-700 w-6 h-6 rounded-lg bg-zinc-100 flex items-center justify-center transition-all"
                   >
-                    <X size={14} />
+                    <X size={13} />
                   </button>
                 </div>
 
-                {/* Selected Product Summary */}
-                <div className="flex gap-2.5 p-2 bg-slate-50 rounded-xl border border-zinc-100">
-                  <img
-                    src={getOptimizedUrl(orderModalProduct.image_url || orderModalProduct.images?.[0], { w: 80, h: 100 })}
-                    alt=""
-                    className="w-12 h-14 object-cover rounded-lg shrink-0 border border-zinc-200"
-                  />
-                  <div className="min-w-0 flex-1 flex flex-col justify-center">
-                    <h5 className="text-xs font-bold text-zinc-900 truncate">{orderModalProduct.name}</h5>
-                    <p className="text-xs font-black text-[#ce112d] mt-0.5">৳{orderModalProduct.price}</p>
+                {/* Product Snapshot */}
+                <div className="flex gap-3 p-2 bg-slate-50 rounded-xl border border-zinc-100">
+                  <div className="w-14 h-16 bg-white rounded-lg overflow-hidden shrink-0 border border-zinc-200">
+                    <img
+                      src={getOptimizedUrl(orderModalProduct.image_url || orderModalProduct.images?.[0], { w: 100, h: 120 })}
+                      alt=""
+                      className="w-full h-full object-cover object-top"
+                      onError={(e) => { e.target.src = 'https://placehold.co/100x120/ffffff/ce112d?text=BB'; }}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
+                    <div>
+                      <h5 className="text-xs font-bold text-zinc-900 truncate">{orderModalProduct.name}</h5>
+                      <p className="text-xs font-black text-[#ce112d] mt-0.5">৳{orderModalProduct.price}</p>
+                    </div>
+
+                    {/* Quantity Increment/Decrement Counter */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[10px] font-bold text-zinc-500">পরিমাণ:</span>
+                      <div className="flex items-center border border-zinc-200 rounded-lg bg-white overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setOrderForm(prev => ({ ...prev, quantity: Math.max(1, prev.quantity - 1) }))}
+                          className="w-6 h-6 flex items-center justify-center hover:bg-zinc-100 text-zinc-700 text-xs font-bold transition-all"
+                        >
+                          -
+                        </button>
+                        <span className="w-7 text-center text-xs font-black text-zinc-900 select-none">
+                          {orderForm.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOrderForm(prev => ({ ...prev, quantity: prev.quantity + 1 }))}
+                          className="w-6 h-6 flex items-center justify-center hover:bg-zinc-100 text-zinc-700 text-xs font-bold transition-all"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {orderStep === 'details' ? (
-                  /* Step 1: Customer & Product Options Form */
-                  <div className="space-y-2.5 text-xs">
-                    {/* Size Selector */}
-                    {orderModalProduct.available_sizes && orderModalProduct.available_sizes.length > 0 && (
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-500 block mb-1">সাইজ নির্বাচন করুন:</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {orderModalProduct.available_sizes.map((sz) => (
-                            <button
-                              key={sz}
-                              type="button"
-                              onClick={() => setOrderForm(prev => ({ ...prev, size: sz }))}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                orderForm.size === sz
-                                  ? 'bg-zinc-900 text-white'
-                                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                              }`}
-                            >
-                              {sz}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Color Selector */}
-                    {orderModalProduct.available_colors && orderModalProduct.available_colors.length > 0 && (
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-500 block mb-1">কালার নির্বাচন করুন:</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {orderModalProduct.available_colors.map((c, i) => {
-                            const colorName = typeof c === 'string' ? c : (c.name || `Color ${i+1}`);
-                            return (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => setOrderForm(prev => ({ ...prev, color: colorName }))}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                                  orderForm.color === colorName
-                                    ? 'bg-[#ce112d] text-white'
-                                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                                }`}
-                              >
-                                {colorName}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Customer Inputs */}
-                    <div className="space-y-2 pt-1">
-                      <input
-                        type="text"
-                        placeholder="আপনার পুরো নাম *"
-                        value={orderForm.name}
-                        onChange={e => setOrderForm(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                      />
-                      <input
-                        type="tel"
-                        placeholder="মোবাইল নম্বর (১১ ডিজিট) *"
-                        value={orderForm.phone}
-                        onChange={e => setOrderForm(prev => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                      />
-                      
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={orderForm.district}
-                          onChange={e => {
-                            const newDist = e.target.value;
-                            setOrderForm(prev => ({
-                              ...prev,
-                              district: newDist,
-                              upazila: newDist === CHATTOGRAM_DISTRICT ? FREE_UPAZILA : 'সদর'
-                            }));
-                          }}
-                          className="w-full px-2.5 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                {/* Size Selector */}
+                {orderModalProduct.available_sizes && orderModalProduct.available_sizes.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 block mb-1">সাইজ বেছে নিন:</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {orderModalProduct.available_sizes.map((sz) => (
+                        <button
+                          key={sz}
+                          type="button"
+                          onClick={() => setOrderForm(prev => ({ ...prev, size: sz }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                            orderForm.size === sz
+                              ? 'bg-zinc-900 text-white shadow-2xs'
+                              : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                          }`}
                         >
-                          {allDistricts.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-
-                        {orderForm.district === CHATTOGRAM_DISTRICT ? (
-                          <select
-                            value={orderForm.upazila}
-                            onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
-                            className="w-full px-2.5 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                          >
-                            {chattogramUpazilas.map(u => (
-                              <option key={u} value={u}>{u}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder="উপজেলা / থানা"
-                            value={orderForm.upazila}
-                            onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
-                            className="w-full px-2.5 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                          />
-                        )}
-                      </div>
-
-                      <textarea
-                        rows={2}
-                        placeholder="বিস্তারিত ঠিকানা (বাসা/রোড/এলাকা) *"
-                        value={orderForm.address}
-                        onChange={e => setOrderForm(prev => ({ ...prev, address: e.target.value }))}
-                        className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d] resize-none"
-                      />
+                          {sz}
+                        </button>
+                      ))}
                     </div>
-
-                    {orderError && (
-                      <p className="text-[11px] font-bold text-red-600 bg-red-50 p-2 rounded-lg">
-                        {orderError}
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={handleCompleteOrder}
-                      className="w-full py-2.5 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-1.5"
-                    >
-                      পরবর্তী ধাপ: পেমেন্ট তথ্য <ChevronRight size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  /* Step 2: Advance Payment Instructions & Sender Number */
-                  <div className="space-y-3 text-xs">
-                    {(() => {
-                      const deliveryInfo = calculateDelivery(orderForm.district, orderForm.upazila);
-                      const subtotal = (parseFloat(orderModalProduct.price) || 0) * orderForm.quantity;
-                      const advanceCharge = deliveryInfo.charge > 0 ? deliveryInfo.charge : 100;
-                      return (
-                        <>
-                          <div className="p-3 bg-slate-50 border border-zinc-200 rounded-xl space-y-1.5">
-                            <div className="flex justify-between items-center text-zinc-700 font-bold">
-                              <span>পণ্য মূল্য:</span>
-                              <span>৳{subtotal}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-zinc-700 font-bold">
-                              <span>ডেলিভারি চার্জ:</span>
-                              <span>{deliveryInfo.isFree ? '৳০ (ফ্রি)' : `৳${deliveryInfo.charge}`}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-1.5 border-t border-zinc-200 font-black text-sm text-[#ce112d]">
-                              <span>সর্বমোট বিল:</span>
-                              <span>৳{subtotal + deliveryInfo.charge}</span>
-                            </div>
-                          </div>
-
-                          <div className="p-3 bg-zinc-900 text-white rounded-xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-zinc-300">
-                                বিকাশ / নগদ সেন্ড মানি
-                              </span>
-                              <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] font-bold rounded-md">
-                                অগ্রিম: ৳{advanceCharge}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center justify-between bg-zinc-800 p-2.5 rounded-lg border border-zinc-700">
-                              <span className="font-mono text-sm font-bold text-amber-300 tracking-wider">
-                                {BKASH_NUMBER}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyNumber(BKASH_NUMBER)}
-                                className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded-md text-[10px] font-bold transition-all"
-                              >
-                                {copiedNumber ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                                <span>{copiedNumber ? 'কপি হয়েছে' : 'কপি করুন'}</span>
-                              </button>
-                            </div>
-
-                            <p className="text-[10px] text-zinc-400 leading-tight">
-                              অর্ডার কনফার্মেশনের জন্য অগ্রিম ৳{advanceCharge} পাঠিয়ে নিচের বক্সে প্রেরকের নম্বরটি লিখুন।
-                            </p>
-                          </div>
-
-                          <input
-                            type="tel"
-                            placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন (প্রেরকের নম্বর) *"
-                            value={orderForm.senderNumber}
-                            onChange={e => setOrderForm(prev => ({ ...prev, senderNumber: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                          />
-
-                          {orderError && (
-                            <p className="text-[11px] font-bold text-red-600 bg-red-50 p-2 rounded-lg">
-                              {orderError}
-                            </p>
-                          )}
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setOrderStep('details')}
-                              className="px-3 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl text-xs font-bold transition-all"
-                            >
-                              <ChevronLeft size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isLoading}
-                              onClick={handleCompleteOrder}
-                              className="flex-1 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
-                            >
-                              {isLoading ? (
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              ) : (
-                                <>
-                                  <CheckCircle size={14} /> অর্ডার নিশ্চিত করুন
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </>
-                      );
-                    })()}
                   </div>
                 )}
+
+                {/* Color Selector */}
+                {orderModalProduct.available_colors && orderModalProduct.available_colors.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 block mb-1">কালার বেছে নিন:</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {orderModalProduct.available_colors.map((c, i) => {
+                        const colorName = typeof c === 'string' ? c : (c.name || `Color ${i+1}`);
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setOrderForm(prev => ({ ...prev, color: colorName }))}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                              orderForm.color === colorName
+                                ? 'bg-[#ce112d] text-white shadow-2xs'
+                                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                            }`}
+                          >
+                            {colorName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Total Amount */}
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-50 rounded-xl border border-zinc-100 text-xs">
+                  <span className="text-zinc-600 font-bold">সর্বমোট:</span>
+                  <span className="font-black text-sm text-[#ce112d]">
+                    ৳{(parseFloat(orderModalProduct.price) || 0) * orderForm.quantity}
+                  </span>
+                </div>
+
+                {/* Two Action Buttons: Add to Bag & Direct Checkout */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addToCart(orderModalProduct, orderForm.quantity, orderForm.size, orderForm.color);
+                      setOrderModalProduct(null);
+                      setMessages(prev => [
+                        ...prev,
+                        {
+                          id: 'cart-added-' + Date.now(),
+                          role: 'assistant',
+                          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                          content: `${orderModalProduct.name} সফলভাবে ব্যাগে যুক্ত করা হয়েছে! আপনি আরও পোশাক দেখতে পারেন বা সরাসরি চেকআউট করতে পারেন।`
+                        }
+                      ]);
+                    }}
+                    className="py-2.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 border border-zinc-200"
+                  >
+                    <ShoppingCart size={14} />
+                    <span>ব্যাগে যোগ করুন</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addToCart(orderModalProduct, orderForm.quantity, orderForm.size, orderForm.color);
+                      setOrderModalProduct(null);
+                      setIsOpen(false);
+                      navigate('/checkout');
+                    }}
+                    className="py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-red-900/20 flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <ShoppingBag size={14} />
+                    <span>অর্ডার করুন</span>
+                  </button>
+                </div>
               </div>
             )}
 
