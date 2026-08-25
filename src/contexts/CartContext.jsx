@@ -6,7 +6,17 @@ export function CartProvider({ children }) {
     const [cartItems, setCartItems] = useState(() => {
         try {
             const savedCart = localStorage.getItem('bigbazar_cart');
-            return savedCart ? JSON.parse(savedCart) : [];
+            if (!savedCart) return [];
+            const parsed = JSON.parse(savedCart);
+            if (!Array.isArray(parsed)) return [];
+            // Sanitize any NaN or invalid items from previous sessions
+            return parsed.map(item => ({
+                ...item,
+                price: typeof item.price === 'number' && !isNaN(item.price) ? item.price : (parseFloat(item.price) || 0),
+                quantity: typeof item.quantity === 'number' && !isNaN(item.quantity) ? Math.max(1, item.quantity) : (parseInt(item.quantity, 10) || 1),
+                selectedColor: typeof item.selectedColor === 'string' ? item.selectedColor : '',
+                selectedSize: typeof item.selectedSize === 'string' ? item.selectedSize : ''
+            })).filter(item => item.id && item.price > 0);
         } catch (error) {
             console.error('Error parsing cart from localStorage:', error);
             return [];
@@ -21,7 +31,27 @@ export function CartProvider({ children }) {
         }
     }, [cartItems]);
 
-    const addToCart = (product, color, size, quantity = 1) => {
+    const addToCart = (product, arg2, arg3, arg4) => {
+        if (!product) return;
+        const price = typeof product.price === 'number' && !isNaN(product.price) 
+            ? product.price 
+            : (parseFloat(product.price) || 0);
+
+        let color = '';
+        let size = '';
+        let quantity = 1;
+
+        // Flexible argument handling to prevent any NaN errors
+        if (typeof arg2 === 'number') {
+            quantity = Math.max(1, parseInt(arg2, 10) || 1);
+            size = typeof arg3 === 'string' ? arg3 : '';
+            color = typeof arg4 === 'string' ? arg4 : '';
+        } else {
+            color = typeof arg2 === 'string' ? arg2 : '';
+            size = typeof arg3 === 'string' ? arg3 : '';
+            quantity = typeof arg4 === 'number' ? Math.max(1, parseInt(arg4, 10) || 1) : 1;
+        }
+
         setCartItems(prev => {
             const existingItemIndex = prev.findIndex(item =>
                 item.id === product.id &&
@@ -31,12 +61,18 @@ export function CartProvider({ children }) {
 
             if (existingItemIndex > -1) {
                 const newItems = [...prev];
-                newItems[existingItemIndex].quantity += quantity;
+                const currentQty = parseInt(newItems[existingItemIndex].quantity, 10) || 1;
+                newItems[existingItemIndex] = {
+                    ...newItems[existingItemIndex],
+                    price,
+                    quantity: currentQty + quantity
+                };
                 return newItems;
             }
 
             return [...prev, {
                 ...product,
+                price,
                 selectedColor: color,
                 selectedSize: size,
                 quantity,
@@ -52,7 +88,8 @@ export function CartProvider({ children }) {
     const updateQuantity = (cartId, delta) => {
         setCartItems(prev => prev.map(item => {
             if (item.cartId === cartId) {
-                const newQuantity = Math.max(1, item.quantity + delta);
+                const currentQty = parseInt(item.quantity, 10) || 1;
+                const newQuantity = Math.max(1, currentQty + delta);
                 return { ...item, quantity: newQuantity };
             }
             return item;
@@ -63,8 +100,16 @@ export function CartProvider({ children }) {
         setCartItems([]);
     };
 
-    const cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-    const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+    const cartTotal = cartItems.reduce((total, item) => {
+        const p = typeof item.price === 'number' && !isNaN(item.price) ? item.price : (parseFloat(item.price) || 0);
+        const q = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : (parseInt(item.quantity, 10) || 1);
+        return total + (p * q);
+    }, 0);
+
+    const cartCount = cartItems.reduce((total, item) => {
+        const q = typeof item.quantity === 'number' && !isNaN(item.quantity) ? item.quantity : (parseInt(item.quantity, 10) || 1);
+        return total + q;
+    }, 0);
 
     return (
         <CartContext.Provider value={{

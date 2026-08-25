@@ -731,7 +731,7 @@ export default function ChatWidget() {
                   <button
                     type="button"
                     onClick={() => {
-                      addToCart(orderModalProduct, orderForm.quantity, orderForm.size, orderForm.color);
+                      addToCart(orderModalProduct, orderForm.color, orderForm.size, orderForm.quantity);
                       setOrderModalProduct(null);
                       setMessages(prev => [
                         ...prev,
@@ -752,7 +752,7 @@ export default function ChatWidget() {
                   <button
                     type="button"
                     onClick={() => {
-                      addToCart(orderModalProduct, orderForm.quantity, orderForm.size, orderForm.color);
+                      addToCart(orderModalProduct, orderForm.color, orderForm.size, orderForm.quantity);
                       setOrderModalProduct(null);
                       setIsOpen(false);
                       navigate('/checkout');
