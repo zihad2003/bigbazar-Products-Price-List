@@ -1896,7 +1896,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   const conn = getDb(c.env);
   const lowerMsg = userMessage.toLowerCase();
 
-  // ── Step 1: Subcategory & Product Keyword Mapping with comprehensive spelling variants ──
+  // ── Step 1: Subcategory & Category Keyword Mapping ──
   let matchedCategory = null;
   let searchTerm = null;
 
@@ -1918,13 +1918,30 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   } else if (/borka|burqa|abaya|বোরকা|বোরখা|আবায়া/i.test(lowerMsg)) {
     matchedCategory = 'BORKA';
     searchTerm = 'borka';
+  } else if (/ছেলেদের|পুরুষ|men|gents/i.test(lowerMsg)) {
+    matchedCategory = 'Men';
+    searchTerm = 'Men';
+  } else if (/মেয়েদের|মহিলা|women|ladies/i.test(lowerMsg)) {
+    matchedCategory = 'Women';
+    searchTerm = 'Women';
+  } else if (/বাচ্চাদের\s*\(?ছেলে\)?|kids\s*boys?/i.test(lowerMsg)) {
+    matchedCategory = 'Kids (Boys)';
+    searchTerm = 'Kids (Boys)';
+  } else if (/বাচ্চাদের\s*\(?মেয়ে\)?|kids\s*girls?/i.test(lowerMsg)) {
+    matchedCategory = 'Kids (Girls)';
+    searchTerm = 'Kids (Girls)';
+  } else if (/বাচ্চাদের|kids|শিশু/i.test(lowerMsg)) {
+    matchedCategory = 'Kids';
+    searchTerm = 'Kids';
+  } else if (/বিয়ের\s*সাজনি|bridal|wedding|কারচুপি/i.test(lowerMsg)) {
+    matchedCategory = 'Biyer Sajani';
+    searchTerm = 'Biyer Sajani';
   } else if (/আরও|more|next/i.test(lowerMsg)) {
     if (body.category_query) {
       matchedCategory = body.category_query;
       searchTerm = body.category_query;
     }
   }
-
 
   const hasProductIntent = matchedCategory !== null || 
     lowerMsg.includes('collection') || lowerMsg.includes('কালেকশন') ||
@@ -1941,8 +1958,17 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     const params = [];
 
     if (matchedCategory) {
-      sql += " AND (UPPER(subcategory) LIKE ? OR UPPER(name) LIKE ? OR UPPER(category) LIKE ?)";
-      params.push(`%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`);
+      if (matchedCategory === 'Men' || matchedCategory === 'Women' || matchedCategory === 'Kids (Boys)' || matchedCategory === 'Kids (Girls)') {
+        sql += " AND UPPER(category) = ?";
+        params.push(matchedCategory.toUpperCase());
+      } else if (matchedCategory === 'Kids') {
+        sql += " AND UPPER(category) LIKE 'KIDS%'";
+      } else if (matchedCategory === 'Biyer Sajani') {
+        sql += " AND (UPPER(subcategory) LIKE '%JAMDANI%' OR UPPER(subcategory) LIKE '%KATAN%' OR UPPER(subcategory) LIKE '%BRIDAL%' OR UPPER(name) LIKE '%BRIDAL%' OR UPPER(name) LIKE '%WEDDING%')";
+      } else {
+        sql += " AND (UPPER(subcategory) LIKE ? OR UPPER(name) LIKE ? OR UPPER(category) LIKE ?)";
+        params.push(`%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`);
+      }
     } else if (userMessage.length > 2) {
       const cleanKeyword = userMessage.replace(/[^\w\s\u0980-\u09FF]/g, '').trim().split(' ')[0];
       sql += " AND (name LIKE ? OR category LIKE ? OR subcategory LIKE ?)";
@@ -1988,26 +2014,32 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     }
   }
 
-  // ── Step 2: FAQ KB Direct Match ──
+  // ── Step 2: Determine Response ──
   let replyText = '';
-  if (productsRes.length === 0) {
+
+  if (hasProductIntent) {
+    if (productsRes.length > 0) {
+      replyText = 'আমাদের কালেকশন থেকে প্রোডাক্টগুলো নিচে দেওয়া হলো। আপনি সরাসরি অর্ডার করতে পারেন বা বিস্তারিত দেখতে পারেন:';
+    } else {
+      replyText = 'পণ্যটি এখনও ওয়েবসাইটে যুক্ত করা হয়নি। আপনি আমাদের শোরুমে (২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট) সরাসরি ভিজিট করে পণ্যটি নিতে পারবেন।';
+    }
+  } else {
     const faqMatch = matchFAQ(userMessage);
     if (faqMatch && faqMatch.entry) {
       replyText = lang === 'bn' ? faqMatch.entry.answer_bn : faqMatch.entry.answer_en;
     }
   }
 
-  // ── Step 3: Google Gemini / Gemma Generation ──
+  // ── Step 3: Google Gemini for General Inquiries (with ample token limit) ──
   if (!replyText) {
     try {
       const systemPrompt = `You are BigBazar AI Shopping Assistant for a Bangladeshi fashion store (BigBazar, Baraiyarhat, Mirsarai).
 RULES:
-1. Reply in 1-2 friendly, polite Bengali sentences (or English if customer speaks English).
-2. If products are shown below, mention that you have displayed them below for them to browse or add to cart.
-3. Mention that free delivery is available in Mirsarai.`;
+1. Always reply in 1-2 complete, polite Bengali sentences. Never cut off or leave sentences incomplete.
+2. If customer asks about products or shopping, invite them to browse our categories or visit our showroom (2nd Floor, Jomidar Plaza, Baraiyarhat).`;
 
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiApiKey}`;
-      const prompt = `Customer says: "${userMessage}". Products in catalog: ${productsRes.length > 0 ? productsRes.map(p => `${p.name} (৳${p.price})`).join(', ') : 'None'}. Give a 1-2 sentence friendly response:`;
+      const prompt = `Customer asks: "${userMessage}". Reply politely in complete Bengali sentences:`;
 
       const gRes = await fetch(geminiUrl, {
         method: 'POST',
@@ -2015,7 +2047,7 @@ RULES:
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 200, temperature: 0.3 }
+          generationConfig: { maxOutputTokens: 600, temperature: 0.3 }
         })
       });
       const gData = await gRes.json();
@@ -2026,14 +2058,20 @@ RULES:
   }
 
   if (!replyText) {
-    if (productsRes.length > 0) {
-      replyText = `আমাদের কালেকশন থেকে ${productsRes.length}টি জনপ্রিয় প্রোডাক্ট নিচে দেওয়া হলো:`;
-    } else {
-      replyText = 'আমি কীভাবে আপনাকে সাহায্য করতে পারি? নিচে আমাদের জনপ্রিয় ক্যাটাগরিগুলো দেখতে পারেন।';
-    }
+    replyText = 'আমি কীভাবে আপনাকে সহায়তা করতে পারি? নিচে আমাদের ক্যাটাগরি বা বিষয়গুলো দেখতে পারেন।';
   }
 
-  const categoryQuickReplies = ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'পারশি কালেকশন', 'ওয়েস্টার্ন ২-পিস'];
+  // Dynamic contextual quick replies
+  let categoryQuickReplies = [];
+  if (matchedCategory === 'Men') {
+    categoryQuickReplies = ['পাঞ্জাবি কালেকশন', 'শার্ট কালেকশন', 'কাবলি সেট', 'টি-শার্ট কালেকশন'];
+  } else if (matchedCategory === 'Women') {
+    categoryQuickReplies = ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'কুর্তি কালেকশন', 'বোরকা ও আবায়া'];
+  } else if (matchedCategory?.includes('Kids')) {
+    categoryQuickReplies = ['কিডস ফ্রক', 'কিডস পাঞ্জাবি', 'বাবা স্যুট'];
+  } else {
+    categoryQuickReplies = ['মেয়েদের কালেকশন', 'ছেলেদের কালেকশন', 'বাচ্চাদের কালেকশন', 'বিয়ের সাজনি'];
+  }
 
   return c.json({
     reply: replyText,

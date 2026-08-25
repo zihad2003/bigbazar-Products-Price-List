@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   X, Send, ShoppingBag, Sparkles, ChevronRight, 
   ShoppingCart, ExternalLink, RefreshCw, 
@@ -27,6 +28,7 @@ const QUICK_INFO_TOPICS = [
 ];
 
 export default function ChatWidget() {
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -594,19 +596,22 @@ export default function ChatWidget() {
                                 <div className="flex items-center gap-1.5 mt-2">
                                   <button
                                     onClick={() => startInChatOrder(p)}
-                                    className="flex-1 py-1.5 px-2 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
+                                    className="flex-1 py-1.5 px-2.5 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
                                   >
                                     <ShoppingBag size={11} /> অর্ডার করুন
                                   </button>
-                                  <a
-                                    href={`/product/${p.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg text-[10px] font-bold flex items-center justify-center transition-all"
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigate(`/product/${p.id}`);
+                                      setIsOpen(false);
+                                    }}
+                                    className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
                                     title="বিস্তারিত দেখুন"
                                   >
-                                    <ExternalLink size={12} />
-                                  </a>
+                                    <span>বিস্তারিত</span>
+                                    <ChevronRight size={11} />
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -615,8 +620,8 @@ export default function ChatWidget() {
                       </div>
                     )}
 
-                    {/* Quick Replies Pills */}
-                    {msg.quick_replies && msg.quick_replies.length > 0 && (
+                    {/* Quick Replies Pills (Only shown when not cluttered by product cards) */}
+                    {msg.quick_replies && msg.quick_replies.length > 0 && !msg.products?.length && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {msg.quick_replies.map((reply, i) => (
                           <button
