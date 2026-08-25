@@ -540,14 +540,17 @@ app.get('/products', async (c) => {
 
   const { status, category, subcategory, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
   
+  const pageNum = Math.max(0, parseInt(page) || 0);
+  const limitNum = Math.max(1, Math.min(parseInt(limit) || 12, 100));
+
   // Sanitize cache key to prevent bot cache-busting
   const safeParams = new URLSearchParams();
   if (status) safeParams.set('status', status);
   if (category) safeParams.set('category', category);
   if (subcategory) safeParams.set('subcategory', subcategory);
   if (search) safeParams.set('search', search);
-  safeParams.set('page', String(page));
-  safeParams.set('limit', String(limit));
+  safeParams.set('page', String(pageNum));
+  safeParams.set('limit', String(limitNum));
   if (id) safeParams.set('id', id);
   if (ids) safeParams.set('ids', ids);
   safeParams.set('order_by', order_by);
@@ -635,8 +638,6 @@ app.get('/products', async (c) => {
       params.push(`%${search}%`, `%${search}%`);
     }
 
-    const pageNum = Math.max(0, parseInt(page) || 0);
-    const limitNum = Math.max(1, Math.min(parseInt(limit) || 12, 100));
     const dir = ascending === 'true' ? 'ASC' : 'DESC';
     const orderCol = order_by === 'created_at' ? 'created_at' : 'serial_no';
 
@@ -743,7 +744,10 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
     is_sold_out: p.is_sold_out !== undefined ? (p.is_sold_out ? 1 : 0) : undefined,
     is_deleted: p.is_deleted !== undefined ? (p.is_deleted ? 1 : 0) : undefined,
     available_sizes: p.available_sizes !== undefined ? JSON.stringify(p.available_sizes) : undefined,
-    available_colors: p.available_colors !== undefined ? JSON.stringify(p.available_colors) : undefined
+    available_colors: p.available_colors !== undefined ? JSON.stringify(p.available_colors) : undefined,
+    stock_count: p.stock_count,
+    is_exclusive: p.is_exclusive !== undefined ? (p.is_exclusive ? 1 : 0) : undefined,
+    serial_no: p.serial_no
   };
 
   for (const [key, val] of Object.entries(fields)) {

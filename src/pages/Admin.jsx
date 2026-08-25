@@ -52,7 +52,7 @@ export default function Admin() {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [formAlert, setFormAlert] = useState(null); // { title, message, type: 'error' | 'success' }
   const [customSizeInput, setCustomSizeInput] = useState('');
-  const [productLimit, setProductLimit] = useState(500);
+  const [productPage, setProductPage] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
   const [showRangeDeleteModal, setShowRangeDeleteModal] = useState(false);
   const [rangeStart, setRangeStart] = useState('1');
@@ -164,29 +164,69 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchAnalyticsStats();
   }, []);
 
-  const fetchProducts = async (limitToFetch = productLimit) => {
+  const fetchProducts = async (pageToFetch = 0, append = false) => {
     setLoading(true);
     const { data } = await bigBazarApi
       .from('products')
-      // Bug 4 fix: exclude image_url (base64) — admin UI uses /api/img/:id URLs from images[]
+      // DB-1 fix: use fixed 100-item page size (range 0..99, 100..199, etc.) for stable KV cache reuse
       .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
       .order('created_at', { ascending: false })
-      .limit(limitToFetch);
-    setProducts(data || []);
-    setHasMoreProducts(data && data.length >= limitToFetch);
+      .range(pageToFetch * 100, (pageToFetch + 1) * 100 - 1);
+
+    const fetched = data || [];
+    if (append) {
+      setProducts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newItems = fetched.filter(p => !existingIds.has(p.id));
+        return [...prev, ...newItems];
+      });
+    } else {
+      setProducts(fetched);
+    }
+    setProductPage(pageToFetch);
+    setHasMoreProducts(fetched.length >= 100);
     setLoading(false);
   };
 
   const handleLoadMoreProducts = () => {
-    const nextLimit = productLimit + 500;
-    setProductLimit(nextLimit);
-    fetchProducts(nextLimit);
+    const nextPage = productPage + 1;
+    fetchProducts(nextPage, true);
   };
 
-  const handleLoadAllProducts = () => {
-    const allLimit = 5000;
-    setProductLimit(allLimit);
-    fetchProducts(allLimit);
+  const handleLoadAllProducts = async () => {
+    setLoading(true);
+    try {
+      let allLoaded = [...products];
+      let currentPage = productPage + 1;
+      let more = true;
+      while (more) {
+        const { data } = await bigBazarApi
+          .from('products')
+          .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
+          .order('created_at', { ascending: false })
+          .range(currentPage * 100, (currentPage + 1) * 100 - 1);
+
+        if (!data || data.length === 0) {
+          more = false;
+          break;
+        }
+        const existingIds = new Set(allLoaded.map(p => p.id));
+        const newItems = data.filter(p => !existingIds.has(p.id));
+        allLoaded = [...allLoaded, ...newItems];
+        if (data.length < 100) {
+          more = false;
+        } else {
+          currentPage++;
+        }
+      }
+      setProducts(allLoaded);
+      setProductPage(currentPage);
+      setHasMoreProducts(false);
+    } catch (err) {
+      console.error('Error loading all products:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBulkDeleteBySerialRange = async () => {
@@ -198,12 +238,28 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     }
 
     setLoading(true);
-    // Fetch target products from DB in range
-    const { data: targetProducts } = await bigBazarApi
-      .from('products')
-      .select('id, serial_no, name')
-      .order('serial_no', { ascending: true })
-      .limit(5000);
+    // Fetch target products from DB in range using standard 100-item page requests
+    let targetProducts = [];
+    let page = 0;
+    let keepFetching = true;
+    while (keepFetching) {
+      const { data } = await bigBazarApi
+        .from('products')
+        .select('id, serial_no, name')
+        .order('serial_no', { ascending: true })
+        .range(page * 100, (page + 1) * 100 - 1);
+
+      if (!data || data.length === 0) {
+        keepFetching = false;
+      } else {
+        targetProducts = [...targetProducts, ...data];
+        if (data.length < 100 || targetProducts.length >= 5000) {
+          keepFetching = false;
+        } else {
+          page++;
+        }
+      }
+    }
 
     const matching = (targetProducts || []).filter(p => p.serial_no >= start && p.serial_no <= end);
 
@@ -3821,7 +3877,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           className="flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-3.5 py-1.5 rounded-full border border-[#ce112d]/20 transition-all active:scale-95 disabled:opacity-50"
                         >
                           {loading ? <RotateCcw size={12} className="animate-spin" /> : <Plus size={12} />}
-                          <span>Load 500 More</span>
+                          <span>Load 100 More</span>
                         </button>
                         <button
                           type="button"
@@ -4183,7 +4239,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   className="flex items-center gap-2 bg-[#ce112d] hover:bg-[#b00e26] text-white px-8 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50"
                 >
                   {loading ? <RotateCcw size={16} className="animate-spin" /> : <Plus size={16} />}
-                  <span>Load More Products ({productLimit}+ Loaded)</span>
+                  <span>Load More Products ({products.length} Loaded)</span>
                 </button>
                 <button
                   type="button"

@@ -206,6 +206,11 @@ class QueryBuilder {
         return this;
     }
 
+    page(pageNum) {
+        this._page = pageNum;
+        return this;
+    }
+
     single() { this._single = true; return this; }
 
     // Execute SELECT or other queued action
@@ -282,6 +287,8 @@ class QueryBuilder {
             const page = Math.floor(this._rangeFrom / limit);
             params.set('page', page);
             params.set('limit', limit);
+        } else if (this._page !== null && this._page !== undefined) {
+            params.set('page', this._page);
         }
         
         const url = `${API_BASE}${endpoint}?${params.toString()}`;
