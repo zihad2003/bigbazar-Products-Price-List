@@ -238,9 +238,9 @@ app.get('/img/:id', async (c) => {
         return new Response(cached, {
           headers: {
             'Content-Type': 'image/webp',
-            'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
-            'CDN-Cache-Control': 'max-age=31536000',
-            'Cloudflare-CDN-Cache-Control': 'max-age=31536000',
+            'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+            'CDN-Cache-Control': 'max-age=86400',
+            'Cloudflare-CDN-Cache-Control': 'max-age=86400',
           }
         });
       }
@@ -282,9 +282,9 @@ app.get('/img/:id', async (c) => {
     return new Response(bytes, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
-        'CDN-Cache-Control': 'max-age=31536000',
-        'Cloudflare-CDN-Cache-Control': 'max-age=31536000',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+        'CDN-Cache-Control': 'max-age=86400',
+        'Cloudflare-CDN-Cache-Control': 'max-age=86400',
       }
     });
   } catch (err) {
@@ -431,11 +431,27 @@ const parseProductRowLite = (row) => {
   const tryParse = (val) => {
     try { return typeof val === 'string' ? JSON.parse(val) : val; } catch (e) { return []; }
   };
+  const parsedImages = tryParse(row.images);
+  const rawImageUrl = row.image_url;
   const cdnUrl = `/api/img/${row.id}`;
+
+  let finalImageUrl = null;
+  if (rawImageUrl && !rawImageUrl.startsWith('data:')) {
+    finalImageUrl = rawImageUrl;
+  } else if (rawImageUrl) {
+    finalImageUrl = cdnUrl;
+  } else if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+    finalImageUrl = (typeof parsedImages[0] === 'string' && parsedImages[0].startsWith('data:')) ? cdnUrl : parsedImages[0];
+  }
+
+  const finalImages = Array.isArray(parsedImages) && parsedImages.length > 0
+    ? parsedImages.map(img => (typeof img === 'string' && img.startsWith('data:')) ? cdnUrl : img)
+    : (finalImageUrl ? [finalImageUrl] : []);
+
   return {
     ...row,
-    image_url: cdnUrl,
-    images: [cdnUrl],
+    image_url: finalImageUrl || cdnUrl,
+    images: finalImages.length > 0 ? finalImages : [cdnUrl],
     available_sizes: tryParse(row.available_sizes),
     available_colors: tryParse(row.available_colors),
     is_sale: !!row.is_sale,
@@ -759,9 +775,8 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
   await kvDelete(c, 'cache:products');
   await kvDelete(c, `cache:product:${id}`);
   await kvDelete(c, 'cache:subcounts');
-  // Bug 2 fix: if image_url changed, evict the binary KV image cache so the new
-  // photo is served on the next request instead of serving the old one for 30 days.
-  if (p.image_url !== undefined) {
+  // Evict the binary KV image cache so the new photo is served immediately
+  if (p.image_url !== undefined || p.images !== undefined) {
     const kv = c.env?.BIGBAZAR_CACHE;
     if (kv) { try { await kv.delete(`img:${id}`); } catch (_) {} }
   }

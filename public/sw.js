@@ -35,13 +35,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Product Images (/api/img/* or static images): Cache First + Network Fallback
-  if (url.pathname.startsWith('/api/img/') || /\.(webp|jpg|jpeg|png|svg|gif|ico)$/i.test(url.pathname)) {
+  // 1. Dynamic Product Images (/api/img/*): Stale-While-Revalidate so updated photos reflect quickly
+  if (url.pathname.startsWith('/api/img/')) {
+    event.respondWith(
+      caches.open(IMG_CACHE_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(request);
+        const networkFetch = fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(() => null);
+
+        if (cachedResponse) return cachedResponse;
+        const netRes = await networkFetch;
+        return netRes || new Response('Image unavailable', { status: 404 });
+      })
+    );
+    return;
+  }
+
+  // 1b. Static images (assets / icons): Cache First + Network Fallback
+  if (/\.(webp|jpg|jpeg|png|svg|gif|ico)$/i.test(url.pathname)) {
     event.respondWith(
       caches.open(IMG_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(request);
         if (cachedResponse) {
-          // Serve from cache immediately
           return cachedResponse;
         }
         try {

@@ -644,10 +644,15 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     }
 
     const { _newColorHex, _newColorName, _colorSuggestions, ...formData } = form;
+    const finalMainImage = currentImageUrl || (currentImages.length > 0 ? currentImages[0] : null);
+    if (finalMainImage && (!currentImages.length || currentImages[0] !== finalMainImage)) {
+      currentImages = [finalMainImage, ...currentImages.filter(img => img !== finalMainImage)];
+    }
+
     const productData = {
       ...formData,
       images: currentImages,
-      image_url: currentImages.length > 0 ? currentImages[0] : (currentImageUrl || null),
+      image_url: finalMainImage,
       price: parseFloat(form.price) || 0,
       original_price: form.original_price ? parseFloat(form.original_price) : null,
       serial_no: parseInt(finalSerialNo) || 1,
@@ -685,8 +690,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             message: "Failed to sync update to database: " + error.message,
             type: "error"
           });
-          fetchProducts();
         }
+        fetchProducts();
       });
     } else {
       // ── OPTIMISTIC INSTANT INSERT (<50ms UI response) ──
@@ -716,8 +721,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             message: error.message || "Failed to save product to database.",
             type: "error"
           });
-          fetchProducts();
         }
+        fetchProducts();
       });
     }
   };
@@ -911,8 +916,20 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       }
 
       if (uploadedUrls.length > 0) {
-        setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
-        setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
+        if (target === 'product') {
+          setForm(prev => {
+            const cleanOther = (prev.images || []).filter(img => !img.includes('Big Bazar Video') && !img.includes('placeholder'));
+            return {
+              ...prev,
+              image_url: uploadedUrls[0],
+              images: [uploadedUrls[0], ...cleanOther.filter(img => img !== uploadedUrls[0])]
+            };
+          });
+          setPreviewImage(uploadedUrls[0]);
+        } else {
+          setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
+          setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
+        }
         const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
         setAlertModal({
           isOpen: true,
@@ -1009,7 +1026,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
   const startEdit = (p) => {
     setEditingProduct(p);
-    setForm(p);
+    const mainImg = p.image_url || p.images?.[0] || null;
+    setForm({
+      ...p,
+      image_url: mainImg,
+      images: p.images && p.images.length > 0 ? p.images : (mainImg ? [mainImg] : [])
+    });
+    setPreviewImage(mainImg);
     setFormStep(1);
     setActiveTab('add');
   };
@@ -2244,16 +2267,30 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       <div className="space-y-6">
                         <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Preview</label>
                         <div className="aspect-[4/5] w-full bg-[#0a0a0c] rounded-2xl md:rounded-[40px] border border-[#1d1d21] overflow-hidden shadow-2xl relative group ring-8 ring-black/20">
-                          {(previewImage || form.image_url || form.video_url) ? (
+                          {(previewImage || form.image_url) ? (
                             <>
-                              {form.video_url ? (
-                                <VideoPlayer src={form.video_url} priority={true} />
-                              ) : (
-                                <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700" alt="Preview" />
-                              )}
+                              <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700" alt="Preview" />
                               <button
                                 type="button"
-                                onClick={() => { setPreviewImage(null); setForm({ ...form, video_url: '', image_url: null }); }}
+                                onClick={() => {
+                                  setPreviewImage(null);
+                                  setForm(prev => ({
+                                    ...prev,
+                                    image_url: null,
+                                    images: (prev.images || []).filter((_, idx) => idx !== 0)
+                                  }));
+                                }}
+                                className="absolute top-6 right-6 p-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-[22px] shadow-2xl backdrop-blur-md transition-all border border-red-500/20"
+                              >
+                                <Trash2 size={20} />
+                              </button>
+                            </>
+                          ) : form.video_url ? (
+                            <>
+                              <VideoPlayer src={form.video_url} priority={true} />
+                              <button
+                                type="button"
+                                onClick={() => { setPreviewVideo(null); setForm(prev => ({ ...prev, video_url: '' })); }}
                                 className="absolute top-6 right-6 p-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-[22px] shadow-2xl backdrop-blur-md transition-all border border-red-500/20"
                               >
                                 <Trash2 size={20} />
