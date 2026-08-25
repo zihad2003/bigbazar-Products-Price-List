@@ -520,84 +520,53 @@ export default function ChatWidget() {
                       </div>
                     )}
 
-                    {/* Subcategories Pills if Category is active — Real Site Subcategories */}
-                    {selectedCategory && (() => {
-                      const subs = getSubcategoriesForCategory(selectedCategory.id, subcategoriesData);
-                      return subs && subs.length > 0 ? (
-                        <div className="p-3 bg-white rounded-xl border border-zinc-200/90 space-y-2 shadow-2xs">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-bold text-zinc-700">
-                              {selectedCategory.bn} সাব-ক্যাটাগরি:
-                            </p>
-                            <button
-                              onClick={() => setSelectedCategory(null)}
-                              className="text-[10px] text-zinc-400 hover:text-zinc-600 font-bold underline"
-                            >
-                              বন্ধ করুন
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {subs.map((sub) => (
-                              <button
-                                key={sub.id}
-                                onClick={() => handleSendMessage(`${sub.name_bn || sub.name_en || sub.id} কালেকশন দেখান`, { category_query: sub.id })}
-                                className="px-2.5 py-1 bg-zinc-50 hover:bg-[#ce112d] text-zinc-700 hover:text-white border border-zinc-200 hover:border-[#ce112d] rounded-lg text-[11px] font-bold transition-all active:scale-95"
-                              >
-                                {sub.name_bn || sub.name_en || sub.id}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-
                     {/* Product Cards Carousel / Grid inside Chat */}
                     {msg.products && msg.products.length > 0 && (
-                      <div className="space-y-2 pt-1 w-full">
+                      <div className="space-y-2.5 pt-1 w-full">
                         <div className="flex items-center justify-between px-1">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                             পণ্য তালিকা ({msg.products.length} টি)
                           </span>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           {msg.products.map((p) => (
                             <div
                               key={p.id}
-                              className="p-2.5 bg-white border border-zinc-200/90 rounded-xl flex gap-3 shadow-2xs hover:shadow-sm transition-all group"
+                              className="p-3 bg-white border border-zinc-200/90 rounded-2xl flex gap-3 shadow-2xs hover:shadow-sm transition-all group"
                             >
-                              <div className="w-16 h-20 bg-slate-100 rounded-lg overflow-hidden shrink-0 relative border border-zinc-100">
+                              <div className="w-20 h-26 sm:w-24 sm:h-30 bg-slate-100 rounded-xl overflow-hidden shrink-0 relative border border-zinc-100">
                                 <img
-                                  src={getOptimizedUrl(p.image_url || p.images?.[0], { w: 120, h: 150 })}
+                                  src={getOptimizedUrl(p.image_url || p.images?.[0], { w: 200, h: 260 })}
                                   alt={p.name}
-                                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform"
-                                  onError={(e) => { e.target.src = 'https://placehold.co/120x150/ffffff/ce112d?text=BigBazar'; }}
+                                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                                  onError={(e) => { e.target.src = 'https://placehold.co/200x260/ffffff/ce112d?text=BigBazar'; }}
                                 />
                               </div>
 
                               <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                                 <div>
-                                  <h4 className="text-xs font-bold text-zinc-900 truncate group-hover:text-[#ce112d] transition-colors">
+                                  <h4 className="text-xs sm:text-sm font-bold text-zinc-900 line-clamp-2 group-hover:text-[#ce112d] transition-colors leading-snug">
                                     {p.name}
                                   </h4>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-black text-[#ce112d]">
+                                  <div className="flex items-baseline gap-2 mt-1.5">
+                                    <span className="text-xs sm:text-sm font-black text-[#ce112d]">
                                       ৳{p.price}
                                     </span>
                                     {p.original_price && p.original_price > p.price && (
-                                      <span className="text-[10px] text-zinc-400 line-through">
+                                      <span className="text-[10px] sm:text-xs text-zinc-400 line-through">
                                         ৳{p.original_price}
                                       </span>
                                     )}
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 mt-2">
+                                <div className="flex items-center gap-2 mt-2.5">
                                   <button
                                     onClick={() => startInChatOrder(p)}
-                                    className="flex-1 py-1.5 px-2.5 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
+                                    className="flex-1 py-2 px-2.5 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 shadow-2xs active:scale-95 transition-all"
                                   >
-                                    <ShoppingBag size={11} /> অর্ডার করুন
+                                    <ShoppingBag size={12} /> অর্ডার করুন
                                   </button>
                                   <button
                                     type="button"
@@ -605,11 +574,11 @@ export default function ChatWidget() {
                                       navigate(`/product/${p.id}`);
                                       setIsOpen(false);
                                     }}
-                                    className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
+                                    className="px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all active:scale-95"
                                     title="বিস্তারিত দেখুন"
                                   >
                                     <span>বিস্তারিত</span>
-                                    <ChevronRight size={11} />
+                                    <ChevronRight size={12} />
                                   </button>
                                 </div>
                               </div>
