@@ -177,6 +177,14 @@ export default function ProductDetails() {
         const colorImg = selectedColorObj.image || selectedColorObj.image_url;
         if (!colorImg) return 0;
         const idx = images.findIndex(img => img === colorImg);
+        // Bug 3 fix: warn in dev when a color's image reference is no longer in the
+        // images array (e.g., admin deleted the gallery photo without reassigning it).
+        if (idx === -1 && import.meta.env?.DEV) {
+            console.warn(
+                `[BigBazar] Color "${selectedColorObj.name}" has an orphaned image reference not found in product.images.`,
+                { colorImg, images }
+            );
+        }
         return idx >= 0 ? idx : 0;
     }, [selectedColorObj, images]);
 

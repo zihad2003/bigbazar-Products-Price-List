@@ -168,7 +168,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setLoading(true);
     const { data } = await bigBazarApi
       .from('products')
-      .select('*')
+      // Bug 4 fix: exclude image_url (base64) — admin UI uses /api/img/:id URLs from images[]
+      .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
       .order('created_at', { ascending: false })
       .limit(limitToFetch);
     setProducts(data || []);
@@ -2235,7 +2236,16 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                               alt="Gallery"
                             />
-                            <div className="absolute inset-x-2 bottom-2 bg-red-600 h-10 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-xl" onClick={() => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) })}>
+                            <div className="absolute inset-x-2 bottom-2 bg-red-600 h-10 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-xl" onClick={() => {
+                              const removedImg = form.images[i];
+                              const updatedImages = form.images.filter((_, idx) => idx !== i);
+                              // Bug 3 fix: clear any color.image that pointed to the deleted image
+                              // so the admin is forced to reassign it instead of silently breaking.
+                              const updatedColors = (form.available_colors || []).map(c =>
+                                c.image === removedImg ? { ...c, image: null } : c
+                              );
+                              setForm({ ...form, images: updatedImages, available_colors: updatedColors });
+                            }}>
                               <Trash2 size={16} className="text-white" />
                             </div>
                             <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-white/50 border border-white/5 uppercase">IMG {i + 1}</div>

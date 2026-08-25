@@ -29,6 +29,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 0. Authenticated requests (admin) — always network-only, never cache
+  //    Admin needs live data; caching stale admin responses causes visible bugs.
+  if (request.headers.has('Authorization')) {
+    return;
+  }
+
   // 1. Product Images (/api/img/* or static images): Cache First + Network Fallback
   if (url.pathname.startsWith('/api/img/') || /\.(webp|jpg|jpeg|png|svg|gif|ico)$/i.test(url.pathname)) {
     event.respondWith(
@@ -52,22 +58,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Read APIs (/api/products, /api/settings, /api/products/subcategory-counts): Stale-While-Revalidate
+  // 2. Read APIs (/api/products, /api/settings, /api/products/subcategory-counts):
+  //    Network-First with cache fallback (fixes "always one visit behind" stale-while-revalidate bug).
+  //    - Try network with a short timeout (3s); on success update cache and return fresh data.
+  //    - On network failure, fall back to cache so the page still works offline.
+  //    - If both fail, return a 503 JSON error (prevents respondWith(null) crash).
   if (url.pathname.startsWith('/api/products') || url.pathname.startsWith('/api/settings')) {
     event.respondWith(
       caches.open(API_CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request);
-
-        // Fetch fresh copy in background to update cache
-        const networkFetch = fetch(request).then((networkResponse) => {
+        // Wrap fetch with a 3-second timeout so we don't stall a fast cached fallback
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SW network timeout')), 3000)
+        );
+        try {
+          const networkResponse = await Promise.race([fetch(request), timeoutPromise]);
           if (networkResponse && networkResponse.status === 200) {
+            // Update cache with fresh data
             cache.put(request, networkResponse.clone());
           }
           return networkResponse;
-        }).catch(() => null);
-
-        // Return cached data immediately if available (0ms load), otherwise wait for network
-        return cachedResponse || networkFetch;
+        } catch (_) {
+          // Network failed or timed out — try cache
+          const cachedResponse = await cache.match(request);
+          if (cachedResponse) return cachedResponse;
+          // Both network and cache failed — return a graceful offline error
+          return new Response(JSON.stringify({ error: 'offline' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
       })
     );
     return;
@@ -85,7 +104,10 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         }).catch(() => null);
 
-        return cachedResponse || networkFetch;
+        // Return cached immediately if available, else wait for network
+        if (cachedResponse) return cachedResponse;
+        const networkResponse = await networkFetch;
+        return networkResponse || new Response('Asset unavailable', { status: 503 });
       })
     );
     return;
