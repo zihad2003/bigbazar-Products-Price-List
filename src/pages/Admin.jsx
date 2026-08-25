@@ -4125,7 +4125,17 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         onClick={() => p.video_url ? setPreviewVideo(p.video_url) : null}
                       >
                         {displayImage ? (
-                          <img src={displayImage} className="w-full h-full object-cover" loading="lazy" alt={p.name} />
+                          <img
+                            src={displayImage}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            alt={p.name}
+                            onError={(e) => {
+                              if (e.currentTarget.src.includes('images.weserv.nl') && (p.image_url || p.images?.[0])) {
+                                e.currentTarget.src = p.image_url || p.images[0];
+                              }
+                            }}
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-600">
                             {p.video_url ? <Play size={24} /> : <ImageIcon size={24} />}

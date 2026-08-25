@@ -250,18 +250,42 @@ app.get('/img/:id', async (c) => {
   // 2. Read from DB, convert base64 to binary, and cache in KV
   try {
     const conn = getDb(c.env);
-    const rows = await conn.execute('SELECT image_url FROM products WHERE id = ?', [id]);
-    if (!rows[0]?.image_url) return c.json({ error: 'Image not found' }, 404);
+    const rows = await conn.execute('SELECT name, image_url, images FROM products WHERE id = ?', [id]);
+    if (!rows[0]) return c.json({ error: 'Product not found' }, 404);
 
-    const base64Str = rows[0].image_url;
+    let imgData = rows[0].image_url;
 
-    // If it's a URL (not base64), redirect
-    if (!base64Str.startsWith('data:')) {
-      return c.redirect(base64Str, 302);
+    // If image_url is missing or self-referencing (/api/img/...), check images array
+    if (!imgData || imgData.startsWith('/api/img/') || imgData.startsWith('api/img/')) {
+      let parsedImages = [];
+      try { parsedImages = rows[0].images ? JSON.parse(rows[0].images) : []; } catch (_) {}
+      const validImg = parsedImages.find(img => img && !img.startsWith('/api/img/') && !img.startsWith('api/img/'));
+      imgData = validImg || null;
+    }
+
+    // Graceful SVG fallback if absolutely no image exists
+    if (!imgData) {
+      const title = rows[0].name || 'Big Bazar';
+      const cleanTitle = title.length > 25 ? title.substring(0, 22) + '...' : title;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#18181b"/><stop offset="100%" stop-color="#09090b"/></linearGradient></defs><rect width="600" height="750" fill="url(#bg)"/><circle cx="300" cy="340" r="48" fill="#ce112d" opacity="0.9"/><path d="M290 320 L320 340 L290 360 Z" fill="#ffffff"/><text x="300" y="430" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="bold" text-anchor="middle">BIG BAZAR</text><text x="300" y="465" fill="#a1a1aa" font-family="sans-serif" font-size="16" text-anchor="middle">${cleanTitle}</text></svg>`;
+      return new Response(svg, {
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=300, s-maxage=300'
+        }
+      });
+    }
+
+    // If it's a real external or CDN URL (not base64), redirect
+    if (!imgData.startsWith('data:')) {
+      if (imgData.startsWith('/api/img/') || imgData.startsWith('api/img/')) {
+        return c.json({ error: 'Invalid self-referencing image' }, 404);
+      }
+      return c.redirect(imgData, 302);
     }
 
     // Extract base64 data
-    const match = base64Str.match(/^data:([^;]+);base64,(.+)$/);
+    const match = imgData.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) return c.json({ error: 'Invalid image format' }, 400);
 
     const contentType = match[1];

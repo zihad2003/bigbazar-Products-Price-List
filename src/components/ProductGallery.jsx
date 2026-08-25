@@ -86,6 +86,11 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
             loading={currentIndex === 0 ? "eager" : "lazy"}
             fetchPriority={currentIndex === 0 ? "high" : "auto"}
             decoding="async"
+            onError={(e) => {
+              if (e.currentTarget.src.includes('images.weserv.nl') && images[currentIndex]) {
+                e.currentTarget.src = images[currentIndex];
+              }
+            }}
           />
         </AnimatePresence>
 

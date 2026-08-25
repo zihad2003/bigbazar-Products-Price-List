@@ -38,6 +38,11 @@ export const ProductCard = ({ product, onClick }) => {
               alt={product.name}
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src.includes('images.weserv.nl') && sourceImage) {
+                  e.currentTarget.src = sourceImage;
+                }
+              }}
             />
           </div>
         ) : (

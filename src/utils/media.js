@@ -15,9 +15,18 @@ const TRUSTED_DOMAINS = [
     'images.unsplash.com',
     'unsplash.com',
     'res.cloudinary.com',
+    'cloudinary.com',
     'cdn.shopify.com',
     'lh3.googleusercontent.com',
+    'googleusercontent.com',
     'ik.imagekit.io',
+    'cdninstagram.com',
+    'fbcdn.net',
+    'facebook.com',
+    'fna.fbcdn.net',
+    'supabase.co',
+    'i.imgur.com',
+    'imgur.com',
 ];
 
 function isTrustedDomain(url) {
