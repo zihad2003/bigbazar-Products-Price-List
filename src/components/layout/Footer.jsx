@@ -107,8 +107,6 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                                 <li><button type="button" onClick={() => handleCategoryClick('Women')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'মেয়েদের' : 'Women'}</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('Kids (Boys)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'বাচ্চাদের (ছেলে)' : 'Kids (Boys)'}</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('Kids (Girls)')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'বাচ্চাদের (মেয়ে)' : 'Kids (Girls)'}</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('New')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300">{language === 'bn' ? 'নতুন কালেকশন' : 'New Collection'}</button></li>
-                                <li><button type="button" onClick={() => handleCategoryClick('Sale')} className="hover:text-[#ce112d] hover:translate-x-1 transition-all duration-300 text-rose-500 font-bold uppercase tracking-wider">{language === 'bn' ? 'বিশেষ ছাড় (অফার)' : 'Sale'}</button></li>
                             </ul>
                         </div>
 
