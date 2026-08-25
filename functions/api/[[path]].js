@@ -1896,14 +1896,14 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   const conn = getDb(c.env);
   const lowerMsg = userMessage.toLowerCase();
 
-  // ── Step 1: Subcategory & Category Keyword Mapping ──
+  // ── Step 1: Subcategory & Category Keyword Mapping (Bangla, English & Banglish) ──
   let matchedCategory = null;
   let searchTerm = null;
 
   if (/saree|sari|saari|saaree|sharee|shari|শাড়ি|শাড়ী/i.test(lowerMsg)) {
     matchedCategory = 'SAREE';
     searchTerm = 'saree';
-  } else if (/three|piece|stitched|3\s*piece|থ্রি|পিস|৩\s*পিস/i.test(lowerMsg)) {
+  } else if (/three\s*piece|3\s*piece|thri|three|থ্রি|পিস|৩\s*পিস/i.test(lowerMsg)) {
     matchedCategory = 'STITCHED-COTTON-THREE-PIECE';
     searchTerm = 'three piece';
   } else if (/parshi|porshi|parsi|পারশি|পারশী/i.test(lowerMsg)) {
@@ -1918,22 +1918,25 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   } else if (/borka|burqa|abaya|বোরকা|বোরখা|আবায়া/i.test(lowerMsg)) {
     matchedCategory = 'BORKA';
     searchTerm = 'borka';
-  } else if (/ছেলেদের|পুরুষ|men|gents/i.test(lowerMsg)) {
+  } else if (/kurti|kurtee|কুর্তি/i.test(lowerMsg)) {
+    matchedCategory = 'KURTI';
+    searchTerm = 'kurti';
+  } else if (/chele|cheleder|purush|gents|men|ছেলেদের|পুরুষ|ছেলে/i.test(lowerMsg)) {
     matchedCategory = 'Men';
     searchTerm = 'Men';
-  } else if (/মেয়েদের|মহিলা|women|ladies/i.test(lowerMsg)) {
-    matchedCategory = 'Women';
-    searchTerm = 'Women';
-  } else if (/বাচ্চাদের\s*\(?ছেলে\)?|kids\s*boys?/i.test(lowerMsg)) {
+  } else if (/baccader\s*chele|baccha\s*chele|kids\s*boys?|বাচ্চাদের\s*\(?ছেলে\)?/i.test(lowerMsg)) {
     matchedCategory = 'Kids (Boys)';
     searchTerm = 'Kids (Boys)';
-  } else if (/বাচ্চাদের\s*\(?মেয়ে\)?|kids\s*girls?/i.test(lowerMsg)) {
+  } else if (/baccader\s*meye|baccha\s*meye|kids\s*girls?|বাচ্চাদের\s*\(?মেয়ে\)?/i.test(lowerMsg)) {
     matchedCategory = 'Kids (Girls)';
     searchTerm = 'Kids (Girls)';
-  } else if (/বাচ্চাদের|kids|শিশু/i.test(lowerMsg)) {
+  } else if (/baccha|baccader|kids|shishu|বাচ্চাদের|শিশু/i.test(lowerMsg)) {
     matchedCategory = 'Kids';
     searchTerm = 'Kids';
-  } else if (/বিয়ের\s*সাজনি|bridal|wedding|কারচুপি/i.test(lowerMsg)) {
+  } else if (/meye|meyeder|mohila|women|ladies|মেয়েদের|মহিলা|মেয়ে/i.test(lowerMsg)) {
+    matchedCategory = 'Women';
+    searchTerm = 'Women';
+  } else if (/biyer|bridal|wedding|karchupi|বিয়ের\s*সাজনি|বিয়ে|কারচুপি/i.test(lowerMsg)) {
     matchedCategory = 'Biyer Sajani';
     searchTerm = 'Biyer Sajani';
   } else if (/আরও|more|next/i.test(lowerMsg)) {
@@ -1944,10 +1947,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   }
 
   const hasProductIntent = matchedCategory !== null || 
-    lowerMsg.includes('collection') || lowerMsg.includes('কালেকশন') ||
-    lowerMsg.includes('price') || lowerMsg.includes('দাম') || lowerMsg.includes('কত') ||
-    lowerMsg.includes('dekhaw') || lowerMsg.includes('দেখান') || lowerMsg.includes('show') ||
-    lowerMsg.includes('product') || lowerMsg.includes('পণ্য') || lowerMsg.includes('dress') || lowerMsg.includes('পোশাক');
+    /ki\s*ace|ki\s*ache|ki\s*ki|কি\s*আছে|কি\s*কি|ace|ache|collection|কালেকশন|price|দাম|কত|koto|dekhaw|dekhan|দেখান|show|product|পণ্য|dress|পোশাক|poshak|পাওয়া\s*যাবে|pawa\s*jabe/i.test(lowerMsg);
 
   let productsRes = [];
   let totalAvailable = 0;

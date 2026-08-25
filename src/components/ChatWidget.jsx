@@ -21,7 +21,6 @@ const BKASH_NUMBER = '01857045449';
 // Quick Info / Policy Cards (Zero Emojis, Clean Lucide Icons)
 const QUICK_INFO_TOPICS = [
   { id: 'delivery', label: 'ডেলিভারি চার্জ ও সময়', icon: <Truck size={14} className="text-[#ce112d]" />, query: 'delivery charge' },
-  { id: 'return', label: 'রিটার্ন ও এক্সচেঞ্জ পলিসি', icon: <RotateCcw size={14} className="text-zinc-600" />, query: 'return policy' },
   { id: 'size', label: 'সাইজ গাইড ও মেজারমেন্ট', icon: <Ruler size={14} className="text-zinc-600" />, query: 'size guide' },
   { id: 'payment', label: 'পেমেন্ট ও অগ্রিম পদ্ধতি', icon: <CreditCard size={14} className="text-zinc-600" />, query: 'payment method' },
   { id: 'location', label: 'শোরুম লোকেশন ও সময়', icon: <Store size={14} className="text-zinc-600" />, query: 'showroom location' }
