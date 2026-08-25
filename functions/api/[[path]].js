@@ -1937,7 +1937,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   let hasMore = false;
 
   if (hasProductIntent) {
-    let sql = "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) AND (is_sold_out = 0 OR is_sold_out IS NULL)";
+    let sql = "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) AND (is_sold_out = 0 OR is_sold_out IS NULL)";
     const params = [];
 
     if (matchedCategory) {
@@ -1949,7 +1949,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
       params.push(`%${cleanKeyword}%`, `%${cleanKeyword}%`, `%${cleanKeyword}%`);
     }
 
-    const countSql = sql.replace("SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count", "SELECT COUNT(*) as total");
+    const countSql = sql.replace("SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors", "SELECT COUNT(*) as total");
     try {
       const countRows = await conn.execute(countSql, params);
       totalAvailable = countRows[0]?.total || 0;
@@ -1961,12 +1961,20 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
       productsRes = rows.map(r => {
         let imgs = [];
         try { imgs = r.images ? JSON.parse(r.images) : []; } catch (_) {}
+        let sizes = [];
+        try { sizes = typeof r.available_sizes === 'string' ? JSON.parse(r.available_sizes) : (r.available_sizes || []); } catch (_) {}
+        let colors = [];
+        try { colors = typeof r.available_colors === 'string' ? JSON.parse(r.available_colors) : (r.available_colors || []); } catch (_) {}
+
         return {
           id: r.id,
           name: r.name,
           price: parseFloat(r.price),
           original_price: r.original_price ? parseFloat(r.original_price) : null,
           image_url: r.image_url || imgs[0] || '',
+          images: imgs,
+          available_sizes: sizes,
+          available_colors: colors,
           description: r.description || '',
           category: r.category || '',
           subcategory: r.subcategory || '',
