@@ -360,7 +360,7 @@ export default function ChatWidget() {
       {/* Backdrop overlay for Mobile */}
       {isOpen && (
         <div
-          className="sm:hidden fixed inset-0 bg-black/30 backdrop-blur-xs z-[1018] transition-opacity animate-fade-in"
+          className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[1045] transition-opacity animate-fade-in"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -369,16 +369,24 @@ export default function ChatWidget() {
       {isOpen && (
         <div className="chat-panel-container flex flex-col bg-white text-zinc-900 border border-zinc-200 shadow-2xl overflow-hidden font-sans">
           
-          {/* Header - Ultra Modern Minimalist */}
-          <div className="px-4 py-3 bg-white border-b border-zinc-100 flex items-center justify-between gap-2 shrink-0 z-10">
+          {/* Mobile Sheet Drag Handle Bar */}
+          <div className="w-10 h-1 bg-zinc-300 rounded-full mx-auto my-1.5 sm:hidden shrink-0" />
+
+          {/* Header - Ultra Modern Minimalist with Clear Website Branding */}
+          <div className="px-4 py-2.5 sm:py-3 bg-white border-b border-zinc-100 flex items-center justify-between gap-2 shrink-0 z-10">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#ce112d] shrink-0">
-                <Sparkles size={15} />
+              <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-[#ce112d] shrink-0">
+                <Sparkles size={16} />
               </div>
-              <h3 className="text-sm font-black italic tracking-tight leading-none brand-logo">
-                <span className="text-[#ce112d]">BIG</span>
-                <span className="text-zinc-900 ml-0.5">BAZAR</span>
-              </h3>
+              <div>
+                <h3 className="text-sm font-black italic tracking-tight leading-none brand-logo">
+                  <span className="text-[#ce112d]">BIG</span>
+                  <span className="text-zinc-900 ml-0.5">BAZAR</span>
+                </h3>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1 leading-none">
+                  শপিং সহকারী
+                </p>
+              </div>
             </div>
 
             {/* Quick Actions in Header */}

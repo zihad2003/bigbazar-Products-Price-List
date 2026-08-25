@@ -6,6 +6,11 @@ export const FAQ_KB = {
     answer_bn: "বিগ বাজার একটি ফিক্সড প্রাইস ফ্যাশন শপ। আমাদের প্রতিটি পণ্যের কোয়ালিটি অনুযায়ী ন্যায্য ও নির্দিষ্ট মূল্য নির্ধারণ করা থাকে। তাই আলাদা কোনো দরদাম বা ছাড়ের সুযোগ নেই।",
     answer_en: "Big Bazar operates on a strict fixed-price policy to ensure top quality and fair pricing for all customers."
   },
+  loyal_customer: {
+    keywords: ["regular customer", "puran customer", "puraton", "sob shomoy", "sobshomoy", "kinte ashi", "রেগুলার", "পুরাতন কাস্টমার", "সব সময় আসি"],
+    answer_bn: "বিগ বাজারে নিয়মিত কেনাকাটা করার জন্য আপনাকে আন্তরিক ধন্যবাদ! আমাদের সম্মানিত রেগুলার কাস্টমারদের জন্য আমরা সবসময় সর্বোচ্চ কোয়ালিটি এবং দ্রুততম ডেলিভারি নিশ্চিত করি। বিশেষ অফার ও ক্যাম্পেইনে রেগুলার কাস্টমারদের জন্য আকর্ষণীয় ছাড় থাকে।",
+    answer_en: "Thank you for being a valued loyal customer at Big Bazar! We always prioritize premium quality and fastest delivery for you."
+  },
   about_us: {
     keywords: ["about", "big bazar", "kothay", "location", "dokandari", "shomporke", "কে তোমরা", "সম্পর্কে", "কোথায়", "ঠিকানা", "দোকান", "শোরুম"],
     answer_bn: "বিগ বাজার — পুরো পরিবারের জন্য ফিক্সড প্রাইস রিটেইল ফ্যাশন শপ।\nলোকেশন: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট পৌরসভা, মীরসরাই, চট্টগ্রাম।\n৬৫,০০০+ কাস্টমারের বিশ্বস্ত এই প্রতিষ্ঠানে রয়েছে এক্সক্লুসিভ ব্রাইডাল জোন 'বিয়ের সাজনি' এবং পুরুষ, নারী ও শিশুদের ট্রেন্ডি পোশাক।",
