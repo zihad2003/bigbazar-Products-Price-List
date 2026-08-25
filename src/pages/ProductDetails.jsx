@@ -627,19 +627,6 @@ export default function ProductDetails() {
                                             {isInCart ? (language === 'bn' ? 'ব্যাগে আছে' : 'In Bag') : (language === 'bn' ? 'ব্যাগে যোগ করুন' : 'Add to Bag')}
                                         </button>
                                     </div>
-
-                                    {/* Messenger Direct Order Button */}
-                                    <button
-                                        onClick={handleMessengerOrder}
-                                        disabled={!canProceed()}
-                                        className={`w-full py-3.5 px-4 text-xs md:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2.5 border shadow-sm ${canProceed()
-                                                ? 'bg-[#0084FF] hover:bg-[#0073e6] text-white border-[#0084FF] shadow-blue-500/20 active:scale-98'
-                                                : 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed'
-                                            }`}
-                                    >
-                                        <MessageCircle size={18} />
-                                        <span>{language === 'bn' ? 'মেসেঞ্জারে অর্ডার করুন (কপি ও চ্যাট)' : 'Order via Messenger (Copy & Chat)'}</span>
-                                    </button>
                                 </div>
 
                                 {/* Local Delivery & Assurance Highlight Banner */}

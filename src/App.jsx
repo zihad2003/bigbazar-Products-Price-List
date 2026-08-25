@@ -16,7 +16,6 @@ import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
 import SEOHead from './components/SEOHead';
-import MessengerFAB from './components/MessengerFAB';
 import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
 import { initAnalytics, trackPageview } from './utils/analytics';
@@ -225,9 +224,10 @@ function PublicLayout() {
         onOpenAuth={() => openModal(setIsAuthOpen)}
       />
 
-      {!isCheckoutPage && (
-        <MessengerFAB />
+      {!isCheckoutPage && !isConfirmationPage && (
+        <ChatWidget />
       )}
+
     </div>
   );
 }
