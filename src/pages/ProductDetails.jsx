@@ -44,9 +44,20 @@ export default function ProductDetails() {
 
     const images = React.useMemo(() => {
         if (!product) return [];
-        return (product.images && Array.isArray(product.images) && product.images.length > 0)
-            ? product.images
+        const base = (product.images && Array.isArray(product.images) && product.images.length > 0)
+            ? [...product.images]
             : [product.image || product.image_url].filter(Boolean);
+
+        // Include any color variant photos so that selecting a color instantly maps to the gallery
+        if (product.available_colors && Array.isArray(product.available_colors)) {
+            product.available_colors.forEach(c => {
+                const colorImg = typeof c === 'object' ? (c.image || c.image_url) : null;
+                if (colorImg && !base.includes(colorImg)) {
+                    base.push(colorImg);
+                }
+            });
+        }
+        return base;
     }, [product]);
 
     useEffect(() => {
@@ -176,15 +187,7 @@ export default function ProductDetails() {
         if (!selectedColorObj) return 0;
         const colorImg = selectedColorObj.image || selectedColorObj.image_url;
         if (!colorImg) return 0;
-        const idx = images.findIndex(img => img === colorImg);
-        // Bug 3 fix: warn in dev when a color's image reference is no longer in the
-        // images array (e.g., admin deleted the gallery photo without reassigning it).
-        if (idx === -1 && import.meta.env?.DEV) {
-            console.warn(
-                `[BigBazar] Color "${selectedColorObj.name}" has an orphaned image reference not found in product.images.`,
-                { colorImg, images }
-            );
-        }
+        const idx = images.findIndex(img => img === colorImg || (typeof img === 'string' && typeof colorImg === 'string' && (img.endsWith(colorImg) || colorImg.endsWith(img))));
         return idx >= 0 ? idx : 0;
     }, [selectedColorObj, images]);
 
@@ -437,36 +440,75 @@ export default function ProductDetails() {
                         <div className="space-y-6">
                             {hasValidColors && (
                                 <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                                        {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                            {language === 'bn' ? 'কালার সিলেক্ট করুন' : 'Select Color'}: {selectedColor && <span className="text-neutral-900 font-bold ml-1">{selectedColor}</span>}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2.5 sm:gap-3">
                                         {product.available_colors?.filter(c => {
                                             const name = typeof c === 'object' ? c.name : c;
                                             return name && String(name).trim() !== '';
                                         }).map((c, i) => {
                                             const name = typeof c === 'object' ? c.name : c;
                                             const hex = typeof c === 'object' ? c.hex : null;
+                                            const img = typeof c === 'object' ? (c.image || c.image_url) : null;
                                             const cIsAvailable = typeof c === 'object' ? c.is_available !== false : true;
                                             const isDisabled = isOutOfStock || !cIsAvailable;
+                                            const isSelected = selectedColor === name;
+
                                             return (
                                                 <button
                                                     key={i}
                                                     type="button"
                                                     onClick={() => { if (!isDisabled) { setSelectedColor(name); setValidationError(''); } }}
                                                     disabled={isDisabled}
-                                                    className={`group relative flex items-center gap-2 px-3.5 py-2 border-[2px] rounded-xl transition-all ${isDisabled
-                                                            ? 'border-neutral-100 bg-neutral-50 text-neutral-300 line-through cursor-not-allowed'
-                                                            : selectedColor === name
-                                                                ? 'border-neutral-900 bg-neutral-900 text-white shadow-md'
-                                                                : 'border-neutral-100 hover:border-neutral-300 text-neutral-700'
-                                                        }`}
+                                                    className={`group relative flex flex-col items-center rounded-2xl transition-all duration-200 overflow-hidden text-left ${
+                                                        isDisabled
+                                                            ? 'opacity-40 grayscale cursor-not-allowed border-2 border-neutral-100'
+                                                            : isSelected
+                                                                ? 'border-2 border-[#ce112d] ring-2 ring-[#ce112d]/30 shadow-lg scale-105'
+                                                                : 'border-2 border-neutral-200 hover:border-neutral-400 bg-white hover:scale-[1.03] shadow-sm'
+                                                    }`}
+                                                    style={{ minWidth: '68px', maxWidth: '88px' }}
                                                 >
-                                                    {hex && (
-                                                        <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0" style={{ backgroundColor: hex }}></span>
-                                                    )}
-                                                    <span className="text-[11px] font-black uppercase tracking-wider">{name}</span>
-                                                    {selectedColor === name && <Check size={12} className="ml-0.5" />}
+                                                    {/* Mini Proportional Photo Frame */}
+                                                    <div className="w-16 h-20 sm:w-20 sm:h-24 bg-neutral-100 relative overflow-hidden shrink-0">
+                                                        {img ? (
+                                                            <img
+                                                                src={getOptimizedUrl(img, { w: 160, h: 200 })}
+                                                                className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                                                                alt={name}
+                                                                onError={(e) => {
+                                                                    if (e.currentTarget.src.includes('images.weserv.nl') && img) {
+                                                                        e.currentTarget.src = img;
+                                                                    }
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-100 gap-1">
+                                                                {hex ? (
+                                                                    <span className="w-6 h-6 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: hex }}></span>
+                                                                ) : (
+                                                                    <span className="text-xs font-black text-neutral-400 uppercase">{name.slice(0, 2)}</span>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Checkmark badge when selected */}
+                                                        {isSelected && (
+                                                            <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#ce112d] text-white flex items-center justify-center shadow-md">
+                                                                <Check size={10} strokeWidth={3} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Color Name Label */}
+                                                    <div className={`w-full py-1.5 px-1.5 text-center text-[10px] font-black uppercase tracking-wider truncate transition-colors ${
+                                                        isSelected ? 'bg-[#ce112d] text-white' : 'bg-neutral-50 text-neutral-800 group-hover:bg-neutral-100'
+                                                    }`}>
+                                                        {name}
+                                                    </div>
                                                 </button>
                                             );
                                         })}
