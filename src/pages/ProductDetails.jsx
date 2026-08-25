@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Truck, CreditCard, Check, Share2, Award, Zap, AlertCircle, ShoppingCart, MessageCircle, X, Lightbulb } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import ProductGallery from '../components/ProductGallery';
 import ProductTabs from '../components/ProductTabs';
 import RecentlyViewed from '../components/RecentlyViewed';
