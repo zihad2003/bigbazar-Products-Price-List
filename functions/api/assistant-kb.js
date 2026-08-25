@@ -4,8 +4,8 @@
 export const FAQ_KB = {
   delivery_time: {
     keywords: ["delivery", "deliver", "kotdin", "shipping", "shomoy", "lagbe", "days", "arrive", "koto", "charge", "cost"],
-    answer_bn: "ডেলিভারি:\n- মীরসরাই: ফ্রি\n- চট্টগ্রাম মেট্রো: ৬০ টাকা, ১-২ দিন\n- সারা বাংলাদেশ: ১২০ টাকা, ২-৫ দিন",
-    answer_en: "Delivery: Mirsarai: Free. Chittagong: 60 BDT 1-2d. Bangladesh: 120 BDT 2-5d."
+    answer_bn: "ডেলিভারি:\n- মীরসরাই: ফ্রি ডেলিভারি (কনফার্মেশন ফি ১০০ টাকা অগ্রিম)\n- চট্টগ্রাম জেলা: ১০০ টাকা, ১-২ দিন\n- সারা বাংলাদেশ: ১৫০ টাকা, ২-৫ দিন\n(অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ অগ্রিম প্রযোজ্য। পণ্যের ওজনের ওপর ভিত্তি করে ডেলিভারি চার্জ কম-বেশি হতে পারে, যা কনফার্মেশনের সময় গ্রাহককে জানানো হবে)।",
+    answer_en: "Delivery:\n- Mirsarai: Free Delivery (100 BDT Confirmation Advance)\n- Chittagong Area: 100 BDT, 1-2 days\n- All Bangladesh: 150 BDT, 2-5 days\n(Delivery charge is required in advance for order confirmation. Delivery charge may vary depending on product weight, which will be informed if applicable)."
   },
   return_policy: {
     keywords: ["return", "exchange", "ferat", "replace", "refund", "problem", "defect", "damaged"],
@@ -14,8 +14,8 @@ export const FAQ_KB = {
   },
   payment: {
     keywords: ["bkash", "nagad", "rocket", "payment", "pay", "cash", "cod", "advance"],
-    answer_bn: "পেমেন্ট: bKash/Nagad - TrxID মেসেঞ্জারে দিন। COD সারা দেশে। Advance ৫০%।",
-    answer_en: "Payment: bKash/Nagad/Rocket TrxID on Messenger. COD nationwide. Advance 50% upfront."
+    answer_bn: "পেমেন্ট: অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ অগ্রিম bKash/Nagad-এ দিতে হবে। বাকি টাকা ক্যাশ অন ডেলিভারি (COD)-তে পরিশোধ করবেন।",
+    answer_en: "Payment: Delivery charge must be paid in advance via bKash/Nagad for order confirmation. Remaining amount payable via Cash on Delivery (COD)."
   },
   size_chart: {
     keywords: ["size", "measurement", "fit", "small", "medium", "large", "xl", "xxl", "free size", "inch"],
@@ -29,22 +29,22 @@ export const FAQ_KB = {
   },
   how_to_order: {
     keywords: ["order", "korbo", "how to", "kivabe", "confirm", "checkout", "buy"],
-    answer_bn: "অর্ডার: পণ্যে অর্ডার বাটন ক্লিক করুন, সাইজ ও কালার বেছে নাম+মোবাইল+ঠিকানা দিন। মেসেঞ্জারেও অর্ডার হয়।",
-    answer_en: "Order: Click Order Now, pick size+colour, enter name/mobile/address, confirm. Also order via Messenger."
+    answer_bn: "অর্ডার: পণ্যে অর্ডার বাটন ক্লিক করুন, সাইজ ও কালার বেছে নাম+মোবাইল+ঠিকানা দিন এবং ডেলিভারি চার্জ অগ্রিম দিয়ে কনফার্ম করুন। মেসেঞ্জারেও অর্ডার করা যায়।",
+    answer_en: "Order: Click Order Now, select size+colour, enter name/mobile/address, pay advance delivery charge to confirm. You can also order via Messenger."
   },
   mirsarai_offer: {
     keywords: ["mirsarai", "baraiyarhat", "bariarhat", "free", "upazila", "local"],
-    answer_bn: "মীরসরাই: ১০০% ফ্রি ডেলিভারি অনলাইন অর্ডারে। COD সুবিধা। শোরুম: জমিরদার প্লাজা ২য় তলা, বারইয়ারহাট।",
-    answer_en: "Mirsarai: 100% Free Delivery online. COD available. Showroom 2F Jomidar Plaza, Baraiyarhat."
+    answer_bn: "মীরসরাই: ১০০% ফ্রি ডেলিভারি অনলাইন অর্ডারে। অর্ডার কনফার্মেশন ফি ১০০ টাকা অগ্রিম প্রযোজ্য যা মোট বিল থেকে বাদ যাবে। শোরুম: জমিরদার প্লাজা ২য় তলা, বারইয়ারহাট।",
+    answer_en: "Mirsarai: 100% Free Delivery online. 100 BDT Confirmation advance fee applies which is deducted from the total bill. Showroom: 2F Jomidar Plaza, Baraiyarhat."
   }
 };
 
 export const DELIVERY_AREAS = {
-  mirsarai: { days: "Same/Next day", charge: "Free" },
-  chittagong: { days: "1-2", charge: "60 BDT" },
-  dhaka: { days: "2-3", charge: "120 BDT" },
-  sylhet: { days: "3-4", charge: "120 BDT" },
-  default: { days: "2-5", charge: "120 BDT" }
+  mirsarai: { days: "Same/Next day", charge: "Free (100 BDT Advance)" },
+  chittagong: { days: "1-2", charge: "100 BDT" },
+  dhaka: { days: "2-3", charge: "150 BDT" },
+  sylhet: { days: "3-4", charge: "150 BDT" },
+  default: { days: "2-5", charge: "150 BDT" }
 };
 
 export function normalizeQuery(msg) {
