@@ -36,6 +36,7 @@ export default function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [activeProduct, setActiveProduct] = useState(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
   
   // In-Chat Active Order State
@@ -173,7 +174,8 @@ export default function ChatWidget() {
         message: text,
         language: 'bn',
         offset: options.offset || 0,
-        category_query: options.category_query || null
+        category_query: options.category_query || null,
+        current_product: activeProduct || orderModalProduct || options.current_product || null
       };
 
       const res = await fetch(endpoint, {
@@ -217,6 +219,7 @@ export default function ChatWidget() {
 
   // Trigger conversational ordering flow for a specific product
   const startInChatOrder = (product) => {
+    setActiveProduct(product);
     const initialColor = product.available_colors?.[0]?.name || (typeof product.available_colors?.[0] === 'string' ? product.available_colors[0] : '');
     const initialSize = product.available_sizes?.[0] || '';
     
@@ -611,13 +614,13 @@ export default function ChatWidget() {
               </div>
             ))}
 
-            {/* Cart-Style Quick Order & Bag Modal inside Chat */}
+            {/* In-Chat Direct Order Form Drawer */}
             {orderModalProduct && (
               <div className="bg-white border border-zinc-200 rounded-2xl p-3.5 shadow-lg space-y-3 animate-message-in">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
                   <div className="flex items-center gap-1.5 text-xs font-black text-zinc-900">
-                    <ShoppingCart size={15} className="text-[#ce112d]" />
-                    <span>ব্যাগ ও অর্ডার</span>
+                    <ShoppingBag size={15} className="text-[#ce112d]" />
+                    <span>চ্যাটে সরাসরি অর্ডার</span>
                   </div>
                   <button
                     onClick={() => setOrderModalProduct(null)}
@@ -718,15 +721,108 @@ export default function ChatWidget() {
                   </div>
                 )}
 
-                {/* Total Amount */}
-                <div className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-50 rounded-xl border border-zinc-100 text-xs">
-                  <span className="text-zinc-600 font-bold">সর্বমোট:</span>
-                  <span className="font-black text-sm text-[#ce112d]">
-                    ৳{(parseFloat(orderModalProduct.price) || 0) * orderForm.quantity}
-                  </span>
+                {/* In-Chat Customer Information Inputs */}
+                <div className="space-y-2 pt-1 border-t border-zinc-100">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
+                    ডেলিভারির ঠিকানা ও তথ্য
+                  </label>
+                  
+                  <input
+                    type="text"
+                    placeholder="আপনার পুরো নাম *"
+                    value={orderForm.name}
+                    onChange={e => setOrderForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                  />
+                  
+                  <input
+                    type="tel"
+                    placeholder="মোবাইল নম্বর (১১ ডিজিট) *"
+                    value={orderForm.phone}
+                    onChange={e => setOrderForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={orderForm.district}
+                      onChange={e => {
+                        const newDist = e.target.value;
+                        setOrderForm(prev => ({
+                          ...prev,
+                          district: newDist,
+                          upazila: newDist === CHATTOGRAM_DISTRICT ? FREE_UPAZILA : 'সদর'
+                        }));
+                      }}
+                      className="w-full px-2 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                    >
+                      {allDistricts.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+
+                    {orderForm.district === CHATTOGRAM_DISTRICT ? (
+                      <select
+                        value={orderForm.upazila}
+                        onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
+                        className="w-full px-2 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                      >
+                        {chattogramUpazilas.map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="উপজেলা / থানা"
+                        value={orderForm.upazila}
+                        onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
+                        className="w-full px-2.5 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                      />
+                    )}
+                  </div>
+
+                  <textarea
+                    rows={2}
+                    placeholder="বিস্তারিত ঠিকানা (বাসা/রোড/এলাকা) *"
+                    value={orderForm.address}
+                    onChange={e => setOrderForm(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d] resize-none"
+                  />
                 </div>
 
-                {/* Two Action Buttons: Add to Bag & Direct Checkout */}
+                {/* Delivery Note & Bill Calculation */}
+                {(() => {
+                  const deliveryInfo = calculateDelivery(orderForm.district, orderForm.upazila);
+                  const subtotal = (parseFloat(orderModalProduct.price) || 0) * orderForm.quantity;
+                  const total = subtotal + deliveryInfo.charge;
+                  return (
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-zinc-100 text-xs space-y-1">
+                      <div className="flex justify-between items-center text-zinc-600 font-medium">
+                        <span>পণ্য মূল্য:</span>
+                        <span>৳{subtotal}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-zinc-600 font-medium">
+                        <span>ডেলিভারি চার্জ:</span>
+                        <span className={deliveryInfo.isFree ? "text-emerald-600 font-bold" : ""}>
+                          {deliveryInfo.isFree ? '৳০ (ফ্রি)' : `৳${deliveryInfo.charge}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 border-t border-zinc-200 font-black text-[#ce112d]">
+                        <span>সর্বমোট বিল:</span>
+                        <span className="text-sm">৳{total}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {orderError && (
+                  <p className="text-[11px] font-bold text-red-600 bg-red-50 p-2 rounded-lg">
+                    {orderError}
+                  </p>
+                )}
+
+                {/* Two Action Buttons: Add to Bag & Direct Confirm In-Chat Order */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
@@ -751,16 +847,18 @@ export default function ChatWidget() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      addToCart(orderModalProduct, orderForm.color, orderForm.size, orderForm.quantity);
-                      setOrderModalProduct(null);
-                      setIsOpen(false);
-                      navigate('/checkout');
-                    }}
-                    className="py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-red-900/20 flex items-center justify-center gap-1.5 active:scale-95"
+                    disabled={isLoading}
+                    onClick={handleCompleteOrder}
+                    className="py-2.5 px-3 bg-[#ce112d] hover:bg-[#b00e26] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-red-900/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
                   >
-                    <ShoppingBag size={14} />
-                    <span>অর্ডার করুন</span>
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <ShoppingBag size={14} />
+                        <span>অর্ডার নিশ্চিত করুন</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

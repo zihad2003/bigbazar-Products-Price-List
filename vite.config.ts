@@ -157,9 +157,15 @@ function assistantDevPlugin() {
                 }
               }
 
+              // Check if user is asking an inquiry about fabric/material/video/quality/details rather than searching catalog
+              const isDetailInquiry = /video|ভিডিও|kapor|কাপড়|কাপর|fabric|ফেব্রি|মেটেরিয়াল|material|কোয়ালিটি|quality|rong|রং|কালার|color|wash|ওয়াশ|suiti|সুতি|silk|সিল্ক|jamdani|জামদানি|dupiyan|ডুপিয়ান|chobi|ছবি|photo|picture|real|লাইভ|হাতে|পাওয়া|কতদিন|সময়|ঠিকানা|শোরুম|কম|discount|customer|দাম|price|koto|কত|পেমেন্ট|বিকাশ|bkash/i.test(lowerMsg);
+
+              const hasProductCatalogSearchIntent = (matchedCategory !== null || 
+                /কালেকশন|collection|দেখাও|দেখান|show|খুঁজছি|dekhte\s*chai|দেখতে\s*চাই|dress|পোশাক|poshak|পাওয়া\s*যাবে|pawa\s*jabe/i.test(lowerMsg)) && !isDetailInquiry;
+
               let replyText = '';
 
-              if (hasProductIntent) {
+              if (hasProductCatalogSearchIntent) {
                 if (productsRes.length > 0) {
                   replyText = 'আমাদের কালেকশন থেকে প্রোডাক্টগুলো নিচে দেওয়া হলো। আপনি সরাসরি অর্ডার করতে পারেন বা বিস্তারিত দেখতে পারেন:';
                 } else {
@@ -174,7 +180,20 @@ function assistantDevPlugin() {
 
               // Step 3: AI Inference (Groq Ultra-Fast LPU & Google Gemini)
               if (!replyText && (geminiApiKey || groqApiKey)) {
-                const systemPrompt = `You are BigBazar AI Shopping Assistant for Big Bazar, a leading family fashion retail store located at 2nd Floor, Jomidar Plaza, Baraiyarhat Bazar, Mirsarai, Chittagong.
+                const currProd = body.current_product || null;
+                let prodContextStr = '';
+                if (currProd) {
+                  prodContextStr = `
+CURRENT VIEWED PRODUCT CONTEXT:
+- Product Name: ${currProd.name || ''}
+- Price: ৳${currProd.price || ''}
+- Category/Subcategory: ${currProd.category || ''} / ${currProd.subcategory || ''}
+- Description: ${currProd.description || 'Not specifically described'}
+`;
+                }
+
+                const systemPrompt = `You are BigBazar AI Shopping Assistant for Big Bazar, a leading premier family fashion retail store located at 2nd Floor, Jomidar Plaza, Baraiyarhat Bazar, Mirsarai, Chittagong.
+${prodContextStr}
 FOOTER & BRAND KNOWLEDGE:
 - Facebook: https://www.facebook.com/profile.php?id=100063541603515
 - Instagram: https://www.instagram.com/big_bazar_25/
@@ -186,7 +205,18 @@ FOOTER & BRAND KNOWLEDGE:
 - Pricing: Strict fixed-price shop ensuring fair prices and premium fabric quality.
 - Delivery: Mirsarai Upazila 100% Free delivery (100 Tk advance confirmation fee), Chittagong District 100 Tk, All Bangladesh 150 Tk. Cash on delivery available.
 - Bridal Zone: 'Biyer Sajani' (Exclusive bridal sarees, katan, lehenga, sherwani, kabli set, blazers).
-- Helpful Links: Track Order (/track), Size Guide (/size-guide), Shipping Info (/shipping), Returns (/returns), About Us (/about-us).
+
+PRODUCT INQUIRY & FABRIC INTELLIGENCE:
+1. Video Requests: If the customer asks for a video/real look of the dress/product, tell them: "এই পোশাকটির রিয়েল ভিডিও দেখতে বা লাইভ ভিডিও কলের মাধ্যমে দেখতে আমাদের অফিসিয়াল হোয়াটসঅ্যাপে (https://wa.me/8801824950082 বা 01824950082) মেসেজ দিন অথবা আমাদের টিকটক পেইজে (https://www.tiktok.com/@big.bazar2) ভিডিও দেখতে পারেন।"
+2. Fabric / Material / Quality Requests:
+   - If the product description contains details, use it.
+   - If description is brief or missing, intelligently explain the fabric based on Bangladeshi fashion expertise:
+     * Jamdani / Karchupi Saree: প্রিমিয়াম রেশম-সুতি মিক্সড সুতায় বোনা জমিন এবং নিখুঁত বিলাসবহুল কারচুপি ও জরির কাজ। পার্টি বা বিয়েতে পরার জন্য অত্যন্ত গর্জিয়াস ও আরামদায়ক।
+     * Dupiyan Silk / Silk Saree: লাক্সারিয়াস ডুপিয়ান সিল্ক ফেব্রিক, চমৎকার শাইন ও নিখুঁত ড্রেপ।
+     * Cotton Three-Piece / Kurti: ১০০% প্রিমিয়াম পিওর সুতি ফেব্রিক, যা অত্যন্ত আরামদায়ক, টেকসই এবং রঙ পাকা।
+     * Panjabi / Sherwani: এক্সক্লুসিভ প্রিমিয়াম ফেব্রিক ও নিখুঁত ফিনিশিং।
+   - Reassure the customer that Big Bazar guarantees 100% genuine quality and fixed fair pricing.
+
 RULES:
 1. Always reply in 1-2 fluent, polite, helpful Bengali sentences.
 2. If customer asks for Facebook, Instagram, TikTok, Video, or any social link, provide the exact URL above.
