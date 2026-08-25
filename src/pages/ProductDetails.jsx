@@ -690,17 +690,25 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="fixed bottom-[130px] right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[280px] sm:max-w-sm"
+                        className="fixed bottom-[130px] right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[290px] sm:max-w-sm"
                     >
-                        <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-                                <Check size={14} strokeWidth={3} />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-10 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200 relative">
+                                <img
+                                    src={getOptimizedUrl(product?.image_url || images[0], { w: 80, h: 90 })}
+                                    alt=""
+                                    className="w-full h-full object-cover object-top"
+                                    onError={(e) => { e.target.src = 'https://placehold.co/80x90/ffffff/ce112d?text=BB'; }}
+                                />
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center text-white border border-white">
+                                    <Check size={10} strokeWidth={3} />
+                                </div>
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-[11px] font-bold text-zinc-900 leading-tight">
                                     {language === 'bn' ? 'ব্যাগে যোগ হয়েছে!' : 'Added to bag!'}
                                 </p>
-                                <p className="text-[9px] text-zinc-500 font-medium truncate mt-0.5">
+                                <p className="text-[10px] text-[#ce112d] font-black truncate mt-0.5">
                                     ৳{price}
                                 </p>
                             </div>
@@ -782,7 +790,7 @@ export default function ProductDetails() {
                 )}
             </AnimatePresence>
 
-            {/* Mobile Floating Sticky Quick-Order Bar - Compact Floating above Right-Side Chat Widget */}
+            {/* Mobile Floating Sticky Quick-Order Bar - Compact with Thumbnail Floating above Chat Widget */}
             <AnimatePresence>
                 {showStickyBar && !loading && product && (
                     <motion.div
@@ -790,11 +798,20 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="md:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2.5 shadow-xl flex items-center gap-2.5 text-zinc-900 max-w-[270px]"
+                        className="md:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900"
                     >
-                        <div className="flex flex-col pl-1 min-w-0">
+                        <div className="w-10 h-11 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200">
+                            <img
+                                src={getOptimizedUrl(product.image_url || images[0], { w: 80, h: 90 })}
+                                alt={product.name}
+                                className="w-full h-full object-cover object-top"
+                                onError={(e) => { e.target.src = 'https://placehold.co/80x90/ffffff/ce112d?text=BB'; }}
+                            />
+                        </div>
+
+                        <div className="flex flex-col min-w-0">
                             <span className="text-xs font-black text-[#ce112d] leading-none">৳{price}</span>
-                            <span className="text-[9px] text-zinc-500 font-bold truncate max-w-[70px] mt-0.5">
+                            <span className="text-[9px] text-zinc-500 font-bold truncate max-w-[65px] mt-0.5">
                                 {selectedColor || selectedSize
                                     ? `${selectedColor} ${selectedSize}`.trim()
                                     : (language === 'bn' ? 'অপশন' : 'Options')}
