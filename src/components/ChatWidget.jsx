@@ -618,21 +618,6 @@ export default function ChatWidget() {
                         </div>
                       </div>
                     )}
-
-                    {/* Quick Replies Pills (Only shown when not cluttered by product cards) */}
-                    {msg.quick_replies && msg.quick_replies.length > 0 && !msg.products?.length && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {msg.quick_replies.map((reply, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSendMessage(reply)}
-                            className="px-2.5 py-1 bg-white hover:bg-red-50 text-zinc-700 hover:text-[#ce112d] border border-zinc-200 rounded-full text-[11px] font-bold transition-all shadow-2xs active:scale-95"
-                          >
-                            {reply}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 )}
 
