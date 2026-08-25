@@ -1,5 +1,13 @@
 // BigBazar AI Assistant - FAQ Knowledge Base (Official Links matching Footer)
 
+export const DELIVERY_AREAS = {
+  mirsarai: { name: 'Mirsarai Upazila', charge: 0, advance: 100, days: '1-2 days', free: true },
+  baraiyarhat: { name: 'Baraiyarhat', charge: 0, advance: 100, days: 'Same day', free: true },
+  chittagong: { name: 'Chittagong District', charge: 100, advance: 100, days: '1-2 days', free: false },
+  dhaka: { name: 'Dhaka', charge: 150, advance: 150, days: '2-3 days', free: false },
+  default: { name: 'All Bangladesh', charge: 150, advance: 150, days: '2-5 days', free: false }
+};
+
 export const FAQ_KB = {
   social_links: {
     keywords: ["facebook", "fb", "insta", "instagram", "tiktok", "tik tok", "video", "youtube", "social", "ফেসবুক", "ইনস্টাগ্রাম", "টিকটক", "ভিডিও"],
