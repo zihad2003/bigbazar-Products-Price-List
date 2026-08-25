@@ -559,68 +559,28 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   const handleVideoBlur = async () => {
     if (!form.video_url) return;
     
-    // Direct Instagram URL handling
+    // Direct Instagram URL handling: extract platform ID only
     if (form.video_url.includes('instagram.com') || form.video_url.includes('instagr.am')) {
       const igId = extractInstagramId(form.video_url);
       if (igId) {
-        setForm(prev => {
-          const hasImage = (prev.images && prev.images.length > 0) || prev.image_url;
-          const poster = hasImage ? null : generateVideoPoster(prev.name || 'Big Bazar Reel');
-          return {
-            ...prev,
-            platform_id: igId,
-            images: hasImage ? prev.images : [poster],
-            image_url: hasImage ? prev.image_url : poster
-          };
-        });
+        setForm(prev => ({
+          ...prev,
+          platform_id: igId
+        }));
       }
       return;
-    }
-
-    // Direct Video File / URL - capture frame using HTML5 Canvas
-    if (form.video_url.startsWith('http') || form.video_url.startsWith('blob:')) {
-      try {
-        const capturedFrame = await captureVideoFrame(form.video_url);
-        if (capturedFrame) {
-          setForm(prev => ({
-            ...prev,
-            images: (prev.images && prev.images.length > 0) ? prev.images : [capturedFrame],
-            image_url: prev.image_url || capturedFrame
-          }));
-          setPreviewImage(capturedFrame);
-        } else if (!form.images?.length && !form.image_url) {
-          const poster = generateVideoPoster(form.name || 'Big Bazar Video');
-          setForm(prev => ({
-            ...prev,
-            images: [poster],
-            image_url: poster
-          }));
-          setPreviewImage(poster);
-        }
-      } catch (_) {
-        if (!form.images?.length && !form.image_url) {
-          const poster = generateVideoPoster(form.name || 'Big Bazar Video');
-          setForm(prev => ({ ...prev, images: [poster], image_url: poster }));
-          setPreviewImage(poster);
-        }
-      }
     }
   };
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
 
-    // If product has a video URL but no manual image, auto-generate video frame poster
-    let currentImages = [...(form.images || [])];
-    let currentImageUrl = form.image_url;
-    if (!currentImages.length && !currentImageUrl && form.video_url) {
-      const videoPoster = generateVideoPoster(form.name || 'Big Bazar Video');
-      currentImages = [videoPoster];
-      currentImageUrl = videoPoster;
-    }
+    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel'));
+    let currentImages = [...(form.images || [])].filter(img => !isFakePoster(img));
+    let currentImageUrl = form.image_url && !isFakePoster(form.image_url) ? form.image_url : (currentImages[0] || null);
 
-    // Validation: Product must have an image or video poster
-    if (!currentImages.length && !currentImageUrl) {
+    // Validation: Product must have an image OR video URL
+    if (!currentImages.length && !currentImageUrl && !form.video_url) {
       setAlertModal({ isOpen: true, title: 'Image or Video Required', message: 'অনুগ্রহ করে পণ্যের ছবি বা ভিডিও লিঙ্ক যুক্ত করুন (Product image or video must be provided).', type: 'error' });
       return;
     }
@@ -1019,11 +979,14 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
   const startEdit = (p) => {
     setEditingProduct(p);
-    const mainImg = p.image_url || p.images?.[0] || null;
+    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel'));
+    const rawImages = Array.isArray(p.images) ? p.images.filter(img => !isFakePoster(img)) : [];
+    const mainImg = p.image_url && !isFakePoster(p.image_url) ? p.image_url : (rawImages[0] || null);
+
     setForm({
       ...p,
       image_url: mainImg,
-      images: p.images && p.images.length > 0 ? p.images : (mainImg ? [mainImg] : [])
+      images: rawImages.length > 0 ? rawImages : (mainImg ? [mainImg] : [])
     });
     setPreviewImage(mainImg);
     setFormStep(1);
