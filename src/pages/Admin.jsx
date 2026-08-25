@@ -930,13 +930,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
           setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
         }
-        const savings = totalBefore > 0 ? Math.round((1 - totalAfter / totalBefore) * 100) : 0;
-        setAlertModal({
-          isOpen: true,
-          title: `${uploadedUrls.length} Photo${uploadedUrls.length > 1 ? 's' : ''} Uploaded`,
-          message: `Optimized: ${formatFileSize(totalBefore)} → ${formatFileSize(totalAfter)} (saved ${savings}%)${failedReasons.length > 0 ? `. skipped: ${failedReasons.join(', ')}` : ''}`,
-          type: 'success'
-        });
       } else {
         setAlertModal({
           isOpen: true,

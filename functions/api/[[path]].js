@@ -624,8 +624,8 @@ app.get('/products', async (c) => {
       return c.json(listData);
     }
 
-    // Lightweight column selection for listings (omits heavy base64 image columns for ultra-fast query)
-    let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
+    // Column selection for listings (parseProductRowLite converts base64 to CDN URLs if any)
+    let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive, images, image_url, platform_id';
     let whereSql = ' WHERE 1=1';
     const params = [];
 
@@ -787,7 +787,8 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
     available_colors: p.available_colors !== undefined ? JSON.stringify(p.available_colors) : undefined,
     stock_count: p.stock_count,
     is_exclusive: p.is_exclusive !== undefined ? (p.is_exclusive ? 1 : 0) : undefined,
-    serial_no: p.serial_no
+    serial_no: p.serial_no,
+    platform_id: p.platform_id
   };
 
   for (const [key, val] of Object.entries(fields)) {
