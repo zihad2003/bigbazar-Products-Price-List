@@ -1725,7 +1725,7 @@ RULES:
 7. If you cannot help, suggest: "আমাদের মেসেঞ্জারে যোগাযোগ করুন" (Contact us on Messenger).
 8. Never make up phone numbers, addresses, or policies. Use only tool-provided data.`;
 
-function parseProductRow(r) {
+function parseAssistantProductRow(r) {
   let images = [];
   try { images = r.images ? JSON.parse(r.images) : []; } catch (_) {}
   return {
@@ -1754,7 +1754,7 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
     sql += ' ORDER BY is_hot DESC, created_at DESC LIMIT ?';
     params.push(safeLimit);
     const rows = await conn.execute(sql, params);
-    const result = { type: 'products', data: rows.map(parseProductRow) };
+    const result = { type: 'products', data: rows.map(parseAssistantProductRow) };
     await kvSet(c, cacheKey, result, 120);
     return result;
   }
@@ -1767,7 +1767,7 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
     if (cached) return cached;
     const sql = "SELECT * FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY is_hot DESC, created_at DESC LIMIT ?";
     const rows = await conn.execute(sql, [safeLimit]);
-    const result = { type: 'products', data: rows.map(parseProductRow) };
+    const result = { type: 'products', data: rows.map(parseAssistantProductRow) };
     await kvSet(c, cacheKey, result, 120);
     return result;
   }
