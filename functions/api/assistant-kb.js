@@ -35,9 +35,9 @@ export const FAQ_KB = {
     answer_en: "Biyer Sajani is our signature bridal collection featuring Karchupi Jamdani, Katan, Silk, Bridal Sarees, Groom Sherwani, Kabli & Blazers."
   },
   delivery_time: {
-    keywords: ["delivery", "deliver", "kotdin", "shipping", "shomoy", "lagbe", "days", "arrive", "koto", "charge", "cost", "ডেলিভারি", "চার্জ", "কত দিন", "খরচ"],
-    answer_bn: "ডেলিভারি চার্জ ও সময়:\n• মীরসরাই উপজেলা: সম্পূর্ণ ফ্রি ডেলিভারি (অর্ডার কনফার্মেশন ফি ১০০ টাকা অগ্রিম, যা মোট বিল থেকে বাদ যাবে)।\n• চট্টগ্রাম জেলা: ১০০ টাকা (১-২ দিন)।\n• সারা বাংলাদেশ: ১৫০ টাকা (২-৫ দিন)।\n(অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ অগ্রিম প্রযোজ্য)।",
-    answer_en: "Delivery:\n- Mirsarai: Free Delivery (100 BDT Advance Confirmation Fee)\n- Chittagong Area: 100 BDT, 1-2 days\n- All Bangladesh: 150 BDT, 2-5 days."
+    keywords: ["delivery", "deliver", "kotdin", "shipping", "shomoy", "lagbe", "days", "arrive", "koto", "charge", "cost", "fee", "ভাড়া", "ডেলিভারি", "চার্জ", "কত দিন", "খরচ", "পৌঁছাবে", "কত টাকা"],
+    answer_bn: "ডেলিভারি চার্জ ও সময়:\n• মীরসরাই উপজেলা: সম্পূর্ণ ফ্রি ডেলিভারি (অর্ডার কনফার্মেশন ফি ১০০ টাকা অগ্রিম, যা মোট বিল থেকে বাদ যাবে)।\n• চট্টগ্রাম জেলা: ১০০ টাকা (১-২ দিন)।\n• সারা বাংলাদেশ: ১৫০ টাকা (২-৫ দিন)।\n\nআপনার ডেলিভারির লোকেশন বা ঠিকানাটি কোথায়? (যেমন: মীরসরাই, চট্টগ্রাম নাকি অন্য কোনো জেলা?)",
+    answer_en: "Delivery charges & timing:\n- Mirsarai Upazila: 100% Free Delivery (100 BDT advance confirmation fee, adjusted from total bill).\n- Chittagong District: 100 BDT (1-2 days).\n- All Bangladesh: 150 BDT (2-5 days).\n\nWhere is your delivery location? (e.g. Mirsarai, Chittagong, or another district?)"
   },
   payment: {
     keywords: ["bkash", "nagad", "rocket", "payment", "pay", "cash", "cod", "advance", "taka", "পেমেন্ট", "বিকাশ", "নগদ", "অগ্রিম", "টাকা"],
