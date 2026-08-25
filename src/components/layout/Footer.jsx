@@ -50,8 +50,8 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                             </Link>
                             <p className="text-zinc-500 font-medium leading-relaxed text-xs max-w-sm">
                                 {language === 'bn' 
-                                    ? 'বিগ বাজার — আপনার পরিবারের সব কেনাকাটার বিশ্বস্ত গন্তব্য। মীরসরাই বারইয়ারহাটে নির্দিষ্ট দামে কোয়ালিটি পণ্য।' 
-                                    : 'Your premier destination for family fashion from top brands. Fixed-price shopping for men, women, kids, and bridal collections.'}
+                                    ? 'Big Bazar — Your Ultimate Family Fashion Destination. মীরসরাই বারইয়ারহাটে নির্দিষ্ট দামে পুরো পরিবারের সেরা ফ্যাশন ও লাইফস্টাইল।' 
+                                    : 'Big Bazar — Your Ultimate Family Fashion Destination. Fixed-price shopping for men, women, kids, and bridal collections in Baraiyarhat.'}
                             </p>
                         </div>
 
