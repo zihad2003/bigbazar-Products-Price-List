@@ -51,7 +51,7 @@ async function kvGet(c, key) {
   }
 }
 
-async function kvSet(c, key, value, ttlSeconds = 60) {
+async function kvSet(c, key, value, ttlSeconds = 86400) {
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
     if (!kv) return;
@@ -59,21 +59,48 @@ async function kvSet(c, key, value, ttlSeconds = 60) {
   } catch (_) {}
 }
 
-async function kvDelete(c, keyPrefix) {
+// In-isolate memory cache for catalog_version so version read takes 0ms
+let _memCatalogVersion = '1';
+let _memVersionFetchedAt = 0;
+
+async function getCatalogVersion(c) {
+  const now = Date.now();
+  if (_memCatalogVersion && (now - _memVersionFetchedAt < 15000)) {
+    return _memCatalogVersion;
+  }
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
-    if (!kv) return;
-    if (kv.delete) {
-      await kv.delete(keyPrefix);
-    }
-    // Also try prefix list if available
-    if (kv.list) {
-      const list = await kv.list({ prefix: keyPrefix });
-      for (const k of list.keys || []) {
-        await kv.delete(k.name);
-      }
+    if (!kv) return _memCatalogVersion || '1';
+    const ver = await kv.get('catalog_version');
+    if (ver) {
+      _memCatalogVersion = ver;
+      _memVersionFetchedAt = now;
     }
   } catch (_) {}
+  return _memCatalogVersion || '1';
+}
+
+async function bumpCatalogVersion(c) {
+  const newVer = Date.now().toString();
+  _memCatalogVersion = newVer;
+  _memVersionFetchedAt = Date.now();
+  try {
+    const kv = c.env?.BIGBAZAR_CACHE;
+    if (kv) {
+      await kv.put('catalog_version', newVer);
+    }
+  } catch (_) {}
+  return newVer;
+}
+
+// Background task execution helper (Cloudflare waitUntil or non-blocking promise)
+function runInBackground(c, promiseFn) {
+  const p = Promise.resolve().then(promiseFn).catch(err => {
+    console.error('Background task error:', err);
+  });
+  if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
+    c.executionCtx.waitUntil(p);
+  }
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
@@ -502,6 +529,47 @@ const parseProductRowLite = (row) => {
   };
 };
 
+/**
+ * Event-Driven Cache Priming (Pre-warming):
+ * Generates the default home listing & settings in the background
+ * immediately when Admin makes any changes, ensuring customers hit 100% cache.
+ */
+async function prewarmCatalogCache(c) {
+  try {
+    const conn = getDb(c.env);
+    const ver = await getCatalogVersion(c);
+    
+    // 1. Prewarm default home products (status=published, page 0, limit 12)
+    const selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive, images, image_url, platform_id';
+    const whereSql = " WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)";
+    const querySql = `SELECT ${selectFields} FROM products${whereSql} ORDER BY is_hot DESC, created_at DESC LIMIT 12 OFFSET 0`;
+    
+    const rows = await conn.execute(querySql);
+    const countRes = await conn.execute(`SELECT COUNT(*) as total FROM products${whereSql}`);
+    const total = countRes[0]?.total || rows.length;
+    const defaultProductsData = { data: rows.map(parseProductRowLite), count: total };
+    
+    const defaultParams = new URLSearchParams();
+    defaultParams.set('status', 'published');
+    defaultParams.set('page', '0');
+    defaultParams.set('limit', '12');
+    defaultParams.set('order_by', 'created_at');
+    defaultParams.set('ascending', 'false');
+    
+    await kvSet(c, `cache:${ver}:products:${defaultParams.toString()}`, defaultProductsData, 86400);
+
+    // 2. Prewarm settings
+    const settingsRes = await conn.execute("SELECT `key`, value FROM site_settings WHERE `key` NOT LIKE 'ping:%' AND `key` NOT LIKE 'rl:%' AND `key` NOT LIKE 'site_visitors%'");
+    const settings = {};
+    settingsRes.forEach(r => {
+      try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
+    });
+    await kvSet(c, `cache:${ver}:settings`, { data: settings }, 86400);
+  } catch (err) {
+    console.error('Prewarm background error:', err);
+  }
+}
+
 // Map of subcategories & exact keywords for resilient searching & counting
 const SUB_KEYWORDS_MAP = {
   'panjabi': ['panjabi', 'punjabi', 'পাঞ্জাবি', 'পাঞ্জাবী', 'kabli', 'কাবলি'],
@@ -528,12 +596,14 @@ app.get('/products/subcategory-counts', async (c) => {
   }
   const isNoCache = isAdminOrNoCache(c);
   const { category = '' } = c.req.query();
-  const cacheKey = `cache:subcounts:${category}`;
+  const ver = await getCatalogVersion(c);
+  const cacheKey = `cache:${ver}:subcounts:${category}`;
 
   if (!isNoCache) {
     const cached = await kvGet(c, cacheKey);
     if (cached) {
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      c.header('X-Cache-Status', 'HIT');
       return c.json(cached);
     }
   }
@@ -591,8 +661,9 @@ app.get('/products/subcategory-counts', async (c) => {
     c.header('Pragma', 'no-cache');
     c.header('Expires', '0');
   } else {
-    await kvSet(c, cacheKey, responseData, 300);
+    runInBackground(c, () => kvSet(c, cacheKey, responseData, 86400));
     c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    c.header('X-Cache-Status', 'MISS');
   }
   return c.json(responseData);
 });
@@ -622,12 +693,14 @@ app.get('/products', async (c) => {
   safeParams.set('order_by', order_by);
   safeParams.set('ascending', ascending);
 
-  const cacheKey = `cache:products:${safeParams.toString()}`;
+  const ver = await getCatalogVersion(c);
+  const cacheKey = `cache:${ver}:products:${safeParams.toString()}`;
 
   if (!isNoCache) {
     const cached = await kvGet(c, cacheKey);
     if (cached) {
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      c.header('X-Cache-Status', 'HIT');
       return c.json(cached);
     }
   }
@@ -643,8 +716,9 @@ app.get('/products', async (c) => {
         c.header('Pragma', 'no-cache');
         c.header('Expires', '0');
       } else {
-        await kvSet(c, cacheKey, singleData, 300);
+        runInBackground(c, () => kvSet(c, cacheKey, singleData, 86400));
         c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+        c.header('X-Cache-Status', 'MISS');
       }
       return c.json(singleData);
     }
@@ -659,8 +733,9 @@ app.get('/products', async (c) => {
         c.header('Pragma', 'no-cache');
         c.header('Expires', '0');
       } else {
-        await kvSet(c, cacheKey, listData, 300);
+        runInBackground(c, () => kvSet(c, cacheKey, listData, 86400));
         c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+        c.header('X-Cache-Status', 'MISS');
       }
       return c.json(listData);
     }
@@ -744,8 +819,9 @@ app.get('/products', async (c) => {
       c.header('Pragma', 'no-cache');
       c.header('Expires', '0');
     } else {
-      await kvSet(c, cacheKey, resultData, 300);
+      runInBackground(c, () => kvSet(c, cacheKey, resultData, 86400));
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      c.header('X-Cache-Status', 'MISS');
     }
     return c.json(resultData);
   } catch (err) {
@@ -761,12 +837,14 @@ app.get('/products/:id', async (c) => {
   }
   const pid = c.req.param('id');
   const isNoCache = isAdminOrNoCache(c);
-  const cacheKey = `cache:product:${pid}`;
+  const ver = await getCatalogVersion(c);
+  const cacheKey = `cache:${ver}:product:${pid}`;
 
   if (!isNoCache) {
     const cached = await kvGet(c, cacheKey);
     if (cached) {
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      c.header('X-Cache-Status', 'HIT');
       return c.json(cached);
     }
   }
@@ -787,8 +865,9 @@ app.get('/products/:id', async (c) => {
       c.header('Pragma', 'no-cache');
       c.header('Expires', '0');
     } else {
-      await kvSet(c, cacheKey, resultData, 300);
+      runInBackground(c, () => kvSet(c, cacheKey, resultData, 86400));
       c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      c.header('X-Cache-Status', 'MISS');
     }
     return c.json(resultData);
   } catch (err) {
@@ -818,8 +897,8 @@ app.post('/products', requireAuth, requireAdmin, async (c) => {
         JSON.stringify(p.available_sizes || []), JSON.stringify(p.available_colors || []), p.stock_count ?? 3, p.is_exclusive ? 1 : 0
       ]
     );
-    await kvDelete(c, 'cache:products');
-    await kvDelete(c, 'cache:subcounts');
+    await bumpCatalogVersion(c);
+    runInBackground(c, () => prewarmCatalogCache(c));
     return c.json({ success: true, data: { id }, id });
   } catch (err) {
     console.error('Product insert error:', err);
@@ -855,9 +934,8 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
   if (!setClauses.length) return c.json({ success: true });
   params.push(id);
   await conn.execute(`UPDATE products SET ${setClauses.join(', ')} WHERE id = ?`, params);
-  await kvDelete(c, 'cache:products');
-  await kvDelete(c, `cache:product:${id}`);
-  await kvDelete(c, 'cache:subcounts');
+  await bumpCatalogVersion(c);
+  runInBackground(c, () => prewarmCatalogCache(c));
   // Evict the binary KV image cache so the new photo is served immediately
   if (p.image_url !== undefined || p.images !== undefined) {
     const kv = c.env?.BIGBAZAR_CACHE;
@@ -870,9 +948,8 @@ app.delete('/products/:id', requireAuth, requireAdmin, async (c) => {
   const pid = c.req.param('id');
   const conn = getDb(c.env);
   await conn.execute('DELETE FROM products WHERE id = ?', [pid]);
-  await kvDelete(c, 'cache:products');
-  await kvDelete(c, `cache:product:${pid}`);
-  await kvDelete(c, 'cache:subcounts');
+  await bumpCatalogVersion(c);
+  runInBackground(c, () => prewarmCatalogCache(c));
   // Bug 2 fix: also evict binary KV image cache so the CDN stops serving the
   // deleted product's image.
   const kvImg = c.env?.BIGBAZAR_CACHE;
@@ -1292,12 +1369,14 @@ app.post('/reviews', async (c) => {
 // ============================================
 app.get('/settings', async (c) => {
   const isNoCache = isAdminOrNoCache(c);
-  const cacheKey = 'cache:settings';
+  const ver = await getCatalogVersion(c);
+  const cacheKey = `cache:${ver}:settings`;
 
   if (!isNoCache) {
     const cached = await kvGet(c, cacheKey);
     if (cached) {
       c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
+      c.header('X-Cache-Status', 'HIT');
       return c.json(cached);
     }
   }
@@ -1315,8 +1394,9 @@ app.get('/settings', async (c) => {
     c.header('Pragma', 'no-cache');
     c.header('Expires', '0');
   } else {
-    await kvSet(c, cacheKey, responseData, 600);
+    runInBackground(c, () => kvSet(c, cacheKey, responseData, 86400));
     c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
+    c.header('X-Cache-Status', 'MISS');
   }
   return c.json(responseData);
 });
@@ -1328,7 +1408,8 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
     'INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)',
     [s.key, JSON.stringify(s.value)]
   );
-  await kvDelete(c, 'cache:settings');
+  await bumpCatalogVersion(c);
+  runInBackground(c, () => prewarmCatalogCache(c));
   return c.json({ success: true });
 });
 
