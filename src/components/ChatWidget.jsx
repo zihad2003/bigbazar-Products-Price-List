@@ -70,8 +70,12 @@ export default function ChatWidget() {
           const subcats = isArray 
             ? data.find(s => s.key === 'subcategories')?.value 
             : data.subcategories;
-          if (subcats && typeof subcats === 'object') {
-            setSubcategoriesData(subcats);
+          let parsedSubcats = subcats;
+          if (typeof parsedSubcats === 'string') {
+            try { parsedSubcats = JSON.parse(parsedSubcats); } catch (_) {}
+          }
+          if (parsedSubcats && typeof parsedSubcats === 'object') {
+            setSubcategoriesData(parsedSubcats);
           }
         }
       } catch (_) {}
@@ -268,44 +272,18 @@ export default function ChatWidget() {
     }
   };
 
-  const FALLBACK_SUBCATEGORIES = {
-    'Women': [
-      { id: 'SAREE', name: 'শাড়ি (Saree)' },
-      { id: 'STITCHED-COTTON-THREE-PIECE', name: 'থ্রি-পিস (Three Piece)' },
-      { id: 'PARSHI', name: 'পারশি (Parshi)' },
-      { id: 'WESTERN-2-PIECE', name: 'ওয়েস্টার্ন ২-পিস (Western)' },
-      { id: 'KURTI', name: 'কুর্তি (Kurti)' },
-      { id: 'BORKA', name: 'বোরকা ও আবায়া (Borka)' },
-      { id: 'Biyer Sajani', name: 'বিয়ের সাজনি (Bridal)' }
-    ],
-    'Men': [
-      { id: 'PANJABI', name: 'পাঞ্জাবি (Panjabi)' },
-      { id: 'SHIRT', name: 'শার্ট (Shirt)' },
-      { id: 'POLO', name: 'পোলো টি-শার্ট (Polo)' },
-      { id: 'PANTS', name: 'প্যান্ট ও ট্রাউজার (Pants)' },
-      { id: 'KABLI', name: 'কাবলি সেট ও ব্লেজার (Kabli)' }
-    ],
-    'Kids (Boys)': [
-      { id: 'PANJABI', name: 'পাঞ্জাবি (Panjabi)' },
-      { id: 'SHIRT', name: 'শার্ট ও পোলো (Shirt/Polo)' },
-      { id: 'KABLI', name: 'কাবলি ও কটি সেট (Kabli Set)' }
-    ],
-    'Kids (Girls)': [
-      { id: 'FROCK', name: 'ফ্রক ও পার্টি ড্রেস (Frock)' },
-      { id: 'LEHENGA', name: 'লেহেঙ্গা ও গাউন (Lehenga)' },
-      { id: 'THREE-PIECE', name: 'থ্রি-পিস ও কুর্তি (Three Piece)' }
-    ]
-  };
-
   const getSubcategories = (catId) => {
-    const dynamic = subcategoriesData?.[catId];
+    let dynamic = subcategoriesData?.[catId];
+    if (typeof dynamic === 'string') {
+      try { dynamic = JSON.parse(dynamic); } catch (_) {}
+    }
     if (Array.isArray(dynamic) && dynamic.length > 0) {
       return dynamic.map(s => ({
-        id: s.id || s.name || s.en || s.bn,
-        name: s.bn || s.name || s.en || s.id
-      }));
+        id: s.id || s.name_en || s.name || '',
+        name: s.name_bn || s.bn || s.name || s.name_en || s.id
+      })).filter(s => s.id && s.name);
     }
-    return FALLBACK_SUBCATEGORIES[catId] || [];
+    return [];
   };
 
   const handleSelectCategory = (cat) => {
@@ -319,17 +297,26 @@ export default function ChatWidget() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const assistantMsg = {
-      id: 'subcats-' + Date.now(),
-      role: 'assistant',
-      type: 'subcategory_picker',
-      category: cat,
-      subcategories: subs,
-      content: `${cat.bn} কালেকশনের কোন ধরনের পোশাক দেখতে চান? নিচের সাব-ক্যাটাগরি বেছে নিন:`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages(prev => [...prev, userMsg, assistantMsg]);
+    if (subs.length > 0) {
+      const assistantMsg = {
+        id: 'subcats-' + Date.now(),
+        role: 'assistant',
+        type: 'subcategory_picker',
+        category: cat,
+        subcategories: subs,
+        content: `${cat.bn} কালেকশনের কোন ধরনের পোশাক দেখতে চান? নিচের সাব-ক্যাটাগরি বেছে নিন:`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, userMsg, assistantMsg]);
+    } else {
+      const assistantMsg = {
+        id: 'subcats-empty-' + Date.now(),
+        role: 'assistant',
+        content: `আমাদের শপে এই মুহূর্তে ${cat.bn} বিভাগের অনলাইন কালেকশন আপডেট করা হচ্ছে। খুব শীঘ্রই নতুন কালেকশন যুক্ত করা হবে। আপনি আমাদের শোরুমে (২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট) সরাসরি ভিজিট করে পণ্যগুলো নিতে পারবেন অথবা অন্য কোনো কালেকশন দেখতে পারেন।`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, userMsg, assistantMsg]);
+    }
   };
 
   const handleSelectSubcategory = (cat, sub) => {
