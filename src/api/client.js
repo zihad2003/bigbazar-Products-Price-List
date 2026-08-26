@@ -33,9 +33,20 @@ export function getToken() {
     return _token;
 }
 
+export function isAdminRequest() {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) return true;
+    if (_token) return true;
+    return false;
+}
+
 function headers() {
     const h = { 'Content-Type': 'application/json' };
     if (_token) h['Authorization'] = `Bearer ${_token}`;
+    if (isAdminRequest()) {
+        h['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        h['Pragma'] = 'no-cache';
+        h['Expires'] = '0';
+    }
     return h;
 }
 
@@ -44,6 +55,10 @@ const _inMemoryCache = new Map();
 const _inFlightRequests = new Map();
 
 function getCachedOrFetch(cacheKey, ttlMs, fetchFn) {
+    // Admin requests NEVER use cache — always fresh, real-time data
+    if (isAdminRequest()) {
+        return fetchFn();
+    }
     const now = Date.now();
     const cached = _inMemoryCache.get(cacheKey);
     if (cached && (now - cached.time < ttlMs)) {
@@ -290,21 +305,28 @@ class QueryBuilder {
         } else if (this._page !== null && this._page !== undefined) {
             params.set('page', this._page);
         }
+
+        // For Admin requests: add cache-buster params so no intermediate proxy/CDN caches it
+        const isAdmin = isAdminRequest();
+        if (isAdmin) {
+            params.set('_admin', 'true');
+            params.set('_t', String(Date.now()));
+        }
         
         const url = `${API_BASE}${endpoint}?${params.toString()}`;
 
-        // Cache endpoints in-memory to prevent duplicate parallel queries across components:
-        // - site_settings & subcategory-counts: 5 mins
-        // - products & reviews: 30 secs
-        const cacheTtl = (this._table === 'site_settings' || this._table === 'subcategory-counts')
-            ? 300000
-            : (this._table === 'products' || this._table === 'reviews')
-                ? 30000
-                : 0;
+        // Admin requests ALWAYS have 0 cache TTL — accuracy & freshness is essential
+        const cacheTtl = isAdmin
+            ? 0
+            : (this._table === 'site_settings' || this._table === 'subcategory-counts')
+                ? 300000
+                : (this._table === 'products' || this._table === 'reviews')
+                    ? 30000
+                    : 0;
 
         if (cacheTtl > 0) {
             return getCachedOrFetch(url, cacheTtl, async () => {
-                const res = await fetch(url, { headers: headers() });
+                const res = await fetch(url, { headers: headers(), cache: 'no-store' });
                 const json = await res.json();
                 if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
                 let data = json.data;
@@ -314,7 +336,10 @@ class QueryBuilder {
             });
         }
 
-        const res = await fetch(url, { headers: headers() });
+        const res = await fetch(url, { 
+            headers: headers(),
+            cache: isAdmin ? 'no-store' : 'default'
+        });
         const json = await res.json();
         
         if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
@@ -338,6 +363,7 @@ class QueryBuilder {
     // Internal Executors
     async _executeInsert() {
         invalidateClientCache();
+        try { localStorage.removeItem('bb_site_settings_cache'); } catch (_) {}
         const endpoint = this._getEndpoint();
         const items = Array.isArray(this._records) ? this._records : [this._records];
         const results = [];
@@ -345,6 +371,7 @@ class QueryBuilder {
             const res = await fetch(`${API_BASE}${endpoint}`, {
                 method: 'POST',
                 headers: headers(),
+                cache: 'no-store',
                 body: JSON.stringify(item)
             });
             const json = await res.json();
@@ -356,12 +383,14 @@ class QueryBuilder {
 
     async _executeUpdate() {
         invalidateClientCache();
+        try { localStorage.removeItem('bb_site_settings_cache'); } catch (_) {}
         const id = this._filters.id;
         if (!id) return { data: null, error: { message: 'No ID filter for update' } };
         const endpoint = this._getEndpoint();
         const res = await fetch(`${API_BASE}${endpoint}/${id}`, {
             method: 'PUT',
             headers: headers(),
+            cache: 'no-store',
             body: JSON.stringify(this._values)
         });
         const json = await res.json();
@@ -371,6 +400,7 @@ class QueryBuilder {
 
     async _executeDelete() {
         invalidateClientCache();
+        try { localStorage.removeItem('bb_site_settings_cache'); } catch (_) {}
         const id = this._filters.id;
         const key = this._filters.key;
         const status = this._filters.status;
@@ -381,7 +411,11 @@ class QueryBuilder {
         else if (key) url += `/${key}`;
         else if (status) url += `?status=${status}`;
 
-        const res = await fetch(url, { method: 'DELETE', headers: headers() });
+        const res = await fetch(url, { 
+            method: 'DELETE', 
+            headers: headers(),
+            cache: 'no-store'
+        });
         const json = await res.json();
         if (!res.ok) return { data: null, error: { message: json.error } };
         return { data: null, error: null };

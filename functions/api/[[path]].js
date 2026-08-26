@@ -177,6 +177,21 @@ const requireAdmin = async (c, next) => {
 };
 
 /**
+ * Check if request originates from Admin panel or explicitly requests fresh data
+ */
+const isAdminOrNoCache = (c) => {
+  const authHeader = c.req.header('Authorization');
+  const cacheCtrl = c.req.header('Cache-Control');
+  const { _admin, _t } = c.req.query();
+  return !!(
+    authHeader || 
+    _admin === 'true' || 
+    _t || 
+    (cacheCtrl && (cacheCtrl.includes('no-cache') || cacheCtrl.includes('no-store')))
+  );
+};
+
+/**
  * Customer auth middleware — verifies JWT with type='customer'.
  * Attaches user info to context but does NOT require admin role.
  */
@@ -511,12 +526,16 @@ app.get('/products/subcategory-counts', async (c) => {
   if (!(await checkRateLimitKV(c, 'subcounts', 60, 60000))) {
     return c.json({ error: 'Too many requests' }, 429);
   }
+  const isNoCache = isAdminOrNoCache(c);
   const { category = '' } = c.req.query();
   const cacheKey = `cache:subcounts:${category}`;
-  const cached = await kvGet(c, cacheKey);
-  if (cached) {
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-    return c.json(cached);
+
+  if (!isNoCache) {
+    const cached = await kvGet(c, cacheKey);
+    if (cached) {
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      return c.json(cached);
+    }
   }
 
   const conn = getDb(c.env);
@@ -567,8 +586,14 @@ app.get('/products/subcategory-counts', async (c) => {
 
   const res = Object.entries(countsMap).map(([subcategory, count]) => ({ subcategory, count }));
   const responseData = { data: res };
-  await kvSet(c, cacheKey, responseData, 300);
-  c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+  if (isNoCache) {
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    c.header('Pragma', 'no-cache');
+    c.header('Expires', '0');
+  } else {
+    await kvSet(c, cacheKey, responseData, 300);
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+  }
   return c.json(responseData);
 });
 
@@ -578,6 +603,7 @@ app.get('/products', async (c) => {
     return c.json({ error: 'Too many requests' }, 429);
   }
 
+  const isNoCache = isAdminOrNoCache(c);
   const { status, category, subcategory, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
   
   const pageNum = Math.max(0, parseInt(page) || 0);
@@ -597,10 +623,13 @@ app.get('/products', async (c) => {
   safeParams.set('ascending', ascending);
 
   const cacheKey = `cache:products:${safeParams.toString()}`;
-  const cached = await kvGet(c, cacheKey);
-  if (cached) {
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-    return c.json(cached);
+
+  if (!isNoCache) {
+    const cached = await kvGet(c, cacheKey);
+    if (cached) {
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      return c.json(cached);
+    }
   }
 
   const conn = getDb(c.env);
@@ -609,8 +638,14 @@ app.get('/products', async (c) => {
     if (id) {
       const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
       const singleData = { data: parseProductRowLite(res[0]) || null, count: res.length };
-      await kvSet(c, cacheKey, singleData, 300);
-      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      if (isNoCache) {
+        c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        c.header('Pragma', 'no-cache');
+        c.header('Expires', '0');
+      } else {
+        await kvSet(c, cacheKey, singleData, 300);
+        c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      }
       return c.json(singleData);
     }
 
@@ -619,8 +654,14 @@ app.get('/products', async (c) => {
       if (!list.length) return c.json({ data: [], count: 0 });
       const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
       const listData = { data: res.map(parseProductRowLite), count: res.length };
-      await kvSet(c, cacheKey, listData, 300);
-      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      if (isNoCache) {
+        c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        c.header('Pragma', 'no-cache');
+        c.header('Expires', '0');
+      } else {
+        await kvSet(c, cacheKey, listData, 300);
+        c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      }
       return c.json(listData);
     }
 
@@ -698,8 +739,14 @@ app.get('/products', async (c) => {
     }
 
     const resultData = { data: rows.map(parseProductRowLite), count: total };
-    await kvSet(c, cacheKey, resultData, 300);
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    if (isNoCache) {
+      c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      c.header('Pragma', 'no-cache');
+      c.header('Expires', '0');
+    } else {
+      await kvSet(c, cacheKey, resultData, 300);
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    }
     return c.json(resultData);
   } catch (err) {
     console.error('Products API Error:', err);
@@ -713,11 +760,15 @@ app.get('/products/:id', async (c) => {
     return c.json({ error: 'Too many requests' }, 429);
   }
   const pid = c.req.param('id');
+  const isNoCache = isAdminOrNoCache(c);
   const cacheKey = `cache:product:${pid}`;
-  const cached = await kvGet(c, cacheKey);
-  if (cached) {
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-    return c.json(cached);
+
+  if (!isNoCache) {
+    const cached = await kvGet(c, cacheKey);
+    if (cached) {
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+      return c.json(cached);
+    }
   }
 
   try {
@@ -730,8 +781,15 @@ app.get('/products/:id', async (c) => {
     if (!res.length) return c.json({ error: 'Not found' }, 404);
     const parsed = parseProductRowLite(res[0]);
     const resultData = { data: parsed };
-    await kvSet(c, cacheKey, resultData, 300);
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+
+    if (isNoCache) {
+      c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      c.header('Pragma', 'no-cache');
+      c.header('Expires', '0');
+    } else {
+      await kvSet(c, cacheKey, resultData, 300);
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+    }
     return c.json(resultData);
   } catch (err) {
     console.error('Product detail error:', err);
@@ -1233,11 +1291,15 @@ app.post('/reviews', async (c) => {
 // SETTINGS
 // ============================================
 app.get('/settings', async (c) => {
+  const isNoCache = isAdminOrNoCache(c);
   const cacheKey = 'cache:settings';
-  const cached = await kvGet(c, cacheKey);
-  if (cached) {
-    c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
-    return c.json(cached);
+
+  if (!isNoCache) {
+    const cached = await kvGet(c, cacheKey);
+    if (cached) {
+      c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
+      return c.json(cached);
+    }
   }
 
   const conn = getDb(c.env);
@@ -1247,8 +1309,15 @@ app.get('/settings', async (c) => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
   });
   const responseData = { data: settings };
-  await kvSet(c, cacheKey, responseData, 600);
-  c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
+
+  if (isNoCache) {
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    c.header('Pragma', 'no-cache');
+    c.header('Expires', '0');
+  } else {
+    await kvSet(c, cacheKey, responseData, 600);
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=1200');
+  }
   return c.json(responseData);
 });
 

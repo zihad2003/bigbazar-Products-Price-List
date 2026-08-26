@@ -29,9 +29,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 0. Authenticated requests (admin) — always network-only, never cache
-  //    Admin needs live data; caching stale admin responses causes visible bugs.
-  if (request.headers.has('Authorization')) {
+  // 0. Admin requests — always network-only, NEVER cache!
+  //    Admin panel requires 100% fresh live data; caching causes action delay.
+  const referer = request.referrer || '';
+  if (
+    request.headers.has('Authorization') || 
+    referer.includes('/admin') || 
+    url.pathname.includes('/admin') ||
+    url.searchParams.has('_admin') ||
+    url.searchParams.has('_t')
+  ) {
     return;
   }
 
