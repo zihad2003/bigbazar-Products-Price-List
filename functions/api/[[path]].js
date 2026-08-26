@@ -381,68 +381,89 @@ app.get('/img/:id', async (c) => {
 app.get('/settings-img/:type/:id', async (c) => {
   const type = c.req.param('type'); // 'subcat' or 'slide'
   const id = decodeURIComponent(c.req.param('id'));
+  const kv = c.env?.BIGBAZAR_CACHE;
+
+  // 1. Instant sub-30ms response from Edge KV
+  if (kv) {
+    try {
+      const cached = await kv.get(`settings-img:${type}:${id}`, { type: 'arrayBuffer' });
+      if (cached) {
+        let mime = 'image/jpeg';
+        try {
+          const storedMime = await kv.get(`settings-img-type:${type}:${id}`);
+          if (storedMime) mime = storedMime;
+        } catch (_) {}
+        return new Response(cached, {
+          headers: {
+            'Content-Type': mime,
+            'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+            'CDN-Cache-Control': 'max-age=604800',
+            'Cloudflare-CDN-Cache-Control': 'max-age=604800'
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   const conn = getDb(c.env);
 
   try {
+    let rawImage = null;
     if (type === 'subcat') {
       const rows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'subcategories'");
       if (!rows[0]) return c.json({ error: 'Not found' }, 404);
       let subcats = {};
       try { subcats = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value; } catch (_) {}
-      let foundImg = null;
       for (const list of Object.values(subcats)) {
         if (Array.isArray(list)) {
-          const item = list.find(s => s && s.id === id);
-          if (item && item.image_url) { foundImg = item.image_url; break; }
+          const item = list.find(s => s && String(s.id) === String(id));
+          if (item && item.image_url) { rawImage = item.image_url; break; }
         }
       }
-      if (!foundImg) return c.json({ error: 'Image not found' }, 404);
-      if (!foundImg.startsWith('data:')) return c.redirect(foundImg, 302);
-
-      const match = foundImg.match(/^data:([^;]+);base64,(.+)$/);
-      if (!match) return c.json({ error: 'Invalid image format' }, 400);
-      const contentType = match[1];
-      const binaryStr = atob(match[2]);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-
-      return new Response(bytes.buffer, {
-        headers: {
-          'Content-Type': contentType || 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
-          'CDN-Cache-Control': 'max-age=604800',
-          'Cloudflare-CDN-Cache-Control': 'max-age=604800'
-        }
-      });
-    }
-
-    if (type === 'slide') {
+    } else if (type === 'slide') {
       const rows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'main_slides'");
       if (!rows[0]) return c.json({ error: 'Not found' }, 404);
       let slides = [];
       try { slides = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value; } catch (_) {}
       const slide = slides.find((s, idx) => String(s.id || idx) === String(id));
-      if (!slide || !slide.image) return c.json({ error: 'Slide image not found' }, 404);
-      if (!slide.image.startsWith('data:')) return c.redirect(slide.image, 302);
+      if (slide && slide.image) rawImage = slide.image;
+    }
 
-      const match = slide.image.match(/^data:([^;]+);base64,(.+)$/);
-      if (!match) return c.json({ error: 'Invalid image format' }, 400);
-      const contentType = match[1];
-      const binaryStr = atob(match[2]);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    if (!rawImage) return c.json({ error: 'Image not found' }, 404);
 
-      return new Response(bytes.buffer, {
-        headers: {
-          'Content-Type': contentType || 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
-          'CDN-Cache-Control': 'max-age=604800',
-          'Cloudflare-CDN-Cache-Control': 'max-age=604800'
-        }
+    // If it's a real external URL or Cloudinary, redirect safely
+    if (!rawImage.startsWith('data:')) {
+      if (rawImage.startsWith('/api/settings-img/') || rawImage.startsWith('api/settings-img/')) {
+        return c.json({ error: 'Self-referencing image' }, 404);
+      }
+      return c.redirect(rawImage, 302);
+    }
+
+    const match = rawImage.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return c.json({ error: 'Invalid image format' }, 400);
+    const contentType = match[1] || 'image/jpeg';
+    const binaryStr = atob(match[2]);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    // Cache in KV in background so next request is sub-30ms
+    if (kv) {
+      runInBackground(c, async () => {
+        try {
+          await kv.put(`settings-img:${type}:${id}`, bytes.buffer);
+          await kv.put(`settings-img-type:${type}:${id}`, contentType);
+        } catch (_) {}
       });
     }
 
-    return c.json({ error: 'Unknown image type' }, 404);
+    return new Response(bytes.buffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+        'CDN-Cache-Control': 'max-age=604800',
+        'Cloudflare-CDN-Cache-Control': 'max-age=604800'
+      }
+    });
   } catch (err) {
     return c.json({ error: err.message }, 500);
   }
@@ -1534,7 +1555,9 @@ app.get('/settings', async (c) => {
   res.forEach(r => {
     try { settings[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; } catch(e) { settings[r.key] = r.value; }
   });
-  const cleanSettings = transformSettingsLite(settings);
+  // Admin gets raw settings so editing doesn't overwrite real images with dummy URLs.
+  // Customers get lightweight CDN URLs for sub-second page loads.
+  const cleanSettings = isNoCache ? settings : transformSettingsLite(settings);
   const responseData = { data: cleanSettings };
 
   if (isNoCache) {
@@ -1552,6 +1575,51 @@ app.get('/settings', async (c) => {
 app.post('/settings', requireAuth, requireAdmin, async (c) => {
   const s = await c.req.json();
   const conn = getDb(c.env);
+
+  // Merge protection: Never let dummy display URLs overwrite real images in TiDB!
+  if (s.key === 'main_slides' && Array.isArray(s.value)) {
+    try {
+      const existingRows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'main_slides'");
+      if (existingRows[0]) {
+        const oldSlides = typeof existingRows[0].value === 'string' ? JSON.parse(existingRows[0].value) : existingRows[0].value;
+        if (Array.isArray(oldSlides)) {
+          s.value = s.value.map(newSlide => {
+            if (newSlide.image && typeof newSlide.image === 'string' && newSlide.image.startsWith('/api/settings-img/')) {
+              const matchedOld = oldSlides.find(os => String(os.id) === String(newSlide.id));
+              if (matchedOld && matchedOld.image) {
+                return { ...newSlide, image: matchedOld.image };
+              }
+            }
+            return newSlide;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (s.key === 'subcategories' && typeof s.value === 'object' && s.value !== null) {
+    try {
+      const existingRows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'subcategories'");
+      if (existingRows[0]) {
+        const oldSubcats = typeof existingRows[0].value === 'string' ? JSON.parse(existingRows[0].value) : existingRows[0].value;
+        if (typeof oldSubcats === 'object' && oldSubcats !== null) {
+          for (const [catName, newItems] of Object.entries(s.value)) {
+            if (Array.isArray(newItems) && Array.isArray(oldSubcats[catName])) {
+              newItems.forEach(newItem => {
+                if (newItem.image_url && typeof newItem.image_url === 'string' && newItem.image_url.startsWith('/api/settings-img/')) {
+                  const oldItem = oldSubcats[catName].find(oi => oi && String(oi.id) === String(newItem.id));
+                  if (oldItem && oldItem.image_url) {
+                    newItem.image_url = oldItem.image_url;
+                  }
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   await conn.execute(
     'INSERT INTO site_settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)',
     [s.key, JSON.stringify(s.value)]

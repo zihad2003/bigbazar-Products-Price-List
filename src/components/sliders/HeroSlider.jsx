@@ -130,7 +130,6 @@ export default function HeroSlider({ slides = [] }) {
           className={`absolute inset-0 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
           onClick={touchMoved ? undefined : handleBannerClick}
         >
-          {/* Full-bleed Canva banner image — no text overlay */}
           <img
             src={getOptimizedUrl(slide.image, mediaSizes.banner)}
             alt="Banner"
@@ -139,6 +138,11 @@ export default function HeroSlider({ slides = [] }) {
             fetchPriority={current === 0 ? 'high' : 'auto'}
             decoding="async"
             draggable={false}
+            onError={(e) => {
+              if (slide.image && e.currentTarget.src !== slide.image) {
+                e.currentTarget.src = slide.image;
+              }
+            }}
           />
         </motion.div>
       </AnimatePresence>
