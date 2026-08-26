@@ -93,14 +93,24 @@ async function bumpCatalogVersion(c) {
   return newVer;
 }
 
-// Background task execution helper (Cloudflare waitUntil or non-blocking promise)
-function runInBackground(c, promiseFn) {
-  const p = Promise.resolve().then(promiseFn).catch(err => {
-    console.error('Background task error:', err);
-  });
-  if (c.executionCtx && typeof c.executionCtx.waitUntil === 'function') {
-    c.executionCtx.waitUntil(p);
+// Background task execution helper (Cloudflare waitUntil or reliable async fallback)
+async function runInBackground(c, promiseFn) {
+  const waitFn = (c.executionCtx && typeof c.executionCtx.waitUntil === 'function')
+    ? c.executionCtx.waitUntil.bind(c.executionCtx)
+    : (c.env?.eventContext && typeof c.env.eventContext.waitUntil === 'function')
+      ? c.env.eventContext.waitUntil.bind(c.env.eventContext)
+      : null;
+
+  if (waitFn) {
+    try {
+      waitFn(Promise.resolve().then(promiseFn).catch(err => console.error('BG err:', err)));
+      return;
+    } catch (_) {}
   }
+  // Safe fallback: execute directly so cache write is never lost
+  try {
+    await promiseFn();
+  } catch (_) {}
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
