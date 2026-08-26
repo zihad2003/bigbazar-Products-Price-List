@@ -1900,7 +1900,11 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   let matchedCategory = null;
   let searchTerm = null;
 
-  if (/saree|sari|saari|saaree|sharee|shari|শাড়ি|শাড়ী/i.test(lowerMsg)) {
+  // Prioritize explicit category_query from client selection
+  if (body.category_query && body.category_query !== 'ALL') {
+    matchedCategory = body.category_query;
+    searchTerm = body.category_query;
+  } else if (/saree|sari|saari|saaree|sharee|shari|শাড়ি|শাড়ী/i.test(lowerMsg)) {
     matchedCategory = 'SAREE';
     searchTerm = 'saree';
   } else if (/three\s*piece|3\s*piece|thri|three|থ্রি|পিস|৩\s*পিস/i.test(lowerMsg)) {

@@ -268,6 +268,77 @@ export default function ChatWidget() {
     }
   };
 
+  const FALLBACK_SUBCATEGORIES = {
+    'Women': [
+      { id: 'SAREE', name: 'শাড়ি (Saree)' },
+      { id: 'STITCHED-COTTON-THREE-PIECE', name: 'থ্রি-পিস (Three Piece)' },
+      { id: 'PARSHI', name: 'পারশি (Parshi)' },
+      { id: 'WESTERN-2-PIECE', name: 'ওয়েস্টার্ন ২-পিস (Western)' },
+      { id: 'KURTI', name: 'কুর্তি (Kurti)' },
+      { id: 'BORKA', name: 'বোরকা ও আবায়া (Borka)' },
+      { id: 'Biyer Sajani', name: 'বিয়ের সাজনি (Bridal)' }
+    ],
+    'Men': [
+      { id: 'PANJABI', name: 'পাঞ্জাবি (Panjabi)' },
+      { id: 'SHIRT', name: 'শার্ট (Shirt)' },
+      { id: 'POLO', name: 'পোলো টি-শার্ট (Polo)' },
+      { id: 'PANTS', name: 'প্যান্ট ও ট্রাউজার (Pants)' },
+      { id: 'KABLI', name: 'কাবলি সেট ও ব্লেজার (Kabli)' }
+    ],
+    'Kids (Boys)': [
+      { id: 'PANJABI', name: 'পাঞ্জাবি (Panjabi)' },
+      { id: 'SHIRT', name: 'শার্ট ও পোলো (Shirt/Polo)' },
+      { id: 'KABLI', name: 'কাবলি ও কটি সেট (Kabli Set)' }
+    ],
+    'Kids (Girls)': [
+      { id: 'FROCK', name: 'ফ্রক ও পার্টি ড্রেস (Frock)' },
+      { id: 'LEHENGA', name: 'লেহেঙ্গা ও গাউন (Lehenga)' },
+      { id: 'THREE-PIECE', name: 'থ্রি-পিস ও কুর্তি (Three Piece)' }
+    ]
+  };
+
+  const getSubcategories = (catId) => {
+    const dynamic = subcategoriesData?.[catId];
+    if (Array.isArray(dynamic) && dynamic.length > 0) {
+      return dynamic.map(s => ({
+        id: s.id || s.name || s.en || s.bn,
+        name: s.bn || s.name || s.en || s.id
+      }));
+    }
+    return FALLBACK_SUBCATEGORIES[catId] || [];
+  };
+
+  const handleSelectCategory = (cat) => {
+    setSelectedCategory(cat);
+    const subs = getSubcategories(cat.id);
+
+    const userMsg = {
+      id: 'user-' + Date.now(),
+      role: 'user',
+      content: `${cat.bn} কালেকশন`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const assistantMsg = {
+      id: 'subcats-' + Date.now(),
+      role: 'assistant',
+      type: 'subcategory_picker',
+      category: cat,
+      subcategories: subs,
+      content: `${cat.bn} কালেকশনের কোন ধরনের পোশাক দেখতে চান? নিচের সাব-ক্যাটাগরি বেছে নিন:`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, userMsg, assistantMsg]);
+  };
+
+  const handleSelectSubcategory = (cat, sub) => {
+    const subName = sub.name || sub.id;
+    handleSendMessage(`${subName} কালেকশন দেখাও`, {
+      category_query: sub.id || subName
+    });
+  };
+
   // Trigger conversational ordering flow for a specific product
   const startInChatOrder = (product) => {
     setActiveProduct(product);
@@ -543,10 +614,7 @@ export default function ChatWidget() {
                           {TOP_CATEGORIES.map((cat) => (
                             <button
                               key={cat.id}
-                              onClick={() => {
-                                setSelectedCategory(cat);
-                                handleSendMessage(`${cat.bn} কালেকশন দেখতে চাই`);
-                              }}
+                              onClick={() => handleSelectCategory(cat)}
                               className="p-2.5 bg-white hover:bg-red-50/60 hover:border-[#ce112d]/40 border border-zinc-200/90 rounded-xl text-left transition-all group flex items-center gap-2 shadow-2xs active:scale-95"
                             >
                               <div className="w-6 h-6 rounded-lg bg-zinc-100 group-hover:bg-[#ce112d]/10 text-zinc-600 group-hover:text-[#ce112d] flex items-center justify-center shrink-0 transition-colors">
@@ -578,6 +646,27 @@ export default function ChatWidget() {
                               </button>
                             ))}
                           </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subcategory Picker Chips */}
+                    {msg.type === 'subcategory_picker' && msg.subcategories && msg.subcategories.length > 0 && (
+                      <div className="space-y-2 pt-1 w-full animate-message-in">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block px-1">
+                          সাব-ক্যাটাগরি বেছে নিন
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.subcategories.map((sub, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSelectSubcategory(msg.category, sub)}
+                              className="py-2 px-3 bg-white hover:bg-[#ce112d] hover:text-white border border-zinc-200/90 hover:border-[#ce112d] rounded-xl text-xs font-bold text-zinc-800 transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 group"
+                            >
+                              <Tag size={12} className="text-[#ce112d] group-hover:text-white transition-colors" />
+                              <span>{sub.name}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
