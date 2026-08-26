@@ -49,10 +49,10 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
     // Already optimized, data URI, or blob URL → return as-is
     if (originalUrl.startsWith('data:') || originalUrl.startsWith('blob:') || originalUrl.includes('images.weserv.nl')) return originalUrl;
 
-    // Local server uploads and image CDN -> serve directly from the API
+    // Local server uploads and API image CDN -> serve directly from the API
     if (
-        originalUrl.startsWith('/api/img/') ||
-        originalUrl.startsWith('api/img/') ||
+        originalUrl.startsWith('/api/') ||
+        originalUrl.startsWith('api/') ||
         originalUrl.startsWith('/uploads/') ||
         originalUrl.startsWith('uploads/') ||
         originalUrl.includes('localhost:')
