@@ -36,7 +36,94 @@ function assistantDevPlugin() {
                 }));
               }
 
-              const lowerMsg = userMessage.toLowerCase();
+              // Step 0: Direct Purchase / Order Intent Action (e.g. "ami 4 ta holud sari nite cai")
+              const isDirectOrderIntent = /nite\s*cai|nite\s*chai|নিতে\s*চাই|নিবো|নিব|nibo|order\s*korte|অর্ডার\s*করতে|kinte\s*cai|kinte\s*chai|কিনতে\s*চাই|pathan|পাঠান|lagbe|লাগবে|deben|দেন|den|kinbo|কিনব/i.test(lowerMsg);
+
+              if (isDirectOrderIntent) {
+                let orderQty = 1;
+                const numMatch = lowerMsg.match(/(\d+)\s*(?:ta|ti|টা|টি|piece|পিস|pish)?/i);
+                if (numMatch && numMatch[1]) {
+                  orderQty = Math.max(1, parseInt(numMatch[1], 10));
+                } else if (/(?:char|চার|৪)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
+                  orderQty = 4;
+                } else if (/(?:tin|তিন|৩)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
+                  orderQty = 3;
+                } else if (/(?:dui|দুই|২)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
+                  orderQty = 2;
+                } else if (/(?:pach|পাঁচ|৫)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
+                  orderQty = 5;
+                }
+
+                let candidateKeywords = lowerMsg
+                  .replace(/ami|amader|apnader|ta|ti|টা|টি|piece|পিস|nite|cai|chai|নিতে|চাই|নিব|nibo|order|korte|অর্ডার|করতে|kinte|কিনতে|pathan|পাঠান|lagbe|লাগবে|deben|দেন|den|kinbo|কিনব|\d+/gi, ' ')
+                  .replace(/[^\w\s\u0980-\u09FF]/g, ' ')
+                  .trim()
+                  .split(/\s+/)
+                  .filter(w => w.length >= 2);
+
+                let targetProduct = null;
+
+                if (candidateKeywords.length > 0) {
+                  for (const kw of candidateKeywords) {
+                    try {
+                      const matchedRows = await conn.execute(
+                        "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors FROM products WHERE (LOWER(name) LIKE ? OR LOWER(subcategory) LIKE ?) AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) LIMIT 1",
+                        [`%${kw}%`, `%${kw}%`]
+                      );
+                      if (matchedRows && matchedRows.length > 0) {
+                        const r = matchedRows[0];
+                        let imgs = [];
+                        try { imgs = r.images ? JSON.parse(r.images) : []; } catch (_) {}
+                        let sizes = [];
+                        try { sizes = typeof r.available_sizes === 'string' ? JSON.parse(r.available_sizes) : (r.available_sizes || []); } catch (_) {}
+                        let colors = [];
+                        try { colors = typeof r.available_colors === 'string' ? JSON.parse(r.available_colors) : (r.available_colors || []); } catch (_) {}
+
+                        targetProduct = {
+                          id: r.id,
+                          name: r.name,
+                          price: parseFloat(r.price),
+                          original_price: r.original_price ? parseFloat(r.original_price) : null,
+                          image_url: r.image_url || imgs[0] || '',
+                          images: imgs,
+                          available_sizes: sizes,
+                          available_colors: colors,
+                          description: r.description || '',
+                          category: r.category || '',
+                          subcategory: r.subcategory || '',
+                          stock_count: r.stock_count || 0
+                        };
+                        break;
+                      }
+                    } catch (e) {
+                      console.error("Order intent product search error:", e);
+                    }
+                  }
+                }
+
+                if (!targetProduct && body.current_product && body.current_product.id) {
+                  targetProduct = body.current_product;
+                }
+
+                if (targetProduct) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  return res.end(JSON.stringify({
+                    reply: `আপনার ${targetProduct.name} (${orderQty} টি) অর্ডারের জন্য নিচে ফরমটি প্রস্তুত করা হয়েছে। অনুগ্রহ করে আপনার নাম ও ডেলিভারির ঠিকানা দিয়ে 'অর্ডার নিশ্চিত করুন' বাটনে চাপ দিন:`,
+                    order_intent: {
+                      product: targetProduct,
+                      quantity: orderQty
+                    },
+                    products: [targetProduct],
+                    total_count: 1,
+                    has_more: false,
+                    current_offset: 0,
+                    category_query: '',
+                    quick_replies: [],
+                    handoff: false
+                  }));
+                }
+              }
 
               // Subcategory & Category Keyword Mapping (Bangla, English & Banglish)
               let matchedCategory = null;

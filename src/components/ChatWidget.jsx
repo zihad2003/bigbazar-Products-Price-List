@@ -190,6 +190,10 @@ export default function ChatWidget() {
       });
       const data = await res.json();
 
+      if (data.order_intent && data.order_intent.product) {
+        startInChatOrder(data.order_intent.product, data.order_intent.quantity || 1);
+      }
+
       const assistantMsg = {
         id: 'reply-' + Date.now(),
         role: 'assistant',
@@ -327,7 +331,7 @@ export default function ChatWidget() {
   };
 
   // Trigger conversational ordering flow for a specific product
-  const startInChatOrder = (product) => {
+  const startInChatOrder = (product, customQuantity = 1) => {
     setActiveProduct(product);
     const initialColor = product.available_colors?.[0]?.name || (typeof product.available_colors?.[0] === 'string' ? product.available_colors[0] : '');
     const initialSize = product.available_sizes?.[0] || '';
@@ -341,7 +345,7 @@ export default function ChatWidget() {
       address: '',
       size: initialSize,
       color: initialColor,
-      quantity: 1,
+      quantity: Math.max(1, customQuantity || 1),
       senderNumber: '',
       notes: ''
     });
