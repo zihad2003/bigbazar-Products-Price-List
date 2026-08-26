@@ -37,6 +37,7 @@ export default function ChatWidget() {
   const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [activeProduct, setActiveProduct] = useState(null);
+  const [loadingMoreMsgId, setLoadingMoreMsgId] = useState(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
   
   // In-Chat Active Order State
@@ -214,6 +215,56 @@ export default function ChatWidget() {
       ]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Seamlessly load 5 more products and append directly to the existing collection list
+  const handleLoadMoreProducts = async (msgId, categoryQuery, currentCount) => {
+    if (loadingMoreMsgId) return;
+    setLoadingMoreMsgId(msgId);
+
+    try {
+      const endpoint = getAssistantEndpoint();
+      const headers = { 'Content-Type': 'application/json' };
+      const token = getToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const payload = {
+        session_id: sessionId,
+        message: 'আরও কালেকশন দেখাও',
+        language: 'bn',
+        offset: currentCount,
+        category_query: categoryQuery || null
+      };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.products && data.products.length > 0) {
+        setMessages(prev => prev.map(m => {
+          if (m.id === msgId) {
+            const existingIds = new Set((m.products || []).map(p => p.id));
+            const freshProducts = data.products.filter(p => !existingIds.has(p.id));
+            return {
+              ...m,
+              products: [...(m.products || []), ...freshProducts],
+              has_more: data.has_more,
+              total_count: data.total_count
+            };
+          }
+          return m;
+        }));
+      } else {
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, has_more: false } : m));
+      }
+    } catch (err) {
+      console.error('Failed to load more collection:', err);
+    } finally {
+      setLoadingMoreMsgId(null);
     }
   };
 
@@ -596,6 +647,30 @@ export default function ChatWidget() {
                             </div>
                           ))}
                         </div>
+
+                        {/* Append 5 More Products Button directly into this collection */}
+                        {msg.has_more !== false && (
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              disabled={loadingMoreMsgId === msg.id}
+                              onClick={() => handleLoadMoreProducts(msg.id, msg.category_query, (msg.products || []).length)}
+                              className="w-full py-2.5 px-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-zinc-200 active:scale-95 disabled:opacity-60"
+                            >
+                              {loadingMoreMsgId === msg.id ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-[#ce112d] rounded-full animate-spin" />
+                                  <span>লোড হচ্ছে...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-sm font-black text-[#ce112d]">＋</span>
+                                  <span>আরও কালেকশন দেখুন</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

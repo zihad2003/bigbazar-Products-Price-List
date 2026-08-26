@@ -1939,10 +1939,12 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   } else if (/biyer|bridal|wedding|karchupi|বিয়ের\s*সাজনি|বিয়ে|কারচুপি/i.test(lowerMsg)) {
     matchedCategory = 'Biyer Sajani';
     searchTerm = 'Biyer Sajani';
-  } else if (/আরও|more|next/i.test(lowerMsg)) {
-    if (body.category_query) {
+  } else if (/আরও|aro|more|next|baki|অন্যান্য/i.test(lowerMsg)) {
+    if (body.category_query && body.category_query !== 'ALL') {
       matchedCategory = body.category_query;
       searchTerm = body.category_query;
+    } else {
+      matchedCategory = 'ALL';
     }
   }
 
@@ -1950,7 +1952,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
   const isDetailInquiry = /video|ভিডিও|kapor|কাপড়|কাপর|fabric|ফেব্রি|মেটেরিয়াল|material|কোয়ালিটি|quality|rong|রং|কালার|color|wash|ওয়াশ|suiti|সুতি|silk|সিল্ক|jamdani|জামদানি|dupiyan|ডুপিয়ান|chobi|ছবি|photo|picture|real|লাইভ|হাতে|পাওয়া|কতদিন|সময়|ঠিকানা|শোরুম|কম|discount|customer|দাম|price|koto|কত|পেমেন্ট|বিকাশ|bkash/i.test(lowerMsg);
 
   const hasProductCatalogSearchIntent = (matchedCategory !== null || 
-    /কালেকশন|collection|দেখাও|দেখান|show|খুঁজছি|dekhte\s*chai|দেখতে\s*চাই|dress|পোশাক|poshak|পাওয়া\s*যাবে|pawa\s*jabe/i.test(lowerMsg)) && !isDetailInquiry;
+    /কালেকশন|collection|দেখাও|দেখান|show|খুঁজছি|dekhte\s*chai|দেখতে\s*চাই|dress|পোশাক|poshak|পাওয়া\s*যাবে|pawa\s*jabe|aro|আরও|more|next/i.test(lowerMsg)) && !isDetailInquiry;
 
   let productsRes = [];
   let totalAvailable = 0;
@@ -1960,7 +1962,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     let sql = "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) AND (is_sold_out = 0 OR is_sold_out IS NULL)";
     const params = [];
 
-    if (matchedCategory) {
+    if (matchedCategory && matchedCategory !== 'ALL') {
       if (matchedCategory === 'Men' || matchedCategory === 'Women' || matchedCategory === 'Kids (Boys)' || matchedCategory === 'Kids (Girls)') {
         sql += " AND UPPER(category) = ?";
         params.push(matchedCategory.toUpperCase());
@@ -1972,7 +1974,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
         sql += " AND (UPPER(subcategory) LIKE ? OR UPPER(name) LIKE ? OR UPPER(category) LIKE ?)";
         params.push(`%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`);
       }
-    } else if (userMessage.length > 2) {
+    } else if (matchedCategory !== 'ALL' && userMessage.length > 2) {
       const cleanKeyword = userMessage.replace(/[^\w\s\u0980-\u09FF]/g, '').trim().split(' ')[0];
       sql += " AND (name LIKE ? OR category LIKE ? OR subcategory LIKE ?)";
       params.push(`%${cleanKeyword}%`, `%${cleanKeyword}%`, `%${cleanKeyword}%`);
@@ -2022,9 +2024,13 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
 
   if (hasProductCatalogSearchIntent) {
     if (productsRes.length > 0) {
-      replyText = 'আমাদের কালেকশন থেকে প্রোডাক্টগুলো নিচে দেওয়া হলো। আপনি সরাসরি অর্ডার করতে পারেন বা বিস্তারিত দেখতে পারেন:';
+      replyText = requestedOffset > 0
+        ? 'আমাদের কালেকশন থেকে আরও কিছু আকর্ষণীয় পণ্য নিচে দেওয়া হলো:'
+        : 'আমাদের কালেকশন থেকে প্রোডাক্টগুলো নিচে দেওয়া হলো। আপনি সরাসরি অর্ডার করতে পারেন বা বিস্তারিত দেখতে পারেন:';
     } else {
-      replyText = 'পণ্যটি এখনও ওয়েবসাইটে যুক্ত করা হয়নি। আপনি আমাদের শোরুমে (২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট) সরাসরি ভিজিট করে পণ্যটি নিতে পারবেন।';
+      replyText = requestedOffset > 0
+        ? 'এই কালেকশনের আর কোনো অতিরিক্ত পণ্য এই মুহূর্তে নেই। আপনি পুরো কালেকশনটি শপে গিয়ে দেখতে পারেন।'
+        : 'পণ্যটি এখনও ওয়েবসাইটে যুক্ত করা হয়নি। আপনি আমাদের শোরুমে (২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট) সরাসরি ভিজিট করে পণ্যটি নিতে পারবেন।';
     }
   } else {
     const faqMatch = matchFAQ(userMessage);
