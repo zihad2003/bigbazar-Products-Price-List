@@ -276,14 +276,14 @@ app.get('/health', async (c) => {
 });
 
 // ============================================
-// IMAGE CDN ENDPOINT — serves product images from KV cache
+// IMAGE CDN ENDPOINT — zero TiDB queries, instant static asset delivery
 // ============================================
 app.get('/img/:id', async (c) => {
   const id = c.req.param('id');
   const kv = c.env?.BIGBAZAR_CACHE;
 
-  // 1. Try KV binary cache first (sub-50ms instant response)
-  if (kv) {
+  // 1. If it's a dynamic upload (starts with 'up-'), serve from KV edge binary cache
+  if (id.startsWith('up-') && kv) {
     try {
       const cached = await kv.get(`img:${id}`, { type: 'arrayBuffer' });
       if (cached) {
@@ -304,169 +304,26 @@ app.get('/img/:id', async (c) => {
     } catch (_) {}
   }
 
-  // 2. Read from DB, convert base64 to binary, and cache in KV
-  try {
-    const conn = getDb(c.env);
-    const rows = await conn.execute('SELECT name, image_url, images FROM products WHERE id = ?', [id]);
-    if (!rows[0]) return c.json({ error: 'Product not found' }, 404);
-
-    let imgData = rows[0].image_url;
-
-    // If image_url is missing or self-referencing (/api/img/...), check images array
-    if (!imgData || imgData.startsWith('/api/img/') || imgData.startsWith('api/img/')) {
-      let parsedImages = [];
-      try { parsedImages = rows[0].images ? JSON.parse(rows[0].images) : []; } catch (_) {}
-      const validImg = parsedImages.find(img => img && !img.startsWith('/api/img/') && !img.startsWith('api/img/'));
-      imgData = validImg || null;
-    }
-
-    // Graceful SVG fallback if absolutely no image exists
-    if (!imgData) {
-      const title = rows[0].name || 'Big Bazar';
-      const cleanTitle = title.length > 25 ? title.substring(0, 22) + '...' : title;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#18181b"/><stop offset="100%" stop-color="#09090b"/></linearGradient></defs><rect width="600" height="750" fill="url(#bg)"/><circle cx="300" cy="340" r="48" fill="#ce112d" opacity="0.9"/><path d="M290 320 L320 340 L290 360 Z" fill="#ffffff"/><text x="300" y="430" fill="#ffffff" font-family="sans-serif" font-size="22" font-weight="bold" text-anchor="middle">BIG BAZAR</text><text x="300" y="465" fill="#a1a1aa" font-family="sans-serif" font-size="16" text-anchor="middle">${cleanTitle}</text></svg>`;
-      return new Response(svg, {
-        headers: {
-          'Content-Type': 'image/svg+xml',
-          'Cache-Control': 'public, max-age=300, s-maxage=300'
-        }
-      });
-    }
-
-    // If it's a real external or CDN URL (not base64), redirect
-    if (!imgData.startsWith('data:')) {
-      if (imgData.startsWith('/api/img/') || imgData.startsWith('api/img/')) {
-        return c.json({ error: 'Invalid self-referencing image' }, 404);
-      }
-      return c.redirect(imgData, 302);
-    }
-
-    // Extract base64 data
-    const match = imgData.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return c.json({ error: 'Invalid image format' }, 400);
-
-    const contentType = match[1];
-    const raw = match[2];
-    const binaryStr = atob(raw);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-
-    // Cache binary in KV for 30 days
-    if (kv) {
-      try {
-        await kv.put(`img:${id}`, bytes.buffer, { expirationTtl: 2592000 });
-      } catch (_) {}
-    }
-
-    return new Response(bytes, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
-        'CDN-Cache-Control': 'max-age=86400',
-        'Cloudflare-CDN-Cache-Control': 'max-age=86400',
-      }
-    });
-  } catch (err) {
-    return c.json({ error: 'Failed to load image' }, 500);
-  }
+  // 2. Otherwise it's a product image -> instant 301 redirect to static asset (0 TiDB RU)
+  return c.redirect(`/img/products/${id}.jpg`, 301);
 });
 
 // ============================================
-// SETTINGS IMAGE CDN ENDPOINT
-// Serves subcategory & banner photos with 7-day Edge CDN caching,
-// preventing multi-megabyte JSON payloads in /api/settings.
+// SETTINGS IMAGE CDN ENDPOINT — zero TiDB queries, instant static asset delivery
 // ============================================
 app.get('/settings-img/:type/:id', async (c) => {
   const type = c.req.param('type'); // 'subcat' or 'slide'
   const id = decodeURIComponent(c.req.param('id'));
-  const kv = c.env?.BIGBAZAR_CACHE;
 
-  // 1. Instant sub-30ms response from Edge KV
-  if (kv) {
-    try {
-      const cached = await kv.get(`settings-img:${type}:${id}`, { type: 'arrayBuffer' });
-      if (cached) {
-        let mime = 'image/jpeg';
-        try {
-          const storedMime = await kv.get(`settings-img-type:${type}:${id}`);
-          if (storedMime) mime = storedMime;
-        } catch (_) {}
-        return new Response(cached, {
-          headers: {
-            'Content-Type': mime,
-            'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
-            'CDN-Cache-Control': 'max-age=604800',
-            'Cloudflare-CDN-Cache-Control': 'max-age=604800'
-          }
-        });
-      }
-    } catch (_) {}
+  if (type === 'slide') {
+    return c.redirect(`/img/slides/${id}.jpg`, 301);
+  }
+  if (type === 'subcat') {
+    const safeId = id.replace(/[^a-zA-Z0-9-_]/g, '_');
+    return c.redirect(`/img/subcats/${safeId}.jpg`, 301);
   }
 
-  const conn = getDb(c.env);
-
-  try {
-    let rawImage = null;
-    if (type === 'subcat') {
-      const rows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'subcategories'");
-      if (!rows[0]) return c.json({ error: 'Not found' }, 404);
-      let subcats = {};
-      try { subcats = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value; } catch (_) {}
-      for (const list of Object.values(subcats)) {
-        if (Array.isArray(list)) {
-          const item = list.find(s => s && String(s.id) === String(id));
-          if (item && item.image_url) { rawImage = item.image_url; break; }
-        }
-      }
-    } else if (type === 'slide') {
-      const rows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'main_slides'");
-      if (!rows[0]) return c.json({ error: 'Not found' }, 404);
-      let slides = [];
-      try { slides = typeof rows[0].value === 'string' ? JSON.parse(rows[0].value) : rows[0].value; } catch (_) {}
-      const slide = slides.find((s, idx) => String(s.id || idx) === String(id));
-      if (slide && slide.image) rawImage = slide.image;
-    }
-
-    if (!rawImage) return c.json({ error: 'Image not found' }, 404);
-
-    // If it's a real external URL or Cloudinary, redirect safely
-    if (!rawImage.startsWith('data:')) {
-      if (rawImage.startsWith('/api/settings-img/') || rawImage.startsWith('api/settings-img/')) {
-        return c.json({ error: 'Self-referencing image' }, 404);
-      }
-      return c.redirect(rawImage, 302);
-    }
-
-    const match = rawImage.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return c.json({ error: 'Invalid image format' }, 400);
-    const contentType = match[1] || 'image/jpeg';
-    const binaryStr = atob(match[2]);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-
-    // Cache in KV in background so next request is sub-30ms
-    if (kv) {
-      runInBackground(c, async () => {
-        try {
-          await kv.put(`settings-img:${type}:${id}`, bytes.buffer);
-          await kv.put(`settings-img-type:${type}:${id}`, contentType);
-        } catch (_) {}
-      });
-    }
-
-    return new Response(bytes.buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
-        'CDN-Cache-Control': 'max-age=604800',
-        'Cloudflare-CDN-Cache-Control': 'max-age=604800'
-      }
-    });
-  } catch (err) {
-    return c.json({ error: err.message }, 500);
-  }
+  return c.json({ error: 'Unknown image type' }, 404);
 });
 
 // ============================================
