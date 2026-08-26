@@ -481,7 +481,7 @@ export default function ProductDetails() {
                                                                 className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
                                                                 alt={name}
                                                                 onError={(e) => {
-                                                                    if (e.currentTarget.src.includes('images.weserv.nl') && img) {
+                                                                    if (img && e.currentTarget.src !== img) {
                                                                         e.currentTarget.src = img;
                                                                     }
                                                                 }}

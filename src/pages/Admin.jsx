@@ -849,8 +849,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             const cleanOther = (prev.images || []).filter(img => !img.includes('Big Bazar Video') && !img.includes('placeholder'));
             return {
               ...prev,
-              image_url: uploadedUrls[0],
-              images: [uploadedUrls[0], ...cleanOther.filter(img => img !== uploadedUrls[0])]
+              image_url: prev.image_url || uploadedUrls[0],
+              images: [...uploadedUrls, ...cleanOther.filter(img => !uploadedUrls.includes(img))]
             };
           });
           setPreviewImage(uploadedUrls[0]);
@@ -2690,23 +2690,72 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                 </div>
                               </div>
 
-                              {form.images?.length > 0 && (
-                                <div className="pt-6 border-t border-white/5">
-                                  <label className="text-[11px] font-bold uppercase text-zinc-500 px-1 mb-4 block italic tracking-wide">Pick Photo for this Color</label>
-                                  <div className="flex flex-wrap gap-3">
-                                    {form.images.map((img, i) => (
-                                      <div key={i} onClick={() => {
-                                        const updated = [...form.available_colors];
-                                        updated[idx] = { ...color, image: color.image === img ? null : img };
-                                        setForm({ ...form, available_colors: updated });
-                                      }} className={`relative w-14 h-14 rounded-[18px] overflow-hidden border-2 cursor-pointer transition-all ${color.image === img ? 'border-[#ce112d] scale-110 shadow-2xl ring-4 ring-red-900/20' : 'border-zinc-800 opacity-30 hover:opacity-100'}`}>
-                                        <img src={img} className="w-full h-full object-cover" alt="Variant" />
-                                        {color.image === img && <div className="absolute inset-0 bg-[#ce112d]/30 flex items-center justify-center"><Check size={16} strokeWidth={4} className="text-white" /></div>}
-                                      </div>
-                                    ))}
+                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-bold uppercase text-zinc-400 px-1 block italic tracking-wide">
+                                      Photo for {color.name || 'this Color'}
+                                    </label>
+                                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-white/10">
+                                      <Upload size={12} />
+                                      <span>Upload New</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          setLoading(true);
+                                          try {
+                                            const compressed = await compressImage(file, COMPRESS_PRESETS.product);
+                                            const url = await uploadSingleFile(compressed);
+                                            if (url) {
+                                              const updated = [...form.available_colors];
+                                              updated[idx] = { ...color, image: url };
+                                              setForm(prev => ({
+                                                ...prev,
+                                                images: [url, ...(prev.images || []).filter(img => img !== url)],
+                                                available_colors: updated
+                                              }));
+                                            }
+                                          } catch (err) {
+                                            console.error('Color image upload error:', err);
+                                          } finally {
+                                            setLoading(false);
+                                            e.target.value = '';
+                                          }
+                                        }}
+                                      />
+                                    </label>
                                   </div>
+
+                                  {form.images?.length > 0 && (
+                                    <div className="flex flex-wrap gap-2.5">
+                                      {form.images.map((img, i) => (
+                                        <div
+                                          key={i}
+                                          onClick={() => {
+                                            const updated = [...form.available_colors];
+                                            updated[idx] = { ...color, image: color.image === img ? null : img };
+                                            setForm({ ...form, available_colors: updated });
+                                          }}
+                                          className={`relative w-14 h-14 rounded-[18px] overflow-hidden border-2 cursor-pointer transition-all ${
+                                            color.image === img
+                                              ? 'border-[#ce112d] scale-110 shadow-2xl ring-4 ring-red-900/20'
+                                              : 'border-zinc-800 opacity-40 hover:opacity-100'
+                                          }`}
+                                        >
+                                          <img src={img} className="w-full h-full object-cover" alt="Variant" />
+                                          {color.image === img && (
+                                            <div className="absolute inset-0 bg-[#ce112d]/40 flex items-center justify-center">
+                                              <Check size={16} strokeWidth={4} className="text-white" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
                             </div>
                           );
                         })}

@@ -87,7 +87,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
             fetchPriority={currentIndex === 0 ? "high" : "auto"}
             decoding="async"
             onError={(e) => {
-              if (e.currentTarget.src.includes('images.weserv.nl') && images[currentIndex]) {
+              if (images[currentIndex] && e.currentTarget.src !== images[currentIndex]) {
                 e.currentTarget.src = images[currentIndex];
               }
             }}
@@ -157,6 +157,11 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
                 className="w-full h-full object-cover object-top" 
                 alt={`Thumbnail ${i + 1}`}
                 loading="lazy"
+                onError={(e) => {
+                  if (img && e.currentTarget.src !== img) {
+                    e.currentTarget.src = img;
+                  }
+                }}
               />
             </button>
           ))}

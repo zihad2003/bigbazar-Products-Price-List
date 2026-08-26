@@ -49,13 +49,13 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
     // Already optimized, data URI, or blob URL → return as-is
     if (originalUrl.startsWith('data:') || originalUrl.startsWith('blob:') || originalUrl.includes('images.weserv.nl')) return originalUrl;
 
-    // Local server uploads, static assets, and API image CDN -> serve directly
+    // All root-relative paths (/img/..., /api/..., /uploads/..., /assets/...) 
+    // are on the local origin and should be served directly (never proxied)
     if (
-        originalUrl.startsWith('/img/') ||
+        originalUrl.startsWith('/') ||
+        originalUrl.startsWith('./') ||
         originalUrl.startsWith('img/') ||
-        originalUrl.startsWith('/api/') ||
         originalUrl.startsWith('api/') ||
-        originalUrl.startsWith('/uploads/') ||
         originalUrl.startsWith('uploads/') ||
         originalUrl.includes('localhost:')
     ) {
