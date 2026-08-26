@@ -287,12 +287,17 @@ app.get('/img/:id', async (c) => {
     try {
       const cached = await kv.get(`img:${id}`, { type: 'arrayBuffer' });
       if (cached) {
+        let mimeType = 'image/jpeg';
+        try {
+          const storedType = await kv.get(`img_type:${id}`);
+          if (storedType) mimeType = storedType;
+        } catch (_) {}
         return new Response(cached, {
           headers: {
-            'Content-Type': 'image/webp',
-            'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
-            'CDN-Cache-Control': 'max-age=86400',
-            'Cloudflare-CDN-Cache-Control': 'max-age=86400',
+            'Content-Type': mimeType,
+            'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+            'CDN-Cache-Control': 'max-age=604800',
+            'Cloudflare-CDN-Cache-Control': 'max-age=604800',
           }
         });
       }
@@ -1056,6 +1061,20 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
     platform_id: p.platform_id
   };
 
+  // SAFETY GUARD: If admin edits a product without changing images, the form
+  // may contain dummy display URLs like '/api/img/<id>'. Do not overwrite the real DB image!
+  if (fields.images) {
+    try {
+      const parsed = JSON.parse(fields.images);
+      if (Array.isArray(parsed) && parsed.every(img => typeof img === 'string' && img.startsWith('/api/img/') && !img.includes('/up-'))) {
+        delete fields.images;
+      }
+    } catch (_) {}
+  }
+  if (fields.image_url && fields.image_url.startsWith('/api/img/') && !fields.image_url.includes('/up-')) {
+    delete fields.image_url;
+  }
+
   for (const [key, val] of Object.entries(fields)) {
     if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
   }
@@ -1595,51 +1614,71 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     const apiSecret  = c.env.CLOUDINARY_API_SECRET;
 
     if (cloudName && apiKey && apiSecret) {
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const folder = 'bigbazar';
-      // Cloudinary transformation: auto quality, auto format, max 1600px wide
-      const eager = 'q_auto,f_auto,w_1600,c_limit';
+      try {
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const folder = 'bigbazar';
+        const eager = 'q_auto,f_auto,w_1600,c_limit';
 
-      // Params must be sorted alphabetically for signature
-      const paramsToSign = `eager=${eager}&folder=${folder}&timestamp=${timestamp}`;
-      const signature = await sha1Hex(paramsToSign + apiSecret);
+        const paramsToSign = `eager=${eager}&folder=${folder}&timestamp=${timestamp}`;
+        const signature = await sha1Hex(paramsToSign + apiSecret);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey);
-      formData.append('timestamp', timestamp);
-      formData.append('signature', signature);
-      formData.append('folder', folder);
-      formData.append('eager', eager);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', apiKey);
+        formData.append('timestamp', timestamp);
+        formData.append('signature', signature);
+        formData.append('folder', folder);
+        formData.append('eager', eager);
 
-      const cloudRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: 'POST', body: formData }
-      );
+        const cloudRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          { method: 'POST', body: formData }
+        );
 
-      if (!cloudRes.ok) {
-        const errBody = await cloudRes.text();
-        console.error('Cloudinary upload failed:', cloudRes.status, errBody);
-        return c.json({ error: 'Image host upload failed', details: errBody }, 502);
-      }
-
-      const result = await cloudRes.json();
-      // Use the eager transformation URL if available, otherwise secure_url
-      const publicUrl = result.eager?.[0]?.secure_url || result.secure_url;
-
-      return c.json({
-        success: true,
-        data: {
-          path: result.public_id,
-          publicUrl
+        if (cloudRes.ok) {
+          const result = await cloudRes.json();
+          const publicUrl = result.eager?.[0]?.secure_url || result.secure_url;
+          return c.json({
+            success: true,
+            data: {
+              path: result.public_id,
+              publicUrl
+            }
+          });
         }
-      });
+        console.warn('Cloudinary upload unsuccessful, falling back to KV:', cloudRes.status);
+      } catch (cloudErr) {
+        console.warn('Cloudinary error, falling back to KV:', cloudErr.message);
+      }
     }
 
-    // ── Base64 fallback (Cloudinary env vars not set) ─────────────────────
+    // ── Resilient KV Binary Storage Fallback ────────────────────────────────
+    // Stores the binary image in Cloudflare KV edge cache.
+    // Zero multi-megabyte base64 strings in the database!
     const arrayBuffer = await file.arrayBuffer();
+    const kv = c.env?.BIGBAZAR_CACHE;
+    const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+    const mimeType = file.type || 'image/jpeg';
+
+    if (kv) {
+      try {
+        await kv.put(`img:${uploadId}`, arrayBuffer);
+        await kv.put(`img_type:${uploadId}`, mimeType);
+        return c.json({
+          success: true,
+          data: {
+            path: uploadId,
+            publicUrl: `/api/img/${uploadId}`
+          }
+        });
+      } catch (kvErr) {
+        console.error('KV image store error:', kvErr);
+      }
+    }
+
+    // Ultimate fallback if KV is unavailable
     const base64 = arrayBufferToBase64(arrayBuffer);
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return c.json({
       success: true,

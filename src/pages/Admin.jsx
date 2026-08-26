@@ -1280,14 +1280,26 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           const file = e.target.files?.[0];
                           if (!file) return;
                           try {
+                            setLoading(true);
                             const compressed = await compressImage(file, COMPRESS_PRESETS.thumbnail);
                             const { data, error } = await bigBazarApi.storage.from('products').upload(`subcategory-${Date.now()}.webp`, compressed);
+                            if (error) {
+                              setAlertModal({ isOpen: true, title: 'Upload Failed', message: error.message || 'Image upload failed', type: 'error' });
+                              return;
+                            }
                             if (data?.fullPath) setSubcatForm(p => ({ ...p, image_url: data.fullPath }));
                             else if (data?.path) {
                               const { data: urlData } = bigBazarApi.storage.from('products').getPublicUrl(data.path);
                               setSubcatForm(p => ({ ...p, image_url: urlData.publicUrl }));
                             }
-                          } catch (err) { console.error('Upload error:', err); }
+                            setAlertModal({ isOpen: true, title: 'Photo Uploaded', message: 'Subcategory photo uploaded successfully!', type: 'success' });
+                          } catch (err) {
+                            console.error('Upload error:', err);
+                            setAlertModal({ isOpen: true, title: 'Upload Error', message: err.message || 'Could not process image', type: 'error' });
+                          } finally {
+                            setLoading(false);
+                            e.target.value = '';
+                          }
                         }}
                       />
                     </label>
@@ -1825,9 +1837,21 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                             const file = e.target.files?.[0]; if (!file) return;
                             setLoading(true);
-                            const url = await uploadSingleFile(file);
-                            if (url) setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
-                            setLoading(false);
+                            try {
+                              const compressed = await compressImage(file, COMPRESS_PRESETS.banner);
+                              const url = await uploadSingleFile(compressed);
+                              if (url) {
+                                setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
+                                setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Wedding banner uploaded successfully!', type: 'success' });
+                              } else {
+                                setAlertModal({ isOpen: true, title: 'Upload Failed', message: 'Could not upload banner. Please try again.', type: 'error' });
+                              }
+                            } catch (err) {
+                              setAlertModal({ isOpen: true, title: 'Upload Error', message: err.message || 'Failed to process image.', type: 'error' });
+                            } finally {
+                              setLoading(false);
+                              e.target.value = '';
+                            }
                           }} />
                         </label>
                         <button type="button" onClick={() => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: '' } }))}
@@ -1846,9 +1870,21 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                         const file = e.target.files?.[0]; if (!file) return;
                         setLoading(true);
-                        const url = await uploadSingleFile(file);
-                        if (url) setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
-                        setLoading(false);
+                        try {
+                          const compressed = await compressImage(file, COMPRESS_PRESETS.banner);
+                          const url = await uploadSingleFile(compressed);
+                          if (url) {
+                            setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
+                            setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Wedding banner uploaded successfully!', type: 'success' });
+                          } else {
+                            setAlertModal({ isOpen: true, title: 'Upload Failed', message: 'Could not upload banner. Please try again.', type: 'error' });
+                          }
+                        } catch (err) {
+                          setAlertModal({ isOpen: true, title: 'Upload Error', message: err.message || 'Failed to process image.', type: 'error' });
+                        } finally {
+                          setLoading(false);
+                          e.target.value = '';
+                        }
                       }} />
                     </label>
                   )}
