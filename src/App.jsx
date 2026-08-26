@@ -54,43 +54,6 @@ function PublicLayout() {
   const [tickerSettings, setTickerSettings] = useState(null);
   const location = useLocation();
 
-  useEffect(() => {
-    let sessionId = sessionStorage.getItem('bb_session_id');
-    const isNewSession = !sessionId;
-    if (!sessionId) {
-      sessionId = 's-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now();
-      sessionStorage.setItem('bb_session_id', sessionId);
-    }
-
-    const sendPing = (isNew) => {
-      // Do not send recurring heartbeat pings when the browser tab is hidden/minimized
-      if (!isNew && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-
-      fetch(`${API_URL}/api/analytics/ping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, is_new: isNew })
-      }).catch(() => { });
-    };
-
-    sendPing(isNewSession);
-
-    // Heartbeat every 120s (2 minutes) instead of aggressive 30s
-    const timer = setInterval(() => sendPing(false), 120000);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        sendPing(false);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
   const isCheckoutPage = location.pathname === '/checkout';
