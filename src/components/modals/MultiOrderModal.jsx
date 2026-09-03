@@ -124,6 +124,8 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                 if (vSKU) name += ` (SKU: ${vSKU})`;
                 
                 name += ` (Qty: ${item.quantity})`;
+                // Bug #5 fix: encode product ID for reliable stock restoration
+                name += ` (PID: ${item.id})`;
                 return name;
             }).join(' + ');
 

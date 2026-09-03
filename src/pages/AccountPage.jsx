@@ -266,7 +266,7 @@ export default function AccountPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-content-primary truncate">
-                        {order.product_name?.split(' + ')[0] || 'Order'}
+                        {order.product_name?.split(' + ')[0]?.replace(/\s*\(PID:\s*[^)]*\)/gi, '') || 'Order'}
                       </p>
                       <p className="text-xs text-content-muted mt-0.5">
                         {formatDate(order.created_at)} • ID: {order.id?.substring(0, 8)}...

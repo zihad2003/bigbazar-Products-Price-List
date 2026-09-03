@@ -20,9 +20,11 @@ const API_BASE = API_URL;
 // ============================================
 let _token = (typeof localStorage !== 'undefined' ? localStorage.getItem('bb_auth_token') : null) || null;
 let _authListeners = [];
+let _cachedTokenType = null; // Cache decoded token type to avoid repeated atob()
 
 export function setToken(token) {
     _token = token;
+    _cachedTokenType = null; // Reset cached type when token changes
     if (typeof localStorage !== 'undefined') {
         if (token) localStorage.setItem('bb_auth_token', token);
         else localStorage.removeItem('bb_auth_token');
@@ -33,15 +35,39 @@ export function getToken() {
     return _token;
 }
 
+/**
+ * Decode JWT token type (cached). Returns 'admin', 'customer', or null.
+ */
+function getTokenType() {
+    if (_cachedTokenType !== undefined && _cachedTokenType !== null) return _cachedTokenType;
+    if (!_token) { _cachedTokenType = null; return null; }
+    try {
+        const payload = JSON.parse(atob(_token.split('.')[1]));
+        _cachedTokenType = payload.type || null;
+    } catch {
+        _cachedTokenType = null;
+    }
+    return _cachedTokenType;
+}
+
+/**
+ * Returns true ONLY when the user is actually an admin.
+ * Previously, this returned true for ANY token (including customer tokens),
+ * which caused all logged-in customers to bypass every cache layer — 
+ * the root cause of TiDB RU exhaustion.
+ */
 export function isAdminRequest() {
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) return true;
-    if (_token) return true;
+    // Only treat as admin if on /admin path AND token is actually admin type
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+        return getTokenType() === 'admin';
+    }
     return false;
 }
 
 function headers() {
     const h = { 'Content-Type': 'application/json' };
     if (_token) h['Authorization'] = `Bearer ${_token}`;
+    // Only add cache-busting headers for actual admin requests
     if (isAdminRequest()) {
         h['Cache-Control'] = 'no-cache, no-store, must-revalidate';
         h['Pragma'] = 'no-cache';

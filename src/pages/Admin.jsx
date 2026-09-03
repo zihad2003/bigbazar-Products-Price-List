@@ -678,7 +678,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     }
 
     const fileExt = fileToUpload.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `assets/${fileName}`;
 
     try {

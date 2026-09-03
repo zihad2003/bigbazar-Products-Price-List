@@ -220,12 +220,38 @@ const isAdminOrNoCache = (c) => {
   const authHeader = c.req.header('Authorization');
   const cacheCtrl = c.req.header('Cache-Control');
   const { _admin, _t } = c.req.query();
+  // Only bypass cache if the token is actually an admin token (not customer)
+  let isAdminAuth = false;
+  if (authHeader) {
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const decoded = jwt.verify(token, getJwtSecret(c));
+      isAdminAuth = decoded.type === 'admin';
+    } catch (_) {}
+  }
   return !!(
-    authHeader || 
+    isAdminAuth || 
     _admin === 'true' || 
     _t || 
     (cacheCtrl && (cacheCtrl.includes('no-cache') || cacheCtrl.includes('no-store')))
   );
+};
+
+/**
+ * Check if the request is authenticated with a valid Admin JWT.
+ * Used for authorization decisions (e.g. viewing draft/deleted products),
+ * separate from cache-busting decisions.
+ */
+const isAdminUser = (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return false;
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const decoded = jwt.verify(token, getJwtSecret(c));
+    return decoded && decoded.type === 'admin';
+  } catch (_) {
+    return false;
+  }
 };
 
 /**
@@ -718,9 +744,16 @@ app.get('/products', async (c) => {
 
   const conn = getDb(c.env);
 
-  try {
+    const isAdmin = isAdminUser(c);
+
     if (id) {
-      const res = await conn.execute('SELECT * FROM products WHERE id = ?', [id]);
+      // Bug #2 fix: only authenticated admins can view deleted/unpublished products
+      const res = isAdmin
+        ? await conn.execute('SELECT * FROM products WHERE id = ?', [id])
+        : await conn.execute(
+            "SELECT * FROM products WHERE id = ? AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)",
+            [id]
+          );
       const singleData = { data: parseProductRowLite(res[0]) || null, count: res.length };
       if (isNoCache) {
         c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -737,7 +770,13 @@ app.get('/products', async (c) => {
     if (ids) {
       const list = ids.split(',').filter(Boolean);
       if (!list.length) return c.json({ data: [], count: 0 });
-      const res = await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list);
+      // Bug #2 fix: only authenticated admins can view deleted/unpublished products
+      const res = isAdmin
+        ? await conn.execute(`SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')})`, list)
+        : await conn.execute(
+            `SELECT * FROM products WHERE id IN (${list.map(() => '?').join(',')}) AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)`,
+            list
+          );
       const listData = { data: res.map(parseProductRowLite), count: res.length };
       if (isNoCache) {
         c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -753,7 +792,7 @@ app.get('/products', async (c) => {
 
     // Column selection for listings (parseProductRowLite converts base64 to CDN URLs if any)
     let selectFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive, images, image_url, platform_id';
-    let whereSql = ' WHERE 1=1';
+    let whereSql = ' WHERE (is_deleted = 0 OR is_deleted IS NULL)';
     const params = [];
 
     if (status) { whereSql += ' AND status = ?'; params.push(status); }
@@ -862,11 +901,16 @@ app.get('/products/:id', async (c) => {
 
   try {
     const conn = getDb(c.env);
+    const isAdmin = isAdminUser(c);
     // Exclude heavy base64 columns — images served via /api/img/:id
-    const res = await conn.execute(
-      'SELECT id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive FROM products WHERE id = ?',
-      [pid]
-    );
+    // Bug #2 fix: only authenticated admins can view deleted/unpublished products
+    const detailFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
+    const res = isAdmin
+      ? await conn.execute(`SELECT ${detailFields} FROM products WHERE id = ?`, [pid])
+      : await conn.execute(
+          `SELECT ${detailFields} FROM products WHERE id = ? AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)`,
+          [pid]
+        );
     if (!res.length) return c.json({ error: 'Not found' }, 404);
     const parsed = parseProductRowLite(res[0]);
     const resultData = { data: parsed };
@@ -972,10 +1016,24 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
 app.delete('/products/:id', requireAuth, requireAdmin, async (c) => {
   const pid = c.req.param('id');
   const conn = getDb(c.env);
-  await conn.execute('DELETE FROM products WHERE id = ?', [pid]);
+
+  // Bug #1 fix: soft-delete when orders reference this product to avoid orphans
+  const orderRefs = await conn.execute(
+    'SELECT COUNT(*) as cnt FROM orders WHERE product_id = ?', [pid]
+  );
+  if (orderRefs[0]?.cnt > 0) {
+    // Soft-delete: orders exist, preserve referential integrity
+    await conn.execute(
+      "UPDATE products SET is_deleted = 1, status = 'archived' WHERE id = ?", [pid]
+    );
+  } else {
+    // Hard-delete safe: no orders reference this product
+    await conn.execute('DELETE FROM products WHERE id = ?', [pid]);
+  }
+
   await bumpCatalogVersion(c);
   runInBackground(c, () => prewarmCatalogCache(c));
-  // Bug 2 fix: also evict binary KV image cache so the CDN stops serving the
+  // Also evict binary KV image cache so the CDN stops serving the
   // deleted product's image.
   const kvImg = c.env?.BIGBAZAR_CACHE;
   if (kvImg) { try { await kvImg.delete(`img:${pid}`); } catch (_) {} }
@@ -1144,6 +1202,8 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
     }
 
     await tx.commit();
+    await bumpCatalogVersion(c);
+    runInBackground(c, () => prewarmCatalogCache(c));
     return c.json({ success: true, order_id: id, data: { id, order_id: id } });
   } catch (err) {
     await tx.rollback();
@@ -1156,15 +1216,18 @@ async function restoreOrderStock(tx, order) {
   if (!order) return;
 
   const parseLine = (str) => {
-    const res = { name: str, size: null, color: null, sku: null, qty: 1 };
+    const res = { name: str, size: null, color: null, sku: null, qty: 1, pid: null };
     const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
     const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
     const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
     const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
+    // Bug #5 fix: parse embedded product ID for reliable lookup
+    const pidMatch = str.match(/\(PID:\s*([^)]*)\)/i);
     if (colorMatch) res.color = colorMatch[1].trim();
     if (sizeMatch) res.size = sizeMatch[1].trim();
     if (skuMatch) res.sku = skuMatch[1].trim();
     if (qtyMatch) res.qty = parseInt(qtyMatch[1], 10) || 1;
+    if (pidMatch) res.pid = pidMatch[1].trim();
     res.name = str.split('(')[0].trim();
     return res;
   };
@@ -1178,6 +1241,11 @@ async function restoreOrderStock(tx, order) {
     const selectedSize = item.size || order.size || null;
 
     let productId = (i === 0 && order.product_id) ? order.product_id : null;
+
+    // Bug #5 fix: use embedded PID first (most reliable, rename-proof)
+    if (!productId && item.pid) {
+      productId = item.pid;
+    }
 
     if (!productId && item.sku) {
       const pBySku = await tx.execute('SELECT id FROM products WHERE platform_id = ? OR serial_no = ? LIMIT 1', [item.sku, item.sku]);
@@ -1193,7 +1261,10 @@ async function restoreOrderStock(tx, order) {
       productId = order.product_id;
     }
 
-    if (!productId) continue;
+    if (!productId) {
+      console.warn(`restoreOrderStock: Could not find product for order ${order.id}, line item: "${item.name}"`);
+      continue;
+    }
 
     // Lock product row inside transaction
     const products = await tx.execute(
@@ -1292,6 +1363,10 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
 
     await tx.commit();
+    if (isTransitioningToCancelled) {
+      await bumpCatalogVersion(c);
+      runInBackground(c, () => prewarmCatalogCache(c));
+    }
     return c.json({ success: true });
   } catch (err) {
     await tx.rollback();
@@ -1314,6 +1389,7 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const id = c.req.param('id');
   const tx = await conn.begin();
   try {
+    let stockWasRestored = false;
     // 1. Fetch order with row lock
     const orders = await tx.execute('SELECT * FROM orders WHERE id = ? FOR UPDATE', [id]);
     if (orders.length > 0) {
@@ -1323,12 +1399,17 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
       // (If already Cancelled, stock was already restored when cancelled)
       if (order.status !== 'Cancelled') {
         await restoreOrderStock(tx, order);
+        stockWasRestored = true;
       }
 
       // 3. Delete order
       await tx.execute('DELETE FROM orders WHERE id = ?', [id]);
     }
     await tx.commit();
+    if (stockWasRestored) {
+      await bumpCatalogVersion(c);
+      runInBackground(c, () => prewarmCatalogCache(c));
+    }
     return c.json({ success: true });
   } catch (err) {
     await tx.rollback();

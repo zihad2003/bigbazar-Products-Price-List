@@ -146,6 +146,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             .replace(/\s*\((?:Size|সাইজ):\s*[^)]*\)/gi, '')
             .replace(/\s*\(SKU:\s*[^)]*\)/gi, '')
             .replace(/\s*\((?:Qty|পরিমাণ):\s*[^)]*\)/gi, '')
+            .replace(/\s*\(PID:\s*[^)]*\)/gi, '')
             // Handle OLD format parts
             .replace(/\s+\d+\s*(?:piece|pc)\b/gi, '')
             .replace(/\s*(?:color|size|রঙ|সাইজ)\b/gi, '');

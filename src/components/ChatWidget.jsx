@@ -91,7 +91,7 @@ export default function ChatWidget() {
   const [sessionId] = useState(() => {
     let saved = localStorage.getItem('bb_ai_session_id');
     if (!saved) {
-      saved = 'session-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now();
+      saved = 'session-' + crypto.randomUUID();
       localStorage.setItem('bb_ai_session_id', saved);
     }
     return saved;
@@ -423,7 +423,7 @@ export default function ChatWidget() {
       const data = await res.json();
 
       if (data.success || data.order_id) {
-        const confirmedId = data.order_id || 'BB-' + Math.floor(100000 + Math.random() * 900000);
+        const confirmedId = data.order_id || 'BB-' + crypto.randomUUID().substring(0, 6).toUpperCase();
         
         // Add order confirmation message to chat
         const successMessage = {
