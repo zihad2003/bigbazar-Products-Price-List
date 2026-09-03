@@ -243,6 +243,8 @@ export default function Checkout() {
                     size: combinedSizes.substring(0, 250) || null,
                     color: combinedColors.substring(0, 250) || null,
                     is_exclusive_order: isExclusiveOrder || false,
+                    is_advance_paid: (formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'bangla_qr' && paymentOption === 'advance') || (formData.paymentMethod === 'cod' && Boolean(formData.senderNumber))) ? 1 : (formData.paymentMethod === 'bangla_qr' && paymentOption === 'full' ? 1 : 0),
+                    payment_status: (formData.paymentMethod === 'bangla_qr' && paymentOption === 'full') ? 'Fully Paid' : ((formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'bangla_qr' && paymentOption === 'advance') || (formData.paymentMethod === 'cod' && Boolean(formData.senderNumber))) ? 'Advance Paid' : 'Unpaid'),
                     customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500),
                     items: items.map(item => ({
                         id: item.id,
@@ -468,10 +470,53 @@ export default function Checkout() {
                                 <span>{t('delivery_charge')}</span>
                                 <span>{deliveryCharge > 0 ? `৳${deliveryCharge}` : (language === 'bn' ? 'ফ্রি' : 'Free')}</span>
                             </div>
-                            <div className="flex justify-between items-end border-t border-neutral-100 pt-3">
-                                <span className="text-xs font-black uppercase text-[#ce112d] tracking-wider italic">{language === 'bn' ? 'সর্বমোট' : 'Total Payable'}</span>
-                                <span className="text-2xl font-black text-[#ce112d]">৳{finalTotal}</span>
-                            </div>
+
+                            {/* Advance payment deduction if applicable */}
+                            {(formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'bangla_qr' && paymentOption === 'advance') || (formData.paymentMethod === 'cod' && advanceAmount > 0)) && (
+                                <>
+                                    <div className="flex justify-between text-xs font-bold text-neutral-500">
+                                        <span>{language === 'bn' ? 'মোট অর্ডার মূল্য' : 'Total Order Value'}</span>
+                                        <span>৳{finalTotal}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200/60 rounded-lg px-2.5 py-1.5">
+                                        <span>{language === 'bn' ? 'অগ্রিম পরিশোধযোগ্য' : 'Advance Payable'}</span>
+                                        <span className="font-extrabold text-sm">৳{advanceAmount}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end border-t border-neutral-100 pt-3">
+                                        <div>
+                                            <span className="text-xs font-black uppercase text-[#ce112d] tracking-wider italic block">
+                                                {language === 'bn' ? 'হাতে পেয়ে পরিশোধযোগ্য' : 'Due on Delivery'}
+                                            </span>
+                                            <span className="text-[10px] text-neutral-400 font-medium block">
+                                                {language === 'bn' ? '(বাকি টাকা ডেলিভারির সময়)' : '(Remaining upon receipt)'}
+                                            </span>
+                                        </div>
+                                        <span className="text-2xl font-black text-[#ce112d]">৳{Math.max(0, finalTotal - advanceAmount)}</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {formData.paymentMethod === 'bangla_qr' && paymentOption === 'full' && (
+                                <>
+                                    <div className="flex justify-between text-xs font-bold text-green-600 bg-green-50 border border-green-200/60 rounded-lg px-2.5 py-1.5">
+                                        <span>{language === 'bn' ? 'সম্পূর্ণ অগ্রিম পরিশোধ' : 'Full Payment'}</span>
+                                        <span className="font-extrabold text-sm">৳{finalTotal}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end border-t border-neutral-100 pt-3">
+                                        <span className="text-xs font-black uppercase text-green-600 tracking-wider italic">
+                                            {language === 'bn' ? 'হাতে পেয়ে প্রদেয়' : 'Due on Delivery'}
+                                        </span>
+                                        <span className="text-2xl font-black text-green-600">৳0</span>
+                                    </div>
+                                </>
+                            )}
+
+                            {formData.paymentMethod === 'cod' && advanceAmount === 0 && (
+                                <div className="flex justify-between items-end border-t border-neutral-100 pt-3">
+                                    <span className="text-xs font-black uppercase text-[#ce112d] tracking-wider italic">{language === 'bn' ? 'সর্বমোট' : 'Total Payable'}</span>
+                                    <span className="text-2xl font-black text-[#ce112d]">৳{finalTotal}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -50,6 +50,27 @@ export default function OrderConfirmation() {
                             });
                         }
 
+                        const rawLastDigits = dbOrder.last_four_digits || '';
+                        const hasAdvanceHint = rawLastDigits.toLowerCase().includes('bkash') || rawLastDigits.toLowerCase().includes('advance') || (rawLastDigits.toLowerCase().includes('bangla qr') && !rawLastDigits.toLowerCase().includes('full'));
+                        const hasFullHint = rawLastDigits.toLowerCase().includes('full') || dbOrder.payment_status === 'Fully Paid';
+
+                        const isAdvancePaid = Boolean(dbOrder.is_advance_paid) || hasAdvanceHint;
+                        const isFullyPaid = hasFullHint;
+
+                        const subtotalVal = parseFloat(dbOrder.product_price) || 0;
+                        const deliveryChargeVal = parseFloat(dbOrder.delivery_charge) || 0;
+                        const totalVal = parseFloat(dbOrder.total_amount) || (subtotalVal + deliveryChargeVal);
+
+                        const defaultAdv = dbOrder.is_exclusive_order ? 500 : (dbOrder.delivery_area === 'mirsarai' && deliveryChargeVal === 0 ? 100 : deliveryChargeVal);
+                        let matchedAdvance = defaultAdv;
+                        const advRegex = /Advance\s*৳?(\d+)/i.exec(rawLastDigits);
+                        if (advRegex) {
+                            matchedAdvance = parseFloat(advRegex[1]) || defaultAdv;
+                        }
+
+                        const paidAmount = isFullyPaid ? totalVal : (isAdvancePaid ? matchedAdvance : 0);
+                        const dueOnDelivery = Math.max(0, totalVal - paidAmount);
+
                         setOrder({
                             id: dbOrder.id,
                             items: parsedItems,
@@ -58,9 +79,14 @@ export default function OrderConfirmation() {
                             address,
                             upazila,
                             district,
-                            subtotal: dbOrder.product_price,
-                            deliveryCharge: dbOrder.delivery_charge,
-                            finalTotal: dbOrder.total_amount
+                            subtotal: subtotalVal,
+                            deliveryCharge: deliveryChargeVal,
+                            finalTotal: totalVal,
+                            isAdvancePaid,
+                            isFullyPaid,
+                            paidAmount,
+                            dueOnDelivery,
+                            lastFourDigits: rawLastDigits
                         });
                     }
                 })
@@ -235,12 +261,50 @@ export default function OrderConfirmation() {
                         <span>{t('delivery_charge')}</span>
                         <span className="text-zinc-800 font-semibold">৳{order.deliveryCharge}</span>
                     </div>
+
+                    {(order.isAdvancePaid || order.isFullyPaid) && (
+                        <div className="flex justify-between text-zinc-500 font-medium">
+                            <span>{language === 'bn' ? 'মোট অর্ডার মূল্য' : 'Total Order Value'}</span>
+                            <span className="text-zinc-800 font-semibold">৳{order.finalTotal}</span>
+                        </div>
+                    )}
+
+                    {order.isAdvancePaid && !order.isFullyPaid && (
+                        <div className="flex justify-between items-center text-orange-700 bg-orange-50 border border-orange-200/70 rounded-xl px-3 py-2 text-xs font-bold">
+                            <span className="flex items-center gap-1.5">
+                                <span>{language === 'bn' ? 'অগ্রিম পরিশোধিত' : 'Advance Paid'}</span>
+                                {order.lastFourDigits && order.lastFourDigits.includes(':') && (
+                                    <span className="text-[10px] text-orange-600/80 font-normal">
+                                        ({order.lastFourDigits.split(':')[0]})
+                                    </span>
+                                )}
+                            </span>
+                            <span className="font-extrabold text-sm">-৳{order.paidAmount}</span>
+                        </div>
+                    )}
+
+                    {order.isFullyPaid && (
+                        <div className="flex justify-between items-center text-green-700 bg-green-50 border border-green-200/70 rounded-xl px-3 py-2 text-xs font-bold">
+                            <span>{language === 'bn' ? 'সম্পূর্ণ পরিশোধিত' : 'Fully Paid'}</span>
+                            <span className="font-extrabold text-sm">-৳{order.paidAmount}</span>
+                        </div>
+                    )}
+
                     <div className="flex justify-between items-center border-t border-zinc-200/80 pt-3.5 mt-2">
-                        <span className="text-sm font-bold text-zinc-900">
-                            {language === 'bn' ? 'পরিশোধযোগ্য মোট' : 'Amount Paid / Due'}
-                        </span>
+                        <div>
+                            <span className="text-sm font-bold text-zinc-900 block">
+                                {order.isAdvancePaid || order.isFullyPaid
+                                    ? (language === 'bn' ? 'পণ্য হাতে পেয়ে প্রদেয়' : 'Due on Delivery')
+                                    : (language === 'bn' ? 'পরিশোধযোগ্য মোট' : 'Amount Due')}
+                            </span>
+                            {order.isAdvancePaid && !order.isFullyPaid && (
+                                <span className="text-[10px] text-zinc-400 font-medium block">
+                                    {language === 'bn' ? '(বাকি টাকা ডেলিভারির সময় দিবেন)' : '(Pay remaining amount on delivery)'}
+                                </span>
+                            )}
+                        </div>
                         <span className="text-xl sm:text-2xl font-extrabold text-[#ce112d]">
-                            ৳{order.finalTotal}
+                            ৳{order.dueOnDelivery}
                         </span>
                     </div>
                 </div>
