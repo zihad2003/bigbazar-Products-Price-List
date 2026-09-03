@@ -6,6 +6,40 @@ import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo 
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import BanglaQRPayment from '../BanglaQRPayment';
+import { getOptimizedUrl } from '../../utils/media';
+import { PRESET_SWATCHES, COLOR_MAP } from '../../utils/colorNames';
+
+const getItemImage = (item) => {
+    if (item.selectedColor && Array.isArray(item.available_colors)) {
+        const matched = item.available_colors.find(c => {
+            const name = typeof c === 'object' ? c.name : c;
+            return name && String(name).trim().toLowerCase() === String(item.selectedColor).trim().toLowerCase();
+        });
+        if (matched && typeof matched === 'object' && (matched.image || matched.image_url)) {
+            return matched.image || matched.image_url;
+        }
+    }
+    return item.image_url || item.image || (Array.isArray(item.images) ? item.images[0] : null);
+};
+
+const getItemColorHex = (item) => {
+    const color = item.selectedColor || item.color;
+    if (!color) return null;
+    if (Array.isArray(item.available_colors)) {
+        const matched = item.available_colors.find(c => {
+            const name = typeof c === 'object' ? c.name : c;
+            return name && String(name).trim().toLowerCase() === String(color).trim().toLowerCase();
+        });
+        if (matched && typeof matched === 'object' && matched.hex) {
+            return matched.hex;
+        }
+    }
+    const colorLower = String(color).trim().toLowerCase();
+    const preset = PRESET_SWATCHES.find(s => s.en.toLowerCase() === colorLower || s.bn.toLowerCase() === colorLower);
+    if (preset) return preset.hex;
+    const mapped = COLOR_MAP.find(m => m.en.toLowerCase() === colorLower || m.bn.toLowerCase() === colorLower);
+    return mapped ? mapped.hex : null;
+};
 
 const MultiOrderModal = ({ isOpen, onClose }) => {
     const { t, language } = useLanguage();
@@ -281,13 +315,62 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                     <ShoppingBag size={14} className="text-[#ce112d]" />
                                     <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('order_summary')} ({cartItems.length} {t('items')})</span>
                                 </div>
-                                <div className="max-h-32 overflow-y-auto pr-2 space-y-2">
-                                    {cartItems.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center text-xs">
-                                            <span className="truncate max-w-[200px] font-medium" style={{ color: 'var(--text-secondary)' }}>{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
-                                            <span className="font-bold text-white">৳{item.price * item.quantity}</span>
-                                        </div>
-                                    ))}
+                                <div className="max-h-44 overflow-y-auto pr-1 space-y-2.5 divide-y divide-white/5">
+                                    {cartItems.map((item, idx) => {
+                                        const itemImg = getItemImage(item);
+                                        const colorHex = getItemColorHex(item);
+                                        const colorName = item.selectedColor || item.color;
+                                        const sizeName = item.selectedSize || item.size;
+                                        return (
+                                            <div key={idx} className={`flex items-center gap-3 ${idx > 0 ? 'pt-2.5' : ''}`}>
+                                                <div className="w-11 h-13 rounded-xl overflow-hidden bg-neutral-800 border border-white/10 shrink-0 relative">
+                                                    {itemImg ? (
+                                                        <img
+                                                            src={getOptimizedUrl(itemImg, { w: 120, h: 140 })}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-neutral-500">
+                                                            <Package size={16} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <span className="truncate font-semibold text-xs text-white" title={item.name}>
+                                                            {item.name}
+                                                        </span>
+                                                        <span className="font-bold text-xs text-white shrink-0">
+                                                            ৳{item.price * item.quantity}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                        {colorName && (
+                                                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-bold text-neutral-300">
+                                                                {colorHex && (
+                                                                    <span
+                                                                        className="w-2 h-2 rounded-full border border-black/30 shrink-0"
+                                                                        style={{ backgroundColor: colorHex }}
+                                                                    />
+                                                                )}
+                                                                <span>{colorName}</span>
+                                                            </span>
+                                                        )}
+                                                        {sizeName && (
+                                                            <span className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-bold text-neutral-300">
+                                                                {sizeName}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[9px] font-bold text-neutral-400">
+                                                            × {item.quantity}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div className="border-t pt-3 flex justify-between items-center" style={{ borderColor: 'var(--border-color)' }}>
                                     <span className="text-xs font-black uppercase text-neutral-500">{t('subtotal')}</span>

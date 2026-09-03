@@ -7,6 +7,39 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import BanglaQRPayment from '../components/BanglaQRPayment';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
+import { getOptimizedUrl } from '../utils/media';
+import { PRESET_SWATCHES, COLOR_MAP } from '../utils/colorNames';
+
+const getItemImage = (item) => {
+    if (item.selectedColor && Array.isArray(item.available_colors)) {
+        const matched = item.available_colors.find(c => {
+            const name = typeof c === 'object' ? c.name : c;
+            return name && String(name).trim().toLowerCase() === String(item.selectedColor).trim().toLowerCase();
+        });
+        if (matched && typeof matched === 'object' && (matched.image || matched.image_url)) {
+            return matched.image || matched.image_url;
+        }
+    }
+    return item.image_url || item.image || (Array.isArray(item.images) ? item.images[0] : null);
+};
+
+const getItemColorHex = (item) => {
+    if (!item.selectedColor) return null;
+    if (Array.isArray(item.available_colors)) {
+        const matched = item.available_colors.find(c => {
+            const name = typeof c === 'object' ? c.name : c;
+            return name && String(name).trim().toLowerCase() === String(item.selectedColor).trim().toLowerCase();
+        });
+        if (matched && typeof matched === 'object' && matched.hex) {
+            return matched.hex;
+        }
+    }
+    const colorLower = item.selectedColor.trim().toLowerCase();
+    const preset = PRESET_SWATCHES.find(s => s.en.toLowerCase() === colorLower || s.bn.toLowerCase() === colorLower);
+    if (preset) return preset.hex;
+    const mapped = COLOR_MAP.find(m => m.en.toLowerCase() === colorLower || m.bn.toLowerCase() === colorLower);
+    return mapped ? mapped.hex : null;
+};
 
 export default function Checkout() {
     const { t, language } = useLanguage();
@@ -354,17 +387,65 @@ export default function Checkout() {
                             <Package size={16} className="text-[#ce112d]" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">{t('order_summary')} ({items.length} {t('items')})</span>
                         </div>
-                        <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
-                            {items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center text-xs">
-                                    <span className="truncate max-w-[220px] font-bold text-neutral-800">
-                                        {item.quantity}x {item.name} 
-                                        {item.selectedSize ? ` (${item.selectedSize})` : ''}
-                                        {item.selectedColor ? ` (${item.selectedColor})` : ''}
-                                    </span>
-                                    <span className="font-extrabold text-neutral-900">৳{parseFloat(item.price) * item.quantity}</span>
-                                </div>
-                            ))}
+                        <div className="max-h-72 overflow-y-auto space-y-3 pr-1 divide-y divide-neutral-100">
+                            {items.map((item, idx) => {
+                                const itemImg = getItemImage(item);
+                                const colorHex = getItemColorHex(item);
+                                return (
+                                    <div key={idx} className={`flex items-center gap-3.5 ${idx > 0 ? 'pt-3' : ''}`}>
+                                        {/* Product Thumbnail with Selected Variant Photo */}
+                                        <div className="w-14 h-16 sm:w-16 sm:h-20 rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200/70 shrink-0 relative shadow-xs">
+                                            {itemImg ? (
+                                                <img
+                                                    src={getOptimizedUrl(itemImg, { w: 160, h: 200 })}
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-neutral-300">
+                                                    <Package size={22} />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Details & Variant Swatches */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className="font-bold text-xs sm:text-sm text-neutral-900 leading-snug line-clamp-2" title={item.name}>
+                                                    {item.name}
+                                                </h4>
+                                                <span className="font-black text-xs sm:text-sm text-neutral-900 shrink-0">
+                                                    ৳{parseFloat(item.price) * item.quantity}
+                                                </span>
+                                            </div>
+
+                                            {/* Attributes: Selected Color & Size Badges */}
+                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                {item.selectedColor && (
+                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-neutral-100/90 border border-neutral-200/60 text-[11px] font-bold text-neutral-700 shadow-2xs">
+                                                        {colorHex && (
+                                                            <span
+                                                                className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0 shadow-2xs"
+                                                                style={{ backgroundColor: colorHex }}
+                                                            />
+                                                        )}
+                                                        <span>{item.selectedColor}</span>
+                                                    </span>
+                                                )}
+                                                {item.selectedSize && (
+                                                    <span className="px-2 py-0.5 rounded-lg bg-neutral-100/90 border border-neutral-200/60 text-[11px] font-bold text-neutral-700 shadow-2xs">
+                                                        {item.selectedSize}
+                                                    </span>
+                                                )}
+                                                <span className="px-2 py-0.5 rounded-lg bg-neutral-50 text-[10px] font-bold text-neutral-400">
+                                                    × {item.quantity}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {isExclusiveOrder && (
