@@ -744,6 +744,7 @@ app.get('/products', async (c) => {
 
   const conn = getDb(c.env);
 
+  try {
     const isAdmin = isAdminUser(c);
 
     if (id) {
