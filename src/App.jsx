@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -35,6 +35,20 @@ const PageLoadingFallback = () => (
   </div>
 );
 
+const NotFound = () => (
+  <div className="min-h-[55vh] flex flex-col items-center justify-center gap-5 px-6 text-center">
+    <span className="text-6xl font-black tracking-tighter text-[#ce112d]">404</span>
+    <p className="text-sm font-bold text-zinc-800">এই পেজটি খুঁজে পাওয়া যায়নি</p>
+    <p className="text-xs text-zinc-500 -mt-3">The page you are looking for does not exist.</p>
+    <Link
+      to="/"
+      className="mt-1 px-6 py-3 rounded-full bg-[#ce112d] text-white text-[11px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
+    >
+      হোমে ফিরুন / Back Home
+    </Link>
+  </div>
+);
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -61,6 +75,9 @@ function PublicLayout() {
   const isProductPage = location.pathname.startsWith('/product/');
   const isProductsPage = location.pathname === '/products';
   const isAccountPage = location.pathname === '/account';
+  // Anything the router catches via "*" that we don't render explicitly
+  const isNotFoundPage = location.pathname !== '/' && !isStaticPage && !isCheckoutPage &&
+    !isConfirmationPage && !isProductPage && !isProductsPage && !isAccountPage;
 
   // --- Back button support for modals ---
   const openModal = (setter) => {
@@ -149,8 +166,8 @@ function PublicLayout() {
         />
       </header>
 
-      {/* Main Content */}
-      <main className={`flex-grow ${isTopTickerActive ? 'pt-24 md:pt-28' : 'pt-16 md:pt-20'} pb-24 md:pb-0`}>
+      {/* Main Content — pt must match fixed header (nav h-14/md:h-20 + optional ticker ~36px) */}
+      <main className={`flex-grow ${isTopTickerActive ? 'pt-[5.75rem] md:pt-[7.25rem]' : 'pt-14 md:pt-20'} pb-24 lg:pb-0`}>
         <Suspense fallback={<PageLoadingFallback />}>
           {isStaticPage ? (
             <StaticPage path={location.pathname} />
@@ -164,6 +181,8 @@ function PublicLayout() {
             <Products />
           ) : isAccountPage ? (
             <AccountPage />
+          ) : isNotFoundPage ? (
+            <NotFound />
           ) : (
             <Home
               selectedCategory={category}
@@ -227,6 +246,7 @@ function App() {
                     <Route path="/products" element={<PublicLayout />} />
                     <Route path="/account" element={<PublicLayout />} />
                     <Route path="/admin" element={<Admin />} />
+                    <Route path="*" element={<PublicLayout />} />
                   </Routes>
                 </Suspense>
               </Router>

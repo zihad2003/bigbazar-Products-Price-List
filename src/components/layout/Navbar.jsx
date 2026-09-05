@@ -57,8 +57,8 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                         ))}
                     </div>
 
-                    {/* Mobile Category Menu Button — morphs between 3-line Menu and X */}
-                    <div className="lg:hidden flex items-center gap-2">
+                    {/* Hamburger — only below lg (same breakpoint as desktop links). Quick actions live in the drawer. */}
+                    <div className="lg:hidden flex items-center ml-auto">
                         <button
                             onClick={onOpenCategories}
                             aria-label={isCategoryOpen ? "Close Menu" : "Open Menu"}
@@ -72,8 +72,8 @@ const Navbar = ({ selectedCategory, onSelectCategory, onTrackOrder, onOpenCart, 
                         </button>
                     </div>
 
-                    {/* Quick Access Area — Visible on Desktop */}
-                    <div className="hidden md:flex items-center gap-2 md:gap-3">
+                    {/* Quick Access — desktop only (lg+). Never open beside the hamburger. */}
+                    <div className="hidden lg:flex items-center gap-2 md:gap-3">
                         {/* Track Order */}
                         <button
                             onClick={onTrackOrder}

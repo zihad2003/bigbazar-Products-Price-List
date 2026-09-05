@@ -199,7 +199,7 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
               onLoad={handleImageLoad}
               className={`w-full h-full ${imageFitClass} object-center select-none bg-neutral-950`}
               loading={current === 0 ? 'eager' : 'lazy'}
-              fetchPriority={current === 0 ? 'high' : 'auto'}
+              fetchpriority={current === 0 ? 'high' : 'auto'}
               decoding="async"
               draggable={false}
               onError={(e) => {

@@ -84,7 +84,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
             className="w-full h-full object-cover object-top"
             alt={`Product image ${currentIndex + 1}`}
             loading={currentIndex === 0 ? "eager" : "lazy"}
-            fetchPriority={currentIndex === 0 ? "high" : "auto"}
+            fetchpriority={currentIndex === 0 ? "high" : "auto"}
             decoding="async"
             onError={(e) => {
               if (images[currentIndex] && e.currentTarget.src !== images[currentIndex]) {

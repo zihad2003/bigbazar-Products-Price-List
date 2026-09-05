@@ -6,14 +6,19 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { getSubcategoriesForCategory, TOP_CATEGORIES } from '../../data/categories';
 import { bigBazarApi } from '../../api/client';
 
-const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, isTopTickerActive }) => {
-    const { t, language } = useLanguage();
+const CategoryModal = ({
+    isOpen,
+    onClose,
+    selectedCategory,
+    onSelectCategory,
+    isTopTickerActive,
+}) => {
+    const { language, setLanguage } = useLanguage();
     const navigate = useNavigate();
     const [expandedCat, setExpandedCat] = useState(null);
     const [subcategoriesData, setSubcategoriesData] = useState(null);
     const [subCounts, setSubCounts] = useState({});
 
-    // Fetch dynamic subcategories from site_settings and product counts
     useEffect(() => {
         if (!isOpen) return;
         bigBazarApi.from('site_settings').select('*').then(({ data }) => {
@@ -38,7 +43,7 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
     }, [isOpen]);
 
     const categories = [
-        { id: 'All', label: t('all') },
+        { id: 'All', label: language === 'bn' ? 'সকল' : 'All' },
         ...TOP_CATEGORIES.map(c => ({ id: c.id, label: language === 'bn' ? c.bn : c.en })),
     ];
 
@@ -55,16 +60,14 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
         onClose();
     };
 
-    // Calculate top positioning to open 2px higher underneath fixed navbar header (eliminates line gap)
     const topPositionClass = isTopTickerActive
-        ? 'top-[90px] lg:top-[118px]'
-        : 'top-[54px] lg:top-[78px]';
+        ? 'top-[5.75rem] md:top-[7.25rem]'
+        : 'top-14 md:top-20';
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <div className={`fixed ${topPositionClass} bottom-[56px] lg:bottom-0 left-0 right-0 z-[2000] flex justify-end overflow-hidden`}>
-                    {/* Backdrop Overlay (Solid Semi-Transparent, No Blur) */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -74,7 +77,6 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
                         className="absolute inset-0 bg-black/50"
                     />
 
-                    {/* Right Side Navigation Drawer Panel (Opens cleanly under Navbar, ends above bottom bar) */}
                     <motion.div
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
@@ -82,18 +84,22 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
                         transition={{ type: 'spring', damping: 30, stiffness: 320 }}
                         className="relative w-[85%] max-w-xs h-full bg-white shadow-2xl flex flex-col z-10 border-l border-zinc-100"
                     >
-                        {/* Drawer Header (No redundant X button since navbar menu icon turns into X) */}
                         <div className="p-4 border-b border-zinc-100 flex items-center justify-between shrink-0 bg-white">
                             <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#ce112d]" />
                                 <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900">
-                                    {language === 'bn' ? 'ক্যাটাগরি সমূহ' : 'All Categories'}
+                                    {language === 'bn' ? 'মেনু' : 'Menu'}
                                 </h3>
                             </div>
                         </div>
 
-                        {/* Category List */}
-                        <div className="overflow-y-auto no-scrollbar scrollbar-hide p-4 space-y-2 flex-1 bg-white">
+                        <div className="px-4 pt-3 pb-1 shrink-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                                {language === 'bn' ? 'ক্যাটাগরি সমূহ' : 'All Categories'}
+                            </p>
+                        </div>
+
+                        <div className="overflow-y-auto no-scrollbar scrollbar-hide p-4 pt-2 space-y-2 flex-1 bg-white">
                             {categories.map((cat) => {
                                 const allSubcategories = getSubcategoriesForCategory(cat.id, subcategoriesData);
                                 const subcategories = Object.keys(subCounts).length > 0
@@ -140,7 +146,6 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
                                             </div>
                                         </div>
 
-                                        {/* Subcategories Accordion */}
                                         {subcategories.length > 0 && isExpanded && (
                                             <div className="pl-2.5 grid grid-cols-1 gap-1.5 pt-1 pb-1">
                                                 {subcategories.map(sub => (
@@ -165,6 +170,26 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, onSelectCategory, is
                                     </div>
                                 );
                             })}
+                        </div>
+
+                        {/* Language last — same control as Footer */}
+                        <div className="shrink-0 p-4 border-t border-zinc-100 bg-white">
+                            <div className="flex items-center bg-zinc-100 border border-zinc-200 rounded-full p-1 h-10 w-full">
+                                <button
+                                    type="button"
+                                    onClick={() => setLanguage('en')}
+                                    className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'en' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
+                                >
+                                    ENGLISH
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLanguage('bn')}
+                                    className={`flex-1 text-[10px] font-black uppercase tracking-widest h-full rounded-full transition-all duration-300 ${language === 'bn' ? 'bg-[#ce112d] text-white shadow-md' : 'text-zinc-500 hover:text-zinc-900'}`}
+                                >
+                                    বাংলা
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </div>

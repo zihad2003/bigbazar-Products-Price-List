@@ -32,7 +32,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
     };
 
     return (
-        <footer className="pt-16 pb-28 md:pb-12 border-t transition-all font-sans text-xs md:text-sm bg-white border-zinc-200 text-zinc-900">
+        <footer className="pt-16 pb-28 lg:pb-12 border-t transition-all font-sans text-xs md:text-sm bg-white border-zinc-200 text-zinc-900">
             <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
                 
                 {/* Main Links Area — 12 Column Layout */}

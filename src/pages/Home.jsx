@@ -101,14 +101,15 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
     fetchSettings();
   }, []);
 
-  // Reset subcategory when category changes
+  // Reset page + clear list when filters change (prevents append race)
   useEffect(() => {
     setPage(0);
-  }, [selectedCategory]);
+    setProducts([]);
+  }, [selectedCategory, debouncedSearchQuery]);
 
   // Fetch products with pagination & filtering
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
     const fetchProducts = async () => {
       setLoading(true);
       const start = page * PAGE_SIZE;
@@ -145,26 +146,20 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }
 
-      const { data, error, count } = await query;
+      const { data, count } = await query;
 
-      if (isMounted) {
-        if (data) {
-          if (page === 0) setProducts(data);
-          else setProducts(prev => [...prev, ...data]);
-          setHasMore(count > (page + 1) * PAGE_SIZE);
-        }
-        setLoading(false);
+      if (cancelled) return;
+      if (data) {
+        if (page === 0) setProducts(data);
+        else setProducts(prev => [...prev, ...data]);
+        setHasMore(count > (page + 1) * PAGE_SIZE);
       }
+      setLoading(false);
     };
 
     fetchProducts();
-    return () => { isMounted = false; };
+    return () => { cancelled = true; };
   }, [page, selectedCategory, debouncedSearchQuery]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(0);
-  }, [selectedCategory, debouncedSearchQuery]);
 
   return (
     <div className="min-h-screen bg-white pb-16">
@@ -209,11 +204,14 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
       )}
 
-      <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-8 md:mt-12 space-y-10">
-        {/* Photo-Based Subcategory Rail */}
+      <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto mt-8 md:mt-12 space-y-10">
+        {/* Photo-Based Subcategory Rail — justify-start so first item is never clipped; scroll works */}
         {activeSubcategories.length > 0 && (
-          <section>
-            <div className="flex items-center justify-start sm:justify-center gap-4 sm:gap-8 md:gap-12 overflow-x-auto pb-4 pt-2 no-scrollbar scrollbar-hide px-4">
+          <section className="relative">
+            <div
+              className="flex items-start justify-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto overscroll-x-contain pb-4 pt-2 no-scrollbar scrollbar-hide px-4 md:px-12 snap-x snap-mandatory"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {activeSubcategories.map((sub) => (
                 <button
                   key={sub.id}
@@ -226,7 +224,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                       navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
                     }
                   }}
-                  className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0"
+                  className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0 snap-start"
                 >
                   <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
                     {sub.image_url ? (
@@ -244,7 +242,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                       </div>
                     )}
                   </div>
-                  <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug max-w-[100px] sm:max-w-[130px] md:max-w-[150px] line-clamp-2">
+                  <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug w-[5.5rem] sm:w-[7rem] md:w-[8rem] min-h-[2.5em] line-clamp-2">
                     {language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn)}
                   </span>
                 </button>
@@ -254,7 +252,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         )}
 
         {/* Search Bar */}
-        <div id="search-section" className="max-w-sm">
+        <div id="search-section" className="max-w-sm px-4 md:px-12">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-[#ce112d] transition-colors" size={18} />
             <input
@@ -268,7 +266,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </div>
 
         {/* Product Grid */}
-        <section className="space-y-8 pt-4">
+        <section className="space-y-8 pt-4 px-4 md:px-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
               <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-none text-zinc-900">

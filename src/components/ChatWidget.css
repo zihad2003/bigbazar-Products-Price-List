@@ -50,10 +50,16 @@
   border: 1px solid #e2e8f0 !important;
 }
 
-@media (max-width: 640px) {
+/* Clear the fixed bottom tab bar on every hamburger layout (below lg) */
+@media (max-width: 1023px) {
   .chat-widget-fab {
     bottom: 74px;
     right: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-widget-fab {
     padding: 8px 14px;
   }
 }
@@ -79,6 +85,14 @@
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
   overflow: hidden !important;
   animation: slide-up-fade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Tablet: lift the panel above the fixed bottom tab bar */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .chat-panel-container {
+    bottom: 76px !important;
+    max-height: calc(100vh - 150px) !important;
+  }
 }
 
 /* Mobile Bottom Sheet Modal Drawer */

@@ -798,7 +798,7 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="md:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900"
+                        className="lg:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900"
                     >
                         <div className="w-10 h-11 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200">
                             <img

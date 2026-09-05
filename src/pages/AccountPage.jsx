@@ -73,7 +73,7 @@ export default function AccountPage() {
       size: 'large',
       text: 'continue_with',
       shape: 'rectangular',
-      width: 320,
+      width: Math.min(320, Math.max(260, (typeof window !== 'undefined' ? window.innerWidth : 320) - 64)),
     });
   }, [googleScriptLoaded, isLoggedIn, googleClientId, loginWithGoogle]);
 
@@ -126,17 +126,17 @@ export default function AccountPage() {
   // Not logged in — show sign-in page
   if (!isLoggedIn) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="min-h-[60vh] flex items-center justify-center px-4 py-10 md:py-16">
         <div className="w-full max-w-md text-center space-y-8">
           {/* Header */}
           <div className="space-y-3">
             <div className="w-20 h-20 mx-auto rounded-full bg-zinc-100 flex items-center justify-center">
               <User size={36} className="text-zinc-400" />
             </div>
-            <h1 className="text-2xl font-bold text-content-primary">
+            <h1 className="text-xl sm:text-2xl font-bold text-content-primary">
               {language === 'bn' ? 'আপনার একাউন্টে লগ ইন করুন' : 'Sign in to your account'}
             </h1>
-            <p className="text-sm text-content-secondary">
+            <p className="text-sm text-content-secondary px-2">
               {language === 'bn'
                 ? 'আপনার অর্ডার ট্র্যাক করুন এবং সহজে কেনাকাটা করুন'
                 : 'Track your orders and shop with ease'}
@@ -144,11 +144,11 @@ export default function AccountPage() {
           </div>
 
           {/* Google Sign-In Button */}
-          <div className="flex justify-center">
+          <div className="flex justify-center w-full">
             {googleClientId ? (
-              <div ref={googleBtnRef} className="min-h-[44px]" />
+              <div ref={googleBtnRef} className="min-h-[44px] w-full max-w-[320px] flex justify-center" />
             ) : (
-              <div className="text-sm text-content-muted p-4 bg-zinc-100 rounded-xl">
+              <div className="w-full max-w-[320px] text-sm text-content-muted p-4 bg-zinc-100 rounded-xl">
                 {language === 'bn' ? 'গুগল লগইন এখনও কনফিগার করা হয়নি।' : 'Google login is not configured yet.'}
               </div>
             )}
