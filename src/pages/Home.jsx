@@ -171,10 +171,11 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       {/* Hero Section */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
         <section className="w-full relative">
-          <div className="w-full overflow-hidden bg-neutral-950 relative"
-            style={{ height: 'clamp(280px, 56vw, 640px)' }}
-          >
-            <HeroSlider slides={siteSettings.main_slides} />
+          <div className="w-full overflow-hidden bg-neutral-950 relative">
+            <HeroSlider 
+              slides={siteSettings.main_slides} 
+              aspectMode={siteSettings.slider_aspect || 'auto'}
+            />
           </div>
           {siteSettings.ticker_announcement?.position === 'bottom_slider' && (
             <TickerAnnouncement ticker={siteSettings.ticker_announcement} />
@@ -184,7 +185,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full h-[60vh] md:h-[80vh] bg-neutral-100 animate-pulse flex items-center justify-center">
+          <div className="w-full aspect-[16/9] md:aspect-[1920/600] bg-neutral-100 animate-pulse flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
           </div>
         </section>

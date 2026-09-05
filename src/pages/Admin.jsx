@@ -6,7 +6,8 @@ import {
   Settings, ShoppingBag, Edit, X, Play, Check,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
+  Smartphone, Monitor, Tablet
 } from 'lucide-react';
 import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -113,6 +114,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     hero_banner: { title: '', subtitle: '', image_url: '' },
     contact_info: { whatsapp: '', facebook: '', instagram: '' },
     main_slides: [],
+    slider_aspect: 'auto',
     category_visibility: { show_new: true, show_sale: true, show_exclusive: true },
     wedding_banner: {
       enabled: false,
@@ -481,11 +483,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       const banner = getValue('hero_banner');
       const contact = getValue('contact_info');
       const slides = getValue('main_slides');
+      const sliderAspect = getValue('slider_aspect');
       const announcement = getValue('announcement');
       const ticker = getValue('ticker_announcement');
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
       if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
+      if (sliderAspect) settings.slider_aspect = sliderAspect;
       if (announcement) settings.announcement = announcement;
       if (ticker) settings.ticker_announcement = ticker;
       const themeData = getValue('site_theme');
@@ -782,7 +786,15 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
         const url = await uploadSingleFile(compressed);
         if (url) {
-          uploadedUrls.push({ id: Date.now() + i, image: url });
+          let aspect_ratio = null, width = null, height = null;
+          try {
+            const imgBitmap = await createImageBitmap(compressed);
+            width = imgBitmap.width;
+            height = imgBitmap.height;
+            aspect_ratio = Number((width / height).toFixed(4));
+            imgBitmap.close();
+          } catch (_) {}
+          uploadedUrls.push({ id: Date.now() + i, image: url, aspect_ratio, width, height });
         } else {
           failedReasons.push(`${rawFiles[i].name}: Main upload rejected by server.`);
         }
@@ -872,6 +884,54 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setUploadStatus('idle');
     setLoading(false);
     e.target.value = '';
+  };
+
+  const handleMobileSlideUpload = async (e, slideIndex) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    setUploadStatus('compressing');
+    try {
+      const compressed = await compressImage(file, COMPRESS_PRESETS.slider_mobile);
+      let mobile_aspect_ratio = null, mobile_width = null, mobile_height = null;
+      try {
+        const imgBitmap = await createImageBitmap(compressed);
+        mobile_width = imgBitmap.width;
+        mobile_height = imgBitmap.height;
+        mobile_aspect_ratio = Number((mobile_width / mobile_height).toFixed(4));
+        imgBitmap.close();
+      } catch (_) {}
+
+      const url = await uploadSingleFile(compressed);
+      if (url) {
+        const updated = [...siteSettings.main_slides];
+        updated[slideIndex] = {
+          ...updated[slideIndex],
+          mobile_image: url,
+          mobile_aspect_ratio,
+          mobile_width,
+          mobile_height
+        };
+        setSiteSettings(prev => ({ ...prev, main_slides: updated }));
+        setAlertModal({
+          isOpen: true,
+          title: 'Mobile Banner Attached',
+          message: `Dedicated mobile banner attached to Slide ${slideIndex + 1}.`,
+          type: 'success'
+        });
+      }
+    } catch (err) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: err.message || 'Failed to upload mobile banner.',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+      setUploadStatus('idle');
+      e.target.value = '';
+    }
   };
 
   const deleteProduct = async (id) => {
@@ -1397,16 +1457,81 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home Slider <span className="text-[#ce112d]">Engine</span></h3>
-                  <p className="text-zinc-500 text-[10px] mt-2 font-black uppercase tracking-[0.2em]">Upload Canva-designed banners — each slide is fully clickable</p>
+                  <p className="text-zinc-500 text-[10px] mt-2 font-black uppercase tracking-[0.2em]">Upload Canva-designed banners for Desktop &amp; Mobile — zero cut-off guaranteed</p>
                 </div>
                 <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full text-[10px] font-black text-white/40 uppercase">
                   {siteSettings.main_slides?.length || 0} Slides Active
                 </div>
               </div>
 
+              {/* Recommended Dimensions Guide */}
+              <div className="bg-[#151518] border border-white/10 rounded-2xl p-4 text-xs space-y-3">
+                <div className="flex items-center gap-2 text-white font-bold text-xs">
+                  <Sparkles size={15} className="text-[#ce112d]" />
+                  <span>Canva / Banner Dimension Standards (ক্যানভা ব্যানার সাইজ গাইড)</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
+                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
+                      <Monitor size={14} className="text-[#ce112d]" />
+                      <span>Desktop / Laptop</span>
+                    </div>
+                    <p className="text-white font-mono font-bold text-xs">1920 × 1080 px <span className="text-zinc-500 font-normal">(16:9 Full)</span></p>
+                    <p className="text-white font-mono font-bold text-xs">1920 × 600 px <span className="text-zinc-500 font-normal">(Slim Banner)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Best for wide PC &amp; laptop screens</p>
+                  </div>
+                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
+                      <Tablet size={14} className="text-[#ce112d]" />
+                      <span>Tablet View</span>
+                    </div>
+                    <p className="text-white font-mono font-bold text-xs">1024 × 500 px <span className="text-zinc-500 font-normal">(~2:1 ratio)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Perfect for iPad &amp; mid-size tablets</p>
+                  </div>
+                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
+                      <Smartphone size={14} className="text-[#ce112d]" />
+                      <span>Mobile View</span>
+                    </div>
+                    <p className="text-white font-mono font-bold text-xs">768 × 1024 px <span className="text-zinc-500 font-normal">(Vertical / 3:4)</span></p>
+                    <p className="text-white font-mono font-bold text-xs">600 × 600 px / 420 × 400 px</p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Attach mobile banner to slide for pixel-perfect display</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slider Ratio Mode Setting */}
+              <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#121215] border border-white/10 rounded-2xl">
+                <div>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider block">Slider Display Ratio Mode</span>
+                  <span className="text-[11px] text-zinc-400">Controls how banner aspect ratio behaves across screens</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { id: 'auto', label: 'Auto / Smart Adaptive', desc: 'Preserves exact banner proportions without crop' },
+                    { id: 'slim', label: '1920 × 600 (Slim)', desc: 'Slim banner mode' },
+                    { id: 'fullscreen', label: '1920 × 1080 (16:9)', desc: '16:9 Fullscreen' },
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSiteSettings({ ...siteSettings, slider_aspect: m.id })}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                        (siteSettings.slider_aspect || 'auto') === m.id
+                          ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/30'
+                          : 'bg-black/40 text-zinc-400 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {siteSettings.main_slides?.map((slide, i) => (
                   <div key={slide.id || i} className="bg-[#121215] border border-[#1d1d21] rounded-[24px] overflow-hidden shadow-2xl group relative">
+                    {/* Desktop Banner Display */}
                     <div className="relative aspect-[16/9] bg-black">
                       <img src={slide.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="" />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent opacity-60" />
@@ -1414,12 +1539,80 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         type="button"
                         onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
                         className="absolute top-4 right-4 p-3 bg-black/60 text-white rounded-2xl hover:bg-[#ce112d] transition-all shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
+                        title="Delete Entire Slide"
                       >
                         <Trash2 size={16} />
                       </button>
-                      <div className="absolute bottom-4 left-4 px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 italic">SLIDE {i + 1}</div>
+                      <div className="absolute top-4 left-4 flex items-center gap-2">
+                        <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 italic">
+                          SLIDE {i + 1}
+                        </span>
+                        <span className="px-2 py-1 bg-[#ce112d]/80 backdrop-blur-md rounded-lg text-[9px] font-bold text-white uppercase flex items-center gap-1">
+                          <Monitor size={11} /> Desktop
+                        </span>
+                      </div>
+                      {slide.width && slide.height && (
+                        <div className="absolute bottom-4 right-4 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded text-[9px] font-mono text-zinc-400">
+                          {slide.width} × {slide.height}
+                        </div>
+                      )}
                     </div>
+
                     <div className="p-4 space-y-3">
+                      {/* Mobile Banner Upload/Preview Section */}
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
+                            <Smartphone size={13} className="text-[#ce112d]" />
+                            <span>Mobile Banner (768×1024 / 600×600 / 420×400)</span>
+                          </div>
+                          {slide.mobile_image && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...siteSettings.main_slides];
+                                delete updated[i].mobile_image;
+                                delete updated[i].mobile_aspect_ratio;
+                                delete updated[i].mobile_width;
+                                delete updated[i].mobile_height;
+                                setSiteSettings({ ...siteSettings, main_slides: updated });
+                              }}
+                              className="text-[9px] text-red-400 hover:text-red-300 font-bold uppercase"
+                            >
+                              Remove Mobile
+                            </button>
+                          )}
+                        </div>
+
+                        {slide.mobile_image ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0 relative">
+                              <img src={slide.mobile_image} className="w-full h-full object-cover" alt="Mobile Banner" />
+                            </div>
+                            <div className="text-[10px] text-zinc-400">
+                              <span className="text-emerald-400 font-bold block">✓ Mobile Version Active</span>
+                              {slide.mobile_width && slide.mobile_height ? (
+                                <span className="font-mono text-zinc-500">{slide.mobile_width} × {slide.mobile_height} px</span>
+                              ) : (
+                                <span>Shown automatically on phone screens</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-dashed border-white/15 hover:border-[#ce112d]/40 bg-black/30 hover:bg-[#ce112d]/5 cursor-pointer transition-all">
+                            <Smartphone size={13} className="text-[#ce112d]" />
+                            <span className="text-[10px] font-bold text-zinc-400 hover:text-white uppercase">+ Upload Mobile Banner</span>
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              disabled={loading}
+                              onChange={e => handleMobileSlideUpload(e, i)}
+                            />
+                          </label>
+                        )}
+                      </div>
+
                       <div>
                         <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1.5 block">
                           Destination Link <span className="text-zinc-700 normal-case font-normal">(where clicking the banner goes)</span>
@@ -1474,8 +1667,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       </>
                     ) : (
                       <>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Upload Visuals</span>
-                        <p className="text-[9px] text-zinc-700 mt-1 uppercase font-bold">21:9 or 16:9 Recommended</p>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Upload Desktop Slides</span>
+                        <p className="text-[9px] text-zinc-500 mt-1 font-bold">1920×1080 or 1920×600</p>
                       </>
                     )}
                   </div>
@@ -1489,9 +1682,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   disabled={loading}
                   onClick={async () => {
                     setLoading(true);
+                    await bigBazarApi.from('site_settings').upsert({ key: 'slider_aspect', value: siteSettings.slider_aspect || 'auto' }, { onConflict: 'key' });
                     const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'main_slides', value: siteSettings.main_slides }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                    else setAlertModal({ isOpen: true, title: 'Live!', message: "Slider Engine Updated Successfully.", type: 'success' });
+                    else setAlertModal({ isOpen: true, title: 'Live!', message: "Slider Engine & Display Settings Updated Successfully.", type: 'success' });
                     setLoading(false);
                   }}
                   className="flex items-center gap-3 bg-[#ce112d] px-12 h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-red-900/40 active:scale-95 transition-all disabled:opacity-50 text-white relative overflow-hidden group"

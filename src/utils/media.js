@@ -102,7 +102,8 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
  * Reusable helper for common sizes
  */
 export const mediaSizes = {
-    thumbnail: { w: 300, h: 450, q: 75 }, // For product grid cards
-    banner: { w: 1080, q: 75 },            // For home hero banners (fast load)
-    gallery: { w: 800, q: 75 }              // For product modal gallery
+    thumbnail: { w: 300, h: 450, q: 75 },      // For product grid cards
+    banner: { w: 1920, q: 82 },                 // For PC/Tablet hero banners (crisp 1920x1080 & 1920x600)
+    bannerMobile: { w: 768, q: 80 },           // For Mobile hero banners (768x1024, 600x600, 420x400)
+    gallery: { w: 800, q: 75 }                  // For product modal gallery
 };

@@ -18,9 +18,10 @@ export const COMPRESS_PRESETS = {
   product:   { maxW: 1080, maxH: 1350, quality: 0.82 },
   gallery:   { maxW: 900,  maxH: 1125, quality: 0.80 },
   color:     { maxW: 600,  maxH: 750,  quality: 0.75 },
-  banner:    { maxW: 1920, maxH: 1080, quality: 0.85 },
-  slider:    { maxW: 1920, maxH: 900,  quality: 0.83 },
-  thumbnail: { maxW: 400,  maxH: 400,  quality: 0.80 },
+  banner:        { maxW: 1920, maxH: 1080, quality: 0.85 },
+  slider:        { maxW: 1920, maxH: 1080, quality: 0.85 }, // 1920x1080 (16:9), 1920x600 (Slim), 1024x500 (Tablet)
+  slider_mobile: { maxW: 1080, maxH: 1080, quality: 0.85 }, // 768x1024 (Vertical), 600x600 (Square), 420x400
+  thumbnail:     { maxW: 400,  maxH: 400,  quality: 0.80 },
 };
 
 /**
