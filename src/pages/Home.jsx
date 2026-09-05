@@ -190,26 +190,6 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         </section>
       )}
 
-      {/* Trust Strip */}
-      <section className="w-full border-b border-zinc-100 bg-white shadow-sm">
-        <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-2 sm:px-0">
-          <div className="grid grid-cols-3 divide-x divide-zinc-100">
-            {[
-              { icon: <Truck size={16} strokeWidth={1.75} />, title: language === 'bn' ? 'ফ্রি ডেলিভারি' : 'Free Delivery', sub: language === 'bn' ? 'মীরসরাই এলাকায়' : 'Within Mirsarai' },
-              { icon: <CreditCard size={16} strokeWidth={1.75} />, title: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', sub: language === 'bn' ? 'হাতে পেয়ে পেমেন্ট' : 'Pay on receipt' },
-              { icon: <CheckCircle size={16} strokeWidth={1.75} />, title: language === 'bn' ? '১০০% গুণমান' : '100% Quality', sub: language === 'bn' ? 'প্রিমিয়াম ফেব্রিক' : 'Premium finish' },
-            ].map((item, i) => (
-              <div key={i} className="flex flex-col sm:flex-row items-center justify-center text-center sm:text-left gap-1.5 sm:gap-3 py-2.5 sm:py-3.5 px-1 sm:px-4">
-                <span className="text-[#ce112d] shrink-0">{item.icon}</span>
-                <div>
-                  <p className="text-[10px] sm:text-xs font-black text-zinc-900 uppercase tracking-tight sm:tracking-wide leading-tight">{item.title}</p>
-                  <p className="text-[9px] sm:text-[10px] text-zinc-400 font-medium leading-none mt-0.5">{item.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Wedding Collection Banner — Admin Controlled Canva Poster */}
       {siteSettings.wedding_banner?.enabled && siteSettings.wedding_banner?.image_url && (
@@ -370,6 +350,41 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           )}
         </section>
       </div>
+
+      {/* Trust & Guarantee Strip */}
+      <section className="w-full border-t border-b border-zinc-100 bg-zinc-50/70 mt-14 py-8">
+        <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80">
+            {[
+              { 
+                icon: <Truck size={20} strokeWidth={1.8} />, 
+                title: language === 'bn' ? 'ফ্রি ডেলিভারি' : 'Free Delivery', 
+                sub: language === 'bn' ? 'মীরসরাই এলাকায়' : 'Within Mirsarai' 
+              },
+              { 
+                icon: <CreditCard size={20} strokeWidth={1.8} />, 
+                title: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', 
+                sub: language === 'bn' ? 'হাতে পেয়ে পেমেন্ট' : 'Pay on receipt' 
+              },
+              { 
+                icon: <CheckCircle size={20} strokeWidth={1.8} />, 
+                title: language === 'bn' ? '১০০% গুণমান' : '100% Quality', 
+                sub: language === 'bn' ? 'প্রিমিয়াম ফেব্রিক' : 'Premium finish' 
+              },
+            ].map((item, i) => (
+              <div key={i} className={`flex items-center justify-center text-left gap-3.5 sm:gap-4 py-2 sm:py-0 px-2 sm:px-6 ${i > 0 ? 'pt-4 sm:pt-0' : ''}`}>
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-sm border border-zinc-200/60 flex items-center justify-center text-[#ce112d] shrink-0">
+                  {item.icon}
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-black text-zinc-900 uppercase tracking-tight leading-tight">{item.title}</p>
+                  <p className="text-[11px] sm:text-xs text-zinc-500 font-medium leading-normal mt-0.5">{item.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <ProductModal
         product={selectedProduct}
