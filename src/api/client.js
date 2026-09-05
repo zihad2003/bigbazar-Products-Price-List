@@ -292,8 +292,15 @@ class QueryBuilder {
             if (this._inFilters.id) params.set('ids', this._inFilters.id.join(','));
             if (this._orFilter) {
                 // Extract search from or filter like "name.ilike.%query%,description.ilike.%query%"
-                const match = this._orFilter.match(/name\.ilike\.%(.+?)%/);
-                if (match) params.set('search', match[1]);
+                const nameMatch = this._orFilter.match(/name\.ilike\.%(.+?)%/);
+                if (nameMatch) params.set('search', nameMatch[1]);
+                // Wedding / category.ilike filters were previously dropped — forward as category
+                const catMatch = this._orFilter.match(/category\.ilike\.%(.+?)%/);
+                if (catMatch) params.set('category', catMatch[1]);
+                // Exclusive-only OR branch (when no category clause)
+                if (!catMatch && /is_exclusive\.eq\.true/i.test(this._orFilter)) {
+                    params.set('category', 'Premium');
+                }
             }
         }
         

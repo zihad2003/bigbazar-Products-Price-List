@@ -47,22 +47,35 @@ export async function onRequest(context) {
     xml += `  </url>\n`;
   }
 
-  // Attempt fetching products from API or static all_products.json fallback
+  // Prefer live products API; fall back to static JSON if API unavailable
   try {
-    const prodRes = await fetch(`${domain}/all_products.json`);
-    if (prodRes.ok) {
-      const products = await prodRes.json();
-      if (Array.isArray(products)) {
-        for (const p of products) {
-          if (p.id) {
-            const lastMod = p.created_at ? p.created_at.split('T')[0] : currentDate;
-            xml += `  <url>\n`;
-            xml += `    <loc>${domain}/product/${p.id}</loc>\n`;
-            xml += `    <lastmod>${lastMod}</lastmod>\n`;
-            xml += `    <changefreq>weekly</changefreq>\n`;
-            xml += `    <priority>0.7</priority>\n`;
-            xml += `  </url>\n`;
-          }
+    let products = null;
+    try {
+      const apiRes = await fetch(`${domain}/api/products?status=published&limit=100&page=0`);
+      if (apiRes.ok) {
+        const apiJson = await apiRes.json();
+        if (Array.isArray(apiJson?.data)) products = apiJson.data;
+      }
+    } catch (_) {}
+
+    if (!products) {
+      const prodRes = await fetch(`${domain}/all_products.json`);
+      if (prodRes.ok) {
+        const json = await prodRes.json();
+        if (Array.isArray(json)) products = json;
+      }
+    }
+
+    if (Array.isArray(products)) {
+      for (const p of products) {
+        if (p.id) {
+          const lastMod = p.created_at ? String(p.created_at).split('T')[0] : currentDate;
+          xml += `  <url>\n`;
+          xml += `    <loc>${domain}/product/${p.id}</loc>\n`;
+          xml += `    <lastmod>${lastMod}</lastmod>\n`;
+          xml += `    <changefreq>weekly</changefreq>\n`;
+          xml += `    <priority>0.7</priority>\n`;
+          xml += `  </url>\n`;
         }
       }
     }

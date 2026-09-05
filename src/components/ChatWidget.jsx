@@ -396,7 +396,7 @@ export default function ChatWidget() {
       customer_name: orderForm.name.trim(),
       customer_phone: cleanPhone,
       customer_address: `${orderForm.address.trim()}, ${orderForm.upazila}, ${orderForm.district}`,
-      delivery_area: orderForm.district === CHATTOGRAM_DISTRICT ? (orderForm.upazila === FREE_UPAZILA ? 'mirsarai' : 'chittagong') : 'outside',
+      delivery_area: orderForm.district === CHATTOGRAM_DISTRICT ? (orderForm.upazila === FREE_UPAZILA ? 'mirsarai' : 'chattogram') : 'outside',
       delivery_charge: deliveryInfo.charge,
       total_amount: totalAmount,
       last_four_digits: orderForm.senderNumber.trim(),

@@ -59,6 +59,14 @@ async function kvSet(c, key, value, ttlSeconds = 86400) {
   } catch (_) {}
 }
 
+async function kvDelete(c, key) {
+  try {
+    const kv = c.env?.BIGBAZAR_CACHE;
+    if (!kv) return;
+    await kv.delete(key);
+  } catch (_) {}
+}
+
 // In-isolate memory cache for catalog_version so version read takes 0ms
 let _memCatalogVersion = '1';
 let _memVersionFetchedAt = 0;
@@ -166,13 +174,21 @@ app.onError((err, c) => {
 // ============================================
 app.use('*', async (c, next) => {
   const origin = c.req.header('origin');
-  const isAllowed = !origin || 
-                   origin.includes('localhost') || 
-                   origin === 'https://bigbazarbariarhat.pages.dev' || 
+  // Exact localhost / 127.0.0.1 only — never substring match (blocks evil-localhost.com)
+  let isLocalhost = false;
+  try {
+    if (origin) {
+      const host = new URL(origin).hostname;
+      isLocalhost = host === 'localhost' || host === '127.0.0.1';
+    }
+  } catch (_) {}
+  const isAllowed = !origin ||
+                   isLocalhost ||
+                   origin === 'https://bigbazarbariarhat.pages.dev' ||
                    origin.endsWith('.bigbazarbariarhat.pages.dev') ||
-                   origin === 'https://bigbazarbaraiyarhat.pages.dev' || 
+                   origin === 'https://bigbazarbaraiyarhat.pages.dev' ||
                    origin.endsWith('.bigbazarbaraiyarhat.pages.dev');
-  
+
   if (isAllowed) {
     return cors({
       origin: origin || '*',
@@ -796,7 +812,13 @@ app.get('/products', async (c) => {
     let whereSql = ' WHERE (is_deleted = 0 OR is_deleted IS NULL)';
     const params = [];
 
-    if (status) { whereSql += ' AND status = ?'; params.push(status); }
+    // Public catalog: default to published only. Admins (JWT) may omit status to see drafts.
+    if (status) {
+      whereSql += ' AND status = ?';
+      params.push(status);
+    } else if (!isAdmin) {
+      whereSql += " AND status = 'published'";
+    }
     if (category && category !== 'All') {
       if (category === 'New') {
         whereSql += ' AND is_new = 1';
@@ -1045,7 +1067,7 @@ app.delete('/products/:id', requireAuth, requireAdmin, async (c) => {
 // ORDER ROUTES
 // ============================================
 
-app.get('/orders', requireAuth, async (c) => {
+app.get('/orders', requireAuth, requireAdmin, async (c) => {
   const { status, search, page = 0, limit = 20, ascending = 'false' } = c.req.query();
   const conn = getDb(c.env);
   let sql = 'SELECT * FROM orders WHERE 1=1';
@@ -1080,11 +1102,13 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
   const tx = await conn.begin();
   try {
+    // Fallback when clients omit items[]: honor quantity from payload (never hardcode 1)
+    const fallbackQty = Math.max(1, parseInt(o.quantity ?? o.qty, 10) || 1);
     const itemsToProcess = Array.isArray(o.items) && o.items.length > 0
       ? o.items
       : [{
           id: o.product_id,
-          quantity: 1,
+          quantity: fallbackQty,
           selectedColor: o.color || null,
           selectedSize: o.size || null
         }];
@@ -1165,23 +1189,49 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
       );
     }
 
-    // Determine correct delivery charge based on area
+    // Normalize delivery area aliases (legacy clients sent "chittagong")
+    const rawArea = String(o.delivery_area || 'outside').toLowerCase().trim();
+    let normalizedArea = 'outside';
+    if (rawArea === 'mirsarai') {
+      normalizedArea = 'mirsarai';
+    } else if (rawArea === 'chattogram' || rawArea === 'chittagong' || rawArea.includes('chittagong') || rawArea.includes('chattogram')) {
+      normalizedArea = 'chattogram';
+    } else if (rawArea === 'outside') {
+      normalizedArea = 'outside';
+    } else {
+      normalizedArea = rawArea || 'outside';
+    }
+
     let calculatedDeliveryCharge = 150;
-    if (o.delivery_area === 'mirsarai') {
+    if (normalizedArea === 'mirsarai') {
       calculatedDeliveryCharge = 0;
-    } else if (o.delivery_area === 'chattogram') {
+    } else if (normalizedArea === 'chattogram') {
       calculatedDeliveryCharge = 100;
     }
 
     const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
+
+    // Public clients may claim payment — never trust Fully Paid; require a non-COD reference for Advance
+    const paymentRef = String(o.last_four_digits || '').trim();
+    const isCodOnly = !paymentRef || /^cod$/i.test(paymentRef);
+    const claimedPaid = Boolean(o.is_advance_paid) ||
+      o.payment_status === 'Advance Paid' ||
+      o.payment_status === 'Fully Paid';
+    let safePaymentStatus = 'Unpaid';
+    let safeAdvancePaid = 0;
+    if (claimedPaid && !isCodOnly) {
+      // Cap at Advance Paid — admin must confirm Fully Paid after verifying the transfer
+      safePaymentStatus = 'Advance Paid';
+      safeAdvancePaid = 1;
+    }
 
     // 3. Create the order using server-side calculated totals
     // Build INSERT with optional user_id column
     const orderCols = 'id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference';
     const orderVals = [
       id, o.product_id, o.product_name, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
-      o.delivery_area || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
-      o.size || null, o.color || null, o.is_advance_paid ? 1 : 0, o.is_exclusive_order ? 1 : 0, o.payment_status || 'Unpaid', o.moderator_reference || null
+      normalizedArea || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
+      o.size || null, o.color || null, safeAdvancePaid, o.is_exclusive_order ? 1 : 0, safePaymentStatus, o.moderator_reference || null
     ];
     const colsSql = customerId ? orderCols + ', user_id' : orderCols;
     const placeholders = customerId ? orderVals.map(() => '?').join(', ') + ', ?' : orderVals.map(() => '?').join(', ');
@@ -1339,9 +1389,11 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
     const currentOrder = currentOrders[0];
 
-    // 2. If transitioning INTO Cancelled from a non-cancelled status, restore stock
-    const isTransitioningToCancelled = o.status === 'Cancelled' && currentOrder.status !== 'Cancelled';
-    if (isTransitioningToCancelled) {
+    // 2. Restore stock when moving to Cancelled OR Deleted (trash), if not already restored
+    const stockAlreadyRestored = currentOrder.status === 'Cancelled' || currentOrder.status === 'Deleted';
+    const isTransitioningToCancelled = o.status === 'Cancelled' && !stockAlreadyRestored;
+    const isTransitioningToDeleted = o.status === 'Deleted' && !stockAlreadyRestored;
+    if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await restoreOrderStock(tx, currentOrder);
     }
 
@@ -1364,7 +1416,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
 
     await tx.commit();
-    if (isTransitioningToCancelled) {
+    if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await bumpCatalogVersion(c);
       runInBackground(c, () => prewarmCatalogCache(c));
     }
@@ -1381,8 +1433,29 @@ app.delete('/orders', requireAuth, requireAdmin, async (c) => {
   const status = c.req.query('status');
   if (!status) return c.json({ error: 'status query param required' }, 400);
   const conn = getDb(c.env);
-  await conn.execute('DELETE FROM orders WHERE status = ?', [status]);
-  return c.json({ success: true });
+  const tx = await conn.begin();
+  try {
+    const orders = await tx.execute('SELECT * FROM orders WHERE status = ? FOR UPDATE', [status]);
+    let restoredAny = false;
+    for (const order of orders) {
+      // Cancelled/Deleted already restored stock on status transition — do not double-restore
+      if (order.status !== 'Cancelled' && order.status !== 'Deleted') {
+        await restoreOrderStock(tx, order);
+        restoredAny = true;
+      }
+    }
+    await tx.execute('DELETE FROM orders WHERE status = ?', [status]);
+    await tx.commit();
+    if (restoredAny) {
+      await bumpCatalogVersion(c);
+      runInBackground(c, () => prewarmCatalogCache(c));
+    }
+    return c.json({ success: true });
+  } catch (err) {
+    await tx.rollback();
+    console.error('Bulk order delete error:', err);
+    return c.json({ error: err.message }, 500);
+  }
 });
 
 app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
@@ -1396,9 +1469,8 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
     if (orders.length > 0) {
       const order = orders[0];
 
-      // 2. Only restore stock if order was NOT already Cancelled
-      // (If already Cancelled, stock was already restored when cancelled)
-      if (order.status !== 'Cancelled') {
+      // 2. Restore stock unless already restored via Cancelled/Deleted transition
+      if (order.status !== 'Cancelled' && order.status !== 'Deleted') {
         await restoreOrderStock(tx, order);
         stockWasRestored = true;
       }
@@ -1796,6 +1868,8 @@ app.post('/auth/google', async (c) => {
     const email = payload.email || '';
     const name = payload.name || '';
     const avatarUrl = payload.picture || '';
+
+    const conn = getDb(c.env);
 
     // Check if user exists
     const existing = await conn.execute('SELECT * FROM users WHERE google_id = ?', [googleId]);

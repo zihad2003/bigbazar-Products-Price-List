@@ -43,11 +43,26 @@ export async function onRequest(context) {
   if (path.startsWith('/product/')) {
     const productId = path.replace('/product/', '').trim();
     try {
-      const prodRes = await fetch(`${domain}/all_products.json`);
-      if (prodRes.ok) {
-        const products = await prodRes.json();
-        const prod = Array.isArray(products) ? products.find(p => String(p.id) === String(productId)) : null;
-        if (prod) {
+      // Prefer live API; fall back to static JSON only if API fails (live-safe)
+      let prod = null;
+      try {
+        const apiRes = await fetch(`${domain}/api/products?id=${encodeURIComponent(productId)}`);
+        if (apiRes.ok) {
+          const apiJson = await apiRes.json();
+          prod = apiJson?.data || null;
+          if (Array.isArray(prod)) prod = prod[0] || null;
+        }
+      } catch (_) {}
+
+      if (!prod) {
+        const prodRes = await fetch(`${domain}/all_products.json`);
+        if (prodRes.ok) {
+          const products = await prodRes.json();
+          prod = Array.isArray(products) ? products.find(p => String(p.id) === String(productId)) : null;
+        }
+      }
+
+      if (prod) {
           pageTitle = `${prod.name} — Big Bazar Baraiyarhat`;
           const rawDesc = prod.description ? prod.description.replace(/\s+/g, ' ').trim() : '';
           pageDesc = rawDesc ? (rawDesc.length > 160 ? rawDesc.substring(0, 157) + '...' : rawDesc) : `${prod.name} - Buy online at Big Bazar Baraiyarhat with Cash on Delivery and Free Mirsharai Delivery.`;
@@ -81,7 +96,6 @@ export async function onRequest(context) {
               }
             }
           };
-        }
       }
     } catch (err) {
       console.warn('Edge pre-render product fetch warning:', err);
