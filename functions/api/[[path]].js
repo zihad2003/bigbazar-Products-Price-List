@@ -1843,6 +1843,12 @@ async function verifyGoogleIdToken(idToken, googleClientId) {
   );
   if (!isValid) throw new Error('Signature verification failed');
 
+  // 5. Reject unverified emails — we key accounts off this address.
+  // Only an explicit `false` fails; older tokens may omit the claim entirely.
+  if (payload.email_verified === false || payload.email_verified === 'false') {
+    throw new Error('Google account email is not verified');
+  }
+
   return payload;
 }
 
