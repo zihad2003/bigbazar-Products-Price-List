@@ -2038,22 +2038,83 @@ app.put('/account/me', requireCustomerAuth, async (c) => {
   }
 });
 
-// GET /account/orders — Customer's own order history
+// GET /account/orders — Customer's orders by user_id and/or profile phone
 app.get('/account/orders', requireCustomerAuth, async (c) => {
   const customer = c.get('customer');
-  const { page = 0, limit = 20 } = c.req.query();
+  const page = parseInt(c.req.query('page') || '0', 10) || 0;
+  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10) || 50, 100);
   const conn = getDb(c.env);
+
+  const phoneVariants = (phone) => {
+    const raw = String(phone || '').trim();
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return [];
+    const set = new Set([raw, digits]);
+    if (digits.startsWith('880') && digits.length >= 13) {
+      set.add('0' + digits.slice(3));
+      set.add(digits.slice(2));
+    }
+    if (digits.startsWith('0') && digits.length === 11) {
+      set.add('88' + digits);
+      set.add('880' + digits.slice(1));
+      set.add('+880' + digits.slice(1));
+    }
+    if (digits.length >= 10) set.add(digits.slice(-10));
+    return [...set].filter(Boolean);
+  };
+
   try {
-    const countRes = await conn.execute('SELECT COUNT(*) as total FROM orders WHERE user_id = ?', [customer.id]);
-    const total = countRes[0]?.total || 0;
-    const orders = await conn.execute(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [customer.id, parseInt(limit), parseInt(page) * parseInt(limit)]
-    );
-    return c.json({ data: orders, count: total });
+    let phone = null;
+    try {
+      const users = await conn.execute('SELECT phone FROM users WHERE id = ? LIMIT 1', [customer.id]);
+      phone = users[0]?.phone || null;
+    } catch (_) {}
+
+    const variants = phoneVariants(phone);
+    const clauses = ['user_id = ?'];
+    const params = [customer.id];
+
+    if (variants.length > 0) {
+      clauses.push(`customer_phone IN (${variants.map(() => '?').join(',')})`);
+      params.push(...variants);
+      const last10 = String(phone || '').replace(/\D/g, '').slice(-10);
+      if (last10.length === 10) {
+        clauses.push('customer_phone LIKE ?');
+        params.push('%' + last10);
+      }
+    }
+
+    const whereSql = clauses.join(' OR ');
+    let orders = [];
+    try {
+      orders = await conn.execute(
+        `SELECT * FROM orders WHERE (${whereSql}) ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [...params, limit, page * limit]
+      );
+    } catch (err) {
+      // Fallback if user_id column missing
+      if (variants.length === 0) return c.json({ data: [], count: 0, phone: null });
+      orders = await conn.execute(
+        `SELECT * FROM orders WHERE customer_phone IN (${variants.map(() => '?').join(',')})
+         OR customer_phone LIKE ?
+         ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+        [...variants, '%' + String(phone || '').replace(/\D/g, '').slice(-10), limit, page * limit]
+      );
+    }
+
+    // Dedupe by id (phone OR user_id can overlap)
+    const seen = new Set();
+    const unique = [];
+    for (const o of orders || []) {
+      if (seen.has(o.id)) continue;
+      seen.add(o.id);
+      unique.push(o);
+    }
+
+    return c.json({ data: unique, count: unique.length, phone: phone || null });
   } catch (err) {
-    // user_id column may not exist yet — return empty
-    return c.json({ data: [], count: 0 });
+    console.error('account/orders error:', err?.message || err);
+    return c.json({ data: [], count: 0, phone: null });
   }
 });
 

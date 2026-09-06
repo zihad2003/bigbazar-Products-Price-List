@@ -1,125 +1,92 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react';
-import { bigBazarApi } from '../../api/client';
+import { X, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard, User, Phone, RefreshCw, LogIn } from 'lucide-react';
+import { API_URL, getCustomerToken, bigBazarApi } from '../../api/client';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-const TrackOrderModal = ({ isOpen, onClose }) => {
+const TrackOrderModal = ({ isOpen, onClose, onOpenAuth }) => {
     const { t, language } = useLanguage();
-    const [searchInput, setSearchInput] = useState('');
+    const { user, isLoggedIn, loading: authLoading, updatePhone } = useAuth();
     const [orders, setOrders] = useState([]);
     const [productImages, setProductImages] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [searched, setSearched] = useState(false);
+    const [phoneDraft, setPhoneDraft] = useState('');
+    const [savingPhone, setSavingPhone] = useState(false);
 
-    if (!isOpen) return null;
+    const profilePhone = user?.phone || '';
 
-    const handleTrack = async (e) => {
-        if (e) e.preventDefault();
-
-        // Convert Bengali digits to English digits
-        const bnToEn = str => str.replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d));
-        const input = bnToEn(searchInput).trim();
-
-        // cleanInput: alphanumeric for general matching
-        const cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
-        // phoneInput: keeps digits and + for exact phone matching
-        const phoneInput = input.replace(/[^0-9+]/g, '');
-        // safeInput: allows spaces but removes commas (commas break Supabase .or() syntax)
-        const safeInput = input.replace(/,/g, ' ').trim();
-
-        if (cleanInput.length < 4) {
-            setError(language === 'bn' ? 'কমপক্ষে ৪টি অক্ষর বা সংখ্যা দিন।' : 'Enter at least 4 characters.');
-            return;
-        }
+    const loadOrders = useCallback(async () => {
+        const token = getCustomerToken();
+        if (!token) return;
 
         setLoading(true);
         setError('');
-        setSearched(true);
-
         try {
-            const isDigitsOnly = /^[0-9]+$/.test(cleanInput);
-            const searchPattern = `%${cleanInput}%`;
+            const res = await fetch(`${API_URL}/api/account/orders?limit=50`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to load orders');
 
-            let query = bigBazarApi.from('orders').select('*');
+            const orderData = data.data || [];
+            setOrders(orderData);
 
-            // Construct safe OR conditions. 
-            // Avoid 'id.ilike' on UUID columns as it throws 400 error.
-            // But we can search name, phone, address, and note.
-            const conditions = [
-                `customer_phone.ilike.${searchPattern}`,
-                `customer_name.ilike.${searchPattern}`,
-                `customer_address.ilike.${searchPattern}`,
-                `customer_note.ilike.${searchPattern}`
-            ];
-
-            // If it's a phone number or close to it, search for variants (with spaces, last 10, etc.)
-            if (isDigitsOnly || (cleanInput.length >= 6 && /^\d+$/.test(cleanInput))) {
-                // Handle case where phone is stored with spaces: 017 111 222 33
-                const flexible = cleanInput.split('').join('%');
-                conditions.push(`customer_phone.ilike.%${flexible}%`);
-
-                // Also search for the last 10 digits as that is common for BD numbers
-                if (cleanInput.length >= 10) {
-                    const last10 = cleanInput.slice(-10);
-                    conditions.push(`customer_phone.ilike.%${last10}%`);
-                }
-            }
-
-            // If it's a valid full UUID, search specifically by 'id'
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            if (uuidRegex.test(input)) {
-                conditions.push(`id.eq.${input}`);
-            }
-
-            // Literal search for the phone number as entered (most reliable for "track by full number")
-            if (phoneInput.length >= 8) {
-                conditions.push(`customer_phone.eq.${phoneInput}`);
-                // Also try without + if they entered it, or with it if they didn't
-                const altPhone = phoneInput.startsWith('+') ? phoneInput.slice(1) : `+${phoneInput}`;
-                conditions.push(`customer_phone.eq.${altPhone}`);
-            }
-
-            // Fallback: search by name/address using the safeInput (no commas)
-            if (safeInput.length >= 3) {
-                const pattern = `%${safeInput}%`;
-                conditions.push(`customer_name.ilike.${pattern}`);
-                conditions.push(`customer_address.ilike.${pattern}`);
-                // Also search for the literal safeInput in case there are specific characters saved
-                conditions.push(`customer_phone.ilike.%${safeInput}%`);
-            }
-
-            query = query.or(conditions.join(','));
-
-            const { data: orderData, error: fetchError } = await query.order('created_at', { ascending: false });
-
-            if (fetchError) throw fetchError;
-            setOrders(orderData || []);
-
-            // Fetch product images for these orders
-            if (orderData && orderData.length > 0) {
-                const productIds = [...new Set(orderData.map(o => o.product_id))];
-                const { data: pData } = await bigBazarApi
-                    .from('products')
-                    .select('id, image_url, images, video_url')
-                    .in('id', productIds);
-
-                if (pData) {
-                    const imgMap = {};
-                    pData.forEach(p => {
-                        imgMap[p.id] = p.image_url || p.images?.[0] || null;
-                    });
-                    setProductImages(imgMap);
+            if (orderData.length > 0) {
+                const productIds = [...new Set(orderData.map(o => o.product_id).filter(Boolean))];
+                if (productIds.length > 0) {
+                    const { data: pData } = await bigBazarApi
+                        .from('products')
+                        .select('id, image_url, images, video_url')
+                        .in('id', productIds);
+                    if (pData) {
+                        const imgMap = {};
+                        pData.forEach(p => {
+                            imgMap[p.id] = p.image_url || p.images?.[0] || null;
+                        });
+                        setProductImages(imgMap);
+                    }
                 }
             }
         } catch (err) {
             console.error('Tracking error:', err);
-            setError(language === 'bn' ? 'তথ্য খুঁজে পেতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' : 'Something went wrong. Please try again.');
+            setError(language === 'bn' ? 'অর্ডার লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।' : 'Could not load orders. Please try again.');
+            setOrders([]);
         } finally {
             setLoading(false);
         }
+    }, [language]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setError('');
+        setPhoneDraft(profilePhone || '');
+        if (isLoggedIn && profilePhone) {
+            loadOrders();
+        } else {
+            setOrders([]);
+        }
+    }, [isOpen, isLoggedIn, profilePhone, loadOrders]);
+
+    const handleSavePhone = async (e) => {
+        e?.preventDefault();
+        const bnToEn = str => str.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+        const cleaned = bnToEn(phoneDraft).replace(/[^\d+]/g, '').trim();
+        if (cleaned.replace(/\D/g, '').length < 11) {
+            setError(language === 'bn' ? 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।' : 'Enter a valid 11-digit mobile number.');
+            return;
+        }
+        setSavingPhone(true);
+        setError('');
+        const result = await updatePhone(cleaned);
+        setSavingPhone(false);
+        if (result.error) {
+            setError(language === 'bn' ? 'নম্বর সেভ করা যায়নি।' : 'Could not save phone number.');
+            return;
+        }
+        // loadOrders runs via useEffect when user.phone updates
     };
 
     const getStatusInfo = (status) => {
@@ -128,36 +95,31 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
             'Shipped': { label: language === 'bn' ? 'পাঠানো হয়েছে' : 'Shipped', color: 'text-blue-500', bg: 'bg-blue-500/10', icon: <Truck size={14} /> },
             'Delivered': { label: language === 'bn' ? 'হাতে পেয়েছেন' : 'Delivered', color: 'text-green-500', bg: 'bg-green-500/10', icon: <CheckCircle2 size={14} /> },
             'Canceled': { label: language === 'bn' ? 'বাতিল করা হয়েছে' : 'Canceled', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> },
+            'Cancelled': { label: language === 'bn' ? 'বাতিল করা হয়েছে' : 'Cancelled', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> },
             'Deleted': { label: language === 'bn' ? 'বাতিল' : 'Deleted', color: 'text-red-500', bg: 'bg-red-500/10', icon: <X size={14} /> }
         };
-
         return statuses[status] || statuses['Pending'];
     };
 
     const cleanProductName = (name, order) => {
         if (!name) return '';
-        
-        // 1. Handle NEW structured format: (Color: ...), (Size: ...), (Qty: ...), (SKU: ...)
         let clean = name
             .replace(/\s*\((?:Color|রঙ):\s*[^)]*\)/gi, '')
             .replace(/\s*\((?:Size|সাইজ):\s*[^)]*\)/gi, '')
             .replace(/\s*\(SKU:\s*[^)]*\)/gi, '')
             .replace(/\s*\((?:Qty|পরিমাণ):\s*[^)]*\)/gi, '')
             .replace(/\s*\(PID:\s*[^)]*\)/gi, '')
-            // Handle OLD format parts
             .replace(/\s+\d+\s*(?:piece|pc)\b/gi, '')
             .replace(/\s*(?:color|size|রঙ|সাইজ)\b/gi, '');
-
-        // 2. Further cleaning using order-specific columns (if available)
-        if (order && order.color) {
-            clean = clean.replace(new RegExp(`\\s*${order.color}\\s*`, 'gi'), ' ');
-        }
-        if (order && order.size) {
-            clean = clean.replace(new RegExp(`\\s*${order.size}\\s*`, 'gi'), ' ');
-        }
-
+        if (order?.color) clean = clean.replace(new RegExp(`\\s*${order.color}\\s*`, 'gi'), ' ');
+        if (order?.size) clean = clean.replace(new RegExp(`\\s*${order.size}\\s*`, 'gi'), ' ');
         return clean.replace(/\s+/g, ' ').trim();
     };
+
+    if (!isOpen) return null;
+
+    const needsAuth = !authLoading && !isLoggedIn;
+    const needsPhone = isLoggedIn && !profilePhone;
 
     return (
         <AnimatePresence>
@@ -179,11 +141,13 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                     <div className="px-5 py-4 md:px-6 md:py-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 md:w-10 md:h-10 bg-[#ce112d] rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
-                                <Search className="text-white" size={18} />
+                                <Package className="text-white" size={18} />
                             </div>
                             <div>
                                 <h2 className="text-lg md:text-xl font-black italic uppercase leading-none" style={{ color: 'var(--text-primary)' }}>{t('track_order')}</h2>
-                                <p className="text-[#ce112d] text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-1">Order Status Tracking</p>
+                                <p className="text-[#ce112d] text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-1">
+                                    {language === 'bn' ? 'প্রোফাইল নম্বর দিয়ে অর্ডার' : 'Orders via profile phone'}
+                                </p>
                             </div>
                         </div>
                         <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 transition-all text-neutral-400">
@@ -191,38 +155,105 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                         </button>
                     </div>
 
-                    {/* Inquiry Form */}
-                    <div className="p-4 md:p-6 border-b" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-                        <form onSubmit={handleTrack} className="flex flex-col md:flex-row gap-3">
-                            <div className="relative flex-1">
-                                <input
-                                    type="text"
-                                    inputMode="text"
-                                    placeholder={language === 'bn' ? 'মোবাইল নম্বর বা অর্ডার আইডি দিন' : 'Enter Phone or Order ID'}
-                                    value={searchInput}
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    className="w-full bg-black/20 border rounded-2xl py-3.5 md:py-4 px-10 text-sm font-bold focus:border-[#ce112d] outline-none transition-all"
-                                    style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                />
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+                    {/* Auth / Phone / Status bar */}
+                    <div className="p-4 md:p-6 border-b space-y-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                        {authLoading ? (
+                            <div className="flex items-center gap-2 text-xs font-bold opacity-60" style={{ color: 'var(--text-muted)' }}>
+                                <div className="w-4 h-4 border-2 border-[#ce112d] border-t-transparent rounded-full animate-spin" />
+                                {language === 'bn' ? 'লোড হচ্ছে...' : 'Loading...'}
                             </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="bg-[#ce112d] text-white py-3.5 md:py-0 md:px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-red-900/20 disabled:opacity-50"
-                            >
-                                {loading ? (language === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : t('search')}
-                            </button>
-                        </form>
-                        {error && <p className="text-red-500 text-[10px] font-bold mt-2 ml-1 flex items-center gap-1"><AlertCircle size={12} /> {error}</p>}
+                        ) : needsAuth ? (
+                            <div className="space-y-3">
+                                <p className="text-xs font-bold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                                    {language === 'bn'
+                                        ? 'অর্ডার ট্র্যাক করতে সাইন ইন করুন। প্রোফাইলে মোবাইল নম্বর সেভ থাকলে আপনার অর্ডার লিস্ট দেখাবে।'
+                                        : 'Sign in to track orders. We’ll show orders linked to the mobile number saved on your profile.'}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onClose();
+                                        if (onOpenAuth) onOpenAuth();
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 bg-[#ce112d] text-white py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-lg shadow-red-900/20"
+                                >
+                                    <LogIn size={16} />
+                                    {language === 'bn' ? 'সাইন ইন করুন' : 'Sign in'}
+                                </button>
+                            </div>
+                        ) : needsPhone ? (
+                            <form onSubmit={handleSavePhone} className="space-y-3">
+                                <p className="text-xs font-bold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                                    {language === 'bn'
+                                        ? 'প্রোফাইলে মোবাইল নম্বর যোগ করুন — যে নম্বরে অর্ডার করেছেন।'
+                                        : 'Add the mobile number you used when ordering.'}
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <div className="relative flex-1">
+                                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            placeholder={language === 'bn' ? '01XXXXXXXXX' : '01XXXXXXXXX'}
+                                            value={phoneDraft}
+                                            onChange={(e) => setPhoneDraft(e.target.value)}
+                                            className="w-full bg-black/20 border rounded-2xl py-3.5 px-10 text-sm font-bold focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={savingPhone}
+                                        className="bg-[#ce112d] text-white py-3.5 px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest disabled:opacity-50"
+                                    >
+                                        {savingPhone
+                                            ? (language === 'bn' ? 'সেভ...' : 'Saving...')
+                                            : (language === 'bn' ? 'সেভ ও দেখুন' : 'Save & view')}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="w-8 h-8 rounded-xl bg-[#ce112d]/10 text-[#ce112d] flex items-center justify-center shrink-0">
+                                        <User size={16} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>
+                                            {language === 'bn' ? 'প্রোফাইল নম্বর' : 'Profile phone'}
+                                        </p>
+                                        <p className="text-sm font-black truncate" style={{ color: 'var(--text-primary)' }}>{profilePhone}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={loadOrders}
+                                    disabled={loading}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-wider hover:border-[#ce112d]/40 transition-all disabled:opacity-50"
+                                    style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                >
+                                    <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                                    {language === 'bn' ? 'রিফ্রেশ' : 'Refresh'}
+                                </button>
+                            </div>
+                        )}
+                        {error && (
+                            <p className="text-red-500 text-[10px] font-bold flex items-center gap-1">
+                                <AlertCircle size={12} /> {error}
+                            </p>
+                        )}
                     </div>
 
-                    {/* Results Area */}
+                    {/* Results */}
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 no-scrollbar">
-                        {!searched ? (
+                        {needsAuth || needsPhone ? (
                             <div className="py-16 md:py-20 text-center space-y-4 opacity-50">
                                 <ShoppingBag size={40} className="mx-auto text-neutral-500" />
-                                <p className="text-xs md:text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{t('track_status')}</p>
+                                <p className="text-xs md:text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+                                    {needsAuth
+                                        ? (language === 'bn' ? 'সাইন ইন করলে অর্ডার দেখাবে' : 'Sign in to see your orders')
+                                        : (language === 'bn' ? 'নম্বর সেভ করলে অর্ডার লিস্ট আসবে' : 'Save your phone to load orders')}
+                                </p>
                             </div>
                         ) : loading ? (
                             <div className="py-20 flex flex-col items-center gap-4">
@@ -233,6 +264,11 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                             <div className="py-16 md:py-20 text-center space-y-4">
                                 <Package size={40} className="mx-auto text-neutral-400" />
                                 <p className="text-xs md:text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('no_order_found')}</p>
+                                <p className="text-[10px] font-medium px-6" style={{ color: 'var(--text-muted)' }}>
+                                    {language === 'bn'
+                                        ? 'এই নম্বরে কোনো অর্ডার পাওয়া যায়নি। প্রোফাইলের নম্বরটি অর্ডারের নম্বরের সাথে মিলিয়ে নিন।'
+                                        : 'No orders for this number. Make sure your profile phone matches the number used at checkout.'}
+                                </p>
                             </div>
                         ) : (
                             <div className="space-y-4 md:space-y-6">
@@ -251,7 +287,6 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                     const isMulti = itemParts.length > 1;
                                                     return (
                                                         <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                                                            {/* Thumbnail: generic for multi-item, product image for single */}
                                                             <div className="w-10 h-14 md:w-12 md:h-16 rounded-xl overflow-hidden flex-shrink-0 border border-white/5 flex flex-col items-center justify-center gap-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                                                                 {isMulti ? (
                                                                     <>
@@ -264,13 +299,10 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                                     <ShoppingBag size={18} className="text-neutral-800" />
                                                                 )}
                                                             </div>
-
                                                             <div className="space-y-0.5 md:space-y-1 min-w-0">
                                                                 <h4 className="font-black text-xs md:text-sm leading-tight group-hover:text-[#ce112d] transition-colors" style={{ color: 'var(--text-primary)' }}>
                                                                     {isMulti
-                                                                        ? (language === 'bn'
-                                                                            ? `${itemParts.length}টি পণ্যের অর্ডার`
-                                                                            : `${itemParts.length} Items Order`)
+                                                                        ? (language === 'bn' ? `${itemParts.length}টি পণ্যের অর্ডার` : `${itemParts.length} Items Order`)
                                                                         : cleanProductName(order.product_name, order)}
                                                                 </h4>
                                                                 <div className="flex flex-col gap-0.5 text-[9px] md:text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
@@ -292,47 +324,6 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                             </div>
 
                                             <div className="py-3 border-y space-y-3" style={{ borderColor: 'var(--border-color)' }}>
-                                                <div className="space-y-0.5">
-                                                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>
-                                                        {language === 'bn' ? 'বিবরণ' : 'Details'}
-                                                    </p>
-
-                                                    {(() => {
-                                                        const itemParts = (order.product_name || '').split(' + ');
-                                                        const isMulti = itemParts.length > 1;
-                                                        if (isMulti) {
-                                                            return (
-                                                                <p className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                                                                    {language === 'bn'
-                                                                        ? `${itemParts.length}টি পণ্য অর্ডার করা হয়েছে`
-                                                                        : `${itemParts.length} items ordered`}
-                                                                </p>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <div className="flex flex-wrap gap-2 mt-1">
-                                                                {order.size && (
-                                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-                                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সাইজ' : 'Size'}</span>
-                                                                        <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{order.size}</span>
-                                                                    </div>
-                                                                )}
-                                                                {order.color && (
-                                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-                                                                        <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-50" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'রঙ' : 'Color'}</span>
-                                                                        <span className="text-[10px] md:text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{order.color}</span>
-                                                                    </div>
-                                                                )}
-                                                                {!order.size && !order.color && (
-                                                                    <p className="text-[10px] md:text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                                                                        {language === 'bn' ? 'অর্ডার ডিটেইলস' : 'Order Details'}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </div>
-
                                                 <div className="rounded-xl p-3 md:p-4 space-y-2 border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                                                     <div className="flex justify-between text-[10px] md:text-[11px]">
                                                         <span className="font-bold opacity-70" style={{ color: 'var(--text-muted)' }}>
@@ -350,24 +341,6 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest opacity-70" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'সর্বমোট' : 'Total'}</span>
                                                         <span className="text-xs md:text-sm font-black text-[#ce112d] italic">৳{order.total_amount}</span>
                                                     </div>
-                                                    {order.is_advance_paid && (
-                                                        order.is_exclusive_order ? (
-                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
-                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম (Premium)' : 'Advance (Premium)'}</span>
-                                                                <span className="font-black text-orange-500">-৳500</span>
-                                                            </div>
-                                                        ) : (order.delivery_area === 'mirsarai' && (parseFloat(order.delivery_charge) || 0) === 0) ? (
-                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
-                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee'}</span>
-                                                                <span className="font-black text-orange-500">-৳100</span>
-                                                            </div>
-                                                        ) : (parseFloat(order.delivery_charge) || 0) > 0 ? (
-                                                            <div className="flex justify-between text-[10px] md:text-[11px] mt-2">
-                                                                <span className="text-orange-500 font-bold">{language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance'}</span>
-                                                                <span className="font-black text-orange-500">-৳{parseFloat(order.delivery_charge) || 0}</span>
-                                                            </div>
-                                                        ) : null
-                                                    )}
                                                     <div className="flex justify-between items-center mt-2 pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
                                                         <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#ce112d]">{language === 'bn' ? 'ডেলিভারির সময় প্রদেয়' : 'Due on Delivery'}</span>
                                                         <span className="text-sm md:text-base font-black italic" style={{ color: 'var(--text-primary)' }}>
@@ -383,47 +356,31 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Advance Payment Status */}
                                             {order.is_advance_paid ? (
                                                 <div className="flex items-center gap-2 p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl">
                                                     <CheckCircle2 size={14} className="text-green-500" />
                                                     <div>
                                                         <p className="text-[9px] md:text-[10px] font-black uppercase text-green-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট নিশ্চিত হয়েছে' : 'Payment Confirmed'}</p>
-                                                        <p className="text-[8px] md:text-[9px] font-medium text-green-500/70">
-                                                            {order.is_exclusive_order
-                                                                ? (language === 'bn' ? 'আপনার ৳৫০০ অগ্রিম (Premium) পেমেন্ট পেয়েছি।' : 'We have received your ৳500 advance (Premium) payment.')
-                                                                : (order.delivery_area === 'mirsarai' && (parseFloat(order.delivery_charge) || 0) === 0 
-                                                                    ? (language === 'bn' ? 'আপনার ৳১০০ কনফার্মেশন ফি আমরা পেয়েছি।' : 'We have received your ৳100 confirmation fee.')
-                                                                    : (language === 'bn' ? 'আপনার অগ্রিম পেমেন্ট আমরা পেয়েছি।' : 'We have received your advance payment.'))
-                                                            }
-                                                        </p>
                                                     </div>
                                                 </div>
                                             ) : order.last_four_digits !== 'COD' && order.last_four_digits !== '' ? (
                                                 <div className="flex items-center gap-2 p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                                                     <CreditCard size={14} className="text-blue-500" />
-                                                    <div>
-                                                        <p className="text-[9px] md:text-[10px] font-black uppercase text-blue-500 tracking-tighter md:tracking-widest">{language === 'bn' ? 'পেমেন্ট ভেরিফাই করা হচ্ছে...' : 'Verifying Payment...'}</p>
-                                                        <p className="text-[8px] md:text-[9px] font-medium text-blue-500/70">{language === 'bn' ? 'এডমিন আপনার পেমেন্ট নম্বরটি যাচাই করছেন।' : 'Admin is verifying your payment reference.'}</p>
-                                                    </div>
+                                                    <p className="text-[9px] md:text-[10px] font-black uppercase text-blue-500">{language === 'bn' ? 'পেমেন্ট ভেরিফাই করা হচ্ছে...' : 'Verifying Payment...'}</p>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 p-2.5 bg-neutral-500/5 border border-white/5 rounded-xl opacity-60">
                                                     <Truck size={14} style={{ color: 'var(--text-muted)' }} />
-                                                    <div>
-                                                        <p className="text-[9px] md:text-[10px] font-black uppercase tracking-tighter md:tracking-widest" style={{ color: 'var(--text-secondary)' }}>Cash on Delivery (COD)</p>
-                                                        <p className="text-[8px] md:text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>{language === 'bn' ? 'পণ্য হাতে পেতে টাকা পরিশোধ করবেন।' : 'Pay when you receive the product.'}</p>
-                                                    </div>
+                                                    <p className="text-[9px] md:text-[10px] font-black uppercase" style={{ color: 'var(--text-secondary)' }}>Cash on Delivery (COD)</p>
                                                 </div>
                                             )}
 
-                                            {/* Note from Admin */}
                                             <div className="pt-1">
                                                 <p className="text-[9px] md:text-[10px] italic leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                                                     {order.status === 'Pending' && (language === 'bn' ? 'অর্ডারটি বর্তমানে প্রসেসিংয়ে আছে। খুব শীঘ্রই আপনাকে কল দেওয়া হবে।' : 'Your order is being processed. We will call you soon.')}
                                                     {order.status === 'Shipped' && (language === 'bn' ? 'আপনার পণ্যটি কুরিয়ারে পাঠানো হয়েছে। ১-৩ দিনের মধ্যে ইনশাআল্লাহ হাতে পাবেন।' : 'Product shipped via courier. Expect delivery within 1-3 days.')}
                                                     {order.status === 'Delivered' && (language === 'bn' ? 'পণ্যটি সফলভাবে পৌঁছে দেওয়া হয়েছে। আমাদের সাথে থাকার জন্য ধন্যবাদ!' : 'Product successfully delivered. Thanks for staying with us!')}
-                                                    {order.status === 'Canceled' && (language === 'bn' ? 'দুঃখিত, কোনো বিশেষ কারণে অর্ডারটি বাতিল করা হয়েছে। বিস্তারিত জানতে যোগাযোগ করুন।' : 'Sorry, your order was canceled. Please contact us for details.')}
+                                                    {(order.status === 'Canceled' || order.status === 'Cancelled') && (language === 'bn' ? 'দুঃখিত, কোনো বিশেষ কারণে অর্ডারটি বাতিল করা হয়েছে। বিস্তারিত জানতে যোগাযোগ করুন।' : 'Sorry, your order was canceled. Please contact us for details.')}
                                                 </p>
                                             </div>
                                         </div>
@@ -433,7 +390,6 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                         )}
                     </div>
 
-                    {/* Footer */}
                     <div className="p-4 md:p-6 bg-gradient-to-t from-black/20 to-transparent border-t" style={{ borderColor: 'var(--border-color)' }}>
                         <button
                             onClick={onClose}

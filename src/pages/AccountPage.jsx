@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL, getToken } from '../api/client';
@@ -48,8 +48,11 @@ export default function AccountPage() {
   const { user, isLoggedIn, loading: authLoading, loginWithGoogle, logout } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromTrackOrder = searchParams.get('track') === '1';
   const googleScriptLoaded = useGoogleScript();
   const googleBtnRef = useRef(null);
+  const ordersSectionRef = useRef(null);
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -151,6 +154,14 @@ export default function AccountPage() {
     }
   }, [isLoggedIn, fetchOrders, fetchNotifications, user]);
 
+  useEffect(() => {
+    if (!isLoggedIn || !fromTrackOrder || loadingOrders) return;
+    const t = setTimeout(() => {
+      ordersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [isLoggedIn, fromTrackOrder, loadingOrders]);
+
   const handleTogglePush = async () => {
     setPushBusy(true);
     setPushMessage('');
@@ -217,16 +228,26 @@ export default function AccountPage() {
         <div className="w-full max-w-md text-center space-y-8">
           {/* Header */}
           <div className="space-y-3">
-            <div className="w-20 h-20 mx-auto rounded-full bg-zinc-100 flex items-center justify-center">
-              <User size={36} className="text-zinc-400" />
+            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${fromTrackOrder ? 'bg-[#ce112d]/10' : 'bg-zinc-100'}`}>
+              {fromTrackOrder ? (
+                <Package size={36} className="text-[#ce112d]" />
+              ) : (
+                <User size={36} className="text-zinc-400" />
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-content-primary">
-              {language === 'bn' ? 'আপনার একাউন্টে লগ ইন করুন' : 'Sign in to your account'}
+              {fromTrackOrder
+                ? (language === 'bn' ? 'অর্ডার ট্র্যাক করতে সাইন ইন করুন' : 'Sign in to track your order')
+                : (language === 'bn' ? 'আপনার একাউন্টে লগ ইন করুন' : 'Sign in to your account')}
             </h1>
-            <p className="text-sm text-content-secondary px-2">
-              {language === 'bn'
-                ? 'আপনার অর্ডার ট্র্যাক করুন এবং সহজে কেনাকাটা করুন'
-                : 'Track your orders and shop with ease'}
+            <p className="text-sm text-content-secondary px-2 leading-relaxed">
+              {fromTrackOrder
+                ? (language === 'bn'
+                  ? 'আপনার প্রোফাইলে সংরক্ষিত মোবাইল নম্বরের সাথে যুক্ত অর্ডার দেখতে সাইন ইন করুন।'
+                  : 'Please sign in to view orders linked to the mobile number saved on your profile.')
+                : (language === 'bn'
+                  ? 'আপনার অর্ডার ট্র্যাক করুন এবং সহজে কেনাকাটা করুন'
+                  : 'Track your orders and shop with ease')}
             </p>
           </div>
 
@@ -414,7 +435,7 @@ export default function AccountPage() {
       </div>
 
       {/* Orders Section */}
-      <div>
+      <div ref={ordersSectionRef}>
         <h3 className="text-lg font-bold text-content-primary mb-4 flex items-center gap-2">
           <Package size={20} />
           {language === 'bn' ? 'আপনার অর্ডারসমূহ' : 'Your Orders'}

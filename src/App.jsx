@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Link } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -9,7 +9,6 @@ import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import StaticPage from './pages/StaticPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import TrackOrderModal from './components/modals/TrackOrderModal';
 import CartDrawer from './components/CartDrawer';
 import CustomerMenu from './components/CustomerMenu';
 import CategoryModal from './components/modals/CategoryModal';
@@ -61,12 +60,19 @@ function ScrollToTop() {
 function PublicLayout() {
   const [category, setCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isTrackOpen, setIsTrackOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [tickerSettings, setTickerSettings] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const goTrackOrder = () => {
+    setIsCartOpen(false);
+    setIsCategoryOpen(false);
+    setIsAuthOpen(false);
+    navigate('/account?track=1');
+  };
 
   const staticPaths = ['/about-us', '/privacy-policy', '/terms', '/refund', '/contact-us', '/faq', '/size-guide', '/shipping', '/returns', '/store-locations'];
   const isStaticPage = staticPaths.includes(location.pathname);
@@ -86,7 +92,6 @@ function PublicLayout() {
   };
 
   const closeAllModals = () => {
-    setIsTrackOpen(false);
     setIsCartOpen(false);
     setIsCategoryOpen(false);
     setIsAuthOpen(false);
@@ -94,13 +99,13 @@ function PublicLayout() {
 
   useEffect(() => {
     const handlePopState = () => {
-      if (isTrackOpen || isCartOpen || isCategoryOpen || isAuthOpen) {
+      if (isCartOpen || isCategoryOpen || isAuthOpen) {
         closeAllModals();
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isTrackOpen, isCartOpen, isCategoryOpen, isAuthOpen]);
+  }, [isCartOpen, isCategoryOpen, isAuthOpen]);
 
   const handleCloseModal = (setter) => {
     setter(false);
@@ -134,7 +139,6 @@ function PublicLayout() {
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-[#ce112d])' ? 'var(--text-primary)' : 'var(--text-primary)' }}>
       <SEOHead />
-      <TrackOrderModal isOpen={isTrackOpen} onClose={() => handleCloseModal(setIsTrackOpen)} />
       <CartDrawer isOpen={isCartOpen} onClose={() => handleCloseModal(setIsCartOpen)} />
       <LoginModal isOpen={isAuthOpen} onClose={() => handleCloseModal(setIsAuthOpen)} />
       <CategoryModal
@@ -152,7 +156,7 @@ function PublicLayout() {
         <Navbar
           selectedCategory={category}
           onSelectCategory={setCategory}
-          onTrackOrder={() => openModal(setIsTrackOpen)}
+          onTrackOrder={goTrackOrder}
           onOpenCart={() => openModal(setIsCartOpen)}
           onOpenAuth={() => openModal(setIsAuthOpen)}
           onOpenCategories={() => {
@@ -195,11 +199,11 @@ function PublicLayout() {
         </Suspense>
       </main>
 
-      <Footer onTrackOrder={() => openModal(setIsTrackOpen)} onSelectCategory={setCategory} />
+      <Footer onTrackOrder={goTrackOrder} onSelectCategory={setCategory} />
 
       {/* Mobile Customer Menu */}
       <CustomerMenu
-        onTrackOrder={() => openModal(setIsTrackOpen)}
+        onTrackOrder={goTrackOrder}
         onOpenCart={() => openModal(setIsCartOpen)}
         onSelectCategory={setCategory}
         onOpenCategories={() => openModal(setIsCategoryOpen)}
