@@ -7,16 +7,30 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
+  const [imgFailed, setImgFailed] = React.useState(false);
 
   // Choose the best candidate for the display image (never use Instagram video URL as a photo)
   const sourceImage = product.image_url || product.images?.[0] || null;
+  // Legacy circular /api/img/{uuid} (no up-) often 404s — try static migrate path as fallback
+  const staticFallback =
+    sourceImage &&
+    /^\/api\/img\/[0-9a-f-]{36}$/i.test(sourceImage) &&
+    product?.id
+      ? `/img/products/${product.id}.jpg`
+      : null;
 
   const { language } = useLanguage();
+
+  React.useEffect(() => {
+    setImgFailed(false);
+  }, [product?.id, sourceImage]);
 
   // Calculate discount percentage
   const discountPercent = hasDiscount && originalPrice > 0 
     ? Math.round(((originalPrice - price) / originalPrice) * 100) 
     : 0;
+
+  const showImage = sourceImage && !imgFailed;
 
   return (
     <div
@@ -24,7 +38,7 @@ export const ProductCard = ({ product, onClick }) => {
       className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full"
     >
       <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
-        {sourceImage ? (
+        {showImage ? (
           <div className="relative w-full h-full">
             <img
               src={getOptimizedUrl(sourceImage, mediaSizes.thumbnail)}
@@ -33,15 +47,27 @@ export const ProductCard = ({ product, onClick }) => {
               loading="lazy"
               decoding="async"
               onError={(e) => {
-                if (e.currentTarget.src.includes('images.weserv.nl') && sourceImage) {
-                  e.currentTarget.src = sourceImage;
+                const el = e.currentTarget;
+                if (staticFallback && !el.dataset.triedStatic) {
+                  el.dataset.triedStatic = '1';
+                  el.src = staticFallback;
+                  return;
                 }
+                if (el.src.includes('images.weserv.nl') && sourceImage && !el.dataset.triedDirect) {
+                  el.dataset.triedDirect = '1';
+                  el.src = sourceImage;
+                  return;
+                }
+                setImgFailed(true);
               }}
             />
           </div>
         ) : (
-          <div className="w-full h-full bg-neutral-50 flex items-center justify-center">
-            <Instagram size={22} className="text-zinc-200" />
+          <div className="w-full h-full bg-neutral-100 flex flex-col items-center justify-center gap-2 px-3">
+            <Instagram size={22} className="text-zinc-300" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 text-center">
+              {language === 'bn' ? 'ছবি নেই' : 'No photo'}
+            </span>
           </div>
         )}
         

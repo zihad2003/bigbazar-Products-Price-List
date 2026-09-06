@@ -4,6 +4,19 @@ import { getDb } from './db.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { FAQ_KB, DELIVERY_AREAS, normalizeQuery, matchFAQ, detectLanguage } from './assistant-kb.js';
+import {
+  isDirectOrderIntent,
+  extractOrderQuantity,
+  extractOrderKeywords,
+  mapProductRow,
+  detectCategoryMatch,
+  hasProductCatalogSearchIntent,
+  resolveFaqReply,
+  getCatalogReplyText,
+  getSmartFallbackReply,
+  buildProductSearch,
+  defaultQuickReplies
+} from './assistant-query.js';
 import { getVapidConfig, sendWebPushBatch } from './webPush.js';
 
 async function sha256Hex(text) {
@@ -331,8 +344,8 @@ app.get('/img/:id', async (c) => {
   const id = c.req.param('id');
   const kv = c.env?.BIGBAZAR_CACHE;
 
-  // 1. If it's a dynamic upload (starts with 'up-'), serve from KV edge binary cache
-  if (id.startsWith('up-') && kv) {
+  // 1. Try KV for ANY id (up-* uploads and legacy product-id keys)
+  if (kv) {
     try {
       const cached = await kv.get(`img:${id}`, { type: 'arrayBuffer' });
       if (cached) {
@@ -353,7 +366,53 @@ app.get('/img/:id', async (c) => {
     } catch (_) {}
   }
 
-  // 2. Otherwise it's a product image -> instant 301 redirect to static asset (0 TiDB RU)
+  // 2. Product id → resolve real image_url from DB (Cloudinary / up-* / data URI)
+  //    Skip circular self-refs like /api/img/{this-same-id}
+  try {
+    const conn = getDb(c.env);
+    const rows = await conn.execute(
+      'SELECT image_url, images FROM products WHERE id = ? LIMIT 1',
+      [id]
+    );
+    if (rows?.[0]) {
+      let imgs = [];
+      try {
+        imgs = typeof rows[0].images === 'string' ? JSON.parse(rows[0].images) : (rows[0].images || []);
+      } catch (_) {}
+      const candidates = [rows[0].image_url, ...(Array.isArray(imgs) ? imgs : [])].filter(
+        (u) => typeof u === 'string' && u.length > 2
+      );
+
+      for (const url of candidates) {
+        // Ignore circular /api/img/{this id}
+        if (url === `/api/img/${id}` || url === `/img/${id}`) continue;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          if (/instagram\.com|instagr\.am/i.test(url)) continue;
+          return c.redirect(url, 302);
+        }
+        if (url.startsWith('/api/img/up-') || url.startsWith('/img/up-')) {
+          const upId = url.split('/').pop();
+          return c.redirect(`/api/img/${upId}`, 302);
+        }
+        if (url.startsWith('data:image/')) {
+          const m = url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+          if (m) {
+            const binary = Uint8Array.from(atob(m[2]), (ch) => ch.charCodeAt(0));
+            return new Response(binary, {
+              headers: {
+                'Content-Type': m[1],
+                'Cache-Control': 'public, max-age=3600',
+              }
+            });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('img resolve error:', err?.message || err);
+  }
+
+  // 3. Legacy static product JPG (only works for migrated assets)
   return c.redirect(`/img/products/${id}.jpg`, 301);
 });
 
@@ -507,7 +566,8 @@ const parseProductRow = (row) => {
 
 /**
  * Lightweight product row parser for listings — replaces heavy base64
- * image data with CDN URLs. This reduces JSON payload from ~1.5MB to ~3KB.
+ * image data with CDN URLs. Never invent /api/img/{productId} for missing
+ * static JPGs — that 301s to /img/products/{id}.jpg and breaks storefront.
  */
 const parseProductRowLite = (row) => {
   if (!row) return null;
@@ -516,24 +576,43 @@ const parseProductRowLite = (row) => {
   };
   const parsedImages = tryParse(row.images);
   const rawImageUrl = row.image_url;
-  const cdnUrl = `/api/img/${row.id}`;
+  // Only product-scoped CDN path when we intentionally map data: blobs → /api/img/:id
+  // (GET /img/:id will resolve real Cloudinary/KV/DB bytes). Prefer keeping real remote URLs.
+  const cdnUrl = row.id ? `/api/img/${row.id}` : null;
+
+  const isUsableUrl = (u) =>
+    typeof u === 'string' &&
+    u.length > 0 &&
+    !u.startsWith('data:') &&
+    !/^https?:\/\/(www\.)?instagram\.com\//i.test(u) &&
+    !/^https?:\/\/(www\.)?instagr\.am\//i.test(u);
 
   let finalImageUrl = null;
-  if (rawImageUrl && !rawImageUrl.startsWith('data:')) {
+  if (isUsableUrl(rawImageUrl)) {
     finalImageUrl = rawImageUrl;
-  } else if (rawImageUrl) {
+  } else if (rawImageUrl && rawImageUrl.startsWith('data:') && cdnUrl) {
     finalImageUrl = cdnUrl;
   } else if (Array.isArray(parsedImages) && parsedImages.length > 0) {
-    finalImageUrl = (typeof parsedImages[0] === 'string' && parsedImages[0].startsWith('data:')) ? cdnUrl : parsedImages[0];
+    const first = parsedImages.find(img => isUsableUrl(img));
+    if (first) finalImageUrl = first;
+    else if (typeof parsedImages[0] === 'string' && parsedImages[0].startsWith('data:') && cdnUrl) {
+      finalImageUrl = cdnUrl;
+    }
   }
 
   const finalImages = Array.isArray(parsedImages) && parsedImages.length > 0
-    ? parsedImages.map(img => (typeof img === 'string' && img.startsWith('data:')) ? cdnUrl : img)
+    ? parsedImages
+        .map(img => {
+          if (isUsableUrl(img)) return img;
+          if (typeof img === 'string' && img.startsWith('data:') && cdnUrl) return cdnUrl;
+          return null;
+        })
+        .filter(Boolean)
     : (finalImageUrl ? [finalImageUrl] : []);
 
   const rawColors = tryParse(row.available_colors);
   const cleanColors = Array.isArray(rawColors) ? rawColors.map(c => {
-    if (typeof c === 'object' && c !== null && typeof c.image === 'string' && c.image.startsWith('data:')) {
+    if (typeof c === 'object' && c !== null && typeof c.image === 'string' && c.image.startsWith('data:') && cdnUrl) {
       return { ...c, image: cdnUrl };
     }
     return c;
@@ -541,8 +620,8 @@ const parseProductRowLite = (row) => {
 
   return {
     ...row,
-    image_url: finalImageUrl || cdnUrl,
-    images: finalImages.length > 0 ? finalImages : [cdnUrl],
+    image_url: finalImageUrl || null,
+    images: finalImages,
     available_sizes: tryParse(row.available_sizes),
     available_colors: cleanColors,
     is_sale: !!row.is_sale,
@@ -932,9 +1011,9 @@ app.get('/products/:id', async (c) => {
   try {
     const conn = getDb(c.env);
     const isAdmin = isAdminUser(c);
-    // Exclude heavy base64 columns — images served via /api/img/:id
-    // Bug #2 fix: only authenticated admins can view deleted/unpublished products
-    const detailFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive';
+    // Include images + image_url so storefront can show Cloudinary / KV uploads.
+    // parseProductRowLite strips data: blobs to /api/img/:id (resolved by GET /img/:id).
+    const detailFields = 'id, serial_no, created_at, name, price, original_price, description, category, subcategory, video_url, status, platform_id, is_sale, is_hot, is_new, is_sold_out, is_deleted, available_sizes, available_colors, stock_count, is_exclusive, images, image_url';
     const res = isAdmin
       ? await conn.execute(`SELECT ${detailFields} FROM products WHERE id = ?`, [pid])
       : await conn.execute(
@@ -1009,7 +1088,9 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
     available_colors: p.available_colors !== undefined ? JSON.stringify(p.available_colors) : undefined,
     stock_count: p.stock_count,
     is_exclusive: p.is_exclusive !== undefined ? (p.is_exclusive ? 1 : 0) : undefined,
-    serial_no: p.serial_no,
+    serial_no: (p.serial_no !== undefined && p.serial_no !== null && String(p.serial_no).trim() !== '' && !Number.isNaN(Number(p.serial_no)))
+      ? Number(p.serial_no)
+      : undefined,
     platform_id: p.platform_id
   };
 
@@ -2402,84 +2483,43 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
 
   const body = await c.req.json().catch(() => ({}));
   const userMessage = (body.message || '').trim();
-  const lang = body.language || (/[ঀ-৿]/.test(userMessage) ? 'bn' : 'bn');
+  const lang = body.language === 'en' ? 'en' : 'bn';
   const requestedOffset = parseInt(body.offset) || 0;
   const requestedLimit = 5;
 
   if (!userMessage) {
     return c.json({
-      reply: 'আসসালামু আলাইকুম! বিগ বাজারে আপনাকে স্বাগতম। আপনি আজ কী ধরনের পোশাক বা পণ্য দেখতে চান?',
+      reply: lang === 'en'
+        ? 'Assalamu Alaikum! Welcome to Big Bazar. What would you like to browse today?'
+        : 'আসসালামু আলাইকুম! বিগ বাজারে আপনাকে স্বাগতম। আপনি আজ কী ধরনের পোশাক বা পণ্য দেখতে চান?',
       products: [],
-      quick_replies: ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'পারশি কালেকশন', 'ওয়েস্টার্ন টু-পিস', 'ডেলিভারি তথ্য']
+      quick_replies: defaultQuickReplies(lang === 'en' ? 'en' : 'bn')
     });
   }
 
   const conn = getDb(c.env);
   const lowerMsg = userMessage.toLowerCase();
+  const replyLang = lang === 'en' ? 'en' : 'bn';
 
-  // ── Step 0: Direct Purchase / Order Intent Action (e.g. "ami 4 ta holud sari nite cai") ──
-  const isDirectOrderIntent = /nite\s*cai|nite\s*chai|নিতে\s*চাই|নিবো|নিব|nibo|order\s*korte|অর্ডার\s*করতে|kinte\s*cai|kinte\s*chai|কিনতে\s*চাই|pathan|পাঠান|lagbe|লাগবে|deben|দেন|den|kinbo|কিনব/i.test(lowerMsg);
-
-  if (isDirectOrderIntent) {
-    // 1. Extract Quantity
-    let orderQty = 1;
-    const numMatch = lowerMsg.match(/(\d+)\s*(?:ta|ti|টা|টি|piece|পিস|pish)?/i);
-    if (numMatch && numMatch[1]) {
-      orderQty = Math.max(1, parseInt(numMatch[1], 10));
-    } else if (/(?:char|চার|৪)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
-      orderQty = 4;
-    } else if (/(?:tin|তিন|৩)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
-      orderQty = 3;
-    } else if (/(?:dui|দুই|২)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
-      orderQty = 2;
-    } else if (/(?:pach|পাঁচ|৫)\s*(?:ta|ti|টা|টি)?/i.test(lowerMsg)) {
-      orderQty = 5;
-    }
-
-    // 2. Identify Product
-    let candidateKeywords = lowerMsg
-      .replace(/ami|amader|apnader|ta|ti|টা|টি|piece|পিস|nite|cai|chai|নিতে|চাই|নিব|nibo|order|korte|অর্ডার|করতে|kinte|কিনতে|pathan|পাঠান|lagbe|লাগবে|deben|দেন|den|kinbo|কিনব|\d+/gi, ' ')
-      .replace(/[^\w\s\u0980-\u09FF]/g, ' ')
-      .trim()
-      .split(/\s+/)
-      .filter(w => w.length >= 2);
-
+  // ── Step 0: Direct Purchase / Order Intent ──
+  if (isDirectOrderIntent(lowerMsg)) {
+    const orderQty = extractOrderQuantity(lowerMsg);
+    const candidateKeywords = extractOrderKeywords(lowerMsg);
     let targetProduct = null;
 
     if (candidateKeywords.length > 0) {
       for (const kw of candidateKeywords) {
         try {
           const matchedRows = await conn.execute(
-            "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors FROM products WHERE (LOWER(name) LIKE ? OR LOWER(subcategory) LIKE ?) AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) LIMIT 1",
-            [`%${kw}%`, `%${kw}%`]
+            "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors, is_exclusive FROM products WHERE (LOWER(name) LIKE ? OR LOWER(subcategory) LIKE ?) AND status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) LIMIT 1",
+            ['%' + kw + '%', '%' + kw + '%']
           );
           if (matchedRows && matchedRows.length > 0) {
-            const r = matchedRows[0];
-            let imgs = [];
-            try { imgs = r.images ? JSON.parse(r.images) : []; } catch (_) {}
-            let sizes = [];
-            try { sizes = typeof r.available_sizes === 'string' ? JSON.parse(r.available_sizes) : (r.available_sizes || []); } catch (_) {}
-            let colors = [];
-            try { colors = typeof r.available_colors === 'string' ? JSON.parse(r.available_colors) : (r.available_colors || []); } catch (_) {}
-
-            targetProduct = {
-              id: r.id,
-              name: r.name,
-              price: parseFloat(r.price),
-              original_price: r.original_price ? parseFloat(r.original_price) : null,
-              image_url: r.image_url || imgs[0] || '',
-              images: imgs,
-              available_sizes: sizes,
-              available_colors: colors,
-              description: r.description || '',
-              category: r.category || '',
-              subcategory: r.subcategory || '',
-              stock_count: r.stock_count || 0
-            };
+            targetProduct = mapProductRow(matchedRows[0]);
             break;
           }
         } catch (e) {
-          console.error("Order intent product search error:", e);
+          console.error('Order intent product search error:', e);
         }
       }
     }
@@ -2490,11 +2530,10 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
 
     if (targetProduct) {
       return c.json({
-        reply: `আপনার ${targetProduct.name} (${orderQty} টি) অর্ডারের জন্য নিচে ফরমটি প্রস্তুত করা হয়েছে। অনুগ্রহ করে আপনার নাম ও ডেলিভারির ঠিকানা দিয়ে 'অর্ডার নিশ্চিত করুন' বাটনে চাপ দিন:`,
-        order_intent: {
-          product: targetProduct,
-          quantity: orderQty
-        },
+        reply: replyLang === 'en'
+          ? ('Ready to order ' + targetProduct.name + ' (×' + orderQty + '). Fill in your name and delivery address, then submit.')
+          : ('আপনার ' + targetProduct.name + ' (' + orderQty + ' টি) অর্ডারের জন্য নিচে ফরমটি প্রস্তুত করা হয়েছে। অনুগ্রহ করে আপনার নাম ও ডেলিভারির ঠিকানা দিয়ে সাবমিট করুন:'),
+        order_intent: { product: targetProduct, quantity: orderQty },
         products: [targetProduct],
         total_count: 1,
         has_more: false,
@@ -2506,151 +2545,37 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     }
   }
 
-  // ── Step 1: Subcategory & Category Keyword Mapping (Bangla, English & Banglish) ──
-  let matchedCategory = null;
-  let searchTerm = null;
-
-  // Prioritize explicit category_query from client selection
-  if (body.category_query && body.category_query !== 'ALL') {
-    matchedCategory = body.category_query;
-    searchTerm = body.category_query;
-  } else if (/saree|sari|saari|saaree|sharee|shari|শাড়ি|শাড়ী/i.test(lowerMsg)) {
-    matchedCategory = 'SAREE';
-    searchTerm = 'saree';
-  } else if (/three\s*piece|3\s*piece|thri|three|থ্রি|পিস|৩\s*পিস/i.test(lowerMsg)) {
-    matchedCategory = 'STITCHED-COTTON-THREE-PIECE';
-    searchTerm = 'three piece';
-  } else if (/parshi|porshi|parsi|পারশি|পারশী/i.test(lowerMsg)) {
-    matchedCategory = 'PARSHI';
-    searchTerm = 'parshi';
-  } else if (/western|2\s*piece|টু\s*পিস|টু-পিস|ওয়েস্টার্ন/i.test(lowerMsg)) {
-    matchedCategory = 'WESTERN-2-PIECE';
-    searchTerm = 'western';
-  } else if (/panjabi|punjabi|পাঞ্জাবি|পাঞ্জাবী/i.test(lowerMsg)) {
-    matchedCategory = 'PANJABI';
-    searchTerm = 'panjabi';
-  } else if (/borka|burqa|abaya|বোরকা|বোরখা|আবায়া/i.test(lowerMsg)) {
-    matchedCategory = 'BORKA';
-    searchTerm = 'borka';
-  } else if (/kurti|kurtee|কুর্তি/i.test(lowerMsg)) {
-    matchedCategory = 'KURTI';
-    searchTerm = 'kurti';
-  } else if (/chele|cheleder|purush|gents|men|ছেলেদের|পুরুষ|ছেলে/i.test(lowerMsg)) {
-    matchedCategory = 'Men';
-    searchTerm = 'Men';
-  } else if (/baccader\s*chele|baccha\s*chele|kids\s*boys?|বাচ্চাদের\s*\(?ছেলে\)?/i.test(lowerMsg)) {
-    matchedCategory = 'Kids (Boys)';
-    searchTerm = 'Kids (Boys)';
-  } else if (/baccader\s*meye|baccha\s*meye|kids\s*girls?|বাচ্চাদের\s*\(?মেয়ে\)?/i.test(lowerMsg)) {
-    matchedCategory = 'Kids (Girls)';
-    searchTerm = 'Kids (Girls)';
-  } else if (/baccha|baccader|kids|shishu|বাচ্চাদের|শিশু/i.test(lowerMsg)) {
-    matchedCategory = 'Kids';
-    searchTerm = 'Kids';
-  } else if (/meye|meyeder|mohila|women|ladies|মেয়েদের|মহিলা|মেয়ে/i.test(lowerMsg)) {
-    matchedCategory = 'Women';
-    searchTerm = 'Women';
-  } else if (/biyer|bridal|wedding|karchupi|বিয়ের\s*সাজনি|বিয়ে|কারচুপি/i.test(lowerMsg)) {
-    matchedCategory = 'Biyer Sajani';
-    searchTerm = 'Biyer Sajani';
-  } else if (/আরও|aro|more|next|baki|অন্যান্য/i.test(lowerMsg)) {
-    if (body.category_query && body.category_query !== 'ALL') {
-      matchedCategory = body.category_query;
-      searchTerm = body.category_query;
-    } else {
-      matchedCategory = 'ALL';
-    }
-  }
-
-  // Check if user is asking an inquiry about fabric/material/video/quality/details rather than searching catalog
-  const isDetailInquiry = /video|ভিডিও|kapor|কাপড়|কাপর|fabric|ফেব্রি|মেটেরিয়াল|material|কোয়ালিটি|quality|rong|রং|কালার|color|wash|ওয়াশ|suiti|সুতি|silk|সিল্ক|jamdani|জামদানি|dupiyan|ডুপিয়ান|chobi|ছবি|photo|picture|real|লাইভ|হাতে|পাওয়া|কতদিন|সময়|ঠিকানা|শোরুম|কম|discount|customer|দাম|price|koto|কত|পেমেন্ট|বিকাশ|bkash/i.test(lowerMsg);
-
-  const hasProductCatalogSearchIntent = (matchedCategory !== null || 
-    /কালেকশন|collection|দেখাও|দেখান|show|খুঁজছি|dekhte\s*chai|দেখতে\s*চাই|dress|পোশাক|poshak|পাওয়া\s*যাবে|pawa\s*jabe|aro|আরও|more|next/i.test(lowerMsg)) && !isDetailInquiry;
+  // ── Step 1: Category + customer-query routing ──
+  const { matchedCategory, searchTerm } = detectCategoryMatch(lowerMsg, body.category_query);
+  const wantsCatalog = hasProductCatalogSearchIntent(lowerMsg, matchedCategory);
+  const faqReply = resolveFaqReply(userMessage, replyLang);
 
   let productsRes = [];
   let totalAvailable = 0;
   let hasMore = false;
 
-  if (hasProductCatalogSearchIntent) {
-    let sql = "SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors FROM products WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL) AND (is_sold_out = 0 OR is_sold_out IS NULL)";
-    const params = [];
-
-    if (matchedCategory && matchedCategory !== 'ALL') {
-      if (matchedCategory === 'Men' || matchedCategory === 'Women' || matchedCategory === 'Kids (Boys)' || matchedCategory === 'Kids (Girls)') {
-        sql += " AND UPPER(category) = ?";
-        params.push(matchedCategory.toUpperCase());
-      } else if (matchedCategory === 'Kids') {
-        sql += " AND UPPER(category) LIKE 'KIDS%'";
-      } else if (matchedCategory === 'Biyer Sajani') {
-        sql += " AND (UPPER(subcategory) LIKE '%JAMDANI%' OR UPPER(subcategory) LIKE '%KATAN%' OR UPPER(subcategory) LIKE '%BRIDAL%' OR UPPER(name) LIKE '%BRIDAL%' OR UPPER(name) LIKE '%WEDDING%')";
-      } else {
-        sql += " AND (UPPER(subcategory) LIKE ? OR UPPER(name) LIKE ? OR UPPER(category) LIKE ?)";
-        params.push(`%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`, `%${matchedCategory.toUpperCase()}%`);
-      }
-    } else if (matchedCategory !== 'ALL' && userMessage.length > 2) {
-      const cleanKeyword = userMessage.replace(/[^\w\s\u0980-\u09FF]/g, '').trim().split(' ')[0];
-      sql += " AND (name LIKE ? OR category LIKE ? OR subcategory LIKE ?)";
-      params.push(`%${cleanKeyword}%`, `%${cleanKeyword}%`, `%${cleanKeyword}%`);
-    }
-
-    const countSql = sql.replace("SELECT id, name, price, original_price, images, image_url, description, category, subcategory, stock_count, available_sizes, available_colors", "SELECT COUNT(*) as total");
+  if (wantsCatalog) {
+    const { countSql, countParams, dataSql, dataParams } = buildProductSearch(
+      matchedCategory, userMessage, requestedLimit, requestedOffset
+    );
     try {
-      const countRows = await conn.execute(countSql, params);
+      const countRows = await conn.execute(countSql, countParams);
       totalAvailable = countRows[0]?.total || 0;
-
-      sql += " ORDER BY is_hot DESC, created_at DESC LIMIT ? OFFSET ?";
-      params.push(requestedLimit, requestedOffset);
-
-      const rows = await conn.execute(sql, params);
-      productsRes = rows.map(r => {
-        let imgs = [];
-        try { imgs = r.images ? JSON.parse(r.images) : []; } catch (_) {}
-        let sizes = [];
-        try { sizes = typeof r.available_sizes === 'string' ? JSON.parse(r.available_sizes) : (r.available_sizes || []); } catch (_) {}
-        let colors = [];
-        try { colors = typeof r.available_colors === 'string' ? JSON.parse(r.available_colors) : (r.available_colors || []); } catch (_) {}
-
-        return {
-          id: r.id,
-          name: r.name,
-          price: parseFloat(r.price),
-          original_price: r.original_price ? parseFloat(r.original_price) : null,
-          image_url: r.image_url || imgs[0] || '',
-          images: imgs,
-          available_sizes: sizes,
-          available_colors: colors,
-          description: r.description || '',
-          category: r.category || '',
-          subcategory: r.subcategory || '',
-          stock_count: r.stock_count || 0
-        };
-      });
-
+      const rows = await conn.execute(dataSql, dataParams);
+      productsRes = (rows || []).map(mapProductRow);
       hasMore = (requestedOffset + productsRes.length) < totalAvailable;
     } catch (err) {
       console.error('TiDB query error:', err);
     }
   }
 
-  // ── Step 2: Determine Response ──
+  // ── Step 2: Determine Response (catalog → FAQ → AI → fallback) ──
   let replyText = '';
 
-  if (hasProductCatalogSearchIntent) {
-    if (productsRes.length > 0) {
-      replyText = requestedOffset > 0
-        ? 'আমাদের কালেকশন থেকে আরও কিছু আকর্ষণীয় পণ্য নিচে দেওয়া হলো:'
-        : 'আমাদের কালেকশন থেকে প্রোডাক্টগুলো নিচে দেওয়া হলো। আপনি সরাসরি অর্ডার করতে পারেন বা বিস্তারিত দেখতে পারেন:';
-    } else {
-      replyText = requestedOffset > 0
-        ? 'এই কালেকশনের আর কোনো অতিরিক্ত পণ্য এই মুহূর্তে নেই। আপনি পুরো কালেকশনটি শপে গিয়ে দেখতে পারেন।'
-        : 'পণ্যটি এখনও ওয়েবসাইটে যুক্ত করা হয়নি। আপনি আমাদের শোরুমে (২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট) সরাসরি ভিজিট করে পণ্যটি নিতে পারবেন।';
-    }
-  } else {
-    const faqMatch = matchFAQ(userMessage);
-    if (faqMatch && faqMatch.entry) {
-      replyText = lang === 'bn' ? faqMatch.entry.answer_bn : faqMatch.entry.answer_en;
-    }
+  if (wantsCatalog) {
+    replyText = getCatalogReplyText(productsRes.length, requestedOffset, replyLang);
+  } else if (faqReply) {
+    replyText = faqReply;
   }
 
   // ── Step 3: AI Inference (Groq Ultra-Fast LPU & Google Gemini) with Product Context ──
@@ -2769,24 +2694,9 @@ RULES:
     }
   }
 
-  // ── Step 4: Smart Conversational Fallbacks for Random Queries (when AI is offline) ──
+  // ── Step 4: Smart fallbacks when AI is offline ──
   if (!replyText) {
-    const norm = lowerMsg.replace(/[^\w\s\u0980-\u09FF]/g, ' ');
-    if (/kom|discount|dam\s*kom|char|bargain|ফিক্সড|কম|ছাড়|ডিসকাউন্ট/i.test(norm)) {
-      replyText = 'বিগ বাজার একটি ফিক্সড প্রাইস ফ্যাশন শপ। আমাদের প্রতিটি পণ্যের কোয়ালিটি অনুযায়ী ন্যায্য ও নির্দিষ্ট মূল্য নির্ধারণ করা থাকে। তাই আলাদা কোনো দরদাম বা ছাড়ের সুযোগ নেই।';
-    } else if (/regular\s*customer|puran\s*customer|puraton|sob\s*shomoy|রেগুলার|পুরাতন/i.test(norm)) {
-      replyText = 'বিগ বাজারে নিয়মিত কেনাকাটা করার জন্য আপনাকে আন্তরিক ধন্যবাদ! আমাদের সম্মানিত রেগুলার কাস্টমারদের জন্য আমরা সবসময় সর্বোচ্চ কোয়ালিটি এবং দ্রুততম ডেলিভারি নিশ্চিত করি।';
-    } else if (/kemon|kemon\s*achen|valo|hi|hello|salam|সালাম|কেমন/i.test(norm)) {
-      replyText = 'আসসালামু আলাইকুম! আলহামদুলিল্লাহ, ভালো আছি। বিগ বাজারে আপনাকে স্বাগতম। আপনি আজ কী ধরনের পোশাক দেখতে চান?';
-    } else if (/thikana|kothay|location|dokandari|কোথায়|ঠিকানা|শোরুম/i.test(norm)) {
-      replyText = 'আমাদের শোরুমের ঠিকানা: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট পৌরসভা, মীরসরাই, চট্টগ্রাম। প্রতিদিন সকাল ৯:০০ টা থেকে রাত ৯:০০ টা পর্যন্ত খোলা থাকে।';
-    } else if (/delivery|charge|deli|ডেলিভারি|খরচ/i.test(norm)) {
-      replyText = 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি! চট্টগ্রাম জেলায় ১০০ টাকা এবং সারা বাংলাদেশে ১৫০ টাকা ডেলিভারি চার্জ প্রযোজ্য।';
-    } else if (/quality|original|fabric|কোয়ালিটি|ফেব্রিক/i.test(norm)) {
-      replyText = 'বিগ বাজারে আমরা প্রিমিয়াম কোয়ালিটির ফেব্রিক ও নিখুঁত ফিনিশিং নিশ্চিত করি। আপনি শতভাগ আস্থার সাথে কেনাকাটা করতে পারেন।';
-    } else {
-      replyText = 'আমি আপনার মেসেজটি বুঝতে পেরেছি। পোশাকের কালেকশন দেখতে ক্যাটাগরি বেছে নিন অথবা আমাদের হেল্পলাইনে (01857045449) সরাসরি যোগাযোগ করুন।';
-    }
+    replyText = faqReply || getSmartFallbackReply(lowerMsg, replyLang);
   }
 
   return c.json({

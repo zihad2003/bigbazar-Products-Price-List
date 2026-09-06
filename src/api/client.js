@@ -5,13 +5,21 @@
  */
 
 // Smart API URL: Relative in production, explicit in local dev/Node.js
-export const API_URL = (typeof import.meta !== 'undefined' && import.meta.env?.PROD)
-    ? '' 
-    : (typeof process !== 'undefined' && process.env?.VITE_API_URL 
-        ? process.env.VITE_API_URL 
-        : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL 
-            ? import.meta.env.VITE_API_URL 
-            : '')).replace(/\/$/, '');
+// Normalize "/" or quoted/spaced values to "" so media URLs stay same-origin
+// (avoids broken "//api/..." protocol-relative hosts).
+function resolveApiUrl() {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.PROD) return '';
+    const raw = (typeof process !== 'undefined' && process.env?.VITE_API_URL)
+        ? process.env.VITE_API_URL
+        : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
+            ? import.meta.env.VITE_API_URL
+            : '');
+    const cleaned = String(raw || '').trim().replace(/^['"]|['"]$/g, '').replace(/\/$/, '');
+    if (!cleaned || cleaned === '/' || cleaned === '.') return '';
+    return cleaned;
+}
+
+export const API_URL = resolveApiUrl();
 
 const API_BASE = API_URL;
 
@@ -587,8 +595,14 @@ export const storage = {
             },
             getPublicUrl(filePath) {
                 // If it's already a full URL, return it
-                if (filePath.startsWith('http')) return { data: { publicUrl: filePath } };
-                return { data: { publicUrl: `${API_BASE}/uploads/${filePath}` } };
+                if (filePath.startsWith('http') || filePath.startsWith('data:') || filePath.startsWith('/')) {
+                    return { data: { publicUrl: filePath } };
+                }
+                // KV uploads use up-* ids served by GET /api/img/:id
+                if (String(filePath).startsWith('up-')) {
+                    return { data: { publicUrl: `${API_BASE}/api/img/${filePath}` } };
+                }
+                return { data: { publicUrl: `${API_BASE}/api/img/${filePath}` } };
             }
         };
     }

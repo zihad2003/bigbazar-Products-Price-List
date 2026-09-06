@@ -609,7 +609,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       image_url: finalMainImage,
       price: parseFloat(form.price) || 0,
       original_price: form.original_price ? parseFloat(form.original_price) : null,
-      serial_no: parseInt(finalSerialNo, 10) || 1,
       stock_count: form.stock_count !== '' && form.stock_count !== null && form.stock_count !== undefined ? parseInt(form.stock_count) : null,
       is_exclusive: form.is_exclusive || false,
       platform_id: form.platform_id || null,
@@ -617,12 +616,24 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       description: form.description || '',
     };
 
+    // Preserve existing serial on edit — never coerce null/undefined to 1
+    if (editingProduct) {
+      const existingSerial = editingProduct.serial_no;
+      if (existingSerial != null && String(existingSerial).trim() !== '' && !Number.isNaN(Number(existingSerial))) {
+        productData.serial_no = Number(existingSerial);
+      }
+      // else omit serial_no so PUT does not overwrite DB value
+    } else {
+      productData.serial_no = parseInt(finalSerialNo, 10) || 1;
+    }
+
     if (editingProduct) {
       // ── OPTIMISTIC INSTANT UPDATE (<50ms UI response) ──
       const updatedProduct = {
         ...editingProduct,
         ...productData,
-        id: editingProduct.id
+        id: editingProduct.id,
+        serial_no: productData.serial_no ?? editingProduct.serial_no,
       };
       setProducts(prev => prev.map(p => p.id === editingProduct.id ? updatedProduct : p));
       cancelEdit();
@@ -4472,7 +4483,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             title: 'Publish Product',
                             message: 'Are you sure you want to Publish this product to the main site?',
                             confirmText: 'Publish',
-                            onConfirm: () => bigBazarApi.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts)
+                            onConfirm: () => {
+                              setProducts(prev => prev.map(x => x.id === p.id ? { ...x, status: 'published' } : x));
+                              bigBazarApi.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts);
+                            }
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-green-500 hover:bg-green-500/10 transition-all group/btn"
                         >
@@ -4488,7 +4502,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             title: 'Unpublish Product',
                             message: 'Are you sure you want to move this product back to Pending/Drafts?',
                             confirmText: 'Unpublish',
-                            onConfirm: () => bigBazarApi.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts)
+                            onConfirm: () => {
+                              setProducts(prev => prev.map(x => x.id === p.id ? { ...x, status: 'pending' } : x));
+                              bigBazarApi.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts);
+                            }
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-yellow-500 hover:bg-yellow-500/10 transition-all group/btn"
                         >

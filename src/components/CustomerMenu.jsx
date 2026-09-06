@@ -31,8 +31,15 @@ const CustomerMenu = ({ onTrackOrder, onOpenCart, onOpenCategories, onSelectCate
 
     return (
         <nav
-            className="lg:hidden fixed bottom-0 left-0 right-0 z-[1001] overflow-visible bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]"
-            style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+            className="lg:hidden fixed inset-x-0 bottom-0 z-[1001] overflow-visible bg-white border-t border-neutral-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]"
+            style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                transform: 'none',
+                paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+            }}
         >
             <div className="relative flex items-center justify-between max-w-lg mx-auto h-14 px-2 overflow-visible">
                 {/* Home */}

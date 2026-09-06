@@ -77,18 +77,25 @@ export function normalizeQuery(msg) {
 
 export function matchFAQ(message) {
   const lower = (message || '').toLowerCase();
+  const normalized = lower.replace(/[^\w\s\u0980-\u09FF]/g, ' ').replace(/\s+/g, ' ').trim();
   let best = null;
   let score = 0;
   for (const [k, e] of Object.entries(FAQ_KB)) {
     let s = 0;
     for (const kw of e.keywords) {
-      if (lower.includes(kw)) s += kw.length;
+      const needle = kw.toLowerCase();
+      if (lower.includes(needle) || normalized.includes(needle)) {
+        // Longer / multi-word keywords weigh more
+        s += Math.max(3, needle.length);
+        if (needle.includes(' ')) s += 4;
+      }
     }
     if (s > score) {
       score = s;
-      best = { key: k, entry: e };
+      best = { key: k, entry: e, score: s };
     }
   }
+  // Lower threshold so short BN keywords like "সাইজ" still match
   return score < 3 ? null : best;
 }
 
