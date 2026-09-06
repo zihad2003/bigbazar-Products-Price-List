@@ -567,14 +567,22 @@ export const storage = {
             async upload(_filePath, file) {
                 const formData = new FormData();
                 formData.append('file', file);
-                
+                const token = getToken();
+                if (!token) {
+                    return { data: null, error: { message: 'Not signed in as admin. Please log in again on /admin.' } };
+                }
+
                 const res = await fetch(`${API_BASE}/api/upload`, {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${_token}` },
+                    headers: { Authorization: `Bearer ${token}` },
                     body: formData
                 });
-                const json = await res.json();
-                if (!res.ok) return { data: null, error: { message: json.error } };
+                const text = await res.text();
+                let json = {};
+                try { json = text ? JSON.parse(text) : {}; } catch (_) {
+                    return { data: null, error: { message: `Upload failed (${res.status})` } };
+                }
+                if (!res.ok) return { data: null, error: { message: json.error || 'Transfer failed' } };
                 return { data: { path: json.data.path, fullPath: json.data.publicUrl }, error: null };
             },
             getPublicUrl(filePath) {
