@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL, getToken } from '../api/client';
-import { Package, LogOut, Phone, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, User, Bell } from 'lucide-react';
+import { Package, LogOut, Phone, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, User, Bell, BellRing } from 'lucide-react';
+import {
+  pushSupported,
+  enableBrowserPush,
+  disableBrowserPush,
+  hasActivePushSubscription,
+  getPushPermissionState,
+} from '../utils/pushNotifications';
 
 // Google Identity Services script loader
 function useGoogleScript() {
@@ -48,6 +55,9 @@ export default function AccountPage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState('');
   const [loginError, setLoginError] = useState('');
   const [phone, setPhone] = useState('');
   const [editingPhone, setEditingPhone] = useState(false);
@@ -137,8 +147,46 @@ export default function AccountPage() {
       fetchOrders();
       fetchNotifications();
       if (user?.phone) setPhone(user.phone);
+      hasActivePushSubscription().then(setPushEnabled).catch(() => setPushEnabled(false));
     }
   }, [isLoggedIn, fetchOrders, fetchNotifications, user]);
+
+  const handleTogglePush = async () => {
+    setPushBusy(true);
+    setPushMessage('');
+    try {
+      if (pushEnabled) {
+        await disableBrowserPush();
+        setPushEnabled(false);
+        setPushMessage(language === 'bn' ? 'ব্রাউজার নোটিফিকেশন বন্ধ করা হয়েছে' : 'Browser notifications turned off');
+      } else {
+        const state = await getPushPermissionState();
+        if (state === 'unsupported') {
+          setPushMessage(language === 'bn' ? 'এই ডিভাইসে সাপোর্ট নেই' : 'Not supported on this device');
+          return;
+        }
+        if (state === 'denied') {
+          setPushMessage(
+            language === 'bn'
+              ? 'ব্রাউজার সেটিংস থেকে নোটিফিকেশন অনুমতি দিন'
+              : 'Allow notifications in browser settings first'
+          );
+          return;
+        }
+        await enableBrowserPush();
+        setPushEnabled(true);
+        setPushMessage(
+          language === 'bn'
+            ? 'ব্রাউজার নোটিফিকেশন চালু হয়েছে'
+            : 'Browser notifications enabled'
+        );
+      }
+    } catch (err) {
+      setPushMessage(err.message || 'Failed');
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const handleSavePhone = async () => {
     const result = await updatePhone(phone);
@@ -293,6 +341,41 @@ export default function AccountPage() {
             </button>
           )}
         </div>
+
+        {pushSupported() && (
+          <div className="mb-4 p-4 rounded-xl border border-[var(--border-color)] bg-surface-card flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-content-primary flex items-center gap-2">
+                <BellRing size={16} className="text-[#ce112d]" />
+                {language === 'bn' ? 'ব্রাউজার নোটিফিকেশন' : 'Browser notifications'}
+              </p>
+              <p className="text-[11px] text-content-muted mt-1">
+                {language === 'bn'
+                  ? 'নতুন প্রোডাক্ট এলে ফোন/কম্পিউটারে পপ-আপ দেখাবে (Allow চাপুন)'
+                  : 'Get a system popup when a new product is published'}
+              </p>
+              {pushMessage && (
+                <p className="text-[11px] text-[#ce112d] mt-1 font-medium">{pushMessage}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              disabled={pushBusy}
+              onClick={handleTogglePush}
+              className={`shrink-0 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all disabled:opacity-50 ${
+                pushEnabled
+                  ? 'bg-zinc-100 text-zinc-700 border border-zinc-200'
+                  : 'bg-[#ce112d] text-white shadow-sm'
+              }`}
+            >
+              {pushBusy
+                ? '...'
+                : pushEnabled
+                  ? (language === 'bn' ? 'বন্ধ করুন' : 'Turn off')
+                  : (language === 'bn' ? 'চালু করুন' : 'Enable')}
+            </button>
+          </div>
+        )}
 
         {notifications.length === 0 ? (
           <div className="text-center py-8 text-sm text-content-muted border border-dashed border-[var(--border-color)] rounded-xl">

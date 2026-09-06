@@ -4,6 +4,13 @@ import { getDb } from './db.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { FAQ_KB, DELIVERY_AREAS, normalizeQuery, matchFAQ, detectLanguage } from './assistant-kb.js';
+import { getVapidConfig, sendWebPushBatch } from './webPush.js';
+
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(String(text));
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 // Simple in-memory store for rate limiting (at Edge level per isolate)
 const rateLimitStore = new Map();
@@ -1991,6 +1998,21 @@ async function ensureNotificationTables(conn) {
       INDEX idx_reads_user (user_id)
     )
   `);
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id VARCHAR(36) PRIMARY KEY,
+      user_id VARCHAR(36) NOT NULL,
+      endpoint TEXT NOT NULL,
+      endpoint_hash VARCHAR(64) NOT NULL,
+      p256dh VARCHAR(255) NOT NULL,
+      auth VARCHAR(255) NOT NULL,
+      user_agent VARCHAR(512) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_push_endpoint (endpoint_hash),
+      INDEX idx_push_user (user_id)
+    )
+  `);
 }
 
 // GET /admin/users — Google sign-in customers
@@ -2007,7 +2029,7 @@ app.get('/admin/users', requireAuth, requireAdmin, async (c) => {
   }
 });
 
-// POST /admin/notify-product — broadcast new-product notification to all signed-in users (in-app)
+// POST /admin/notify-product — in-app + browser push to subscribed devices
 app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const productId = body.product_id || null;
@@ -2023,14 +2045,109 @@ app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
       [id, 'new_product', title, notifBody, productId]
     );
     const countRows = await conn.execute('SELECT COUNT(*) AS total FROM users');
+
+    let push = { delivered: 0, failed: 0, gone: 0, skipped: true };
+    const vapid = getVapidConfig(c.env);
+    if (vapid) {
+      const subs = await conn.execute(
+        'SELECT id, endpoint, p256dh, auth FROM push_subscriptions LIMIT 2000'
+      );
+      if (subs?.length) {
+        const origin = new URL(c.req.url).origin;
+        const url = productId ? `${origin}/product/${productId}` : `${origin}/products`;
+        push = await sendWebPushBatch(
+          subs,
+          {
+            title,
+            body: notifBody,
+            url,
+            product_id: productId,
+          },
+          vapid,
+          {
+            onGone: async (sub) => {
+              try {
+                await conn.execute('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+              } catch (_) {}
+            },
+          }
+        );
+        push.skipped = false;
+      } else {
+        push.skipped = false;
+      }
+    }
+
     return c.json({
       success: true,
       notification_id: id,
-      audience: countRows[0]?.total || 0
+      audience: countRows[0]?.total || 0,
+      push,
     });
   } catch (err) {
     console.error('notify-product error:', err.message);
     return c.json({ error: err.message || 'Failed to create notification' }, 500);
+  }
+});
+
+// GET /push/vapid-public-key — browser needs this to subscribe (public)
+app.get('/push/vapid-public-key', (c) => {
+  const vapid = getVapidConfig(c.env);
+  if (!vapid?.publicKey) {
+    return c.json({ error: 'Web Push is not configured', publicKey: null }, 503);
+  }
+  return c.json({ publicKey: vapid.publicKey });
+});
+
+// POST /account/push-subscribe — save browser push subscription for logged-in customer
+app.post('/account/push-subscribe', requireCustomerAuth, async (c) => {
+  const customer = c.get('customer');
+  const body = await c.req.json().catch(() => ({}));
+  const endpoint = body?.endpoint;
+  const p256dh = body?.keys?.p256dh;
+  const auth = body?.keys?.auth;
+  if (!endpoint || !p256dh || !auth) {
+    return c.json({ error: 'Invalid subscription' }, 400);
+  }
+  const conn = getDb(c.env);
+  try {
+    await ensureNotificationTables(conn);
+    const endpointHash = await sha256Hex(endpoint);
+    const existing = await conn.execute(
+      'SELECT id FROM push_subscriptions WHERE endpoint_hash = ?',
+      [endpointHash]
+    );
+    const ua = (c.req.header('user-agent') || '').slice(0, 500);
+    if (existing?.length) {
+      await conn.execute(
+        'UPDATE push_subscriptions SET user_id = ?, p256dh = ?, auth = ?, user_agent = ? WHERE endpoint_hash = ?',
+        [customer.id, p256dh, auth, ua, endpointHash]
+      );
+    } else {
+      await conn.execute(
+        'INSERT INTO push_subscriptions (id, user_id, endpoint, endpoint_hash, p256dh, auth, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [crypto.randomUUID(), customer.id, endpoint, endpointHash, p256dh, auth, ua]
+      );
+    }
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to save subscription' }, 500);
+  }
+});
+
+// DELETE /account/push-subscribe — remove this browser's subscription
+app.delete('/account/push-subscribe', requireCustomerAuth, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const endpoint = body?.endpoint;
+  if (!endpoint) return c.json({ error: 'endpoint required' }, 400);
+  const conn = getDb(c.env);
+  try {
+    await ensureNotificationTables(conn);
+    const endpointHash = await sha256Hex(endpoint);
+    await conn.execute('DELETE FROM push_subscriptions WHERE endpoint_hash = ?', [endpointHash]);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
   }
 });
 

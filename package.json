@@ -11,6 +11,7 @@
     "dev:backend": "npx wrangler pages dev dist"
   },
   "dependencies": {
+    "@block65/webcrypto-web-push": "^2.0.0",
     "@cloudflare/workers-types": "^4.20260404.1",
     "@studio-freight/lenis": "^1.0.42",
     "@tidbcloud/serverless": "^0.3.0",

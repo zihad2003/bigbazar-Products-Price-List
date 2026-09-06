@@ -79,6 +79,23 @@ async function createMissingTables() {
         `);
         console.log('Created notification_reads table.');
 
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id VARCHAR(36) PRIMARY KEY,
+                user_id VARCHAR(36) NOT NULL,
+                endpoint TEXT NOT NULL,
+                endpoint_hash VARCHAR(64) NOT NULL,
+                p256dh VARCHAR(255) NOT NULL,
+                auth VARCHAR(255) NOT NULL,
+                user_agent VARCHAR(512) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_push_endpoint (endpoint_hash),
+                INDEX idx_push_user (user_id)
+            )
+        `);
+        console.log('Created push_subscriptions table.');
+
         // Create Conversations Table (AI Shopping Assistant)
         await db.execute(`
             CREATE TABLE IF NOT EXISTS conversations (

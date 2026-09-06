@@ -670,10 +670,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             let data = {};
             try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
             if (res.ok) {
+              const pushInfo = data.push && !data.push.skipped
+                ? ` Browser push: ${data.push.delivered || 0} delivered.`
+                : '';
               setAlertModal({
                 isOpen: true,
                 title: 'Added & Notified',
-                message: `Product saved. In-app alert sent to ${data.audience ?? 0} signed-in user(s).`,
+                message: `Product saved. In-app alert for ${data.audience ?? 0} user(s).${pushInfo}`,
                 type: 'success',
               });
             } else if (res.status === 404) {

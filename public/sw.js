@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bigbazar-cache-v1';
-const API_CACHE_NAME = 'bigbazar-api-v1';
-const IMG_CACHE_NAME = 'bigbazar-img-v1';
+const CACHE_NAME = 'bigbazar-cache-v2';
+const API_CACHE_NAME = 'bigbazar-api-v2';
+const IMG_CACHE_NAME = 'bigbazar-img-v2';
 
 // Install event — activate immediately without waiting
 self.addEventListener('install', (event) => {
@@ -138,4 +138,46 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+});
+
+// Browser push — show system notification
+self.addEventListener('push', (event) => {
+  let data = { title: 'Big Bazar', body: 'নতুন আপডেট আছে', url: '/' };
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (_) {
+    try {
+      data.body = event.data?.text() || data.body;
+    } catch (__) {}
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Big Bazar', {
+      body: data.body || '',
+      icon: '/b.jpg',
+      badge: '/b.jpg',
+      data: { url: data.url || (data.product_id ? `/product/${data.product_id}` : '/') },
+      vibrate: [120, 60, 120],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification?.data?.url || '/';
+  event.waitUntil(
+    (async () => {
+      const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of all) {
+        if ('focus' in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(target);
+    })()
+  );
 });
