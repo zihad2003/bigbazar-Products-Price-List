@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle, Clock, CreditCard } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
-import { extractInstagramId } from '../../utils/instagram';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const TrackOrderModal = ({ isOpen, onClose }) => {
@@ -110,9 +109,7 @@ const TrackOrderModal = ({ isOpen, onClose }) => {
                 if (pData) {
                     const imgMap = {};
                     pData.forEach(p => {
-                        const id = extractInstagramId(p.video_url);
-                        const thumb = id ? `https://www.instagram.com/p/${id}/media/?size=l` : (p.image_url || p.images?.[0]);
-                        imgMap[p.id] = thumb;
+                        imgMap[p.id] = p.image_url || p.images?.[0] || null;
                     });
                     setProductImages(imgMap);
                 }

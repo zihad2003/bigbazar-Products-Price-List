@@ -76,15 +76,9 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
         return url;
     }
 
-    // Special handling for Instagram thumbnails (convert Reels/Posts to images)
+    // Instagram URLs are video embeds only — never treat them as product photos
     if (url.includes('instagram.com') || url.includes('instagr.am')) {
-        const idMatch = url.match(/\/(?:reels|reel|p|tv)\/([a-zA-Z0-9_-]+)/i);
-        const id = idMatch ? idMatch[1] : null;
-        if (id) {
-            const igUrl = `https://www.instagram.com/p/${id}/media/?size=l`;
-            // Route through weserv.nl to bypass CORS/hotlinking blocks
-            return `https://images.weserv.nl/?url=${encodeURIComponent(igUrl)}&n=-1`;
-        }
+        return originalUrl;
     }
 
     // All other external URLs (Supabase storage, etc.)

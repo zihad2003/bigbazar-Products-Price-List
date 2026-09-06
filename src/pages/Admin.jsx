@@ -9,10 +9,9 @@ import {
   Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
   Smartphone, Monitor, Tablet
 } from 'lucide-react';
-import { extractInstagramId, fetchInstagramData } from '../utils/instagram';
+import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
-import { captureVideoFrame, generateVideoPoster } from '../utils/videoUtils';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -532,30 +531,43 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
   const handleVideoBlur = async () => {
     if (!form.video_url) return;
-    
-    // Direct Instagram URL handling: extract platform ID only
+    // Instagram URL is for the video player only — store platform_id for reference, never pull photos
     if (form.video_url.includes('instagram.com') || form.video_url.includes('instagr.am')) {
       const igId = extractInstagramId(form.video_url);
       if (igId) {
         setForm(prev => ({
           ...prev,
-          platform_id: igId
+          platform_id: prev.platform_id || igId,
         }));
       }
-      return;
     }
   };
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
 
-    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel'));
+    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel') || /instagram\.com|instagr\.am/i.test(url));
     let currentImages = [...(form.images || [])].filter(img => !isFakePoster(img));
     let currentImageUrl = form.image_url && !isFakePoster(form.image_url) ? form.image_url : (currentImages[0] || null);
 
-    // Validation: Product must have an image OR video URL
-    if (!currentImages.length && !currentImageUrl && !form.video_url) {
-      setAlertModal({ isOpen: true, title: 'Image or Video Required', message: 'অনুগ্রহ করে পণ্যের ছবি বা ভিডিও লিঙ্ক যুক্ত করুন (Product image or video must be provided).', type: 'error' });
+    // Product cards need a real photo — Instagram link is video-only and must not replace images
+    if (!currentImages.length && !currentImageUrl) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Product Photo Required',
+        message: 'অনুগ্রহ করে পণ্যের ছবি আপলোড করুন। Instagram লিঙ্ক শুধু ভিডিও দেখানোর জন্য — ছবি আনা হয় না। (Upload a product photo. Instagram URL is for video only.)',
+        type: 'error',
+      });
+      return;
+    }
+
+    if (!form.name?.trim()) {
+      setAlertModal({ isOpen: true, title: 'Name Required', message: 'Please enter a product name.', type: 'error' });
+      return;
+    }
+
+    if (!form.price && form.price !== 0) {
+      setAlertModal({ isOpen: true, title: 'Price Required', message: 'Please enter the sale price.', type: 'error' });
       return;
     }
 
@@ -1042,7 +1054,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
   const startEdit = (p) => {
     setEditingProduct(p);
-    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel'));
+    const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel') || /instagram\.com|instagr\.am/i.test(url));
     const rawImages = Array.isArray(p.images) ? p.images.filter(img => !isFakePoster(img)) : [];
     const mainImg = p.image_url && !isFakePoster(p.image_url) ? p.image_url : (rawImages[0] || null);
 
@@ -2210,7 +2222,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight text-white line-clamp-1">
                     {editingProduct ? 'Update' : 'Add'} <span className="text-[#ce112d]">Product</span>
                   </h2>
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mt-1 italic">Fill all details below</p>
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mt-1">
+                    Photo required · Instagram URL = video only
+                  </p>
                 </div>
                 <button type="button" onClick={cancelEdit} className="p-3 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all" title="Cancel">
                   <X size={22} />
@@ -2419,136 +2433,149 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
 
             {/* MEDIA & ASSETS */}
-            <div className="space-y-10">
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-                <div className="xl:col-span-12 space-y-8">
-                  <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-[40px] p-4 md:p-10 shadow-2xl space-y-6 md:space-y-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                      <div className="space-y-8">
-                        <div className="group">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1 group-focus-within:text-[#ce112d] transition-colors">Video URL</label>
-                          <div className="relative">
-                            <input
-                              value={form.video_url}
-                              onBlur={handleVideoBlur}
-                              placeholder="https://www.instagram.com/reels/..."
-                              className="w-full bg-black/40 border-2 border-zinc-800 p-4 md:p-5 h-12 md:h-16 rounded-2xl md:rounded-3xl text-sm font-medium focus:border-zinc-500 outline-none transition-all placeholder:text-zinc-800 text-white"
-                              onChange={e => setForm({ ...form, video_url: e.target.value })}
-                            />
-                            <div className="absolute right-5 top-1/2 -translate-y-1/2 p-2 bg-zinc-800 rounded-xl text-zinc-500">
-                              <Video size={16} />
-                            </div>
-                          </div>
-                        </div>
+            <div className="space-y-6">
+              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-xl space-y-6 md:space-y-8">
+                <div className="flex items-start gap-3 border-b border-white/5 pb-4">
+                  <div className="w-1.5 h-8 bg-[#ce112d] rounded-full shrink-0" />
+                  <div>
+                    <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white">Photos & Video</h3>
+                    <p className="text-[10px] font-bold text-zinc-500 mt-1">
+                      Upload product photos for the catalog. Instagram link is optional — used only to play the reel/post as video.
+                    </p>
+                  </div>
+                </div>
 
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Main Photo</label>
-                          <label className="flex items-center gap-4 md:gap-6 w-full bg-black/40 border-2 border-dashed border-zinc-800 p-4 md:p-6 rounded-2xl md:rounded-[32px] cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all group">
-                            <div className="w-14 h-14 rounded-2xl bg-[#ce112d] flex items-center justify-center text-white shadow-2xl shadow-red-900/40 group-hover:scale-110 transition-transform">
-                              <Upload size={24} strokeWidth={3} />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-black text-white uppercase tracking-wider group-hover:text-[#ce112d] transition-colors">Upload Photo</span>
-                              <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-0.5">Best size: 1080x1350</span>
-                            </div>
-                            <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
-                          </label>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="group">
+                      <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block tracking-[0.15em] px-1">
+                        Instagram video URL <span className="text-zinc-600 normal-case tracking-normal font-semibold">(optional · video only)</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={form.video_url}
+                          onBlur={handleVideoBlur}
+                          placeholder="https://www.instagram.com/reels/..."
+                          className="w-full bg-black/40 border border-zinc-800 p-4 h-12 rounded-xl text-sm font-medium focus:border-[#ce112d]/50 outline-none transition-all placeholder:text-zinc-700 text-white pr-12"
+                          onChange={e => setForm({ ...form, video_url: e.target.value })}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-zinc-500">
+                          <Video size={16} />
                         </div>
                       </div>
-
-                      <div className="space-y-6">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1">Preview</label>
-                        <div className="aspect-[4/5] w-full bg-[#0a0a0c] rounded-2xl md:rounded-[40px] border border-[#1d1d21] overflow-hidden shadow-2xl relative group ring-8 ring-black/20">
-                          {(previewImage || form.image_url) ? (
-                            <>
-                              <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700" alt="Preview" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPreviewImage(null);
-                                  setForm(prev => ({
-                                    ...prev,
-                                    image_url: null,
-                                    images: (prev.images || []).filter((_, idx) => idx !== 0)
-                                  }));
-                                }}
-                                className="absolute top-6 right-6 p-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-[22px] shadow-2xl backdrop-blur-md transition-all border border-red-500/20"
-                              >
-                                <Trash2 size={20} />
-                              </button>
-                            </>
-                          ) : form.video_url ? (
-                            <>
-                              <VideoPlayer src={form.video_url} priority={true} />
-                              <button
-                                type="button"
-                                onClick={() => { setPreviewVideo(null); setForm(prev => ({ ...prev, video_url: '' })); }}
-                                className="absolute top-6 right-6 p-4 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white rounded-[22px] shadow-2xl backdrop-blur-md transition-all border border-red-500/20"
-                              >
-                                <Trash2 size={20} />
-                              </button>
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center space-y-4 text-zinc-800 bg-black/40">
-                              <div className="w-20 h-20 rounded-full border border-dashed border-zinc-900 flex items-center justify-center opacity-40">
-                                <ImageIcon size={32} />
-                              </div>
-                              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Stage Pending</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <p className="text-[10px] text-zinc-600 mt-2 px-1 leading-relaxed">
+                        Does not download photos from Instagram. Paste a reel/post link to show the video on the product page.
+                      </p>
                     </div>
 
-                    <div className="pt-10 border-t border-white/5">
-                      <div className="flex items-center justify-between mb-8 px-1">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.2em]">More Photos</label>
-                        {loading && uploadStatus !== 'idle' && (
-                          <div className="flex items-center gap-2 text-[10px] font-black text-[#ce112d] uppercase tracking-widest animate-pulse">
-                            <div className="w-3 h-3 border-2 border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
-                            {uploadStatus === 'compressing'
-                              ? 'Compressing...'
-                              : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-                        {form.images?.map((img, i) => (
-                          <div key={i} className="relative aspect-[3/4] rounded-2xl overflow-hidden border border-[#1d1d21] group bg-black shadow-xl">
-                            <img
-                              src={img}
-                              onError={(e) => { e.target.src = 'https://placehold.co/400x500/0a0a0c/ce112d?text=Error'; }}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                              alt="Gallery"
-                            />
-                            <div className="absolute inset-x-2 bottom-2 bg-red-600 h-10 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-xl" onClick={() => {
-                              const removedImg = form.images[i];
-                              const updatedImages = form.images.filter((_, idx) => idx !== i);
-                              // Bug 3 fix: clear any color.image that pointed to the deleted image
-                              // so the admin is forced to reassign it instead of silently breaking.
-                              const updatedColors = (form.available_colors || []).map(c =>
-                                c.image === removedImg ? { ...c, image: null } : c
-                              );
-                              setForm({ ...form, images: updatedImages, available_colors: updatedColors });
-                            }}>
-                              <Trash2 size={16} className="text-white" />
-                            </div>
-                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-lg text-[8px] font-black text-white/50 border border-white/5 uppercase">IMG {i + 1}</div>
-                          </div>
-                        ))}
-                        <label className="aspect-[3/4] rounded-2xl border-2 border-dashed border-[#1d1d21] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all group">
-                          <div className="w-12 h-12 rounded-2xl bg-[#121215] flex items-center justify-center text-[#ce112d] group-hover:scale-110 transition-transform shadow-2xl border border-white/5">
-                            <Plus size={20} strokeWidth={3} />
-                          </div>
-                          <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600 italic">Add Visual</span>
-                          <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'product')} />
-                        </label>
-                      </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase text-[#ce112d] mb-1 block tracking-[0.15em] px-1">
+                        Main photo <span className="text-zinc-500">*</span>
+                      </label>
+                      <label className="flex items-center gap-4 w-full bg-black/40 border border-dashed border-zinc-700 p-4 rounded-xl cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all group">
+                        <div className="w-12 h-12 rounded-xl bg-[#ce112d] flex items-center justify-center text-white shadow-lg shadow-red-900/30 group-hover:scale-105 transition-transform shrink-0">
+                          <Upload size={20} strokeWidth={2.5} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-white group-hover:text-[#ce112d] transition-colors">Upload product photo</span>
+                          <span className="text-[10px] font-medium text-zinc-500 mt-0.5">Required · best 1080×1350</span>
+                        </div>
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                      </label>
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.15em] px-1">Photo preview</label>
+                    <div className="aspect-[4/5] w-full bg-[#0a0a0c] rounded-2xl border border-[#1d1d21] overflow-hidden relative ring-4 ring-black/20">
+                      {(previewImage || form.image_url) ? (
+                        <>
+                          <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top" alt="Preview" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewImage(null);
+                              setForm(prev => ({
+                                ...prev,
+                                image_url: null,
+                                images: (prev.images || []).filter((_, idx) => idx !== 0)
+                              }));
+                            }}
+                            className="absolute top-3 right-3 p-2.5 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-700 bg-black/40 px-6 text-center">
+                          <ImageIcon size={28} className="opacity-40" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Upload a photo to preview</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {form.video_url && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                          <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.15em]">Video preview</label>
+                          <button
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, video_url: '', platform_id: prev.platform_id }))}
+                            className="text-[10px] font-bold text-red-400 hover:underline"
+                          >
+                            Clear video
+                          </button>
+                        </div>
+                        <div className="aspect-[4/5] w-full max-h-64 bg-black rounded-2xl border border-[#1d1d21] overflow-hidden relative">
+                          <VideoPlayer src={form.video_url} priority={true} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/5">
+                  <div className="flex items-center justify-between mb-4 px-1">
+                    <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.15em]">More photos</label>
+                    {loading && uploadStatus !== 'idle' && (
+                      <div className="flex items-center gap-2 text-[10px] font-black text-[#ce112d] uppercase tracking-widest animate-pulse">
+                        <div className="w-3 h-3 border-2 border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
+                        {uploadStatus === 'compressing'
+                          ? 'Compressing...'
+                          : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                    {form.images?.map((img, i) => (
+                      <div key={i} className="relative aspect-[3/4] rounded-xl overflow-hidden border border-[#1d1d21] group bg-black">
+                        <img
+                          src={img}
+                          onError={(e) => { e.target.src = 'https://placehold.co/400x500/0a0a0c/ce112d?text=Error'; }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          alt="Gallery"
+                        />
+                        <div className="absolute inset-x-1.5 bottom-1.5 bg-red-600 h-8 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onClick={() => {
+                          const removedImg = form.images[i];
+                          const updatedImages = form.images.filter((_, idx) => idx !== i);
+                          const updatedColors = (form.available_colors || []).map(c =>
+                            c.image === removedImg ? { ...c, image: null } : c
+                          );
+                          setForm({ ...form, images: updatedImages, available_colors: updatedColors });
+                        }}>
+                          <Trash2 size={14} className="text-white" />
+                        </div>
+                        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[8px] font-black text-white/60 uppercase">#{i + 1}</div>
+                      </div>
+                    ))}
+                    <label className="aspect-[3/4] rounded-xl border border-dashed border-[#1d1d21] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/40 transition-all group">
+                      <Plus size={18} strokeWidth={2.5} className="text-[#ce112d]" />
+                      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Add</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'product')} />
+                    </label>
                   </div>
                 </div>
               </div>
-
             </div>
 
             {/* LOGISTICS & VARIANTS */}

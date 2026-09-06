@@ -7,15 +7,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 export const ProductCard = ({ product, onClick }) => {
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
-  const hasVideo = !!product.video_url;
 
-  // Choose the best candidate for the display image
-  let sourceImage = product.image_url || product.images?.[0];
-
-  // If no image but has video, use video (normalization happens in getOptimizedUrl)
-  if (!sourceImage && hasVideo) {
-    sourceImage = product.video_url;
-  }
+  // Choose the best candidate for the display image (never use Instagram video URL as a photo)
+  const sourceImage = product.image_url || product.images?.[0] || null;
 
   const { language } = useLanguage();
 
