@@ -225,6 +225,14 @@ export async function onRequest(context) {
   };
 
   // Cloudflare HTMLRewriter API transformation
+  const seoBootHtml = `
+    <div id="seo-boot">
+      <h1>Big Bazar | Baraiyarhat</h1>
+      <p>${pageDesc.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+      <p>Store: 2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Phone: 01857045449.</p>
+    </div>
+  `;
+
   const rewriter = new HTMLRewriter()
     .on('title', {
       element(element) {
@@ -236,18 +244,24 @@ export async function onRequest(context) {
         element.setAttribute('content', pageDesc);
       }
     })
+    .on('#root', {
+      element(element) {
+        // Ensure crawlers always receive real store copy in the HTML body
+        element.setInnerContent(seoBootHtml, { html: true });
+      }
+    })
     .on('head', {
       element(element) {
         element.append(`<link rel="canonical" href="${canonicalUrl}" />`, { html: true });
-        element.append(`<meta property="og:title" content="${pageTitle}" />`, { html: true });
-        element.append(`<meta property="og:description" content="${pageDesc}" />`, { html: true });
+        element.append(`<meta property="og:title" content="${pageTitle.replace(/"/g, '&quot;')}" />`, { html: true });
+        element.append(`<meta property="og:description" content="${pageDesc.replace(/"/g, '&quot;')}" />`, { html: true });
         element.append(`<meta property="og:image" content="${ogImage}" />`, { html: true });
         element.append(`<meta property="og:url" content="${canonicalUrl}" />`, { html: true });
         element.append(`<meta property="og:type" content="website" />`, { html: true });
         element.append(`<meta property="og:site_name" content="Big Bazar Baraiyarhat" />`, { html: true });
         element.append(`<meta name="twitter:card" content="summary_large_image" />`, { html: true });
-        element.append(`<meta name="twitter:title" content="${pageTitle}" />`, { html: true });
-        element.append(`<meta name="twitter:description" content="${pageDesc}" />`, { html: true });
+        element.append(`<meta name="twitter:title" content="${pageTitle.replace(/"/g, '&quot;')}" />`, { html: true });
+        element.append(`<meta name="twitter:description" content="${pageDesc.replace(/"/g, '&quot;')}" />`, { html: true });
         element.append(`<meta name="twitter:image" content="${ogImage}" />`, { html: true });
         element.append(`<script type="application/ld+json">${JSON.stringify(jsonLdGraph)}</script>`, { html: true });
       }

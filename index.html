@@ -69,7 +69,14 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Crawlable fallback until React mounts; also helps if JS fails before hydrate -->
+    <div id="seo-boot">
+      <h1>Big Bazar | Baraiyarhat</h1>
+      <p>Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.</p>
+      <p>Store: 2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Phone: 01857045449.</p>
+    </div>
+  </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
