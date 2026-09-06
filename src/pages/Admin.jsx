@@ -580,16 +580,24 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       }
     }
 
-    // Auto-increment Serial Number Calculation if not manually specified
-    let finalSerialNo = form.serial_no;
-    if (!finalSerialNo && !editingProduct) {
-      const maxSerial = products && products.length > 0
-        ? Math.max(...products.map(p => parseInt(p.serial_no) || 0), 0)
+    // Serial is automatic: next = max existing + 1 (no manual input)
+    let finalSerialNo;
+    if (editingProduct) {
+      finalSerialNo = editingProduct.serial_no;
+    } else {
+      const { data: topSerial } = await bigBazarApi
+        .from('products')
+        .select('serial_no')
+        .order('serial_no', { ascending: false })
+        .range(0, 0);
+      const maxFromDb = topSerial?.[0] ? parseInt(topSerial[0].serial_no, 10) || 0 : 0;
+      const maxFromLoaded = products?.length
+        ? Math.max(...products.map(p => parseInt(p.serial_no, 10) || 0), 0)
         : 0;
-      finalSerialNo = maxSerial + 1;
+      finalSerialNo = Math.max(maxFromDb, maxFromLoaded) + 1;
     }
 
-    const { _newColorHex, _newColorName, _colorSuggestions, ...formData } = form;
+    const { _newColorHex, _newColorName, _colorSuggestions, serial_no: _ignoredSerial, ...formData } = form;
     const finalMainImage = currentImageUrl || (currentImages.length > 0 ? currentImages[0] : null);
     if (finalMainImage && (!currentImages.length || currentImages[0] !== finalMainImage)) {
       currentImages = [finalMainImage, ...currentImages.filter(img => img !== finalMainImage)];
@@ -601,7 +609,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       image_url: finalMainImage,
       price: parseFloat(form.price) || 0,
       original_price: form.original_price ? parseFloat(form.original_price) : null,
-      serial_no: parseInt(finalSerialNo) || 1,
+      serial_no: parseInt(finalSerialNo, 10) || 1,
       stock_count: form.stock_count !== '' && form.stock_count !== null && form.stock_count !== undefined ? parseInt(form.stock_count) : null,
       is_exclusive: form.is_exclusive || false,
       platform_id: form.platform_id || null,
@@ -2287,7 +2295,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 pt-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 pt-4">
                         <div className="group">
                           <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Original Price</label>
                           <div className="relative">
@@ -2315,7 +2323,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             />
                           </div>
                         </div>
-                        <div className="group">
+                        <div className="group col-span-2 md:col-span-1">
                           <label className="text-[10px] font-black uppercase text-emerald-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Stock (স্টক)</label>
                           <div className="relative">
                             <input
@@ -2327,18 +2335,6 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             />
                           </div>
                         </div>
-                          <div className="group">
-                            <label className="text-[10px] font-black uppercase text-sky-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Code / Serial #</label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                value={form.serial_no || ''}
-                                placeholder={!editingProduct && products && products.length > 0 ? `Auto (#${Math.max(...products.map(p => parseInt(p.serial_no) || 0), 0) + 1})` : "Auto (#)"}
-                                className="w-full bg-black/40 border-2 border-sky-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-sky-400 outline-none transition-all placeholder:text-zinc-800 text-sky-400 italic"
-                                onChange={e => setForm({ ...form, serial_no: e.target.value })}
-                              />
-                            </div>
-                          </div>
                       </div>
 
                       <div className="pt-6 space-y-6">
