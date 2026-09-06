@@ -139,6 +139,15 @@ export async function onRequest(context) {
     "@context": "https://schema.org",
     "@graph": [
       {
+        "@type": "WebSite",
+        "@id": `${domain}/#website`,
+        "name": "Big Bazar",
+        "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট"],
+        "url": `${domain}/`,
+        "publisher": { "@id": `${domain}/#organization` },
+        "inLanguage": ["bn", "en"]
+      },
+      {
         "@type": ["ClothingStore", "LocalBusiness", "Organization"],
         "@id": `${domain}/#organization`,
         "name": "Big Bazar",

@@ -11,7 +11,10 @@
       document.documentElement.lang = storedLang || 'bn';
     } catch (e) { }
   </script>
+  <meta name="application-name" content="Big Bazar" />
+  <meta name="apple-mobile-web-app-title" content="Big Bazar" />
   <link rel="icon" type="image/jpeg" href="/b.jpg" />
+  <link rel="apple-touch-icon" href="/b.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.facebook.com https://connect.facebook.net https://www.tiktok.com https://www.instagram.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' http://localhost:8788 http://localhost:3001 http://127.0.0.1:3001 https://bigbazarbariarhat.pages.dev https://accounts.google.com https://api.allorigins.win https://www.tikwm.com https://www.tiktok.com https://images.weserv.nl https://www.facebook.com https://www.google-analytics.com https://analytics.google.com https://*.google-analytics.com https://*.analytics.google.com; img-src 'self' data: http://localhost:8788 http://localhost:3001 http://127.0.0.1:3001 https://lh3.googleusercontent.com https://*.googleusercontent.com https://images.unsplash.com https://unsplash.com https://*.tiktokcdn.com https://www.tikwm.com https://images.weserv.nl https://scontent.cdninstagram.com https://www.instagram.com https://*.cdninstagram.com https://*.fna.fbcdn.net https://*.fbcdn.net https://www.facebook.com; frame-src 'self' https://accounts.google.com https://www.facebook.com https://www.tiktok.com https://www.instagram.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' data: https://fonts.gstatic.com;">
@@ -38,30 +41,45 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": ["ClothingStore", "LocalBusiness", "Organization"],
-      "name": "Big Bazar",
-      "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "Biyer Sajani", "বিয়ের সাজনি"],
-      "url": "https://bigbazarbariarhat.pages.dev",
-      "logo": "https://bigbazarbariarhat.pages.dev/b.jpg",
-      "telephone": "+8801857045449",
-      "email": "infobigbazar01@gmail.com",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba",
-        "addressLocality": "Mirsharai",
-        "addressRegion": "Chattogram",
-        "postalCode": "4327",
-        "addressCountry": "BD"
-      },
-      "geo": {
-        "@type": "GeoCoordinates",
-        "latitude": 22.8984,
-        "longitude": 91.5303
-      },
-      "sameAs": [
-        "https://www.facebook.com/100063541603515",
-        "https://www.instagram.com/big_bazar_25",
-        "https://www.tiktok.com/@big.bazar2"
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://bigbazarbariarhat.pages.dev/#website",
+          "name": "Big Bazar",
+          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট"],
+          "url": "https://bigbazarbariarhat.pages.dev/",
+          "publisher": { "@id": "https://bigbazarbariarhat.pages.dev/#organization" },
+          "inLanguage": ["bn", "en"]
+        },
+        {
+          "@type": ["ClothingStore", "LocalBusiness", "Organization"],
+          "@id": "https://bigbazarbariarhat.pages.dev/#organization",
+          "name": "Big Bazar",
+          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "Biyer Sajani", "বিয়ের সাজনি"],
+          "url": "https://bigbazarbariarhat.pages.dev",
+          "logo": "https://bigbazarbariarhat.pages.dev/b.jpg",
+          "image": "https://bigbazarbariarhat.pages.dev/b.jpg",
+          "telephone": "+8801857045449",
+          "email": "infobigbazar01@gmail.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba",
+            "addressLocality": "Mirsharai",
+            "addressRegion": "Chattogram",
+            "postalCode": "4327",
+            "addressCountry": "BD"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 22.8984,
+            "longitude": 91.5303
+          },
+          "sameAs": [
+            "https://www.facebook.com/100063541603515",
+            "https://www.instagram.com/big_bazar_25",
+            "https://www.tiktok.com/@big.bazar2"
+          ]
+        }
       ]
     }
   </script>
