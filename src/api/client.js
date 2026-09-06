@@ -17,22 +17,100 @@ const API_BASE = API_URL;
 
 // ============================================
 // Token Management
+// Admin and Google customer sessions must NOT share one key —
+// Google login was overwriting the admin JWT (403 Admin access required).
 // ============================================
-let _token = (typeof localStorage !== 'undefined' ? localStorage.getItem('bb_auth_token') : null) || null;
-let _authListeners = [];
-let _cachedTokenType = null; // Cache decoded token type to avoid repeated atob()
+const ADMIN_TOKEN_KEY = 'bb_admin_token';
+const CUSTOMER_TOKEN_KEY = 'bb_auth_token';
 
-export function setToken(token) {
-    _token = token;
-    _cachedTokenType = null; // Reset cached type when token changes
-    if (typeof localStorage !== 'undefined') {
-        if (token) localStorage.setItem('bb_auth_token', token);
-        else localStorage.removeItem('bb_auth_token');
+function readStore(key) {
+    try {
+        return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    } catch {
+        return null;
     }
 }
 
+function writeStore(key, value) {
+    try {
+        if (typeof localStorage === 'undefined') return;
+        if (value) localStorage.setItem(key, value);
+        else localStorage.removeItem(key);
+    } catch (_) {}
+}
+
+function peekTokenType(token) {
+    if (!token) return null;
+    try {
+        return JSON.parse(atob(token.split('.')[1])).type || null;
+    } catch {
+        return null;
+    }
+}
+
+function isAdminPath() {
+    return typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+}
+
+// One-time migrate: admin JWT left in the old shared key after Google login rollout
+(() => {
+    const legacy = readStore(CUSTOMER_TOKEN_KEY);
+    if (legacy && peekTokenType(legacy) === 'admin') {
+        writeStore(ADMIN_TOKEN_KEY, legacy);
+        writeStore(CUSTOMER_TOKEN_KEY, null);
+    }
+})();
+
+let _adminToken = readStore(ADMIN_TOKEN_KEY);
+let _customerToken = readStore(CUSTOMER_TOKEN_KEY);
+let _authListeners = [];
+let _cachedTokenType = null;
+
+/** Store a JWT in the correct bucket by its `type` claim. */
+export function setToken(token) {
+    _cachedTokenType = null;
+    if (!token) {
+        if (isAdminPath()) {
+            _adminToken = null;
+            writeStore(ADMIN_TOKEN_KEY, null);
+        } else {
+            _customerToken = null;
+            writeStore(CUSTOMER_TOKEN_KEY, null);
+        }
+        return;
+    }
+    if (peekTokenType(token) === 'admin') {
+        _adminToken = token;
+        writeStore(ADMIN_TOKEN_KEY, token);
+    } else {
+        _customerToken = token;
+        writeStore(CUSTOMER_TOKEN_KEY, token);
+    }
+}
+
+export function clearAdminToken() {
+    _adminToken = null;
+    _cachedTokenType = null;
+    writeStore(ADMIN_TOKEN_KEY, null);
+}
+
+export function clearCustomerToken() {
+    _customerToken = null;
+    _cachedTokenType = null;
+    writeStore(CUSTOMER_TOKEN_KEY, null);
+}
+
+/** Path-aware: /admin uses admin JWT; storefront uses customer JWT. */
 export function getToken() {
-    return _token;
+    return isAdminPath() ? _adminToken : _customerToken;
+}
+
+export function getCustomerToken() {
+    return _customerToken;
+}
+
+export function getAdminToken() {
+    return _adminToken;
 }
 
 /**
@@ -40,25 +118,24 @@ export function getToken() {
  */
 function getTokenType() {
     if (_cachedTokenType !== undefined && _cachedTokenType !== null) return _cachedTokenType;
-    if (!_token) { _cachedTokenType = null; return null; }
-    try {
-        const payload = JSON.parse(atob(_token.split('.')[1]));
-        _cachedTokenType = payload.type || null;
-    } catch {
+    const token = getToken();
+    if (!token) {
         _cachedTokenType = null;
+        return null;
     }
+    _cachedTokenType = peekTokenType(token);
     return _cachedTokenType;
 }
 
 /**
  * Returns true ONLY when the user is actually an admin.
  * Previously, this returned true for ANY token (including customer tokens),
- * which caused all logged-in customers to bypass every cache layer — 
+ * which caused all logged-in customers to bypass every cache layer —
  * the root cause of TiDB RU exhaustion.
  */
 export function isAdminRequest() {
     // Only treat as admin if on /admin path AND token is actually admin type
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+    if (isAdminPath()) {
         return getTokenType() === 'admin';
     }
     return false;
@@ -66,7 +143,8 @@ export function isAdminRequest() {
 
 function headers() {
     const h = { 'Content-Type': 'application/json' };
-    if (_token) h['Authorization'] = `Bearer ${_token}`;
+    const token = getToken();
+    if (token) h['Authorization'] = `Bearer ${token}`;
     // Only add cache-busting headers for actual admin requests
     if (isAdminRequest()) {
         h['Cache-Control'] = 'no-cache, no-store, must-revalidate';
@@ -159,11 +237,17 @@ export const auth = {
     },
 
     async getSession() {
-        if (!_token) return { data: { session: null }, error: null };
+        const token = getToken();
+        if (!token) return { data: { session: null }, error: null };
+        // Admin panel must not treat a Google customer JWT as a dashboard session
+        if (isAdminPath() && peekTokenType(token) !== 'admin') {
+            return { data: { session: null }, error: null };
+        }
         try {
             const res = await fetch(`${API_BASE}/api/auth/session`, { headers: headers() });
             if (!res.ok) {
-                setToken(null);
+                if (isAdminPath()) clearAdminToken();
+                else clearCustomerToken();
                 return { data: { session: null }, error: null };
             }
             const json = await res.json();
@@ -174,7 +258,8 @@ export const auth = {
     },
 
     async signOut() {
-        setToken(null);
+        if (isAdminPath()) clearAdminToken();
+        else clearCustomerToken();
         _authListeners.forEach(fn => fn('SIGNED_OUT', null));
         return { error: null };
     },
@@ -182,7 +267,7 @@ export const auth = {
     onAuthStateChange(callback) {
         _authListeners.push(callback);
         // Check initial state
-        if (_token) {
+        if (getToken()) {
             auth.getSession().then(({ data }) => {
                 if (data.session) callback('SIGNED_IN', data.session);
                 else callback('SIGNED_OUT', null);

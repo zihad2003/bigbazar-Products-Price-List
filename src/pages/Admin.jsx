@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { bigBazarApi } from '../api/client';
-import { setToken, API_URL } from '../api/client';
+import { setToken, API_URL, getToken } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
@@ -516,7 +516,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   };
 
   const fetchPendingCodes = async () => {
-    const token = localStorage.getItem('bb_auth_token');
+    const token = getToken();
     try {
       const res = await fetch(`${API_URL}/api/auth/pending-codes`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -657,7 +657,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           });
         } else if (notifySignedInUsers && (productData.status || 'published') === 'published') {
           try {
-            const token = localStorage.getItem('bb_auth_token');
+            const token = getToken();
             const res = await fetch(`${API_URL}/api/admin/notify-product`, {
               method: 'POST',
               headers: {

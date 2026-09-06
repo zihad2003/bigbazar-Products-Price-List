@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { API_URL, setToken, getToken } from '../api/client';
+import { API_URL, setToken, getCustomerToken, clearCustomerToken } from '../api/client';
 
 const AuthContext = createContext();
 
@@ -9,7 +9,7 @@ export function AuthProvider({ children }) {
 
   // Check login state on mount
   useEffect(() => {
-    const token = getToken();
+    const token = getCustomerToken();
     if (!token) {
       setLoading(false);
       return;
@@ -27,12 +27,10 @@ export function AuthProvider({ children }) {
         if (data.user) {
           setUser(data.user);
         } else {
-          // Token is for admin or invalid — don't clear it (admin might need it)
           setUser(null);
         }
       })
       .catch(() => {
-        // Token might be admin token — don't clear it
         setUser(null);
       })
       .finally(() => setLoading(false));
@@ -49,6 +47,7 @@ export function AuthProvider({ children }) {
       if (!res.ok) {
         return { error: data.error || 'Login failed' };
       }
+      // Stores under customer key only — does not overwrite admin JWT
       setToken(data.token);
       setUser(data.user);
       return { user: data.user, error: null };
@@ -58,24 +57,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    // Only clear customer-specific state — don't clear admin tokens
     setUser(null);
-    // Check if the current token is a customer token before clearing
-    const token = getToken();
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.type === 'customer') {
-          setToken(null);
-        }
-      } catch {
-        // Can't decode — leave it
-      }
-    }
+    clearCustomerToken();
   }, []);
 
   const updatePhone = useCallback(async (phone) => {
-    const token = getToken();
+    const token = getCustomerToken();
     if (!token) return { error: 'Not logged in' };
     try {
       const res = await fetch(`${API_URL}/api/account/me`, {
