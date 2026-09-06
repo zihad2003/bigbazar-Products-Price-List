@@ -18,6 +18,7 @@ import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
+import AdminUsers from '../components/admin/AdminUsers';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
 
@@ -102,6 +103,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   };
 
   const [formStep, setFormStep] = useState(1);
+  const [notifySignedInUsers, setNotifySignedInUsers] = useState(true);
   const [form, setForm] = useState({
     name: '', price: '', original_price: '', description: '',
     images: [], video_url: '', is_sale: false, is_hot: false,
@@ -644,7 +646,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       });
 
       // Background DB sync
-      bigBazarApi.from('products').insert([{ ...productData, id: newId }]).then(({ error }) => {
+      bigBazarApi.from('products').insert([{ ...productData, id: newId }]).then(async ({ error }) => {
         if (error) {
           console.error("Background insert error:", error);
           setAlertModal({
@@ -653,6 +655,36 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             message: error.message || "Failed to save product to database.",
             type: "error"
           });
+        } else if (notifySignedInUsers && (productData.status || 'published') === 'published') {
+          try {
+            const token = localStorage.getItem('bb_auth_token');
+            const res = await fetch(`${API_URL}/api/admin/notify-product`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ product_id: newId, product_name: productData.name }),
+            });
+            const text = await res.text();
+            let data = {};
+            try { data = text ? JSON.parse(text) : {}; } catch (_) { data = {}; }
+            if (res.ok) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Added & Notified',
+                message: `Product saved. In-app alert sent to ${data.audience ?? 0} signed-in user(s).`,
+                type: 'success',
+              });
+            } else if (res.status === 404) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Product Saved',
+                message: 'Product saved, but notify API is not on production yet. Redeploy to enable alerts.',
+                type: 'success',
+              });
+            }
+          } catch (_) { /* product saved; notify is best-effort */ }
         }
         fetchProducts();
       });
@@ -1145,6 +1177,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics' },
               { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations' },
+              { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users' },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
               { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
@@ -1207,6 +1240,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           <AdminReports orders={orders} products={products} reviews={reviews} />
         ) : activeTab === 'conversations' ? (
           <AdminConversations />
+        ) : activeTab === 'users' ? (
+          <AdminUsers />
         ) : activeTab === 'subcategories' ? (
           /* ═══ SUBCATEGORY MANAGER ═══ */
           <div className="max-w-4xl space-y-8 pb-20">
@@ -2974,6 +3009,23 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     </div>
                   </label>
                 </div>
+
+                {!editingProduct && (
+                  <label className="flex items-center gap-4 md:gap-6 p-6 md:p-8 bg-emerald-500/5 rounded-2xl md:rounded-[32px] border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/10 transition-all group shadow-2xl">
+                    <input
+                      type="checkbox"
+                      checked={notifySignedInUsers}
+                      onChange={(e) => setNotifySignedInUsers(e.target.checked)}
+                      className="w-8 h-8 rounded-xl accent-emerald-500 shrink-0"
+                    />
+                    <div>
+                      <span className="text-base font-black text-emerald-400 uppercase tracking-wider italic">Notify Signed-in Users</span>
+                      <p className="text-xs font-semibold text-emerald-900/50 mt-1">
+                        Send an in-app alert on their Account page when this product is published
+                      </p>
+                    </div>
+                  </label>
+                )}
               </div>
 
               {/* Submit & Discard */}

@@ -55,6 +55,30 @@ async function createMissingTables() {
         `);
         console.log('Created users table.');
 
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id VARCHAR(36) PRIMARY KEY,
+                type VARCHAR(50) NOT NULL DEFAULT 'new_product',
+                title VARCHAR(255) NOT NULL,
+                body TEXT,
+                product_id VARCHAR(36) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_notifications_created (created_at DESC)
+            )
+        `);
+        console.log('Created notifications table.');
+
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS notification_reads (
+                notification_id VARCHAR(36) NOT NULL,
+                user_id VARCHAR(36) NOT NULL,
+                read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (notification_id, user_id),
+                INDEX idx_reads_user (user_id)
+            )
+        `);
+        console.log('Created notification_reads table.');
+
         // Create Conversations Table (AI Shopping Assistant)
         await db.execute(`
             CREATE TABLE IF NOT EXISTS conversations (

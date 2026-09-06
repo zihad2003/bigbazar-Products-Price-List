@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL, getToken } from '../api/client';
-import { Package, LogOut, Phone, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, User } from 'lucide-react';
+import { Package, LogOut, Phone, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, User, Bell } from 'lucide-react';
 
 // Google Identity Services script loader
 function useGoogleScript() {
@@ -46,6 +46,8 @@ export default function AccountPage() {
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loginError, setLoginError] = useState('');
   const [phone, setPhone] = useState('');
   const [editingPhone, setEditingPhone] = useState(false);
@@ -94,12 +96,49 @@ export default function AccountPage() {
     finally { setLoadingOrders(false); }
   }, []);
 
+  const fetchNotifications = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/account/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await res.text();
+      if (!res.ok || !text) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+      let data = {};
+      try { data = JSON.parse(text); } catch { return; }
+      setNotifications(data.data || []);
+      setUnreadCount(data.unread || 0);
+    } catch (_) { /* ignore */ }
+  }, []);
+
+  const markNotificationsRead = async (notificationId) => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      await fetch(`${API_URL}/api/account/notifications/read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(notificationId ? { notification_id: notificationId } : { all: true }),
+      });
+      await fetchNotifications();
+    } catch (_) { /* ignore */ }
+  };
+
   useEffect(() => {
     if (isLoggedIn) {
       fetchOrders();
+      fetchNotifications();
       if (user?.phone) setPhone(user.phone);
     }
-  }, [isLoggedIn, fetchOrders, user]);
+  }, [isLoggedIn, fetchOrders, fetchNotifications, user]);
 
   const handleSavePhone = async () => {
     const result = await updatePhone(phone);
@@ -230,6 +269,65 @@ export default function AccountPage() {
           <LogOut size={16} />
           {language === 'bn' ? 'লগ আউট' : 'Sign out'}
         </button>
+      </div>
+
+      {/* Notifications */}
+      <div>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-bold text-content-primary flex items-center gap-2">
+            <Bell size={20} />
+            {language === 'bn' ? 'বিজ্ঞপ্তি' : 'Notifications'}
+            {unreadCount > 0 && (
+              <span className="text-[10px] font-black bg-[#ce112d] text-white px-2 py-0.5 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </h3>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={() => markNotificationsRead(null)}
+              className="text-[11px] font-bold text-[#ce112d] hover:underline"
+            >
+              {language === 'bn' ? 'সব পঠিত' : 'Mark all read'}
+            </button>
+          )}
+        </div>
+
+        {notifications.length === 0 ? (
+          <div className="text-center py-8 text-sm text-content-muted border border-dashed border-[var(--border-color)] rounded-xl">
+            {language === 'bn' ? 'কোনো বিজ্ঞপ্তি নেই' : 'No notifications yet'}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {notifications.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                  if (!n.is_read) markNotificationsRead(n.id);
+                  if (n.product_id) navigate(`/product/${n.product_id}`);
+                }}
+                className={`w-full text-left p-4 rounded-xl border transition-all ${
+                  n.is_read
+                    ? 'bg-surface-card border-[var(--border-color)]'
+                    : 'bg-[#ce112d]/5 border-[#ce112d]/20'
+                }`}
+              >
+                <p className="text-sm font-bold text-content-primary">{n.title}</p>
+                <p className="text-xs text-content-secondary mt-1">{n.body}</p>
+                <p className="text-[10px] text-content-muted mt-2">
+                  {formatDate(n.created_at)}
+                  {!n.is_read && (
+                    <span className="ml-2 text-[#ce112d] font-bold">
+                      {language === 'bn' ? 'নতুন' : 'New'}
+                    </span>
+                  )}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Orders Section */}

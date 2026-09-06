@@ -1969,6 +1969,123 @@ app.get('/account/orders', requireCustomerAuth, async (c) => {
   }
 });
 
+/** Ensure in-app notification tables exist (safe to call repeatedly). */
+async function ensureNotificationTables(conn) {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id VARCHAR(36) PRIMARY KEY,
+      type VARCHAR(50) NOT NULL DEFAULT 'new_product',
+      title VARCHAR(255) NOT NULL,
+      body TEXT,
+      product_id VARCHAR(36) DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_notifications_created (created_at DESC)
+    )
+  `);
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS notification_reads (
+      notification_id VARCHAR(36) NOT NULL,
+      user_id VARCHAR(36) NOT NULL,
+      read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (notification_id, user_id),
+      INDEX idx_reads_user (user_id)
+    )
+  `);
+}
+
+// GET /admin/users — Google sign-in customers
+app.get('/admin/users', requireAuth, requireAdmin, async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const countRows = await conn.execute('SELECT COUNT(*) AS total FROM users');
+    const users = await conn.execute(
+      'SELECT id, name, email, phone, avatar_url, created_at FROM users ORDER BY created_at DESC LIMIT 500'
+    );
+    return c.json({ count: countRows[0]?.total || 0, data: users || [] });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to load users', count: 0, data: [] }, 500);
+  }
+});
+
+// POST /admin/notify-product — broadcast new-product notification to all signed-in users (in-app)
+app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const productId = body.product_id || null;
+  const productName = String(body.product_name || 'New product').trim().slice(0, 200);
+  const conn = getDb(c.env);
+  try {
+    await ensureNotificationTables(conn);
+    const id = crypto.randomUUID();
+    const title = 'নতুন প্রোডাক্ট এসেছে!';
+    const notifBody = `${productName} — এখনই দেখুন।`;
+    await conn.execute(
+      'INSERT INTO notifications (id, type, title, body, product_id) VALUES (?, ?, ?, ?, ?)',
+      [id, 'new_product', title, notifBody, productId]
+    );
+    const countRows = await conn.execute('SELECT COUNT(*) AS total FROM users');
+    return c.json({
+      success: true,
+      notification_id: id,
+      audience: countRows[0]?.total || 0
+    });
+  } catch (err) {
+    console.error('notify-product error:', err.message);
+    return c.json({ error: err.message || 'Failed to create notification' }, 500);
+  }
+});
+
+// GET /account/notifications — in-app alerts for the logged-in customer
+app.get('/account/notifications', requireCustomerAuth, async (c) => {
+  const customer = c.get('customer');
+  const conn = getDb(c.env);
+  try {
+    await ensureNotificationTables(conn);
+    const rows = await conn.execute(
+      `SELECT n.id, n.type, n.title, n.body, n.product_id, n.created_at,
+              (r.user_id IS NOT NULL) AS is_read
+       FROM notifications n
+       LEFT JOIN notification_reads r
+         ON r.notification_id = n.id AND r.user_id = ?
+       ORDER BY n.created_at DESC
+       LIMIT 50`,
+      [customer.id]
+    );
+    const unread = (rows || []).filter((n) => !n.is_read).length;
+    return c.json({ data: rows || [], unread });
+  } catch (err) {
+    return c.json({ data: [], unread: 0, error: err.message }, 500);
+  }
+});
+
+// POST /account/notifications/read — mark one or all as read
+app.post('/account/notifications/read', requireCustomerAuth, async (c) => {
+  const customer = c.get('customer');
+  const body = await c.req.json().catch(() => ({}));
+  const conn = getDb(c.env);
+  try {
+    await ensureNotificationTables(conn);
+    if (body.all) {
+      const all = await conn.execute('SELECT id FROM notifications ORDER BY created_at DESC LIMIT 100');
+      for (const n of all || []) {
+        await conn.execute(
+          'INSERT IGNORE INTO notification_reads (notification_id, user_id) VALUES (?, ?)',
+          [n.id, customer.id]
+        );
+      }
+    } else if (body.notification_id) {
+      await conn.execute(
+        'INSERT IGNORE INTO notification_reads (notification_id, user_id) VALUES (?, ?)',
+        [body.notification_id, customer.id]
+      );
+    } else {
+      return c.json({ error: 'notification_id or all required' }, 400);
+    }
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // ============================================
 // AI SHOPPING ASSISTANT (v2 — Upgraded)
 // Features: FAQ RAG, KV cache, SSE streaming,
