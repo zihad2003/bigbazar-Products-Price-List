@@ -202,8 +202,25 @@ app.use('*', async (c, next) => {
       isLocalhost = host === 'localhost' || host === '127.0.0.1';
     }
   } catch (_) {}
+
+  const extraOrigins = String(c.env?.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const publicOrigin = String(c.env?.PUBLIC_SITE_ORIGIN || '').trim().replace(/\/$/, '');
+  if (publicOrigin) extraOrigins.push(publicOrigin);
+
+  const isCustomOrigin = origin && extraOrigins.some((allowed) => {
+    try {
+      return origin === allowed || origin === new URL(allowed).origin;
+    } catch {
+      return origin === allowed;
+    }
+  });
+
   const isAllowed = !origin ||
                    isLocalhost ||
+                   isCustomOrigin ||
                    origin === 'https://bigbazarbariarhat.pages.dev' ||
                    origin.endsWith('.bigbazarbariarhat.pages.dev') ||
                    origin === 'https://bigbazarbaraiyarhat.pages.dev' ||

@@ -5,7 +5,7 @@
  */
 
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
   const cacheKey = new Request(url.toString(), request);
   const cache = caches.default;
@@ -16,7 +16,11 @@ export async function onRequest(context) {
     return response;
   }
 
-  const domain = url.origin;
+  let domain = url.origin;
+  try {
+    const preferred = String(env?.PUBLIC_SITE_ORIGIN || '').trim().replace(/\/$/, '');
+    if (preferred) domain = new URL(preferred).origin;
+  } catch (_) {}
   const staticRoutes = [
     '',
     '/about-us',

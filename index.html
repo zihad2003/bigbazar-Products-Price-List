@@ -37,8 +37,8 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Big Bazar Baraiyarhat" />
 
-  <!-- Baseline Fallback JSON-LD Schema -->
-  <script type="application/ld+json">
+  <!-- Baseline Fallback JSON-LD Schema (origin rewritten to current host) -->
+  <script type="application/ld+json" id="bigbazar-jsonld-static">
     {
       "@context": "https://schema.org",
       "@graph": [
@@ -46,7 +46,7 @@
           "@type": "WebSite",
           "@id": "https://bigbazarbariarhat.pages.dev/#website",
           "name": "Big Bazar",
-          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট"],
+          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "bigbazarbariarhat.pages.dev"],
           "url": "https://bigbazarbariarhat.pages.dev/",
           "publisher": { "@id": "https://bigbazarbariarhat.pages.dev/#organization" },
           "inLanguage": ["bn", "en"]
@@ -82,6 +82,15 @@
         }
       ]
     }
+  </script>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('bigbazar-jsonld-static');
+        if (!el || !window.location || !window.location.origin) return;
+        el.textContent = el.textContent.split('https://bigbazarbariarhat.pages.dev').join(window.location.origin);
+      } catch (e) { }
+    })();
   </script>
 
 </head>

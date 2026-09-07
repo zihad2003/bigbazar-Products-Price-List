@@ -2,12 +2,36 @@
  * Cloudflare Pages Function — Edge Pre-Renderer for SEO, AEO, and GEO.
  * Intercepts HTML route requests and injects route-specific title, meta tags,
  * OpenGraph, Twitter Cards, and Schema.org JSON-LD microdata using HTMLRewriter.
+ *
+ * When PUBLIC_SITE_ORIGIN is set (custom domain), pages.dev HTML requests
+ * permanently redirect so Google consolidates branding on the brand host.
  */
 
+function normalizeOrigin(raw) {
+  const s = String(raw || '').trim().replace(/\/$/, '');
+  if (!s) return '';
+  try {
+    return new URL(s).origin;
+  } catch {
+    return '';
+  }
+}
+
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
+  const publicOrigin = normalizeOrigin(env?.PUBLIC_SITE_ORIGIN);
+
+  // Prefer custom domain for SEO/branding — redirect legacy pages.dev host
+  if (
+    publicOrigin &&
+    url.hostname.endsWith('.pages.dev') &&
+    url.origin !== publicOrigin
+  ) {
+    const dest = new URL(path + url.search + url.hash, publicOrigin);
+    return Response.redirect(dest.toString(), 301);
+  }
 
   // Let API requests and static files pass through unchanged
   if (
@@ -26,7 +50,8 @@ export async function onRequest(context) {
     return response;
   }
 
-  const domain = url.origin;
+  // Canonical site origin: custom domain when configured, else request host
+  const domain = publicOrigin || url.origin;
 
   // Canonical entity metadata
   const canonicalUrl = `${domain}${path}`;
@@ -142,7 +167,12 @@ export async function onRequest(context) {
         "@type": "WebSite",
         "@id": `${domain}/#website`,
         "name": "Big Bazar",
-        "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট"],
+        "alternateName": [
+          "Big Bazar Baraiyarhat",
+          "বিগ বাজার বারইয়ারহাট",
+          // Google site-name fallback: lowercase host (avoids generic "Cloudflare" on pages.dev)
+          new URL(domain).hostname.toLowerCase()
+        ],
         "url": `${domain}/`,
         "publisher": { "@id": `${domain}/#organization` },
         "inLanguage": ["bn", "en"]
