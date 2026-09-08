@@ -265,10 +265,14 @@ export async function onRequest(context) {
 
   // Cloudflare HTMLRewriter API transformation
   const seoBootHtml = `
-    <div id="seo-boot">
+    <div id="seo-boot" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">
       <h1>Big Bazar | Baraiyarhat</h1>
       <p>${pageDesc.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
       <p>Store: 2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Phone: 01857045449.</p>
+    </div>
+    <div class="app-preloader" aria-hidden="true">
+      <div style="width: 36px; height: 36px; border: 4px solid rgba(206, 17, 45, 0.2); border-top-color: #ce112d; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      <span style="font-size: 11px; font-weight: 700; color: #a1a1aa; letter-spacing: 0.1em; text-transform: uppercase;">Loading...</span>
     </div>
   `;
 
