@@ -465,7 +465,8 @@ app.get('/img/:id', async (c) => {
   }
 
   // 3. Legacy static product JPG (only works for migrated assets)
-  return c.redirect(`/img/products/${id}.jpg`, 301);
+  // For Hostinger: we downloaded all images and put them in /api/img/ with .jpg
+  return c.redirect(`/api/img/${id}.jpg`, 301);
 });
 
 // ============================================
@@ -1945,12 +1946,43 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       }
     }
 
+    // ── Hostinger Local Storage (since KV is not available) ──
+    const arrayBuffer = await file.arrayBuffer();
+    const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+    
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Ensure directory exists
+      const publicImgDir = path.resolve(process.cwd(), 'public', 'api', 'img');
+      const distImgDir = path.resolve(process.cwd(), 'dist', 'api', 'img');
+      
+      if (!fs.existsSync(publicImgDir)) fs.mkdirSync(publicImgDir, { recursive: true });
+      if (!fs.existsSync(distImgDir)) fs.mkdirSync(distImgDir, { recursive: true });
+
+      const fileName = `${uploadId}.jpg`;
+      const buffer = Buffer.from(arrayBuffer);
+      
+      // Save to both public and dist so it's available immediately and persists builds
+      fs.writeFileSync(path.join(publicImgDir, fileName), buffer);
+      fs.writeFileSync(path.join(distImgDir, fileName), buffer);
+
+      return c.json({
+        success: true,
+        data: {
+          path: uploadId,
+          publicUrl: `/api/img/${fileName}`
+        }
+      });
+    } catch (localErr) {
+      console.error('Local image store error:', localErr);
+    }
+
     // ── Resilient KV Binary Storage Fallback ────────────────────────────────
     // Stores the binary image in Cloudflare KV edge cache.
     // Zero multi-megabyte base64 strings in the database!
-    const arrayBuffer = await file.arrayBuffer();
     const kv = c.env?.BIGBAZAR_CACHE;
-    const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
     const mimeType = file.type || 'image/jpeg';
 
     if (kv) {
