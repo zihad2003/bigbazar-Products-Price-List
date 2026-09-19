@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { bigBazarApi } from '../api/client';
-import { setToken, API_URL, getToken } from '../api/client';
+import { setToken, API_URL, getToken, clearCustomerToken, clearAdminToken } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
   Settings, ShoppingBag, Edit, X, Play, Check,
@@ -155,23 +155,34 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
   useEffect(() => {
     let cancelled = false;
+    let bootGen = 0;
+
     const boot = async () => {
+      const gen = ++bootGen;
       try {
-        const { data } = await Promise.race([
-          bigBazarApi.auth.getSession(),
-          new Promise((resolve) =>
-            setTimeout(() => resolve({ data: { session: null } }), 8000)
-          ),
-        ]);
-        if (!cancelled) setSession(data?.session || null);
+        const { data } = await bigBazarApi.auth.getSession();
+        if (cancelled || gen !== bootGen) return;
+        // Only adopt a positive session from boot — never wipe a login that
+        // happened while getSession was still in flight.
+        if (data?.session?.access_token || data?.session?.user) {
+          setSession(data.session);
+        }
       } catch (_) {
-        if (!cancelled) setSession(null);
+        /* keep current session */
       }
     };
+
     boot();
-    const sub = bigBazarApi.auth.onAuthStateChange((_event, nextSession) => {
-      if (!cancelled) setSession(nextSession);
+    const sub = bigBazarApi.auth.onAuthStateChange((event, nextSession) => {
+      if (cancelled) return;
+      if (event === 'SIGNED_IN' && nextSession) {
+        bootGen += 1; // invalidate in-flight boot
+        setSession(nextSession);
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+      }
     });
+
     return () => {
       cancelled = true;
       try {
@@ -1168,8 +1179,35 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 message: error.message || 'Invalid email or password. Please verify your admin credentials.',
                 type: 'error'
               });
+            } else if (data?.step === 2) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Extra Step Required',
+                message: 'This account still expects a 2FA code, but that flow is disabled. Ask the owner to reset admin login.',
+                type: 'error'
+              });
             } else if (data?.session) {
-              setSession(data.session);
+              const userType = data.session?.user?.type || data.user?.type;
+              if (userType && userType !== 'admin') {
+                setAlertModal({
+                  isOpen: true,
+                  title: 'Not an Admin Account',
+                  message: 'This email is a customer login. Use an admin_users email/password for /admin.',
+                  type: 'error'
+                });
+                clearAdminToken();
+                clearCustomerToken();
+                setSession(null);
+              } else {
+                setSession(data.session);
+              }
+            } else {
+              setAlertModal({
+                isOpen: true,
+                title: 'Login Incomplete',
+                message: 'Server did not return a session. Please try again.',
+                type: 'error'
+              });
             }
           } catch (err) {
             setAlertModal({

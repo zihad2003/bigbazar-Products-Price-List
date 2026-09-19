@@ -254,11 +254,20 @@ export const auth = {
         try {
             const res = await fetch(`${API_BASE}/api/auth/session`, { headers: headers() });
             if (!res.ok) {
-                if (isAdminPath()) clearAdminToken();
-                else clearCustomerToken();
+                // Only clear if THIS token is still current — a newer login must not be wiped
+                // by a stale in-flight getSession from page boot.
+                const stillSameToken = getToken() === token;
+                if (stillSameToken) {
+                    if (isAdminPath()) clearAdminToken();
+                    else clearCustomerToken();
+                }
                 return { data: { session: null }, error: null };
             }
             const json = await res.json();
+            // Ignore stale response if user logged in again while this request was in flight
+            if (getToken() !== token) {
+                return { data: { session: null }, error: null };
+            }
             return { data: { session: json.session }, error: null };
         } catch (err) {
             return { data: { session: null }, error: null };
@@ -275,8 +284,11 @@ export const auth = {
     onAuthStateChange(callback) {
         _authListeners.push(callback);
         // Check initial state
-        if (getToken()) {
+        const tokenAtSubscribe = getToken();
+        if (tokenAtSubscribe) {
             auth.getSession().then(({ data }) => {
+                // Skip if token changed (e.g. fresh login) while session check was in flight
+                if (getToken() !== tokenAtSubscribe) return;
                 if (data.session) callback('SIGNED_IN', data.session);
                 else callback('SIGNED_OUT', null);
             });
