@@ -22,6 +22,10 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// Serve uploaded static images first (before API routing intercepts them)
+app.use('/api/img/*', serveStatic({ root: './dist' }));
+app.use('/api/settings-img/*', serveStatic({ root: './dist' }));
+
 // Mount API routes under /api (standard for frontend fetch calls) and / (fallback)
 app.route('/api', apiApp);
 app.route('/', apiApp);
