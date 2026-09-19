@@ -7,7 +7,7 @@ import {
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
   Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
-  Smartphone, Monitor, Tablet
+  Smartphone, Monitor, Tablet, Shield
 } from 'lucide-react';
 import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -18,6 +18,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
 import AdminUsers from '../components/admin/AdminUsers';
+import SuperadminPanel from '../components/admin/SuperadminPanel';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
 
@@ -1274,6 +1275,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
               { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories' },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
+              ...(session?.user?.role === 'superadmin' ? [{ id: 'superadmin', icon: <Shield size={18} />, label: 'Superadmin' }] : []),
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1361,6 +1363,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           <AdminConversations />
         ) : activeTab === 'users' ? (
           <AdminUsers />
+        ) : activeTab === 'superadmin' && session?.user?.role === 'superadmin' ? (
+          <SuperadminPanel />
         ) : activeTab === 'subcategories' ? (
           /* ═══ SUBCATEGORY MANAGER ═══ */
           <div className="max-w-4xl space-y-8 pb-20">

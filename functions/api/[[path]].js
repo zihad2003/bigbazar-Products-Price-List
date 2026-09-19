@@ -284,6 +284,14 @@ const requireAdmin = async (c, next) => {
   await next();
 };
 
+const requireSuperAdmin = async (c, next) => {
+  const user = c.get('user');
+  if (!user || user.type !== 'admin' || user.role !== 'superadmin') {
+    return c.json({ error: 'Unauthorized: Superadmin access required' }, 403);
+  }
+  await next();
+};
+
 /**
  * Check if request originates from Admin panel or explicitly requests fresh data
  */
@@ -581,7 +589,7 @@ app.post('/auth/login', async (c) => {
       if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
 
       const token = await jwtSign(
-        { id: user.id, email: user.email, type: 'admin' },
+        { id: user.id, email: user.email, type: 'admin', role: user.role || 'admin' },
         jwtSecret,
         { expiresIn: '30d' }
       );
@@ -589,9 +597,21 @@ app.post('/auth/login', async (c) => {
       return c.json({
         session: {
           access_token: token,
-          user: { id: user.id, name: 'Admin', email: user.email, type: 'admin' }
+          user: {
+            id: user.id,
+            name: 'Admin',
+            email: user.email,
+            type: 'admin',
+            role: user.role || 'admin'
+          }
         },
-        user: { id: user.id, name: 'Admin', email: user.email, type: 'admin' }
+        user: {
+          id: user.id,
+          name: 'Admin',
+          email: user.email,
+          type: 'admin',
+          role: user.role || 'admin'
+        }
       });
     }
 
@@ -2314,6 +2334,54 @@ async function ensureNotificationTables(conn) {
     )
   `);
 }
+
+// Superadmin routes for managing admin accounts
+app.get('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const users = await conn.execute(
+      'SELECT id, email, role, created_at FROM admin_users ORDER BY created_at DESC'
+    );
+    return c.json({ data: users || [] });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to load admins', data: [] }, 500);
+  }
+});
+
+app.post('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const { email, password } = await c.req.json();
+    if (!email || !password) return c.json({ error: 'Email and Password required' }, 400);
+
+    const hash = await bcrypt.hash(password, 10);
+    await conn.execute(
+      'INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)',
+      [email, hash, 'admin']
+    );
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to add admin' }, 500);
+  }
+});
+
+app.delete('/admin/managers/:id', requireAuth, requireSuperAdmin, async (c) => {
+  const conn = getDb(c.env);
+  try {
+    const id = c.req.param('id');
+    const user = c.get('user');
+    
+    // Prevent self deletion
+    if (user.id == id) {
+       return c.json({ error: 'Cannot delete yourself' }, 400);
+    }
+    
+    await conn.execute('DELETE FROM admin_users WHERE id = ?', [id]);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to delete admin' }, 500);
+  }
+});
 
 // GET /admin/users — Google sign-in customers
 app.get('/admin/users', requireAuth, requireAdmin, async (c) => {
