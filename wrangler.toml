@@ -3,6 +3,10 @@ pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
 compatibility_flags = [ "nodejs_compat" ]
 
+# Production Pages env (set in Cloudflare Dashboard — not committed secrets):
+#   PUBLIC_SITE_ORIGIN = https://onlinebigbazar.com
+#   ALLOWED_ORIGINS    = https://onlinebigbazar.com,https://www.onlinebigbazar.com
+# Custom domains: onlinebigbazar.com + www.onlinebigbazar.com → this project
 
 [[kv_namespaces]]
 binding = "BIGBAZAR_CACHE"

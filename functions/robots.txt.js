@@ -1,20 +1,37 @@
 /**
  * Cloudflare Pages Function — AI & Search Engine Crawling Rules (robots.txt).
- * Explicitly allows search bots and AI answer engine crawlers.
+ * Origin-aware Sitemap; allows search + AI bots; blocks thin/private paths.
  */
 
-export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  const domain = url.origin;
+function siteOrigin(env, requestUrl) {
+  try {
+    const preferred = String(env?.PUBLIC_SITE_ORIGIN || '').trim().replace(/\/$/, '');
+    if (preferred) return new URL(preferred).origin;
+  } catch (_) {}
+  return new URL(requestUrl).origin;
+}
 
-  const robots = `# AI & Search Engine Crawling Rules for Big Bazar Baraiyarhat
+export async function onRequest(context) {
+  const { request, env } = context;
+  const domain = siteOrigin(env, request.url);
+
+  const robots = `# Big Bazar Baraiyarhat — https://onlinebigbazar.com
+# AI discovery: ${domain}/llms.txt
+
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api/auth/
+Disallow: /checkout
+Disallow: /account
 
 User-agent: Googlebot
 Allow: /
 
 User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
 Allow: /
 
 User-agent: GPTBot
@@ -23,20 +40,14 @@ Allow: /
 User-agent: ChatGPT-User
 Allow: /
 
-User-agent: PerplexityBot
-Allow: /
-
 User-agent: ClaudeBot
 Allow: /
 
 User-agent: anthropic-ai
 Allow: /
 
-User-agent: Bingbot
+User-agent: PerplexityBot
 Allow: /
-
-Disallow: /admin
-Disallow: /api/auth/
 
 Sitemap: ${domain}/sitemap.xml
 `;
@@ -44,7 +55,7 @@ Sitemap: ${domain}/sitemap.xml
   return new Response(robots, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400, s-maxage=86400'
-    }
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+    },
   });
 }

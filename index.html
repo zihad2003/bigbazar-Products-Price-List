@@ -37,28 +37,28 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Big Bazar Baraiyarhat" />
 
-  <!-- Baseline Fallback JSON-LD Schema (origin rewritten to current host) -->
+  <!-- Baseline Fallback JSON-LD Schema (rewritten to current host on load) -->
   <script type="application/ld+json" id="bigbazar-jsonld-static">
     {
       "@context": "https://schema.org",
       "@graph": [
         {
           "@type": "WebSite",
-          "@id": "https://bigbazarbariarhat.pages.dev/#website",
+          "@id": "https://onlinebigbazar.com/#website",
           "name": "Big Bazar",
-          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "bigbazarbariarhat.pages.dev"],
-          "url": "https://bigbazarbariarhat.pages.dev/",
-          "publisher": { "@id": "https://bigbazarbariarhat.pages.dev/#organization" },
+          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "onlinebigbazar.com"],
+          "url": "https://onlinebigbazar.com/",
+          "publisher": { "@id": "https://onlinebigbazar.com/#organization" },
           "inLanguage": ["bn", "en"]
         },
         {
           "@type": ["ClothingStore", "LocalBusiness", "Organization"],
-          "@id": "https://bigbazarbariarhat.pages.dev/#organization",
+          "@id": "https://onlinebigbazar.com/#organization",
           "name": "Big Bazar",
-          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "Biyer Sajani", "বিয়ের সাজনি"],
-          "url": "https://bigbazarbariarhat.pages.dev",
-          "logo": "https://bigbazarbariarhat.pages.dev/b.jpg",
-          "image": "https://bigbazarbariarhat.pages.dev/b.jpg",
+          "alternateName": ["Big Bazar Baraiyarhat", "বিগ বাজার বারইয়ারহাট", "Biyer Sajani", "বিয়ের সাজনি", "onlinebigbazar.com"],
+          "url": "https://onlinebigbazar.com",
+          "logo": "https://onlinebigbazar.com/b.jpg",
+          "image": "https://onlinebigbazar.com/b.jpg",
           "telephone": "+8801857045449",
           "email": "infobigbazar01@gmail.com",
           "address": {
@@ -74,6 +74,11 @@
             "latitude": 22.8984,
             "longitude": 91.5303
           },
+          "areaServed": [
+            { "@type": "AdministrativeArea", "name": "Mirsharai Upazila" },
+            { "@type": "AdministrativeArea", "name": "Chattogram Division" },
+            { "@type": "Country", "name": "Bangladesh" }
+          ],
           "sameAs": [
             "https://www.facebook.com/100063541603515",
             "https://www.instagram.com/big_bazar_25",
@@ -88,7 +93,10 @@
       try {
         var el = document.getElementById('bigbazar-jsonld-static');
         if (!el || !window.location || !window.location.origin) return;
-        el.textContent = el.textContent.split('https://bigbazarbariarhat.pages.dev').join(window.location.origin);
+        var origin = window.location.origin;
+        el.textContent = el.textContent
+          .split('https://onlinebigbazar.com').join(origin)
+          .split('https://bigbazarbariarhat.pages.dev').join(origin);
       } catch (e) { }
     })();
   </script>

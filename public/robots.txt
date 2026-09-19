@@ -1,3 +1,9 @@
-# https://www.robotstxt.org/robotstxt.html
+# Fallback only — live rules served by functions/robots.txt.js
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /api/auth/
+Disallow: /checkout
+Disallow: /account
+
+Sitemap: https://onlinebigbazar.com/sitemap.xml

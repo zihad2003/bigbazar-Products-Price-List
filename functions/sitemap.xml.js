@@ -1,8 +1,29 @@
 /**
  * Cloudflare Pages Function — Dynamic Cached XML Sitemap.
- * Generates an XML sitemap for static pages and dynamic product routes.
- * Implements 24-hour edge caching via Cloudflare caches.default.
+ * Origin-aware via PUBLIC_SITE_ORIGIN; paginates all published products.
  */
+
+const PAGE_SIZE = 100;
+
+async function fetchPublishedProducts(domain) {
+  const all = [];
+  let page = 0;
+
+  while (page < 50) {
+    const apiRes = await fetch(
+      `${domain}/api/products?status=published&limit=${PAGE_SIZE}&page=${page}`
+    );
+    if (!apiRes.ok) break;
+    const apiJson = await apiRes.json();
+    const batch = Array.isArray(apiJson?.data) ? apiJson.data : [];
+    if (!batch.length) break;
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    page += 1;
+  }
+
+  return all;
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -10,7 +31,6 @@ export async function onRequest(context) {
   const cacheKey = new Request(url.toString(), request);
   const cache = caches.default;
 
-  // Try retrieving cached sitemap response
   let response = await cache.match(cacheKey);
   if (response) {
     return response;
@@ -21,8 +41,10 @@ export async function onRequest(context) {
     const preferred = String(env?.PUBLIC_SITE_ORIGIN || '').trim().replace(/\/$/, '');
     if (preferred) domain = new URL(preferred).origin;
   } catch (_) {}
+
   const staticRoutes = [
     '',
+    '/products',
     '/about-us',
     '/store-locations',
     '/faq',
@@ -31,7 +53,7 @@ export async function onRequest(context) {
     '/size-guide',
     '/contact-us',
     '/privacy-policy',
-    '/terms'
+    '/terms',
   ];
 
   const currentDate = new Date().toISOString().split('T')[0];
@@ -39,10 +61,9 @@ export async function onRequest(context) {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
   xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-  // Add static routes
   for (const r of staticRoutes) {
     const loc = `${domain}${r}`;
-    const priority = r === '' ? '1.0' : '0.8';
+    const priority = r === '' ? '1.0' : r === '/products' ? '0.9' : '0.8';
     xml += `  <url>\n`;
     xml += `    <loc>${loc}</loc>\n`;
     xml += `    <lastmod>${currentDate}</lastmod>\n`;
@@ -51,29 +72,29 @@ export async function onRequest(context) {
     xml += `  </url>\n`;
   }
 
-  // Prefer live products API; fall back to static JSON if API unavailable
   try {
     let products = null;
     try {
-      const apiRes = await fetch(`${domain}/api/products?status=published&limit=100&page=0`);
-      if (apiRes.ok) {
-        const apiJson = await apiRes.json();
-        if (Array.isArray(apiJson?.data)) products = apiJson.data;
-      }
+      products = await fetchPublishedProducts(domain);
+      if (!products.length) products = null;
     } catch (_) {}
 
     if (!products) {
-      const prodRes = await fetch(`${domain}/all_products.json`);
-      if (prodRes.ok) {
-        const json = await prodRes.json();
-        if (Array.isArray(json)) products = json;
-      }
+      try {
+        const prodRes = await fetch(`${domain}/all_products.json`);
+        if (prodRes.ok) {
+          const json = await prodRes.json();
+          if (Array.isArray(json)) products = json;
+        }
+      } catch (_) {}
     }
 
     if (Array.isArray(products)) {
       for (const p of products) {
         if (p.id) {
-          const lastMod = p.created_at ? String(p.created_at).split('T')[0] : currentDate;
+          const lastMod = p.created_at
+            ? String(p.created_at).split('T')[0]
+            : currentDate;
           xml += `  <url>\n`;
           xml += `    <loc>${domain}/product/${p.id}</loc>\n`;
           xml += `    <lastmod>${lastMod}</lastmod>\n`;
@@ -92,11 +113,10 @@ export async function onRequest(context) {
   response = new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400, s-maxage=86400'
-    }
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+    },
   });
 
-  // Store in Cloudflare edge cache asynchronously
   context.waitUntil(cache.put(cacheKey, response.clone()));
 
   return response;

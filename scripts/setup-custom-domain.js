@@ -2,22 +2,22 @@
 /**
  * Custom-domain branding checklist for Big Bazar.
  * Usage:
- *   node scripts/setup-custom-domain.js https://www.your-domain.com
+ *   node scripts/setup-custom-domain.js https://onlinebigbazar.com
  *
  * This prints the exact Cloudflare / Google OAuth / Search Console steps
  * required to stop Google labeling the site as "Cloudflare".
  */
 
-const raw = (process.argv[2] || process.env.PUBLIC_SITE_ORIGIN || '').trim();
+const raw = (process.argv[2] || process.env.PUBLIC_SITE_ORIGIN || 'https://onlinebigbazar.com').trim();
 
 function fail(msg) {
   console.error(`\nERROR: ${msg}\n`);
-  console.error('Example: node scripts/setup-custom-domain.js https://www.bigbazarbariarhat.com\n');
+  console.error('Example: node scripts/setup-custom-domain.js https://onlinebigbazar.com\n');
   process.exit(1);
 }
 
 if (!raw) {
-  fail('Pass your custom site origin (https://...). No domain is configured yet.');
+  fail('Pass your custom site origin (https://...).');
 }
 
 let origin;

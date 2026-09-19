@@ -61,8 +61,8 @@ export async function onRequest(context) {
     return handleApi(context);
   }
 
-  // Dedicated function files
-  if (path === '/sitemap.xml' || path === '/robots.txt') {
+  // Dedicated function files (not SPA HTML)
+  if (path === '/sitemap.xml' || path === '/robots.txt' || path === '/llms.txt') {
     return context.next();
   }
 
@@ -232,6 +232,7 @@ export async function onRequest(context) {
           'বিগ বাজার বারইয়ারহাট',
           'Biyer Sajani',
           'বিয়ের সাজনি',
+          'onlinebigbazar.com',
         ],
         url: domain,
         logo: `${domain}/b.jpg`,
