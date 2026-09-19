@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
-import { toast } from 'react-hot-toast';
 
 export default function SuperadminPanel() {
   const [managers, setManagers] = useState([]);
@@ -9,6 +8,12 @@ export default function SuperadminPanel() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [flash, setFlash] = useState(null); // { type: 'ok' | 'err', text: string }
+
+  const showFlash = (type, text) => {
+    setFlash({ type, text });
+    window.setTimeout(() => setFlash(null), 4000);
+  };
 
   const fetchManagers = async () => {
     setLoading(true);
@@ -21,10 +26,10 @@ export default function SuperadminPanel() {
       if (res.ok) {
         setManagers(data.data || []);
       } else {
-        toast.error(data.error || 'Failed to fetch managers');
+        showFlash('err', data.error || 'Failed to fetch managers');
       }
     } catch (err) {
-      toast.error('Network error');
+      showFlash('err', 'Network error');
     } finally {
       setLoading(false);
     }
@@ -36,9 +41,12 @@ export default function SuperadminPanel() {
 
   const handleAddAdmin = async (e) => {
     e.preventDefault();
-    if (!email || !password) return toast.error('Fill in all fields');
+    if (!email || !password) {
+      showFlash('err', 'Fill in all fields');
+      return;
+    }
     setIsSubmitting(true);
-    
+
     const token = getToken();
     try {
       const res = await fetch(`${API_URL}/api/admin/managers`, {
@@ -51,15 +59,15 @@ export default function SuperadminPanel() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('Admin created successfully');
+        showFlash('ok', 'Admin created successfully');
         setEmail('');
         setPassword('');
         fetchManagers();
       } else {
-        toast.error(data.error || 'Failed to create admin');
+        showFlash('err', data.error || 'Failed to create admin');
       }
     } catch (err) {
-      toast.error('Network error');
+      showFlash('err', 'Network error');
     } finally {
       setIsSubmitting(false);
     }
@@ -75,13 +83,13 @@ export default function SuperadminPanel() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('Admin removed');
+        showFlash('ok', 'Admin removed');
         fetchManagers();
       } else {
-        toast.error(data.error || 'Failed to delete admin');
+        showFlash('err', data.error || 'Failed to delete admin');
       }
     } catch (err) {
-      toast.error('Network error');
+      showFlash('err', 'Network error');
     }
   };
 
@@ -97,9 +105,19 @@ export default function SuperadminPanel() {
         </p>
       </div>
 
+      {flash && (
+        <div
+          className={`rounded-xl px-4 py-3 text-sm font-medium border ${
+            flash.type === 'ok'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              : 'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}
+        >
+          {flash.text}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Add New Admin Form */}
         <div className="md:col-span-1 space-y-4">
           <div className="bg-[#111113] border border-white/5 p-5 rounded-2xl">
             <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
@@ -137,13 +155,12 @@ export default function SuperadminPanel() {
           </div>
         </div>
 
-        {/* Existing Admins List */}
         <div className="md:col-span-2">
           <div className="bg-[#111113] border border-white/5 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Active Administrators</h3>
             </div>
-            
+
             {loading ? (
               <div className="p-8 text-center text-zinc-500">Loading...</div>
             ) : managers.length === 0 ? (
@@ -176,7 +193,6 @@ export default function SuperadminPanel() {
             )}
           </div>
         </div>
-        
       </div>
     </div>
   );
