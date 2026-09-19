@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bigbazar-cache-v2';
-const API_CACHE_NAME = 'bigbazar-api-v2';
-const IMG_CACHE_NAME = 'bigbazar-img-v2';
+const CACHE_NAME = 'bigbazar-cache-v3';
+const API_CACHE_NAME = 'bigbazar-api-v3';
+const IMG_CACHE_NAME = 'bigbazar-img-v3';
 
 // Install event — activate immediately without waiting
 self.addEventListener('install', (event) => {
@@ -118,22 +118,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Static JS/CSS assets: Stale-While-Revalidate
+  // 3. Hashed JS/CSS: Network-First (stale-while-revalidate caused stuck Loading after deploys)
   if (/\.(js|css|woff2|woff|ttf)$/i.test(url.pathname) || url.pathname.startsWith('/assets/')) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request);
-        const networkFetch = fetch(request).then((networkResponse) => {
+        try {
+          const networkResponse = await fetch(request);
           if (networkResponse && networkResponse.status === 200) {
             cache.put(request, networkResponse.clone());
           }
           return networkResponse;
-        }).catch(() => null);
-
-        // Return cached immediately if available, else wait for network
-        if (cachedResponse) return cachedResponse;
-        const networkResponse = await networkFetch;
-        return networkResponse || new Response('Asset unavailable', { status: 503 });
+        } catch (_) {
+          const cachedResponse = await cache.match(request);
+          return cachedResponse || new Response('Asset unavailable', { status: 503 });
+        }
       })
     );
     return;

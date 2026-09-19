@@ -15,9 +15,16 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Try to verify existing token against /account/me
+    // Try to verify existing token against /account/me (hard timeout so boot never hangs)
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => {
+      try { ctrl?.abort(); } catch (_) {}
+      setLoading(false);
+    }, 6000);
+
     fetch(`${API_URL}/api/account/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { 'Authorization': `Bearer ${token}` },
+      signal: ctrl?.signal,
     })
       .then(res => {
         if (!res.ok) throw new Error('Not authenticated');
@@ -33,7 +40,15 @@ export function AuthProvider({ children }) {
       .catch(() => {
         setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(timer);
+        setLoading(false);
+      });
+
+    return () => {
+      clearTimeout(timer);
+      try { ctrl?.abort(); } catch (_) {}
+    };
   }, []);
 
   const loginWithGoogle = useCallback(async (credential) => {

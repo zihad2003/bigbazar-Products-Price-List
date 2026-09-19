@@ -19,13 +19,26 @@ import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
 import { initAnalytics, trackPageview } from './utils/analytics';
 
-// Lazy loaded page components for optimal initial bundle size
-const Admin = lazy(() => import('./pages/Admin'));
-const Products = lazy(() => import('./pages/Products'));
-const Checkout = lazy(() => import('./pages/Checkout'));
-const OrderConfirmation = lazy(() => import('./pages/OrderConfirmation'));
-const ProductDetails = lazy(() => import('./pages/ProductDetails'));
-const AccountPage = lazy(() => import('./pages/AccountPage'));
+// Lazy load with one automatic retry — survives transient chunk/SW misses after deploy
+function lazyRetry(factory) {
+  return lazy(() =>
+    factory().catch(() => {
+      // Force a fresh module URL on retry
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          factory().then(resolve).catch(reject);
+        }, 400);
+      });
+    })
+  );
+}
+
+const Admin = lazyRetry(() => import('./pages/Admin'));
+const Products = lazyRetry(() => import('./pages/Products'));
+const Checkout = lazyRetry(() => import('./pages/Checkout'));
+const OrderConfirmation = lazyRetry(() => import('./pages/OrderConfirmation'));
+const ProductDetails = lazyRetry(() => import('./pages/ProductDetails'));
+const AccountPage = lazyRetry(() => import('./pages/AccountPage'));
 
 const PageLoadingFallback = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">

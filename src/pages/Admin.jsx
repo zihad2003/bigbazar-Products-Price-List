@@ -154,13 +154,40 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   });
 
   useEffect(() => {
-    bigBazarApi.auth.getSession().then(({ data: { session } }) => setSession(session));
-    bigBazarApi.auth.onAuthStateChange((_event, session) => setSession(session));
+    let cancelled = false;
+    const boot = async () => {
+      try {
+        const { data } = await Promise.race([
+          bigBazarApi.auth.getSession(),
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ data: { session: null } }), 8000)
+          ),
+        ]);
+        if (!cancelled) setSession(data?.session || null);
+      } catch (_) {
+        if (!cancelled) setSession(null);
+      }
+    };
+    boot();
+    const sub = bigBazarApi.auth.onAuthStateChange((_event, nextSession) => {
+      if (!cancelled) setSession(nextSession);
+    });
+    return () => {
+      cancelled = true;
+      try {
+        sub?.data?.subscription?.unsubscribe?.();
+      } catch (_) {}
+    };
+  }, []);
+
+  // Only load dashboard data after admin session is confirmed (keeps login screen instant)
+  useEffect(() => {
+    if (!session?.access_token && !session?.user) return;
     fetchProducts();
     fetchOrders();
     fetchReviews();
     fetchSiteSettings();
-  }, []);
+  }, [session?.access_token, session?.user?.id]);
 
   const fetchProducts = async (pageToFetch = 0, append = false) => {
     setLoading(true);

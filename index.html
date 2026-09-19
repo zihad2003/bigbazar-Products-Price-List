@@ -143,11 +143,50 @@
       <p>Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.</p>
       <p>Store: 2nd Floor, Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Phone: 01857045449.</p>
     </div>
-    <div class="app-preloader" aria-hidden="true">
+    <div class="app-preloader" id="app-preloader" aria-hidden="true">
       <div style="width: 36px; height: 36px; border: 4px solid rgba(206, 17, 45, 0.2); border-top-color: #ce112d; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
       <span style="font-size: 11px; font-weight: 700; color: #a1a1aa; letter-spacing: 0.1em; text-transform: uppercase;">Loading...</span>
     </div>
   </div>
+  <script>
+    // If React never mounts (stale SW / broken asset), recover instead of spinning forever.
+    (function () {
+      var BOOT_MS = 12000;
+      function stillBooting() {
+        return !!document.getElementById('app-preloader');
+      }
+      function hardRecover() {
+        var pre = document.getElementById('app-preloader');
+        if (!pre) return;
+        pre.innerHTML =
+          '<div style="max-width:320px;text-align:center;padding:24px;font-family:system-ui,sans-serif">' +
+          '<p style="font-size:14px;font-weight:700;color:#09090b;margin:0 0 8px">পেজ লোড হচ্ছে না</p>' +
+          '<p style="font-size:12px;color:#71717a;margin:0 0 16px;line-height:1.5">ক্যাশ ক্লিয়ার করে আবার চেষ্টা করুন।</p>' +
+          '<button id="bb-boot-reload" type="button" style="width:100%;padding:12px 16px;border:0;border-radius:14px;background:#ce112d;color:#fff;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer">Reload</button>' +
+          '</div>';
+        var btn = document.getElementById('bb-boot-reload');
+        if (btn) {
+          btn.onclick = function () {
+            var done = function () {
+              location.replace('/?nocache=' + Date.now());
+            };
+            if (!('serviceWorker' in navigator)) return done();
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }).then(function () {
+              if (!window.caches) return;
+              return caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              });
+            }).finally(done);
+          };
+        }
+      }
+      setTimeout(function () {
+        if (stillBooting()) hardRecover();
+      }, BOOT_MS);
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
