@@ -292,6 +292,24 @@ const requireSuperAdmin = async (c, next) => {
   await next();
 };
 
+/** Comma-separated owner emails that must always receive superadmin (Hostinger/TiDB bootstrap). */
+function getSuperadminEmails(env) {
+  const raw =
+    env?.SUPERADMIN_EMAILS ||
+    (typeof process !== 'undefined' && process.env?.SUPERADMIN_EMAILS) ||
+    'zihadlaptopasus@gmail.com';
+  return String(raw)
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function resolveAdminRole(user, env) {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (email && getSuperadminEmails(env).includes(email)) return 'superadmin';
+  return user?.role || 'admin';
+}
+
 /**
  * Check if request originates from Admin panel or explicitly requests fresh data
  */
@@ -588,8 +606,21 @@ app.post('/auth/login', async (c) => {
       }
       if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
 
+      const role = resolveAdminRole(user, c.env);
+      // Persist bootstrap role so Superadmin panel / managers APIs keep working
+      if (role === 'superadmin' && user.role !== 'superadmin') {
+        try {
+          await conn.execute('UPDATE admin_users SET role = ? WHERE id = ?', [
+            'superadmin',
+            user.id,
+          ]);
+        } catch (_) {
+          /* role column may be missing on older DBs — JWT still carries superadmin */
+        }
+      }
+
       const token = await jwtSign(
-        { id: user.id, email: user.email, type: 'admin', role: user.role || 'admin' },
+        { id: user.id, email: user.email, type: 'admin', role },
         jwtSecret,
         { expiresIn: '30d' }
       );
@@ -602,7 +633,7 @@ app.post('/auth/login', async (c) => {
             name: 'Admin',
             email: user.email,
             type: 'admin',
-            role: user.role || 'admin'
+            role
           }
         },
         user: {
@@ -610,7 +641,7 @@ app.post('/auth/login', async (c) => {
           name: 'Admin',
           email: user.email,
           type: 'admin',
-          role: user.role || 'admin'
+          role
         }
       });
     }
@@ -679,8 +710,39 @@ app.post('/auth/login', async (c) => {
 });
 
 app.get('/auth/session', requireAuth, async (c) => {
-  const user = c.get('user');
-  return c.json({ session: { user, access_token: c.req.header('Authorization')?.replace('Bearer ', '') } });
+  let user = c.get('user');
+  // Refresh admin role from DB / bootstrap list so Superadmin tab appears without stale JWT role
+  if (user?.type === 'admin') {
+    try {
+      const conn = getDb(c.env);
+      if (user.id) {
+        const rows = await conn.execute(
+          'SELECT email, role FROM admin_users WHERE id = ? LIMIT 1',
+          [user.id]
+        );
+        const row = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+        if (row) {
+          user = {
+            ...user,
+            email: row.email || user.email,
+            role: resolveAdminRole(row, c.env),
+          };
+        } else {
+          user = { ...user, role: resolveAdminRole(user, c.env) };
+        }
+      } else {
+        user = { ...user, role: resolveAdminRole(user, c.env) };
+      }
+    } catch (_) {
+      user = { ...user, role: resolveAdminRole(user, c.env) };
+    }
+  }
+  return c.json({
+    session: {
+      user,
+      access_token: c.req.header('Authorization')?.replace('Bearer ', ''),
+    },
+  });
 });
 
 // Stub — 2FA pending codes (feature removed; kept so Admin.jsx doesn't 404)
