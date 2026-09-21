@@ -273,27 +273,23 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
   };
 
   return (
-    <div className="space-y-8 pb-24 text-white font-sans">
+    <div className="space-y-5 pb-20 text-white font-sans">
 
       {/* Header & Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-zinc-900/80 p-6 md:p-8 rounded-[36px] border border-white/5 backdrop-blur-xl shadow-2xl">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2.5 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl text-[#ce112d]">
-              <BarChart3 size={24} />
-            </div>
-            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight italic">
-              Reports &amp; <span className="text-[#ce112d]">Analytics Engine</span>
-            </h2>
-          </div>
-          <p className="text-zinc-400 text-xs font-semibold tracking-wider">
-            Month-wise data analysis, sales metrics, inventory trends &amp; financial reports
+          <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2">
+            <BarChart3 size={18} className="text-[#ce112d]" />
+            Reports &amp; <span className="text-[#ce112d]">Analytics</span>
+          </h2>
+          <p className="text-zinc-500 text-xs mt-0.5">
+            Month-wise data, sales metrics, inventory trends &amp; financial reports
           </p>
         </div>
 
         {/* Global Time Filter & Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 bg-black/60 p-1.5 rounded-2xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#121215] p-1 rounded-lg border border-white/10">
             {[
               { id: 'all', label: 'All Time' },
               { id: 'this_month', label: 'This Month' },
@@ -304,9 +300,9 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               <button
                 key={tf.id}
                 onClick={() => setTimeFilter(tf.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`h-8 px-2.5 rounded-md text-[11px] font-semibold transition-all ${
                   timeFilter === tf.id
-                    ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/40'
+                    ? 'bg-[#ce112d] text-white'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -317,95 +313,43 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
           <button
             onClick={() => exportToCSV(activeReportTab === 'products' ? 'products' : 'monthly')}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2.5 rounded-2xl text-xs font-bold border border-white/10 transition-all active:scale-95 shadow-md"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[#121215] border border-white/10 text-xs font-semibold text-zinc-400 hover:border-[#ce112d]/40 hover:text-white transition-colors"
             title="Download CSV Spreadsheet"
           >
-            <Download size={15} className="text-[#ce112d]" />
-            <span>Export CSV</span>
+            <Download size={14} className="text-[#ce112d]" />
+            Export CSV
           </button>
 
           <button
             onClick={() => setShowPrintModal(true)}
-            className="flex items-center gap-2 bg-[#ce112d] hover:bg-[#b00e26] text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-red-900/30 transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-semibold transition-colors"
             title="Generate Printable Executive Report"
           >
-            <Printer size={15} />
-            <span>Print Report</span>
+            <Printer size={14} />
+            Print Report
           </button>
         </div>
       </div>
 
       {/* KPI Stats Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
-        {/* Total Revenue */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-red-950/20 border border-white/5 rounded-[32px] p-6 space-y-3 relative overflow-hidden shadow-xl group hover:border-[#ce112d]/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black uppercase text-zinc-400 tracking-wider">Gross Revenue</span>
-            <div className="w-10 h-10 rounded-2xl bg-[#ce112d]/10 border border-[#ce112d]/20 flex items-center justify-center text-[#ce112d]">
-              <DollarSign size={20} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {[
+          { label: 'Gross Revenue', value: formatTaka(overallKPIs.totalRevenue), sub: `${overallKPIs.totalOrders} orders`, color: 'border-t-[#ce112d]', icon: <DollarSign size={14} className="text-[#ce112d]" /> },
+          { label: 'Advance Collected', value: formatTaka(overallKPIs.totalAdvance), sub: 'bKash / Bank', color: 'border-t-emerald-500', icon: <CheckCircle2 size={14} className="text-emerald-400" /> },
+          { label: 'Balance Due', value: formatTaka(overallKPIs.totalDue), sub: 'COD pending', color: 'border-t-amber-500', icon: <Clock size={14} className="text-amber-400" /> },
+          { label: 'Avg Order Value', value: formatTaka(overallKPIs.avgOrderValue), sub: `${overallKPIs.deliveryRate}% fulfilled`, color: 'border-t-blue-500', icon: <TrendingUp size={14} className="text-blue-400" /> },
+        ].map((c) => (
+          <div key={c.label} className={`rounded-lg border border-white/10 bg-[#121215] border-t-2 ${c.color} px-3 py-2.5 flex items-center justify-between gap-2`}>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium text-zinc-500">{c.label}</p>
+              <p className="text-base font-semibold text-white truncate mt-0.5">{c.value}</p>
+              <p className="text-[10px] text-zinc-600 truncate">{c.sub}</p>
+            </div>
+            <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+              {c.icon}
             </div>
           </div>
-          <div>
-            <h3 className="text-3xl font-black tracking-tight text-white">{formatTaka(overallKPIs.totalRevenue)}</h3>
-            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">From {overallKPIs.totalOrders} total orders</p>
-          </div>
-          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-            <div className="h-full bg-[#ce112d] w-full" />
-          </div>
-        </div>
-
-        {/* Total Advance Received */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20 border border-white/5 rounded-[32px] p-6 space-y-3 relative overflow-hidden shadow-xl group hover:border-emerald-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black uppercase text-zinc-400 tracking-wider">Advance Collected</span>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 size={20} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-3xl font-black tracking-tight text-white">{formatTaka(overallKPIs.totalAdvance)}</h3>
-            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-1">Confirmed Bank / bKash Receipts</p>
-          </div>
-          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-            <div className="h-full bg-emerald-500" style={{ width: overallKPIs.totalRevenue > 0 ? `${(overallKPIs.totalAdvance / overallKPIs.totalRevenue) * 100}%` : '0%' }} />
-          </div>
-        </div>
-
-        {/* Outstanding Receivables / Due */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 border border-white/5 rounded-[32px] p-6 space-y-3 relative overflow-hidden shadow-xl group hover:border-amber-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black uppercase text-zinc-400 tracking-wider">Balance Due (COD)</span>
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Clock size={20} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-3xl font-black tracking-tight text-white">{formatTaka(overallKPIs.totalDue)}</h3>
-            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest mt-1">Pending Delivery Collection</p>
-          </div>
-          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-            <div className="h-full bg-amber-500" style={{ width: overallKPIs.totalRevenue > 0 ? `${(overallKPIs.totalDue / overallKPIs.totalRevenue) * 100}%` : '0%' }} />
-          </div>
-        </div>
-
-        {/* Average Order Value & Delivery Rate */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-blue-950/20 border border-white/5 rounded-[32px] p-6 space-y-3 relative overflow-hidden shadow-xl group hover:border-blue-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black uppercase text-zinc-400 tracking-wider">Avg Order Value (AOV)</span>
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <TrendingUp size={20} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-3xl font-black tracking-tight text-white">{formatTaka(overallKPIs.avgOrderValue)}</h3>
-            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">{overallKPIs.deliveryRate}% Fulfillment Rate</p>
-          </div>
-          <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
-            <div className="h-full bg-blue-500" style={{ width: `${Math.min(overallKPIs.deliveryRate, 100)}%` }} />
-          </div>
-        </div>
-
+        ))}
       </div>
 
       {/* Navigation Sub-Tabs for Reports */}
@@ -420,7 +364,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           <button
             key={tab.id}
             onClick={() => setActiveReportTab(tab.id)}
-            className={`flex items-center gap-2 pb-4 text-xs sm:text-sm font-black uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${
+            className={`flex items-center gap-2 pb-3 text-xs font-semibold whitespace-nowrap transition-all border-b-2 ${
               activeReportTab === tab.id
                 ? 'border-[#ce112d] text-white'
                 : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -441,14 +385,14 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
       {/* ── SUB-TAB 1: MONTH-WISE DATA REPORT ── */}
       {activeReportTab === 'monthly' && (
-        <div className="space-y-8">
+        <div className="space-y-5">
 
           {/* Month Comparison Visual Bar Graph */}
           {monthlyDataReport.length > 0 && (
-            <div className="bg-zinc-900 border border-white/5 rounded-[36px] p-6 md:p-8 space-y-6 shadow-xl">
+            <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-6 ">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold uppercase tracking-tight italic">
+                  <h3 className="text-base font-semibold text-white tracking-tight">
                     Monthly Revenue <span className="text-[#ce112d]">Comparison</span>
                   </h3>
                   <p className="text-zinc-500 text-xs font-semibold">Visual comparison of monthly sales performance</p>
@@ -497,26 +441,26 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           )}
 
           {/* Detailed Month-Wise Data Table */}
-          <div className="bg-zinc-900 border border-white/5 rounded-[36px] overflow-hidden shadow-2xl">
-            <div className="p-6 md:p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-zinc-900 border border-white/5 rounded-xl overflow-hidden ">
+            <div className="p-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight italic">
+                <h3 className="text-base font-semibold text-white tracking-tight">
                   Month-Wise <span className="text-[#ce112d]">Data Matrix</span>
                 </h3>
                 <p className="text-zinc-500 text-xs font-semibold">Detailed breakdown by calendar month</p>
               </div>
               <button
                 onClick={() => exportToCSV('monthly')}
-                className="flex items-center gap-2 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-4 py-2 rounded-xl border border-[#ce112d]/20 transition-all self-start sm:self-auto"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 border border-[#ce112d]/20 transition-all self-start sm:self-auto"
               >
                 <Download size={14} /> Download Month Matrix CSV
               </button>
             </div>
 
             {monthlyDataReport.length === 0 ? (
-              <div className="py-24 text-center space-y-4">
-                <div className="w-16 h-16 bg-zinc-800 rounded-3xl flex items-center justify-center mx-auto text-zinc-600">
-                  <Calendar size={32} />
+              <div className="py-12 text-center space-y-3">
+                <div className="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center mx-auto text-zinc-600">
+                  <Calendar size={22} />
                 </div>
                 <p className="text-zinc-400 text-sm font-bold">No orders found for the selected time filter.</p>
               </div>
@@ -524,7 +468,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-black/50 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-white/5">
+                    <tr className="bg-black/50 text-[10px] font-semibold text-zinc-500 border-b border-white/5">
                       <th className="py-4 px-6">Month</th>
                       <th className="py-4 px-4 text-center">Orders</th>
                       <th className="py-4 px-4 text-center">Delivered</th>
@@ -544,7 +488,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                           key={m.key}
                           className={`hover:bg-white/[0.02] transition-colors ${isSelected ? 'bg-[#ce112d]/5' : ''}`}
                         >
-                          <td className="py-4 px-6 font-bold text-white italic">
+                          <td className="py-4 px-6 font-semibold text-white">
                             <div className="flex items-center gap-3">
                               <div className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-[#ce112d]' : 'bg-zinc-700'}`} />
                               <span>{m.monthName}</span>
@@ -560,7 +504,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                           <td className="py-4 px-6 text-center">
                             <button
                               onClick={() => setSelectedMonthKey(m.key)}
-                              className={`px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                              className={`h-8 px-2.5 rounded-lg text-[10px] font-semibold transition-all border ${
                                 isSelected
                                   ? 'bg-[#ce112d] text-white border-[#ce112d]'
                                   : 'bg-zinc-800 text-zinc-400 border-white/5 hover:bg-zinc-700 hover:text-white'
@@ -580,33 +524,33 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
           {/* Active Month Deep Dive Panel */}
           {activeMonthDetail && (
-            <div className="bg-gradient-to-b from-zinc-900 to-black border border-[#ce112d]/30 rounded-[36px] p-6 md:p-8 space-y-6 shadow-2xl">
+            <div className="bg-[#121215] border border-[#ce112d]/30 rounded-xl p-4 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="bg-[#ce112d] text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider">Month Breakdown</span>
-                    <h3 className="text-xl font-bold uppercase tracking-tight text-white">{activeMonthDetail.monthName}</h3>
+                    <span className="bg-[#ce112d] text-white text-[10px] font-semibold px-2 py-0.5 rounded-md">Month</span>
+                    <h3 className="text-base font-semibold text-white">{activeMonthDetail.monthName}</h3>
                   </div>
                   <p className="text-zinc-400 text-xs mt-1">Granular breakdown for orders received in this calendar month</p>
                 </div>
                 <div className="flex items-center gap-4 text-xs">
-                  <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-2xl">
-                    <span className="text-zinc-500 uppercase font-bold text-[10px] block">Mirsarai Orders</span>
-                    <span className="text-white font-black text-sm">{activeMonthDetail.mirsaraiOrdersCount}</span>
+                  <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-lg">
+                    <span className="text-zinc-500 text-[10px] font-medium block">Mirsarai</span>
+                    <span className="text-white font-semibold text-sm">{activeMonthDetail.mirsaraiOrdersCount}</span>
                   </div>
-                  <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-2xl">
-                    <span className="text-zinc-500 uppercase font-bold text-[10px] block">Outside Orders</span>
-                    <span className="text-white font-black text-sm">{activeMonthDetail.outsideOrdersCount}</span>
+                  <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-lg">
+                    <span className="text-zinc-500 text-[10px] font-medium block">Outside</span>
+                    <span className="text-white font-semibold text-sm">{activeMonthDetail.outsideOrdersCount}</span>
                   </div>
                 </div>
               </div>
 
               {/* Month Order List Preview */}
               <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase text-zinc-400 tracking-wider">Orders List ({activeMonthDetail.ordersList.length})</h4>
+                <h4 className="text-xs font-semibold text-zinc-400">Orders ({activeMonthDetail.ordersList.length})</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {activeMonthDetail.ordersList.slice(0, 6).map(o => (
-                    <div key={o.id} className="bg-zinc-900/90 border border-white/5 rounded-2xl p-4 space-y-2">
+                    <div key={o.id} className="bg-zinc-900/90 border border-white/5 rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between text-[11px] font-bold">
                         <span className="text-[#ce112d]">#{o.id.toString().slice(-6).toUpperCase()}</span>
                         <span className="text-zinc-500">{new Date(o.created_at).toLocaleDateString()}</span>
@@ -633,16 +577,16 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
       {/* ── SUB-TAB 2: SALES & REVENUE ANALYTICS ── */}
       {activeReportTab === 'sales' && (
-        <div className="space-y-8">
+        <div className="space-y-5">
 
           {/* Revenue & Payment Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             
             {/* Delivery Area Revenue */}
-            <div className="bg-zinc-900 border border-white/5 rounded-[36px] p-6 md:p-8 space-y-6 shadow-xl">
+            <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-6 ">
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
-                  <h3 className="text-lg font-bold uppercase tracking-tight text-white">Delivery Area Breakdown</h3>
+                  <h3 className="text-base font-semibold text-white tracking-tight">Delivery Area Breakdown</h3>
                   <p className="text-zinc-500 text-xs">Mirsarai Local vs Outside Delivery Revenue</p>
                 </div>
                 <Truck className="text-[#ce112d]" size={20} />
@@ -686,29 +630,29 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
             </div>
 
             {/* Order Status Distribution */}
-            <div className="bg-zinc-900 border border-white/5 rounded-[36px] p-6 md:p-8 space-y-6 shadow-xl">
+            <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-6 ">
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
-                  <h3 className="text-lg font-bold uppercase tracking-tight text-white">Fulfillment Status</h3>
+                  <h3 className="text-base font-semibold text-white tracking-tight">Fulfillment Status</h3>
                   <p className="text-zinc-500 text-xs">Order status breakdown</p>
                 </div>
                 <PieChart className="text-amber-400" size={20} />
               </div>
 
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
-                  <span className="text-[10px] font-bold text-emerald-400 uppercase block mb-1">Delivered</span>
-                  <span className="text-2xl font-black text-white">{overallKPIs.deliveredCount}</span>
+                <div className="bg-[#121215] border border-white/10 border-t-2 border-t-emerald-500 p-3 rounded-lg text-center">
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Delivered</span>
+                  <span className="text-lg font-semibold text-white">{overallKPIs.deliveredCount}</span>
                 </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl">
-                  <span className="text-[10px] font-bold text-amber-400 uppercase block mb-1">Pending</span>
-                  <span className="text-2xl font-black text-white">
+                <div className="bg-[#121215] border border-white/10 border-t-2 border-t-amber-500 p-3 rounded-lg text-center">
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Pending</span>
+                  <span className="text-lg font-semibold text-white">
                     {filteredOrders.filter(o => o.status === 'Pending').length}
                   </span>
                 </div>
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
-                  <span className="text-[10px] font-bold text-red-400 uppercase block mb-1">Cancelled</span>
-                  <span className="text-2xl font-black text-white">
+                <div className="bg-[#121215] border border-white/10 border-t-2 border-t-red-500 p-3 rounded-lg text-center">
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Cancelled</span>
+                  <span className="text-lg font-semibold text-white">
                     {filteredOrders.filter(o => o.status === 'Cancelled').length}
                   </span>
                 </div>
@@ -722,18 +666,18 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
       {/* ── SUB-TAB 3: PRODUCT & INVENTORY TRENDS ── */}
       {activeReportTab === 'products' && (
-        <div className="space-y-8">
-          <div className="bg-zinc-900 border border-white/5 rounded-[36px] overflow-hidden shadow-2xl p-6 md:p-8">
+        <div className="space-y-5">
+          <div className="bg-zinc-900 border border-white/5 rounded-xl overflow-hidden  p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-6">
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight italic">
+                <h3 className="text-base font-semibold text-white tracking-tight">
                   Top Performing <span className="text-[#ce112d]">Products</span>
                 </h3>
                 <p className="text-zinc-500 text-xs font-semibold">Ranked by revenue contribution and units sold</p>
               </div>
               <button
                 onClick={() => exportToCSV('products')}
-                className="flex items-center gap-2 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-4 py-2 rounded-xl border border-[#ce112d]/20 transition-all self-start sm:self-auto"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 border border-[#ce112d]/20 transition-all self-start sm:self-auto"
               >
                 <Download size={14} /> Export Products CSV
               </button>
@@ -761,17 +705,17 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
       {/* ── SUB-TAB 4: CUSTOMER & ORDER INSIGHTS ── */}
       {activeReportTab === 'customers' && (
-        <div className="bg-zinc-900 border border-white/5 rounded-[36px] p-6 md:p-8 space-y-6 shadow-2xl">
+        <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-6 ">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <div>
-              <h3 className="text-xl font-bold uppercase tracking-tight italic">
+              <h3 className="text-base font-semibold text-white tracking-tight">
                 Recent Orders <span className="text-[#ce112d]">Log</span>
               </h3>
               <p className="text-zinc-500 text-xs font-semibold">Individual order log with advance and due payment details</p>
             </div>
             <button
               onClick={() => exportToCSV('orders')}
-              className="flex items-center gap-2 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-4 py-2 rounded-xl border border-[#ce112d]/20 transition-all"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 border border-[#ce112d]/20 transition-all"
             >
               <Download size={14} /> Download Full Orders CSV
             </button>
@@ -780,7 +724,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-black/50 text-[10px] font-black uppercase text-zinc-400 tracking-widest border-b border-white/5">
+                <tr className="bg-black/50 text-[10px] font-semibold text-zinc-500 border-b border-white/5">
                   <th className="py-4 px-4">Ref #</th>
                   <th className="py-4 px-4">Date</th>
                   <th className="py-4 px-4">Customer</th>
@@ -831,17 +775,17 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
       {/* ── SUB-TAB 5: FINANCIAL & CASH FLOW STATEMENT ── */}
       {activeReportTab === 'financial' && (
-        <div className="bg-zinc-900 border border-white/5 rounded-[36px] p-6 md:p-8 space-y-8 shadow-2xl">
+        <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-5 ">
           <div className="border-b border-white/5 pb-4">
-            <h3 className="text-xl font-bold uppercase tracking-tight italic">
+            <h3 className="text-base font-semibold text-white tracking-tight">
               Executive Financial <span className="text-[#ce112d]">Statement</span>
             </h3>
             <p className="text-zinc-500 text-xs font-semibold">Summary of income, cash flow advances, and open receivables</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-black/50 p-6 rounded-3xl border border-white/5 space-y-4">
-              <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">Revenue &amp; Collections</h4>
+            <div className="bg-black/50 p-4 rounded-lg border border-white/5 space-y-3">
+              <h4 className="text-xs font-semibold text-zinc-400">Revenue &amp; Collections</h4>
               <div className="space-y-3 divide-y divide-white/5 text-sm font-semibold">
                 <div className="flex justify-between py-2">
                   <span className="text-zinc-400">Total Billed Gross Revenue</span>
@@ -858,8 +802,8 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               </div>
             </div>
 
-            <div className="bg-black/50 p-6 rounded-3xl border border-white/5 space-y-4">
-              <h4 className="text-xs font-black uppercase text-zinc-400 tracking-wider">Order Volume Metrics</h4>
+            <div className="bg-black/50 p-4 rounded-lg border border-white/5 space-y-3">
+              <h4 className="text-xs font-semibold text-zinc-400">Order Volume Metrics</h4>
               <div className="space-y-3 divide-y divide-white/5 text-sm font-semibold">
                 <div className="flex justify-between py-2">
                   <span className="text-zinc-400">Total Processed Orders</span>
@@ -882,10 +826,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       {/* Printable Executive Summary Modal */}
       {showPrintModal && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-white/10 rounded-[32px] max-w-2xl w-full p-8 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-xl max-w-2xl w-full p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Print Executive Report</h3>
+                <h3 className="text-base font-semibold text-white tracking-tight">Print Executive Report</h3>
                 <p className="text-zinc-500 text-xs">Print or save as PDF for record keeping</p>
               </div>
               <button onClick={() => setShowPrintModal(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 flex items-center justify-center">
@@ -930,13 +874,13 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowPrintModal(false)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white bg-zinc-800"
+                className="h-9 px-3 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800"
               >
                 Close
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#ce112d] shadow-lg shadow-red-900/30"
+                className="h-9 px-3 rounded-lg text-xs font-semibold text-white bg-[#ce112d]"
               >
                 Print Now / Save PDF
               </button>

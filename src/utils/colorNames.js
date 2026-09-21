@@ -285,6 +285,59 @@ export function formatColorName(hex) {
 }
 
 /**
+ * Suggest official color names (EN + BN) so admins don't invent typos.
+ * Matches against COLOR_MAP + PRESET_SWATCHES.
+ */
+export function suggestColorNames(query = '', limit = 8) {
+    const q = String(query || '').trim().toLowerCase();
+    const seen = new Set();
+    const pool = [...PRESET_SWATCHES, ...COLOR_MAP];
+    const out = [];
+
+    for (const c of pool) {
+        const key = (c.en || '').toLowerCase();
+        if (!key || seen.has(key)) continue;
+
+        const en = (c.en || '').toLowerCase();
+        const bn = (c.bn || '').toLowerCase();
+        const hex = (c.hex || '').toLowerCase();
+        const matches = !q
+            ? PRESET_SWATCHES.some((p) => p.en === c.en)
+            : en.includes(q) || bn.includes(q) || en.startsWith(q) || hex.includes(q.replace('#', ''));
+
+        if (!matches) continue;
+        seen.add(key);
+        out.push({ hex: c.hex, en: c.en, bn: c.bn });
+        if (out.length >= limit) break;
+    }
+
+    // Prefer exact / prefix matches first when querying
+    if (q) {
+        out.sort((a, b) => {
+            const ae = a.en.toLowerCase();
+            const be = b.en.toLowerCase();
+            const aExact = ae === q ? 0 : ae.startsWith(q) ? 1 : 2;
+            const bExact = be === q ? 0 : be.startsWith(q) ? 1 : 2;
+            return aExact - bExact || ae.localeCompare(be);
+        });
+    }
+
+    return out;
+}
+
+/**
+ * Resolve a typed name to a known color (exact EN/BN), or null.
+ */
+export function resolveColorByName(name) {
+    const q = String(name || '').trim().toLowerCase();
+    if (!q) return null;
+    const pool = [...PRESET_SWATCHES, ...COLOR_MAP];
+    return pool.find(
+        (c) => c.en.toLowerCase() === q || (c.bn && c.bn.toLowerCase() === q)
+    ) || null;
+}
+
+/**
  * Mobile-friendly preset color swatches for quick selection
  */
 export const PRESET_SWATCHES = [

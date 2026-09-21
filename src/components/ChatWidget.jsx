@@ -12,6 +12,7 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { API_URL, getToken, bigBazarApi } from '../api/client';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { allDistricts, chattogramUpazilas, FREE_UPAZILA, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { TOP_CATEGORIES, getSubcategoriesForCategory } from '../data/categories';
 import './ChatWidget.css';
@@ -253,16 +254,11 @@ export default function ChatWidget() {
     });
   }, [language]);
 
+  useBodyScrollLock(isOpen && typeof window !== 'undefined' && window.innerWidth < 640);
+
   useEffect(() => {
     if (isOpen) {
-      const prevStyle = document.body.style.overflow;
-      if (window.innerWidth < 640) {
-        document.body.style.overflow = 'hidden';
-      }
       setTimeout(() => inputRef.current?.focus(), 300);
-      return () => {
-        document.body.style.overflow = prevStyle;
-      };
     }
   }, [isOpen]);
 

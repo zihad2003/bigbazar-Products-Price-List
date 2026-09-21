@@ -21,11 +21,11 @@
   --border-hover: rgba(9, 9, 11, 0.25);
   
   /* Verified Contrast Ratios vs #ffffff / #f4f4f5 */
-  --text-primary: #09090b;   /* zinc-950 — 19.5:1 ratio (Pass AAA) */
-  --text-secondary: #3f3f46; /* zinc-700 — 9.5:1 ratio (Pass AAA) */
-  --text-tertiary: #52525b;  /* zinc-600 — 4.68:1 ratio (Pass AA) */
-  --text-muted: #71717a;     /* zinc-500 — 4.54:1 ratio (Pass AA) */
-  --text-faint: #d4d4d8;     /* zinc-300 — Borders / Disabled */
+  --text-primary: #09090b;   /* zinc-950 â 19.5:1 ratio (Pass AAA) */
+  --text-secondary: #3f3f46; /* zinc-700 â 9.5:1 ratio (Pass AAA) */
+  --text-tertiary: #52525b;  /* zinc-600 â 4.68:1 ratio (Pass AA) */
+  --text-muted: #71717a;     /* zinc-500 â 4.54:1 ratio (Pass AA) */
+  --text-faint: #d4d4d8;     /* zinc-300 â Borders / Disabled */
   
   /* Brand Accent Tokens */
   --accent-color: #ce112d;   /* Brand Red */
@@ -58,11 +58,11 @@
   --border-hover: rgba(255, 255, 255, 0.3);
 
   /* Verified Contrast Ratios vs #09090b / #18181b */
-  --text-primary: #f4f4f5;   /* zinc-100 — 16.2:1 ratio (Pass AAA) */
-  --text-secondary: #d4d4d8; /* zinc-300 — 11.5:1 ratio (Pass AAA) */
-  --text-tertiary: #a1a1aa;  /* zinc-400 — 5.4:1 ratio (Pass AA) */
-  --text-muted: #a1a1aa;     /* zinc-400 — 5.4:1 ratio (Pass AA) */
-  --text-faint: #52525b;     /* zinc-600 — Disabled / Decorative */
+  --text-primary: #f4f4f5;   /* zinc-100 â 16.2:1 ratio (Pass AAA) */
+  --text-secondary: #d4d4d8; /* zinc-300 â 11.5:1 ratio (Pass AAA) */
+  --text-tertiary: #a1a1aa;  /* zinc-400 â 5.4:1 ratio (Pass AA) */
+  --text-muted: #a1a1aa;     /* zinc-400 â 5.4:1 ratio (Pass AA) */
+  --text-faint: #52525b;     /* zinc-600 â Disabled / Decorative */
 
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-raised: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
@@ -315,20 +315,20 @@ html {
   animation-play-state: paused;
 }
 
-/* ═══════════════════════════════════════════════
+/* âââââââââââââââââââââââââââââââââââââââââââââââ
    WCAG 2.2 AA Admin Dashboard Contrast Overrides
    Fixes ~60 insufficient contrast issues where
    Tailwind zinc-500 (#71717a, 4.09:1) and zinc-600
    (#52525b, 2.49:1) fail against bg-[#0a0a0c].
-   Override to zinc-400 (#a1a1aa, 5.4:1 — Pass AA).
-   ═══════════════════════════════════════════════ */
+   Override to zinc-400 (#a1a1aa, 5.4:1 â Pass AA).
+   âââââââââââââââââââââââââââââââââââââââââââââââ */
 
-/* ── Labels & Help Text: zinc-500 → zinc-400 ── */
+/* ââ Labels & Help Text: zinc-500 â zinc-400 ââ */
 .admin-a11y .text-zinc-500 {
   color: #a1a1aa;
 }
 
-/* ── Decorative / Secondary Text: zinc-600 → zinc-400 ── */
+/* ââ Decorative / Secondary Text: zinc-600 â zinc-400 ââ */
 .admin-a11y .text-zinc-600 {
   color: #a1a1aa;
 }
@@ -356,7 +356,7 @@ html {
   color: #ffffff;
 }
 
-/* ── Type Scale Normalization: Consolidate micro-fonts into standard text-xs (Issue 1) ── */
+/* ââ Type Scale Normalization: Consolidate micro-fonts into standard text-xs (Issue 1) ââ */
 .admin-a11y .text-\[8px\],
 .admin-a11y .text-\[9px\],
 .admin-a11y .text-\[10px\],
@@ -365,7 +365,7 @@ html {
   line-height: 1rem !important;
 }
 
-/* ── Corner Radii Normalization: Consolidate non-standard radii into rounded-2xl (Issue 2) ── */
+/* ââ Corner Radii Normalization: Consolidate non-standard radii into rounded-2xl (Issue 2) ââ */
 .admin-a11y .rounded-\[40px\],
 .admin-a11y .rounded-\[32px\],
 .admin-a11y .rounded-\[24px\],
@@ -373,20 +373,20 @@ html {
   border-radius: 1rem !important; /* 16px */
 }
 
-/* ════════════════════════════════════════════════════════════
-   ADMIN LIGHT THEME — .admin-theme-light overrides
+/* ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+   ADMIN LIGHT THEME â .admin-theme-light overrides
    Applied when user toggles to light mode (default)
    Uses [class*=] substring selectors to reliably catch ALL
    Tailwind dark variants incl. opacity mods (/80 /60 etc.)
-   ════════════════════════════════════════════════════════════ */
+   ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
 
-/* ── Canvas / page background ── */
+/* ââ Canvas / page background ââ */
 .admin-theme-light {
   background-color: #f8fafc;
   color: #0f172a;
 }
 
-/* ── Inputs, selects, textareas ── */
+/* ââ Inputs, selects, textareas ââ */
 .admin-theme-light input:not([type='checkbox']):not([type='radio']):not([type='range']),
 .admin-theme-light select,
 .admin-theme-light textarea {
@@ -408,14 +408,14 @@ html {
   outline: none !important;
 }
 
-/* ── Tables ── */
+/* ââ Tables ââ */
 .admin-theme-light table thead tr { background-color: #f1f5f9 !important; }
 .admin-theme-light table thead th { color: #475569 !important; }
 .admin-theme-light table tbody tr { border-color: #e2e8f0 !important; }
 .admin-theme-light table tbody tr:hover { background-color: #f8fafc !important; }
 .admin-theme-light table tbody td { color: #0f172a !important; }
 
-/* ── Shadows ── */
+/* ââ Shadows ââ */
 .admin-theme-light .shadow-2xl,
 .admin-theme-light .shadow-xl {
   box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04) !important;
@@ -426,13 +426,13 @@ html {
   color: #ffffff !important;
 }
 
-/* ── Hover states for bg-white/5 in light mode → slate-100 ── */
+/* ââ Hover states for bg-white/5 in light mode â slate-100 ââ */
 .admin-theme-light .hover\:bg-white\/5:hover,
 .admin-theme-light .hover\:bg-white\/\[0\.03\]:hover {
   background-color: #f1f5f9 !important;
 }
 /* ------------------------------------------------------------
-   ADMIN LIGHT THEME � Robust [class*=] substring selectors
+   ADMIN LIGHT THEME  Robust [class*=] substring selectors
    Catches ALL Tailwind dark variants incl. /80 /60 /50 mods
    ------------------------------------------------------------ */
 
@@ -499,66 +499,148 @@ html {
 }
 
 /* ------------------------------------------------------------
-   EXCEPTIONS � Brand / action colours MUST stay intact
-   These come AFTER the overrides so they win specificity
+   EXCEPTIONS — Brand / action colours MUST stay intact
+   NOTE: never use `background-color: revert` / `color: revert` here —
+   with !important it wipes Tailwind utilities (transparent / inherited),
+   which made FAB/Done buttons white-on-white in light mode.
    ------------------------------------------------------------ */
 
-/* Coloured text stays coloured */
-.admin-theme-light [class*="text-[#ce112d]"],
-.admin-theme-light [class*="text-red-"],
-.admin-theme-light [class*="text-emerald-"],
-.admin-theme-light [class*="text-green-"],
-.admin-theme-light [class*="text-yellow-"],
-.admin-theme-light [class*="text-blue-"],
-.admin-theme-light [class*="text-purple-"],
-.admin-theme-light [class*="text-orange-"],
-.admin-theme-light [class*="text-amber-"],
-.admin-theme-light [class*="text-cyan-"],
-.admin-theme-light [class*="text-indigo-"],
-.admin-theme-light [class*="text-teal-"] {
-  color: revert !important;
-}
+/* Coloured text — explicit hex so light-theme text-white override cannot win */
+.admin-theme-light [class*="text-[#ce112d]"] { color: #ce112d !important; }
+.admin-theme-light [class*="text-red-400"],
+.admin-theme-light [class*="text-red-500"] { color: #ef4444 !important; }
+.admin-theme-light [class*="text-emerald-400"],
+.admin-theme-light [class*="text-emerald-500"] { color: #10b981 !important; }
+.admin-theme-light [class*="text-green-400"],
+.admin-theme-light [class*="text-green-500"] { color: #22c55e !important; }
+.admin-theme-light [class*="text-yellow-400"],
+.admin-theme-light [class*="text-yellow-500"] { color: #eab308 !important; }
+.admin-theme-light [class*="text-amber-400"],
+.admin-theme-light [class*="text-amber-500"] { color: #f59e0b !important; }
+.admin-theme-light [class*="text-blue-400"],
+.admin-theme-light [class*="text-blue-500"] { color: #3b82f6 !important; }
+.admin-theme-light [class*="text-purple-400"],
+.admin-theme-light [class*="text-purple-500"] { color: #a855f7 !important; }
+.admin-theme-light [class*="text-orange-400"],
+.admin-theme-light [class*="text-orange-500"] { color: #f97316 !important; }
+.admin-theme-light [class*="text-cyan-400"],
+.admin-theme-light [class*="text-cyan-500"] { color: #06b6d4 !important; }
+.admin-theme-light [class*="text-indigo-400"],
+.admin-theme-light [class*="text-indigo-500"] { color: #6366f1 !important; }
+.admin-theme-light [class*="text-teal-400"],
+.admin-theme-light [class*="text-teal-500"] { color: #14b8a6 !important; }
 
-/* Coloured backgrounds stay coloured */
-.admin-theme-light [class*="bg-[#ce112d]"],
-.admin-theme-light [class*="from-[#ce112d]"],
-.admin-theme-light [class*="bg-emerald-"],
-.admin-theme-light [class*="bg-red-"],
-.admin-theme-light [class*="bg-green-"],
-.admin-theme-light [class*="bg-yellow-"],
-.admin-theme-light [class*="bg-blue-"],
-.admin-theme-light [class*="bg-purple-"],
-.admin-theme-light [class*="bg-orange-"],
-.admin-theme-light [class*="bg-amber-"],
-.admin-theme-light [class*="bg-teal-"],
-.admin-theme-light [class*="bg-cyan-"] {
-  background-color: revert !important;
-}
-
-/* White text inside coloured action buttons must stay white */
-.admin-theme-light [class*="bg-[#ce112d]"] [class*="text-white"],
-.admin-theme-light [class*="bg-[#ce112d]"] [class*="text-zinc-"],
-.admin-theme-light [class*="from-[#ce112d]"] [class*="text-white"],
-.admin-theme-light [class*="from-[#ce112d]"] [class*="text-zinc-"],
-.admin-theme-light [class*="bg-emerald-6"] [class*="text-white"],
-.admin-theme-light [class*="bg-emerald-5"] [class*="text-white"] {
+/* Solid brand / status backgrounds — explicit, never revert */
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) {
+  background-color: #ce112d !important;
   color: #ffffff !important;
 }
-.admin-theme-light button[class*="bg-[#ce112d]"],
-.admin-theme-light button[class*="bg-emerald-6"] {
+/* Default: white labels on brand surfaces */
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) [class*="text-white"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) [class*="text-zinc-"] {
   color: #ffffff !important;
 }
+/* Nested controls on solid brand bars (Mark advance / paid): frosted chips.
+   Global bg-black → slate remap would make white labels vanish otherwise. */
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-black"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) a[class*="bg-black"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white/"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) a[class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-black"][class*="text-white"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white/"][class*="text-white"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-black"] *,
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white/"] * {
+  color: #ffffff !important;
+}
+/* Paid / selected chip on brand bar: white surface + red label */
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button.bg-white,
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white"]:not([class*="bg-white/"]) {
+  background-color: #ffffff !important;
+  color: #ce112d !important;
+  border-color: #ffffff !important;
+}
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button.bg-white[class*="text-[#ce112d]"],
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white"]:not([class*="bg-white/"])[class*="text-[#ce112d]"] {
+  color: #ce112d !important;
+}
+
+/* Soft brand tints */
+.admin-theme-light [class*="bg-[#ce112d]/5"] { background-color: rgba(206, 17, 45, 0.05) !important; }
+.admin-theme-light [class*="bg-[#ce112d]/10"] { background-color: rgba(206, 17, 45, 0.1) !important; }
+.admin-theme-light [class*="bg-[#ce112d]/20"] { background-color: rgba(206, 17, 45, 0.2) !important; }
+.admin-theme-light [class*="bg-[#ce112d]/"] [class*="text-white"],
+.admin-theme-light [class*="bg-[#ce112d]/"] [class*="text-zinc-"] {
+  color: #0f172a !important;
+}
+.admin-theme-light [class*="bg-[#ce112d]/"][class*="text-[#ce112d]"],
+.admin-theme-light [class*="bg-[#ce112d]/"] [class*="text-[#ce112d]"] {
+  color: #ce112d !important;
+}
+
+.admin-theme-light [class*="bg-emerald-500"]:not([class*="/"]),
+.admin-theme-light [class*="bg-emerald-600"]:not([class*="/"]) { background-color: #10b981 !important; color: #fff !important; }
+.admin-theme-light [class*="bg-green-500"]:not([class*="/"]),
+.admin-theme-light [class*="bg-green-600"]:not([class*="/"]) { background-color: #22c55e !important; color: #fff !important; }
+.admin-theme-light [class*="bg-blue-500"]:not([class*="/"]),
+.admin-theme-light [class*="bg-blue-600"]:not([class*="/"]) { background-color: #3b82f6 !important; color: #fff !important; }
+.admin-theme-light [class*="bg-red-500"]:not([class*="/"]),
+.admin-theme-light [class*="bg-red-600"]:not([class*="/"]) { background-color: #ef4444 !important; color: #fff !important; }
+.admin-theme-light [class*="bg-purple-500"]:not([class*="/"]),
+.admin-theme-light [class*="bg-purple-600"]:not([class*="/"]) { background-color: #a855f7 !important; color: #fff !important; }
+.admin-theme-light [class*="bg-orange-500"]:not([class*="/"]) { background-color: #f97316 !important; color: #fff !important; }
+.admin-theme-light [class*="bg-yellow-500"]:not([class*="/"]) { background-color: #eab308 !important; color: #0f172a !important; }
+
+.admin-theme-light [class*="bg-green-500"]:not([class*="/"]) *,
+.admin-theme-light [class*="bg-green-600"]:not([class*="/"]) *,
+.admin-theme-light [class*="bg-emerald-5"]:not([class*="/"]) *,
+.admin-theme-light [class*="bg-blue-5"]:not([class*="/"]) *,
+.admin-theme-light [class*="bg-red-5"]:not([class*="/"]) *,
+.admin-theme-light [class*="bg-purple-5"]:not([class*="/"]) * {
+  color: #ffffff !important;
+}
+
+/* Soft status chips keep translucent tint */
+.admin-theme-light [class*="bg-yellow-500/10"],
+.admin-theme-light [class*="bg-yellow-500/15"] { background-color: rgba(234, 179, 8, 0.15) !important; }
+.admin-theme-light [class*="bg-green-500/10"],
+.admin-theme-light [class*="bg-green-500/15"] { background-color: rgba(34, 197, 94, 0.15) !important; }
+.admin-theme-light [class*="bg-blue-500/10"],
+.admin-theme-light [class*="bg-blue-500/15"] { background-color: rgba(59, 130, 246, 0.15) !important; }
+.admin-theme-light [class*="bg-red-500/10"],
+.admin-theme-light [class*="bg-red-500/15"] { background-color: rgba(239, 68, 68, 0.15) !important; }
+.admin-theme-light [class*="bg-emerald-500/10"],
+.admin-theme-light [class*="bg-emerald-500/15"] { background-color: rgba(16, 185, 129, 0.15) !important; }
+.admin-theme-light [class*="bg-purple-500/10"],
+.admin-theme-light [class*="bg-purple-500/15"] { background-color: rgba(168, 85, 247, 0.15) !important; }
+.admin-theme-light [class*="bg-orange-500/10"],
+.admin-theme-light [class*="bg-orange-500/15"] { background-color: rgba(249, 115, 22, 0.15) !important; }
 
 /* Active gradient nav keeps red + white text */
 .admin-theme-light [class*="from-[#ce112d]"][class*="to-[#ff1c3a]"] {
   background-image: linear-gradient(to right, #ce112d, #ff1c3a) !important;
-  background-color: transparent !important;
+  background-color: #ce112d !important;
 }
-.admin-theme-light [class*="from-[#ce112d]"][class*="to-[#ff1c3a]"] * {
+.admin-theme-light [class*="from-[#ce112d]"][class*="to-[#ff1c3a]"] *,
+.admin-theme-light [class*="from-[#ce112d]"][class*="to-[#ff1c3a]"][class*="text-white"] {
   color: #ffffff !important;
 }
+.admin-theme-light [class*="from-[#ce112d]/"] {
+  background-image: none !important;
+  background-color: rgba(206, 17, 45, 0.08) !important;
+}
+.admin-theme-light [class*="from-[#ce112d]/"] [class*="text-white"],
+.admin-theme-light [class*="from-[#ce112d]/"] [class*="text-zinc-"] {
+  color: #0f172a !important;
+}
+.admin-theme-light [class*="from-[#ce112d]"]:not([class*="from-[#ce112d]/"]) [class*="bg-white/"] {
+  background-color: rgba(255,255,255,0.2) !important;
+}
 
-/* hover:bg-white/x ? slate-100 on hover */
+/* hover:bg-white/x → slate-100 on hover */
 .admin-theme-light [class*="hover:bg-white/"]:hover {
   background-color: #f1f5f9 !important;
 }
@@ -580,7 +662,7 @@ html {
   border-color: #e2e8f0 !important;
 }
 
-/* CSV / action button dark bg ? light */
+/* CSV / action button dark bg → light */
 .admin-theme-light [class*="bg-[#0a0a"] {
   background-color: #ffffff !important;
 }
@@ -592,42 +674,128 @@ html {
 }
 
 /* ------------------------------------------------------------
-   LIGHT THEME REFINEMENTS � targeted fixes
+   LIGHT THEME REFINEMENTS — overlays, ghost buttons, hover
    ------------------------------------------------------------ */
 
-/* Fix 1: Gradient stat cards with from-[#ce112d]/20 (light pink bg)
-   These are decorative, not solid red buttons, so text should be dark */
-.admin-theme-light [class*="from-[#ce112d]/"] {
-  background-color: revert !important;
+/* Modal / drawer dimmers must stay dark overlays in light mode */
+.admin-theme-light [class*="bg-black/60"],
+.admin-theme-light [class*="bg-black/70"],
+.admin-theme-light [class*="bg-black/80"],
+.admin-theme-light [class*="bg-black/90"],
+.admin-theme-light [class*="bg-black/95"],
+.admin-theme-light .fixed.inset-0[class*="bg-black"] {
+  background-color: rgba(15, 23, 42, 0.72) !important;
 }
-.admin-theme-light [class*="from-[#ce112d]/"] [class*="text-white"],
-.admin-theme-light [class*="from-[#ce112d]/"] [class*="text-zinc-"] {
+
+/* Soft tint chip backgrounds already set above — skip old revert rules */
+
+/* Ghost / outline cards — clearer border + surface in light mode */
+.admin-theme-light .rounded-lg[class*="border-white/"],
+.admin-theme-light .rounded-xl[class*="border-white/"],
+.admin-theme-light .rounded-md[class*="border-white/"] {
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* Hover white text on light surfaces → dark slate */
+.admin-theme-light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+.admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]):hover,
+.admin-theme-light [class*="hover:bg-[#ce112d]"]:hover,
+.admin-theme-light button[class*="hover:bg-[#ce112d]"]:hover,
+.admin-theme-light a[class*="hover:bg-[#ce112d]"]:hover {
+  background-color: #ce112d !important;
+  color: #ffffff !important;
+}
+
+/* Dark-mode a11y zinc bump must NOT wash out light theme labels */
+.admin-theme-light.admin-a11y .text-zinc-500,
+.admin-theme-light.admin-a11y .text-zinc-600 {
+  color: #64748b !important;
+}
+
+/* Secondary icon buttons stay visible on light cards */
+.admin-theme-light button[class*="bg-white/5"],
+.admin-theme-light button[class*="bg-white/10"] {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+.admin-theme-light button[class*="bg-white/5"]:hover,
+.admin-theme-light button[class*="bg-white/10"]:hover {
+  background-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
-/* Fix 2: Preserve bg-white/20 inside solid red FAB / buttons
-   (bg-white/ inside from-[#ce112d] should remain semi-transparent white, not slate-50) */
-.admin-theme-light [class*="from-[#ce112d]"]:not([class*="from-[#ce112d]/"]) [class*="bg-white/"] {
-  background-color: rgba(255,255,255,0.2) !important;
+/* Soft accent icon buttons (call/whatsapp/copy) */
+.admin-theme-light a[class*="bg-blue-500/"],
+.admin-theme-light button[class*="bg-blue-500/"] {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+  color: #2563eb !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+.admin-theme-light a[class*="bg-green-500/"],
+.admin-theme-light button[class*="bg-green-500/"] {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+.admin-theme-light button[class*="bg-[#ce112d]/10"],
+.admin-theme-light a[class*="bg-[#ce112d]/10"] {
+  background-color: rgba(206, 17, 45, 0.1) !important;
+  color: #ce112d !important;
+  border-color: rgba(206, 17, 45, 0.3) !important;
+}
+.admin-theme-light button[class*="bg-[#ce112d]/10"]:hover,
+.admin-theme-light a[class*="bg-[#ce112d]/10"]:hover,
+.admin-theme-light button[class*="hover:bg-[#ce112d]"]:hover {
+  background-color: #ce112d !important;
+  color: #ffffff !important;
 }
 
-/* Fix 3: bg-[#ce112d]/10 and /20 accent backgrounds � keep pink, make text dark */
-.admin-theme-light [class*="bg-[#ce112d]/"] {
-  background-color: revert !important;
+/* ------------------------------------------------------------
+   DARK THEME — button / card contrast polish
+   ------------------------------------------------------------ */
+.admin-theme-dark [class*="bg-[#121215]"],
+.admin-theme-dark [class*="bg-[#121"] {
+  background-color: #121215 !important;
+  border-color: rgba(255, 255, 255, 0.12);
 }
-.admin-theme-light [class*="bg-[#ce112d]/"] [class*="text-white"],
-.admin-theme-light [class*="bg-[#ce112d]/"] [class*="text-zinc-"] {
+
+.admin-theme-dark button[class*="bg-white/5"],
+.admin-theme-dark button[class*="bg-zinc-800"],
+.admin-theme-dark a[class*="bg-zinc-800"] {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.admin-theme-dark button[class*="bg-white/5"] {
+  color: #d4d4d8 !important;
+}
+
+.admin-theme-dark button[class*="bg-white/5"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+/* Soft status chips: keep tint + readable label on dark canvas */
+.admin-theme-dark [class*="bg-yellow-500/"],
+.admin-theme-dark [class*="bg-green-500/"],
+.admin-theme-dark [class*="bg-blue-500/"],
+.admin-theme-dark [class*="bg-red-500/"],
+.admin-theme-dark [class*="bg-emerald-500/"] {
+  border-color: currentColor;
+}
+
+/* Solid action buttons stay high-contrast on dark */
+.admin-theme-dark button[class*="bg-[#ce112d]"],
+.admin-theme-dark a[class*="bg-[#ce112d]"],
+.admin-theme-dark button[class*="bg-emerald-"],
+.admin-theme-dark a[class*="bg-blue-5"],
+.admin-theme-dark button[class*="bg-blue-5"],
+.admin-theme-dark button[class*="bg-yellow-5"]:not([class*="/"]) {
+  color: #ffffff !important;
+}
+.admin-theme-dark button[class*="bg-yellow-5"]:not([class*="/"])[class*="text-black"] {
   color: #0f172a !important;
-}
-
-/* Fix 4: SOLID red buttons (no opacity) � always white text */
-.admin-theme-light button[class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]),
-.admin-theme-light a[class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) {
-  color: #ffffff !important;
-}
-.admin-theme-light button[class*="from-[#ce112d]"]:not([class*="from-[#ce112d]/"]) {
-  color: #ffffff !important;
-}
-.admin-theme-light button[class*="from-[#ce112d]"]:not([class*="from-[#ce112d]/"]) * {
-  color: #ffffff !important;
 }

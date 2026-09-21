@@ -26,8 +26,8 @@ app.use('*', async (c, next) => {
 app.use('/api/img/*', serveStatic({ root: './dist' }));
 app.use('/api/settings-img/*', serveStatic({ root: './dist' }));
 
-// Mount API routes under /api (standard for frontend fetch calls) and / (fallback)
-app.route('/api', apiApp);
+// apiApp already uses basePath('/api'). Mount at "/" only — mounting at "/api"
+// would strip the prefix and make /api/auth/login 404 ("Endpoint not found").
 app.route('/', apiApp);
 
 // Serve static assets from the dist folder built by Vite

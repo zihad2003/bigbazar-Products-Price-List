@@ -226,10 +226,12 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
+      // Hit the live custom domain directly. pages.dev used to 301 /api → Hostinger,
+      // which broke POST login (redirect → GET → "Endpoint not found").
       '/api': {
-        target: 'https://bigbazarbariarhat.pages.dev',
+        target: 'https://onlinebigbazar.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       }
     }
   },

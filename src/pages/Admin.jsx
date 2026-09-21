@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import { formatColorName, getColorName, COLOR_MAP, PRESET_SWATCHES } from '../utils/colorNames';
+import { getColorName, PRESET_SWATCHES, suggestColorNames, resolveColorByName } from '../utils/colorNames';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -19,6 +19,7 @@ import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
 import AdminUsers from '../components/admin/AdminUsers';
 import SuperadminPanel from '../components/admin/SuperadminPanel';
+import OrderDetailsPanel from '../components/admin/OrderDetailsPanel';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -74,15 +75,9 @@ export default function Admin() {
   const [rangeEnd, setRangeEnd] = useState('200');
   const [deletingRangeProgress, setDeletingRangeProgress] = useState(null);
 
+  // Confirm/Alert modals lock themselves; only lock for Admin-owned overlays here
   useBodyScrollLock(
-    !!(
-      confirmation.isOpen ||
-      alertModal.isOpen ||
-      selectedOrder ||
-      previewVideo ||
-      showRangeDeleteModal ||
-      deletingRangeProgress
-    )
+    !!(selectedOrder || previewVideo || showRangeDeleteModal || deletingRangeProgress)
   );
 
   const copyToClipboard = (text, label) => {
@@ -1462,22 +1457,23 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           <SuperadminPanel />
         ) : activeTab === 'subcategories' ? (
           /* ═══ SUBCATEGORY MANAGER ═══ */
-          <div className="max-w-4xl space-y-8 pb-20">
+          <div className="max-w-4xl space-y-5 pb-16">
             <div>
-              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">Subcategory <span className="text-[#ce112d]">Manager</span></h2>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mt-1">Manage subcategories with photos for each category</p>
+              <h2 className="text-xl font-semibold text-white tracking-tight">
+                Subcategory <span className="text-[#ce112d]">Manager</span>
+              </h2>
+              <p className="text-[11px] text-zinc-500 mt-1">Photos and names per category</p>
             </div>
 
-            {/* Category Selector */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {TOP_CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setSubcatCategory(cat.id)}
-                  className={`py-3 px-4 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all border-2 active:scale-95 ${
+                  className={`h-9 px-3 rounded-lg text-[11px] font-semibold transition-colors border ${
                     subcatCategory === cat.id
-                      ? 'bg-[#ce112d] border-[#ce112d] text-white shadow-lg shadow-red-900/30'
+                      ? 'bg-[#ce112d] border-[#ce112d] text-white'
                       : 'bg-white/5 border-white/10 text-zinc-400 hover:border-white/20'
                   }`}
                 >
@@ -1486,37 +1482,36 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               ))}
             </div>
 
-            {/* Current Subcategories List */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase text-zinc-300 tracking-wider">
-                  {subcatCategory} Subcategories ({getSubcategoriesForCategory(subcatCategory, subcategoriesData).length})
+                <h3 className="text-sm font-semibold text-zinc-300">
+                  {subcatCategory} ({getSubcategoriesForCategory(subcatCategory, subcategoriesData).length})
                 </h3>
               </div>
 
               {getSubcategoriesForCategory(subcatCategory, subcategoriesData).map((sub, idx) => (
-                <div key={sub.id} className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/10 rounded-2xl hover:border-white/15 transition-all">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/10 shrink-0 flex items-center justify-center">
+                <div key={sub.id} className="flex items-center gap-2.5 p-2.5 bg-[#121215] border border-white/10 rounded-lg hover:border-white/20 transition-colors">
+                  <div className="w-9 h-9 rounded-md overflow-hidden bg-zinc-800 border border-white/10 shrink-0 flex items-center justify-center">
                     {sub.image_url ? (
                       <img src={sub.image_url} alt={sub.name_en} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-xs font-black text-zinc-500">{(sub.name_en || '?')[0]}</span>
+                      <span className="text-xs font-semibold text-zinc-500">{(sub.name_en || '?')[0]}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{sub.name_en}</p>
-                    <p className="text-[11px] text-zinc-400 truncate">{sub.name_bn}</p>
+                    <p className="text-xs font-semibold text-white truncate">{sub.name_en}</p>
+                    <p className="text-[11px] text-zinc-500 truncate">{sub.name_bn}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-zinc-600 uppercase">#{sub.sort_order || idx}</span>
+                  <span className="text-[10px] text-zinc-600">#{sub.sort_order || idx}</span>
                   <button
                     type="button"
                     onClick={() => {
                       setEditingSubcat(sub.id);
                       setSubcatForm({ id: sub.id, name_en: sub.name_en || '', name_bn: sub.name_bn || '', image_url: sub.image_url || '', sort_order: sub.sort_order || idx });
                     }}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+                    className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={13} />
                   </button>
                   <button
                     type="button"
@@ -1528,9 +1523,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       setSubcategoriesData(updated);
                       setAlertModal({ isOpen: true, title: 'Deleted', message: 'Subcategory deleted successfully.', type: 'success' });
                     }}
-                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all"
+                    className="p-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               ))}
@@ -1693,45 +1688,45 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
           </div>
         ) : activeTab === 'settings' ? (
-          <div className="max-w-4xl space-y-12 pb-20">
-            <div className="flex items-center justify-between">
+          <div className="max-w-4xl space-y-6 pb-16">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white">System <span className="text-[#ce112d]">Settings</span></h2>
-                <p className="text-zinc-500 text-xs mt-2 font-bold uppercase tracking-widest">Global configuration &amp; site aesthetics</p>
+                <h2 className="text-xl font-semibold text-white tracking-tight">
+                  System <span className="text-[#ce112d]">Settings</span>
+                </h2>
+                <p className="text-[11px] text-zinc-500 mt-1">Banners, ticker, and site options</p>
               </div>
-              <div className="flex gap-3">
-                <button onClick={fetchSiteSettings} className="p-3 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-all text-zinc-400">
-                  <RotateCcw size={18} />
-                </button>
-              </div>
+              <button type="button" onClick={fetchSiteSettings} className="w-9 h-9 inline-flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-zinc-400">
+                <RotateCcw size={14} />
+              </button>
             </div>
 
-            <div className="space-y-8 pt-12 border-t border-[#1d1d21]">
-              <div className="flex items-start justify-between">
+            <div className="space-y-5 pt-4 border-t border-white/10">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home Slider <span className="text-[#ce112d]">Engine</span></h3>
-                  <p className="text-zinc-500 text-[10px] mt-2 font-black uppercase tracking-[0.2em]">Upload Canva-designed banners for Desktop &amp; Mobile — zero cut-off guaranteed</p>
+                  <h3 className="text-base font-semibold text-white">Home slider</h3>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Desktop & mobile banners</p>
                 </div>
-                <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full text-[10px] font-black text-white/40 uppercase">
-                  {siteSettings.main_slides?.length || 0} Slides Active
+                <div className="px-2.5 py-1 bg-zinc-900 border border-white/10 rounded-md text-[10px] font-medium text-zinc-400">
+                  {siteSettings.main_slides?.length || 0} slides
                 </div>
               </div>
 
               {/* Recommended Dimensions Guide */}
-              <div className="bg-[#151518] border border-white/10 rounded-2xl p-4 text-xs space-y-3">
-                <div className="flex items-center gap-2 text-white font-bold text-xs">
-                  <Sparkles size={15} className="text-[#ce112d]" />
-                  <span>Canva / Banner Dimension Standards (ক্যানভা ব্যানার সাইজ গাইড)</span>
+              <div className="bg-[#151518] border border-white/10 rounded-lg p-3 text-xs space-y-2.5">
+                <div className="flex items-center gap-2 text-white font-semibold text-xs">
+                  <Sparkles size={14} className="text-[#ce112d]" />
+                  <span>Banner size guide</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
-                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
-                      <Monitor size={14} className="text-[#ce112d]" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                  <div className="bg-black/50 border border-white/5 rounded-lg p-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5 text-zinc-300 font-semibold text-[10px] uppercase">
+                      <Monitor size={13} className="text-[#ce112d]" />
                       <span>Desktop / Laptop</span>
                     </div>
-                    <p className="text-white font-mono font-bold text-xs">1920 × 1080 px <span className="text-zinc-500 font-normal">(16:9 Full)</span></p>
-                    <p className="text-white font-mono font-bold text-xs">1920 × 600 px <span className="text-zinc-500 font-normal">(Slim Banner)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Best for wide PC &amp; laptop screens</p>
+                    <p className="text-white font-mono font-semibold text-xs">1920 × 1080 px <span className="text-zinc-500 font-normal">(16:9)</span></p>
+                    <p className="text-white font-mono font-semibold text-xs">1920 × 600 px <span className="text-zinc-500 font-normal">(Slim)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Wide PC & laptop</p>
                   </div>
                   <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
@@ -2421,7 +2416,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">Catalog</p>
-                <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                <h2 className="text-xl font-semibold tracking-tight text-white">
                   {editingProduct ? 'Edit product' : 'New product'}
                 </h2>
                 <p className="text-sm text-zinc-500 mt-1.5 max-w-xl">
@@ -2715,172 +2710,159 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   )}
                 </div>
 
-                    {/* Colors & Color Picker — Redesigned */}
-                    <div className="space-y-6 pt-4">
+                    {/* Colors — compact picker (no category grids) */}
+                    <div className="space-y-4 pt-4">
                       <div>
-                        <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Color Variants <span className="text-zinc-500 font-bold">(কালার অপশন)</span></label>
-                        <p className="text-[10px] text-zinc-600 font-medium mt-0.5">Select a swatch or enter name below, then click Add Color</p>
+                        <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Colors</label>
+                        <p className="text-[11px] text-zinc-600 mt-0.5">Pick a color, confirm the name, then add</p>
                       </div>
 
-                      {/* Color Selection Panel */}
-                      <div className="p-4 md:p-6 bg-zinc-950/80 border border-white/[0.06] rounded-2xl md:rounded-3xl space-y-5">
-                        {/* Gradient Hue Strip — interactive */}
-                        <div className="space-y-2">
-                          <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">Pick from Gradient</span>
-                          <div
-                            className="relative h-10 md:h-12 rounded-xl overflow-hidden cursor-crosshair shadow-inner border border-white/10"
-                            style={{ background: 'linear-gradient(to right, #ff0000, #ff8800, #ffff00, #00ff00, #00ffff, #0088ff, #0000ff, #8800ff, #ff00ff, #ff0088, #ff0000)' }}
-                            onClick={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                              // Map position to hue
-                              const hue = Math.round(x * 360);
-                              const hex = `hsl(${hue}, 85%, 50%)`;
-                              // Convert HSL to hex
-                              const tempEl = document.createElement('div');
-                              tempEl.style.color = hex;
-                              document.body.appendChild(tempEl);
-                              const rgb = window.getComputedStyle(tempEl).color;
-                              document.body.removeChild(tempEl);
-                              const match = rgb.match(/\d+/g);
-                              if (match) {
-                                const hexColor = '#' + match.slice(0, 3).map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
-                                const matched = getColorName(hexColor);
-                                setForm({ ...form, _newColorHex: hexColor, _newColorName: matched.en });
-                              }
-                            }}
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
+                        {/* Primary row: native picker + name + hex + add */}
+                        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                          <label
+                            className="relative w-12 h-12 shrink-0 cursor-pointer rounded-lg border border-white/15 overflow-hidden shadow-inner"
+                            style={{ backgroundColor: form._newColorHex || '#888888' }}
+                            title="Open color picker"
                           >
-                            {/* Lightness overlay gradient */}
-                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.4) 100%)' }} />
-                            {/* Position indicator */}
-                            {form._newColorHex && form._newColorHex !== '#888888' && (
-                              <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 rounded-full border-2 border-white shadow-lg pointer-events-none" style={{ backgroundColor: form._newColorHex, left: '50%' }} />
-                            )}
-                          </div>
-                        </div>
+                            <input
+                              type="color"
+                              aria-label="Pick color"
+                              value={/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') ? form._newColorHex : '#888888'}
+                              onChange={(e) => {
+                                const matched = getColorName(e.target.value);
+                                setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center py-0.5 bg-black/40">
+                              <Pipette size={10} className="text-white/70" />
+                            </span>
+                          </label>
 
-                        {/* Categorized Swatches */}
-                        {[
-                          { label: 'Basics', filter: (s) => ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow'].includes(s.en) },
-                          { label: 'Warm', filter: (s) => ['Maroon', 'Burgundy', 'Pink', 'Dusty Rose', 'Orange', 'Gold', 'Mustard', 'Coral'].includes(s.en) },
-                          { label: 'Cool', filter: (s) => ['Navy', 'Royal Blue', 'Sky Blue', 'Teal', 'Purple', 'Lavender', 'Emerald'].includes(s.en) },
-                          { label: 'Neutrals', filter: (s) => ['Grey', 'Silver', 'Charcoal', 'Brown', 'Beige', 'Cream'].includes(s.en) },
-                        ].map(group => {
-                          const swatches = PRESET_SWATCHES.filter(group.filter);
-                          if (swatches.length === 0) return null;
-                          return (
-                            <div key={group.label} className="space-y-2.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                              <span className="inline-block text-xs font-bold uppercase text-zinc-300 tracking-wider px-2 py-0.5 rounded-md bg-zinc-800/80">{group.label}</span>
-                              <div className="flex flex-wrap gap-2 md:gap-2.5">
-                                {swatches.map((swatch, sIdx) => {
-                                  const isSelected = form._newColorHex === swatch.hex;
-                                  return (
-                                    <button
-                                      key={sIdx}
-                                      type="button"
-                                      onClick={() => {
-                                        setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en });
-                                      }}
-                                      className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 group/swatch ${isSelected ? 'scale-105' : ''}`}
-                                    >
-                                      <div
-                                        className={`w-10 h-10 md:w-11 md:h-11 rounded-xl shadow-lg transition-all ${
-                                          isSelected
-                                            ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-zinc-950 scale-110'
-                                            : 'border-2 border-white/10 hover:border-white/40 group-hover/swatch:scale-110'
-                                        }`}
-                                        style={{ backgroundColor: swatch.hex }}
-                                      >
-                                        {isSelected && (
-                                          <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-xl">
-                                            <Check size={16} className={swatch.hex === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
-                                          </div>
-                                        )}
-                                      </div>
-                                      <span className={`text-[10px] font-medium tracking-wide leading-none ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
-                                        {swatch.en.length > 8 ? swatch.en.slice(0, 7) + '…' : swatch.en}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* Custom Input + Preview */}
-                        <div className="pt-2 border-t border-white/5 space-y-3">
-                          <span className="text-xs font-bold uppercase text-zinc-400 tracking-wider">Custom / Selected Color</span>
-                          <div className="flex gap-3 items-stretch">
-                            {/* Color Preview + Native Picker */}
-                            <label className="relative w-14 h-14 shrink-0 cursor-pointer rounded-2xl border-2 border-white/15 shadow-xl overflow-hidden transition-all hover:scale-105 hover:border-white/30" style={{ backgroundColor: form._newColorHex || '#888888' }}>
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_7.5rem] gap-2">
+                            <div className="relative">
+                              <span className="text-[10px] text-zinc-500 font-medium mb-1 block">Name</span>
                               <input
-                                type="color"
-                                aria-label="Pick a custom color"
-                                value={form._newColorHex || '#888888'}
-                                onChange={e => {
-                                  const matched = getColorName(e.target.value);
-                                  setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
+                                value={form._newColorName || ''}
+                                placeholder="Type to search… e.g. Navy"
+                                autoComplete="off"
+                                onFocus={() => setForm((prev) => ({ ...prev, _colorSuggestions: true }))}
+                                onBlur={() => {
+                                  // Delay so suggestion click registers
+                                  setTimeout(() => setForm((prev) => ({ ...prev, _colorSuggestions: false })), 150);
                                 }}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const exact = resolveColorByName(val);
+                                  setForm({
+                                    ...form,
+                                    _newColorName: val,
+                                    _colorSuggestions: true,
+                                    ...(exact ? { _newColorHex: exact.hex } : {}),
+                                  });
+                                }}
+                                className="w-full h-10 px-3 rounded-lg bg-black/50 border border-white/10 text-sm text-white outline-none focus:border-[#ce112d]/50"
                               />
-                              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2">
-                                <Pipette size={10} className="text-white/60" />
-                              </div>
-                            </label>
-                            {/* Name + Hex Inputs */}
-                            <div className="flex-1 flex flex-col gap-2">
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase text-zinc-600">Name</span>
-                                <input
-                                  value={form._newColorName || ''}
-                                  placeholder="Color name..."
-                                  onChange={e => setForm({ ...form, _newColorName: e.target.value })}
-                                  className="w-full bg-black/60 border border-zinc-800 h-10 pl-14 pr-3 rounded-xl text-sm font-bold shadow-inner focus:border-[#ce112d]/50 outline-none transition-all text-white"
-                                />
-                              </div>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-black uppercase text-zinc-600">HEX</span>
-                                <input
-                                  value={form._newColorHex || ''}
-                                  placeholder="#000000"
-                                  onChange={e => {
-                                    const val = e.target.value;
+                              {form._colorSuggestions && (
+                                <div className="absolute left-0 right-0 top-full mt-1 z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 shadow-2xl">
+                                  {suggestColorNames(form._newColorName || '', 10).map((s) => (
+                                    <button
+                                      key={`${s.en}-${s.hex}`}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => {
+                                        setForm({
+                                          ...form,
+                                          _newColorName: s.en,
+                                          _newColorHex: s.hex,
+                                          _colorSuggestions: false,
+                                        });
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                                    >
+                                      <span
+                                        className="w-5 h-5 rounded border border-white/20 shrink-0"
+                                        style={{ backgroundColor: s.hex }}
+                                      />
+                                      <span className="flex-1 min-w-0">
+                                        <span className="block text-xs font-semibold text-white truncate">{s.en}</span>
+                                        <span className="block text-[10px] text-zinc-500 truncate">{s.bn}</span>
+                                      </span>
+                                      <span className="text-[10px] font-mono text-zinc-600 uppercase shrink-0">{s.hex}</span>
+                                    </button>
+                                  ))}
+                                  {suggestColorNames(form._newColorName || '', 10).length === 0 && (
+                                    <p className="px-3 py-2.5 text-[11px] text-zinc-500">No match — pick a swatch or use the color picker</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-zinc-500 font-medium mb-1 block">HEX</span>
+                              <input
+                                value={form._newColorHex || ''}
+                                placeholder="#000000"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                                    const matched = getColorName(val);
+                                    setForm({ ...form, _newColorHex: val, _newColorName: matched.en, _colorSuggestions: false });
+                                  } else {
                                     setForm({ ...form, _newColorHex: val });
-                                    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-                                      const matched = getColorName(val);
-                                      setForm(prev => ({ ...prev, _newColorHex: val, _newColorName: matched.en }));
-                                    }
-                                  }}
-                                  className="w-full bg-black/60 border border-zinc-800 h-10 pl-14 pr-3 rounded-xl text-xs font-mono font-bold text-zinc-400 outline-none uppercase focus:border-[#ce112d]/50 transition-all"
-                                />
-                              </div>
+                                  }
+                                }}
+                                className="w-full h-10 px-3 rounded-lg bg-black/50 border border-white/10 text-xs font-mono uppercase text-zinc-300 outline-none focus:border-[#ce112d]/50"
+                              />
                             </div>
                           </div>
-                          {/* Live Preview Card */}
-                          {form._newColorName && (
-                            <div className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl">
-                              <div className="w-8 h-8 rounded-lg shadow-lg border border-white/10" style={{ backgroundColor: form._newColorHex || '#888888' }} />
-                              <div>
-                                <p className="text-xs font-bold text-white">{form._newColorName}</p>
-                                <p className="text-[9px] font-mono text-zinc-500 uppercase">{form._newColorHex || '#888888'}</p>
-                              </div>
-                              <span className="ml-auto text-[8px] font-black uppercase text-zinc-600 tracking-wider">Preview</span>
-                            </div>
-                          )}
-                          {/* Add Color Button — inline at bottom, matches Add Size pattern */}
+
                           <button
                             type="button"
                             onClick={() => {
-                              const val = (form._newColorName || '').trim();
-                              if (!val) { setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Please enter or tap a color name first', type: 'error' }); return; }
-                              const hex = form._newColorHex || '#888888';
-                              setForm({ ...form, available_colors: [...(form.available_colors || []), { name: val, image: null, is_available: true, hex, sizes: [] }], _newColorHex: '#888888', _newColorName: '', _colorSuggestions: false });
+                              const typed = (form._newColorName || '').trim();
+                              if (!typed) {
+                                setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Enter or pick a color name first.', type: 'error' });
+                                return;
+                              }
+                              const known = resolveColorByName(typed);
+                              const name = known?.en || typed;
+                              const hex = known?.hex
+                                || (/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') ? form._newColorHex : '#888888');
+                              setForm({
+                                ...form,
+                                available_colors: [...(form.available_colors || []), { name, image: null, is_available: true, hex, sizes: [] }],
+                                _newColorHex: '#888888',
+                                _newColorName: '',
+                                _colorSuggestions: false,
+                              });
                             }}
-                            className="w-full h-11 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg"
+                            className="h-10 px-4 rounded-lg bg-[#ce112d] hover:bg-[#e61535] text-white text-xs font-semibold shrink-0 active:scale-[0.98] transition-all"
                           >
-                            + Add Color
+                            + Add
                           </button>
+                        </div>
+
+                        {/* Quick fashion colors — one compact strip, no category labels */}
+                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-white/5">
+                          {PRESET_SWATCHES.map((swatch) => {
+                            const isSelected = (form._newColorHex || '').toLowerCase() === swatch.hex.toLowerCase();
+                            return (
+                              <button
+                                key={swatch.hex + swatch.en}
+                                type="button"
+                                title={swatch.en}
+                                aria-label={swatch.en}
+                                onClick={() => setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en })}
+                                className={`w-7 h-7 rounded-md border transition-all ${
+                                  isSelected
+                                    ? 'border-emerald-400 ring-1 ring-emerald-400/50 scale-110'
+                                    : 'border-white/15 hover:border-white/40 hover:scale-105'
+                                }`}
+                                style={{ backgroundColor: swatch.hex }}
+                              />
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -3095,78 +3077,65 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
           </form>
         ) : activeTab === 'pending-items' ? (
-          <div className="space-y-12 pb-24">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold uppercase tracking-tight text-white">Pending <span className="text-yellow-500">Deliveries</span></h2>
-                <p className="text-zinc-500 text-[10px] mt-3 uppercase font-bold tracking-wide bg-zinc-900 py-2 px-5 rounded-full border border-white/5 inline-block">
-                  {orders.filter(o => o.status === 'Pending' && o.status !== 'Deleted').length} Items to Pack
-                </p>
-              </div>
+          <div className="space-y-5 pb-20">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-xl font-semibold text-white tracking-tight">
+                Pending <span className="text-yellow-500">Deliveries</span>
+              </h2>
+              <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
+                {orders.filter(o => o.status === 'Pending' && o.status !== 'Deleted').length} to pack
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {orders.filter(o => o.status === 'Pending' && o.status !== 'Deleted').length === 0 ? (
-                <div className="col-span-full py-32 text-center space-y-4 bg-zinc-900 shadow-xl border border-white/5 border-dashed rounded-[40px]">
-                  <div className="w-20 h-20 bg-zinc-950 rounded-[32px] flex items-center justify-center mx-auto border border-white/5">
-                    <Package className="text-zinc-800" size={32} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-zinc-400 text-base font-bold uppercase tracking-widest">No pending items</p>
-                    <p className="text-zinc-600 text-sm">All orders are currently processed</p>
-                  </div>
+                <div className="col-span-full py-16 text-center space-y-2 rounded-xl border border-dashed border-white/10 bg-zinc-900/40">
+                  <Package className="mx-auto text-zinc-700" size={28} />
+                  <p className="text-sm font-semibold text-zinc-400">No pending items</p>
+                  <p className="text-xs text-zinc-600">All orders are processed</p>
                 </div>
               ) : (
                 orders.filter(o => o.status === 'Pending' && o.status !== 'Deleted').map(order => (
                   <div
                     key={order.id}
                     onClick={() => setSelectedOrder(order)}
-                    className="bg-zinc-900 border border-white/5 rounded-[40px] p-6 space-y-6 relative overflow-hidden group hover:border-yellow-500/30 transition-all shadow-2xl cursor-pointer"
+                    className="bg-[#121215] border border-white/10 rounded-xl p-3 space-y-3 hover:border-yellow-500/40 transition-colors cursor-pointer"
                   >
-                    {/* Date Tag */}
-                    <div className="flex justify-between items-center bg-black/40 px-4 py-2 rounded-2xl border border-white/5">
-                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString()}</span>
-                      <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">REF: #{order.id.toString().slice(-6).toUpperCase()}</span>
+                    <div className="flex justify-between items-center text-[10px] text-zinc-500">
+                      <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                      <span className="font-semibold text-yellow-500">#{order.id.toString().slice(-6).toUpperCase()}</span>
                     </div>
-
-                    {/* Item Details */}
-                    <div className="flex gap-5">
-                      <div className="w-20 h-28 bg-black rounded-2xl overflow-hidden shrink-0 border border-white/5 shadow-xl">
+                    <div className="flex gap-2.5">
+                      <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 border border-white/10 flex items-center justify-center">
                         {(() => {
                           const product = products.find(p => p.id == order.product_id);
                           const thumb = getOptimizedUrl(product?.image_url || product?.images?.[0], mediaSizes.thumbnail);
-                          return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-zinc-800"><ShoppingBag size={32} /></div>
+                          return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ShoppingBag size={16} className="text-zinc-700" />;
                         })()}
                       </div>
-                      <div className="flex-1 space-y-3">
-                        <h4 className="text-base font-black text-white italic leading-tight line-clamp-2">{order.product_name}</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {order.size && <span className="bg-zinc-800 text-zinc-500 px-3 py-1 rounded-lg text-[9px] font-black border border-white/5 uppercase">SZ: {order.size}</span>}
-                          {order.color && <span className="bg-zinc-800 text-zinc-500 px-3 py-1 rounded-lg text-[9px] font-black border border-white/5 uppercase">COL: {order.color}</span>}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <h4 className="text-[12px] font-semibold text-white leading-snug line-clamp-2">{order.product_name}</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {order.size && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">SZ: {order.size}</span>}
+                          {order.color && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">COL: {order.color}</span>}
                         </div>
+                        <p className="text-[11px] text-[#ce112d] font-medium truncate">{order.customer_name}</p>
+                        <p className="text-[11px] text-zinc-500 truncate">{order.customer_phone}</p>
                       </div>
                     </div>
-
-                    {/* Customer Action */}
-                    <div className="bg-black/40 p-5 rounded-3xl border border-white/5 space-y-2">
-                      <p className="text-[11px] font-black text-[#ce112d] italic">{order.customer_name}</p>
-                      <p className="text-[13px] font-bold text-zinc-400">{order.customer_phone}</p>
-                      <p className="text-[10px] font-bold text-zinc-600 line-clamp-1">{order.customer_address}</p>
-                    </div>
-
-                    {/* Quick Move Action */}
-                    <div className="grid grid-cols-3 gap-2 pt-2">
-                      <a href={`tel:${order.customer_phone}`} className="h-11 flex items-center justify-center bg-blue-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wide border border-blue-400/20 shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all">Call</a>
+                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                      <a href={`tel:${order.customer_phone}`} onClick={e => e.stopPropagation()} className="h-9 flex items-center justify-center bg-blue-500 text-white rounded-lg text-[10px] font-semibold">Call</a>
                       <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); copyFullOrderDetails(order); }}
-                        className="h-11 flex items-center justify-center bg-zinc-800 text-white hover:bg-[#ce112d] rounded-xl text-[10px] font-bold uppercase tracking-wide border border-white/10 active:scale-[0.98] transition-all gap-1"
-                        title="Copy Order Details"
+                        className="h-9 flex items-center justify-center gap-1 bg-zinc-800 text-white hover:bg-[#ce112d] rounded-lg text-[10px] font-semibold"
                       >
-                        <Copy size={12} /> Copy
+                        <Copy size={11} /> Copy
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); updateOrderStatus(order.id, 'Shipped'); }}
-                        className="h-11 flex items-center justify-center bg-yellow-500 text-black rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-yellow-500/10 active:scale-[0.98] transition-all"
+                        className="h-9 flex items-center justify-center bg-yellow-500 text-black rounded-lg text-[10px] font-semibold"
                       >
                         Shipped
                       </button>
@@ -3177,404 +3146,103 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
           </div>
         ) : activeTab === 'orders' ? (
-          <div className="space-y-12">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold uppercase tracking-tight text-white">Order <span className="text-[#ce112d]">Details</span></h2>
-                <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-3">
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase text-zinc-400 tracking-wider bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5">
-                    <ShoppingBag size={14} className="text-[#ce112d]" />
-                    {orders.filter(o => o && o.status !== 'Deleted').length} Orders
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-green-500/10 text-green-500 py-1.5 px-4 rounded-full border border-green-500/20">
-                    Total Revenue: ৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
-                      const amount = parseFloat(o.total_amount) || 0;
-                      return acc + amount;
-                    }, 0).toLocaleString()}
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 py-1.5 px-4 rounded-full border border-purple-500/20">
-                    <ShieldCheck size={14} />
-                    Advance: ৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
-                      const charge = parseFloat(o.delivery_charge) || 0;
-                      const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                      return acc + adv;
-                    }, 0).toLocaleString()}
-                  </div>
-                </div>
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl font-semibold text-white tracking-tight">
+                  Orders <span className="text-[#ce112d]">Details</span>
+                </h2>
+                <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
+                  {orders.filter(o => o && o.status !== 'Deleted').length} active
+                </span>
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleExportCSV}
-                  className="flex items-center justify-center gap-2 px-6 h-12 bg-[#121215] border border-[#1d1d21] rounded-2xl text-[11px] font-bold uppercase tracking-widest hover:bg-[#ce112d] hover:border-[#ce112d] hover:text-white transition-all group text-zinc-400 shadow-lg"
-                >
-                  <Download size={18} className="text-[#ce112d] group-hover:text-white transition-colors" />
-                  CSV
-                </button>
-              </div>
+              <button
+                onClick={handleExportCSV}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[#121215] border border-white/10 text-[11px] font-semibold text-zinc-400 hover:border-[#ce112d]/40 hover:text-white transition-colors self-start sm:self-auto"
+              >
+                <Download size={14} className="text-[#ce112d]" />
+                CSV
+              </button>
             </div>
 
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] -mr-16 -mt-16 rounded-full group-hover:bg-white/[0.02] transition-all" />
-                <p className="text-[10px] md:text-xs font-semibold text-zinc-500 uppercase tracking-wide">Revenue</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.status !== 'Deleted').reduce((acc, o) => {
-                    const amount = parseFloat(o.total_amount) || 0;
-                    return acc + amount;
-                  }, 0).toLocaleString()}</p>
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-green-500/20 relative z-10 shrink-0">
-                    <ShoppingBag size={16} className="md:w-5 md:h-5 text-green-500" />
-                  </div>
+            {/* Compact stats */}
+            {(() => {
+              const live = orders.filter(o => o && o.status !== 'Deleted');
+              const revenue = live.reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0);
+              const advance = orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
+                const charge = parseFloat(o.delivery_charge) || 0;
+                return acc + (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge));
+              }, 0);
+              const due = live.filter(o => o.payment_status !== 'Fully Paid').reduce((acc, o) => {
+                const totalAmount = parseFloat(o.total_amount) || 0;
+                const charge = parseFloat(o.delivery_charge) || 0;
+                const adv = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
+                return acc + (totalAmount - adv);
+              }, 0);
+              const pending = orders.filter(o => o && o.status === 'Pending').length;
+              const done = orders.filter(o => o && o.status === 'Delivered').length;
+              const cards = [
+                { label: 'Revenue', value: `৳${revenue.toLocaleString()}`, color: 'border-t-green-500', icon: <ShoppingBag size={14} className="text-green-500" /> },
+                { label: 'Advance', value: `৳${advance.toLocaleString()}`, color: 'border-t-purple-500', icon: <ShieldCheck size={14} className="text-purple-500" /> },
+                { label: 'Due', value: `৳${due.toLocaleString()}`, color: 'border-t-[#ce112d]', icon: <span className="text-[#ce112d] text-xs font-bold">৳</span> },
+                { label: 'Pending', value: pending, color: 'border-t-yellow-500', icon: <Clock size={14} className="text-yellow-500" /> },
+                { label: 'Done', value: done, color: 'border-t-emerald-500', icon: <CheckCircle2 size={14} className="text-emerald-500" /> },
+              ];
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  {cards.map((c) => (
+                    <div key={c.label} className={`rounded-lg border border-white/10 bg-[#121215] border-t-2 ${c.color} px-3 py-2.5 flex items-center justify-between gap-2`}>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">{c.label}</p>
+                        <p className="text-base font-semibold text-white truncate mt-0.5">{c.value}</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        {c.icon}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-violet-400" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/[0.03] -mr-16 -mt-16 rounded-full group-hover:bg-purple-500/[0.05] transition-all" />
-                <p className="text-[10px] md:text-xs font-semibold text-purple-500 uppercase tracking-wide">Advance</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
-                    const charge = parseFloat(o.delivery_charge) || 0;
-                    const adv = o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                    return acc + adv;
-                  }, 0).toLocaleString()}</p>
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-purple-500/20 relative z-10 shrink-0">
-                    <ShieldCheck size={16} className="md:w-5 md:h-5 text-purple-500" />
-                  </div>
-                </div>
-              </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ce112d] to-rose-400" />
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#ce112d]/[0.03] -mr-16 -mt-16 rounded-full group-hover:bg-[#ce112d]/[0.05] transition-all" />
-                <p className="text-[10px] md:text-xs font-semibold text-[#ce112d] uppercase tracking-wide">Total Due</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-xl md:text-3xl font-bold text-white tracking-tighter truncate">৳{orders.filter(o => o && o.status !== 'Deleted' && o.payment_status !== 'Fully Paid').reduce((acc, o) => {
-                    const totalAmount = parseFloat(o.total_amount) || 0;
-                    const charge = parseFloat(o.delivery_charge) || 0;
-                    const advanceAmount = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                    return acc + (totalAmount - advanceAmount);
-                  }, 0).toLocaleString()}</p>
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-[#ce112d]/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-[#ce112d]/20 relative z-10 shrink-0">
-                    <span className="text-[#ce112d] font-bold text-xs md:text-sm">৳</span>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px]">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 to-amber-400" />
-                <p className="text-[10px] md:text-xs font-semibold text-yellow-500 uppercase tracking-wide">Pending</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-xl md:text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Pending').length}</p>
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-yellow-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-yellow-500/20 shrink-0">
-                    <Clock size={16} className="md:w-5 md:h-5 text-yellow-500" />
-                  </div>
-                </div>
-              </div>
-              <div className="bg-[#121215] border border-[#1d1d21] p-4 md:p-6 rounded-2xl md:rounded-[32px] space-y-3 md:space-y-4 shadow-xl relative overflow-hidden group min-h-[100px] col-span-2 md:col-span-1">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-400" />
-                <p className="text-[10px] md:text-xs font-semibold text-emerald-500 uppercase tracking-wide">Completed</p>
-                <div className="flex items-end justify-between gap-2">
-                  <p className="text-xl md:text-3xl font-bold text-white">{orders.filter(o => o && o.status === 'Delivered').length}</p>
-                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-500/10 rounded-xl md:rounded-2xl flex items-center justify-center border border-green-500/20 shrink-0">
-                    <CheckCircle2 size={16} className="md:w-5 md:h-5 text-green-500" />
-                  </div>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
-            {/* Mobile / Shared Order Details Modal (Unified Experience) */}
+            {/* Mobile / Shared Order Details Modal */}
             {selectedOrder && (activeTab === 'pending-items' || (activeTab === 'orders' && !window.matchMedia('(min-width: 1024px)').matches)) && (
-              <div className="fixed inset-0 z-[1200] bg-black/95 flex items-center justify-center p-0 md:p-6 backdrop-blur-xl" onClick={() => setSelectedOrder(null)}>
+              <div className="fixed inset-0 z-[1200] bg-black/80 flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
                 <div
-                  className="relative w-full h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-2xl bg-[#0a0a0c] rounded-t-[40px] md:rounded-[48px] overflow-hidden shadow-2xl border-t border-white/20 md:border border-[#1d1d21] flex flex-col"
+                  className="relative w-full md:max-w-2xl md:rounded-xl overflow-hidden shadow-2xl border-t md:border border-white/10 bg-[#0a0a0c] h-[100dvh] md:h-auto md:max-h-[90vh]"
                   onClick={e => e.stopPropagation()}
                 >
-                  <div className="h-1.5 bg-gradient-to-r from-transparent via-[#ce112d] to-transparent shrink-0 opacity-80" />
-
-                  {/* Modal Header */}
-                  <div className="p-8 pb-6 flex items-center justify-between bg-black/20 border-b border-[#1d1d21] backdrop-blur-md">
-                    <div className="flex items-center gap-4">
-                      <div className="w-1.5 h-8 bg-gradient-to-b from-[#ce112d] to-[#ff1c3a] rounded-full shadow-[0_0_20px_rgba(206,17,45,0.4)]" />
-                      <div>
-                        <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">Order <span className="text-[#ce112d]">Command</span></h3>
-                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em] mt-1">
-                          Ref: #{selectedOrder.id.toString().slice(-6).toUpperCase()} • {new Date(selectedOrder.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => copyFullOrderDetails(selectedOrder)}
-                        className="flex items-center gap-1.5 px-4 h-11 bg-[#ce112d]/10 hover:bg-[#ce112d] text-[#ce112d] hover:text-white rounded-2xl border border-[#ce112d]/20 active:scale-95 transition-all text-[11px] font-black uppercase tracking-wider shadow-lg shadow-red-900/20"
-                        title="Copy Full Order Details"
-                      >
-                        <Copy size={16} /> Copy Order
-                      </button>
-                      <button onClick={() => { deleteOrder(selectedOrder.id); setSelectedOrder(null); }} className="w-11 h-11 flex items-center justify-center bg-red-500/5 text-red-500/50 rounded-2xl border border-red-500/10 active:scale-95 transition-all hover:bg-red-500 hover:text-white">
-                        <Trash2 size={18} />
-                      </button>
-                      <button onClick={() => setSelectedOrder(null)} className="md:hidden w-11 h-11 flex items-center justify-center bg-white/5 text-white rounded-2xl border border-white/10 active:scale-95 transition-all">
-                        <X size={22} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Modal Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 no-scrollbar custom-scrollbar">
-                    {/* Section 1: Customer & Delivery */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-[#121215]/50 rounded-[32px] p-6 border border-[#1d1d21] space-y-6">
-                        <div className="flex items-center gap-3">
-                          <User size={14} className="text-[#ce112d]" />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Customer Detail</p>
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em] mb-1.5">Full Name</p>
-                            <p className="text-base font-black text-white italic tracking-tight">{selectedOrder.customer_name}</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.2em] mb-1.5">Phone Information</p>
-                            <div className="flex items-center justify-between bg-black/40 px-4 py-3 rounded-2xl border border-white/5 shadow-inner">
-                              <span className="text-base font-black text-white tracking-widest italic">{selectedOrder.customer_phone}</span>
-                              <div className="flex gap-2">
-                                <a href={`tel:${selectedOrder.customer_phone}`} className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 border border-blue-500/20"><Phone size={12} /></a>
-                                <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/[^0-9]/g, '')}`} target="_blank" className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 border border-green-500/20"><MessageSquare size={12} /></a>
-                              </div>
-                            </div>
-                          </div>
-                          {selectedOrder.last_four_digits && selectedOrder.last_four_digits !== 'COD' && (
-                            <div>
-                              <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-[0.2em] mb-1.5">
-                                {selectedOrder.last_four_digits.includes(': ')
-                                  ? `${selectedOrder.last_four_digits.split(': ')[0]} Detail`
-                                  : 'Sender bKash Number / ID'}
-                              </p>
-                              <div className="flex items-center justify-between bg-[#ce112d]/5 px-4 py-3 rounded-2xl border border-[#ce112d]/10 shadow-inner">
-                                <span className="text-base font-black text-[#ce112d] tracking-widest italic">
-                                  {selectedOrder.last_four_digits.includes(': ')
-                                    ? selectedOrder.last_four_digits.split(': ')[1]
-                                    : selectedOrder.last_four_digits}
-                                </span>
-                                <button
-                                  onClick={() => {
-                                    const val = selectedOrder.last_four_digits.includes(': ')
-                                      ? selectedOrder.last_four_digits.split(': ')[1]
-                                      : selectedOrder.last_four_digits;
-                                    copyToClipboard(val, "Sender Detail");
-                                  }}
-                                  className="w-8 h-8 rounded-full bg-[#ce112d]/10 flex items-center justify-center text-[#ce112d] border border-[#ce112d]/20 active:scale-95 transition-all"
-                                >
-                                  <Copy size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="bg-[#121215]/50 rounded-[32px] p-6 border border-[#1d1d21] space-y-6">
-                        <div className="flex items-center gap-3">
-                          <MapPin size={14} className="text-zinc-500" />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Logistics Detail</p>
-                        </div>
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mb-1">Area</p>
-                              <span className="text-[9px] font-black bg-zinc-900 border border-white/5 px-3 py-1.5 rounded-lg text-zinc-400 uppercase">{selectedOrder.delivery_area}</span>
-                            </div>
-                            <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="flex items-center gap-1.5 text-[8px] font-black uppercase text-[#ce112d] bg-[#ce112d]/10 px-4 py-2 rounded-full border border-[#ce112d]/10 hover:bg-[#ce112d] hover:text-white transition-all">
-                              <Copy size={12} /> Copy
-                            </button>
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-zinc-600 font-black uppercase tracking-[0.2em] mb-1.5">Shipping Address</p>
-                            <p className="text-[13px] font-medium text-zinc-400 leading-relaxed italic">{selectedOrder.customer_address}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 2: Items & Financials */}
-                    <div className="bg-[#121215]/50 rounded-[40px] border border-[#1d1d21] overflow-hidden shadow-2xl">
-                      <div className="p-6 border-b border-[#1d1d21] flex items-center justify-between bg-white/[0.01]">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Order Items & Summary</p>
-                        <span className="text-[10px] font-black bg-[#ce112d] text-white px-4 py-1.5 rounded-full uppercase italic shadow-lg shadow-red-900/20 ring-1 ring-white/10">Items: {selectedOrder.product_name?.split('+').length || 1}</span>
-                      </div>
-                      <div className="p-6 md:p-8 space-y-8">
-                        {(() => {
-                          const parseLine = (str) => {
-                            const res = { name: str, size: null, color: null, sku: null, qty: 1 };
-                            const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
-                            const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
-                            const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
-                            const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
-                            if (colorMatch) res.color = colorMatch[1].trim();
-                            if (sizeMatch) res.size = sizeMatch[1].trim();
-                            if (skuMatch) res.sku = skuMatch[1].trim();
-                            if (qtyMatch) res.qty = qtyMatch[1];
-                            res.name = str.split('(')[0].trim();
-                            return res;
-                          };
-
-                          const itemsArr = (selectedOrder.product_name || '').split(' + ').map(parseLine);
-                          return itemsArr.map((item, idx) => {
-                            const targetP =
-                              products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
-                              products.find(p => item.sku && (p.platform_id == item.sku || p.serial_no == item.sku)) ||
-                              products.find(p => p.name === item.name) ||
-                              products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
-
-                            const thumb = getOptimizedUrl(targetP?.image_url || targetP?.images?.[0], mediaSizes.thumbnail);
-
-                            return (
-                              <div key={idx} className="flex gap-6 items-start group">
-                                <div className="w-20 h-24 md:w-24 md:h-32 bg-black rounded-3xl border border-[#1d1d21] overflow-hidden shrink-0 shadow-2xl relative flex items-center justify-center">
-                                  {thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ImageIcon size={32} className="text-zinc-800" />}
-                                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">
-                                    #{targetP?.serial_no || idx + 1}
-                                  </div>
-                                </div>
-                                <div className="flex-1 space-y-4">
-                                  <h4 className="text-base md:text-xl font-black text-white italic leading-tight uppercase tracking-tight">{item.name}</h4>
-
-                                  <div className="grid grid-cols-2 gap-2 md:gap-4">
-                                    <div className="bg-black/30 border border-[#ce112d]/10 p-2 md:p-3 rounded-2xl">
-                                      <p className="text-[7px] font-black uppercase text-[#ce112d]/60 mb-1">Size</p>
-                                      <p className="text-[11px] font-black text-white uppercase">{item.size || selectedOrder.size || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-black/30 border border-blue-500/10 p-2 md:p-3 rounded-2xl">
-                                      <p className="text-[7px] font-black uppercase text-blue-500/60 mb-1">Color</p>
-                                      <p className="text-[11px] font-black text-white uppercase">{item.color || selectedOrder.color || 'N/A'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          });
-                        })()}
-
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-[#1d1d21]">
-                          <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Base Price</p>
-                            <p className="text-xl font-black text-white italic tracking-tighter">৳{selectedOrder.product_price.toLocaleString()}</p>
-                          </div>
-                          <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">Shipping Cost</p>
-                            <p className="text-xl font-black text-white italic tracking-tighter">৳{parseFloat(selectedOrder.delivery_charge) || 0}</p>
-                          </div>
-                          <div className="bg-black/40 p-4 rounded-3xl border border-white/5">
-                            <p className="text-[8px] font-black text-zinc-600 uppercase mb-1">
-                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
-                                ? `${selectedOrder.last_four_digits.split(': ')[0]} Ref`
-                                : 'Sender Reference'}
-                            </p>
-                            <p className="text-xs font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>
-                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
-                                ? selectedOrder.last_four_digits.split(': ')[1]
-                                : (selectedOrder.last_four_digits || 'COD')}
-                            </p>
-                          </div>
-                          <div className="bg-[#ce112d]/10 p-4 rounded-3xl border border-[#ce112d]/20">
-                            <p className="text-[8px] font-black text-[#ce112d] uppercase mb-1">Advance Received</p>
-                            <p className="text-xl font-black text-[#ce112d] italic tracking-tighter">৳{(() => {
-                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                              const adv = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                              return adv;
-                            })()}</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-[#ce112d] to-[#ff1c3a] p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] flex flex-col sm:flex-row gap-6 items-center justify-between shadow-red-900/40 shadow-2xl relative overflow-hidden group">
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent)] pointer-events-none" />
-                          <div className="text-center sm:text-left">
-                            <p className="text-[10px] font-black uppercase text-white/60 mb-1 tracking-widest">Balance at Delivery</p>
-                            <p className="text-4xl md:text-5xl font-black text-white italic tracking-tighter drop-shadow-lg">
-                              ৳{(() => {
-                                const total = Number(selectedOrder.total_amount);
-                                const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                                const adv = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                                return (selectedOrder.payment_status === 'Fully Paid' ? 0 : total - adv);
-                              })().toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="flex flex-col gap-2 relative z-10">
-                            <button onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')} className={`h-11 px-6 rounded-2xl text-[9px] font-black uppercase transition-all shadow-xl ${selectedOrder.is_advance_paid ? 'bg-white text-[#ce112d]' : 'bg-black/30 text-white/60 border border-white/10'}`}>
-                              {selectedOrder.is_advance_paid ? 'ADVANCE PAID' : 'SET ADVANCE'}
-                            </button>
-                            <button onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')} className={`h-11 px-6 rounded-2xl text-[9px] font-black uppercase transition-all shadow-xl ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-white text-[#ce112d]' : 'bg-black/30 text-white/60 border border-white/10'}`}>
-                              {selectedOrder.payment_status === 'Fully Paid' ? 'FULLY PAID' : 'SET PAID'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section: Status Control */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3">
-                        <Clock size={16} className="text-orange-500" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">Status Control</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {['Pending', 'Shipped', 'Delivered', 'Canceled'].map(status => (
-                          <button
-                            key={status}
-                            onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                            className={`h-16 rounded-[28px] text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-between px-6 ${selectedOrder.status === status
-                              ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-xl' :
-                                status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-xl' :
-                                  status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-xl' :
-                                    'bg-yellow-500 border-yellow-500 text-black shadow-xl')
-                              : 'bg-zinc-900 border-white/5 text-zinc-600 hover:border-white/20'
-                              }`}
-                          >
-                            {status}
-                            {selectedOrder.status === status && <Check size={14} strokeWidth={4} />}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="space-y-4 pt-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Order Notes</p>
-                        <button onClick={() => updateOrderNote(selectedOrder.id, selectedOrder.customer_note)} className="w-full text-left p-6 bg-zinc-900 border border-white/5 rounded-[32px] min-h-[100px] flex flex-col justify-between group">
-                          <p className={`text-sm italic font-medium leading-relaxed ${selectedOrder.customer_note ? 'text-zinc-300' : 'text-zinc-800'}`}>
-                            {selectedOrder.customer_note || "No internal management notes added yet..."}
-                          </p>
-                          <p className="text-[9px] text-[#ce112d] font-black uppercase mt-4 opacity-40 group-hover:opacity-100 transition-all">Edit Note →</p>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer Action Mobile Only */}
-                  <div className="md:hidden p-8 pt-2 border-t border-white/5 bg-black/40">
-                    <button onClick={() => setSelectedOrder(null)} className="w-full py-5 bg-[#ce112d] text-white rounded-[24px] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl active:scale-[0.98] transition-all">
-                      Done Management
-                    </button>
-                  </div>
+                  <OrderDetailsPanel
+                    order={selectedOrder}
+                    products={products}
+                    variant="modal"
+                    onClose={() => setSelectedOrder(null)}
+                    onCopyFull={copyFullOrderDetails}
+                    onCopy={copyToClipboard}
+                    onDelete={(id) => { deleteOrder(id); setSelectedOrder(null); }}
+                    onTogglePayment={togglePaymentStatus}
+                    onUpdateStatus={updateOrderStatus}
+                    onEditNote={updateOrderNote}
+                  />
                 </div>
               </div>
             )}
 
-            {/* Desktop Split-View (Only show when NO selected order on mobile, but on Desktop it's always there) */}
-            <div className="hidden lg:grid grid-cols-12 gap-8 h-[calc(100vh-450px)] min-h-[600px]">
-
-              {/* LEFT: Order List Sidebar (4/12) */}
-              <div className="col-span-4 flex flex-col space-y-4 overflow-y-auto pr-2 custom-scrollbar no-scrollbar">
+            {/* Desktop split view */}
+            <div className="hidden lg:grid grid-cols-12 gap-4 h-[calc(100vh-220px)] min-h-[28rem]">
+              {/* LEFT: order list */}
+              <div className="col-span-4 flex flex-col gap-2 overflow-y-auto pr-1">
                 {(() => {
-                  const productMap = {};
-                  products.forEach(p => productMap[p.id] = p);
-
                   const filteredOrders = orders.filter(o => o && o.status !== 'Deleted');
-
-                  if (filteredOrders.length === 0) return (
-                    <div className="flex flex-col items-center justify-center h-full opacity-20 py-20 bg-zinc-900 shadow-xl border border-white/5 rounded-3xl">
-                      <ShoppingBag size={48} />
-                      <p className="mt-4 font-bold uppercase tracking-widest text-xs">No active orders</p>
-                    </div>
-                  );
+                  if (filteredOrders.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-16 rounded-lg border border-white/10 bg-zinc-900/50 text-zinc-600">
+                        <ShoppingBag size={28} />
+                        <p className="mt-2 text-xs font-medium">No active orders</p>
+                      </div>
+                    );
+                  }
 
                   return filteredOrders.map(o => {
                     const isSelected = selectedOrder?.id === o.id;
@@ -3582,446 +3250,170 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
                       : parseFloat(o.total_amount);
 
+                    const firstItemName = (o.product_name || '').split('(')[0]?.trim();
+                    const firstItemSku = (o.product_name || '').match(/\(SKU:\s*([^)]*)\)/i)?.[1]?.trim();
+                    const targetProduct =
+                      products.find(p => p.id == o.product_id) ||
+                      products.find(p => firstItemSku && (p.platform_id == firstItemSku || p.serial_no == firstItemSku)) ||
+                      products.find(p => p.name === firstItemName) ||
+                      products.find(p => p.name && firstItemName && p.name.toLowerCase().includes(firstItemName.toLowerCase()));
+                    const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
+
                     return (
-                      <div
+                      <button
                         key={o.id}
+                        type="button"
                         onClick={() => setSelectedOrder(o)}
-                        className={`p-4 rounded-[24px] border transition-all duration-300 cursor-pointer group relative ${isSelected
-                          ? 'bg-[#1d1d22] border-[#ce112d] shadow-[0_0_40px_-5px_rgba(206,17,45,0.15)] ring-1 ring-[#ce112d]/30'
-                          : 'bg-[#121215]/50 border-[#1d1d21] hover:border-white/10 hover:bg-[#16161a]'
-                          }`}
+                        className={`w-full text-left p-2.5 rounded-lg border transition-colors ${
+                          isSelected
+                            ? 'bg-[#1a1214] border-[#ce112d]/60'
+                            : 'bg-[#121215]/60 border-white/10 hover:border-white/20'
+                        }`}
                       >
-                        <div className="flex gap-4">
-                          <div className="w-16 h-20 bg-zinc-950 rounded-2xl overflow-hidden shrink-0 border border-white/5 relative flex items-center justify-center">
-                            {(() => {
-                              // Aggressive Image Finder
-                              const firstItemName = (o.product_name || '').split('(')[0]?.trim();
-                              const firstItemSku = (o.product_name || '').match(/\(SKU:\s*([^)]*)\)/i)?.[1]?.trim();
-
-                              const targetProduct =
-                                products.find(p => p.id == o.product_id) ||
-                                products.find(p => firstItemSku && (p.platform_id == firstItemSku || p.serial_no == firstItemSku)) ||
-                                products.find(p => p.name === firstItemName) ||
-                                products.find(p => p.name && firstItemName && p.name.toLowerCase().includes(firstItemName.toLowerCase()));
-
-                              const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
-
-                              return thumb ? (
-                                <img src={thumb} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
-                              ) : (
-                                <div className="text-zinc-800 flex flex-col items-center gap-1">
-                                  <ShoppingBag size={20} />
-                                  <span className="text-[6px] font-black uppercase text-zinc-900">No Image</span>
-                                </div>
-                              );
-                            })()}
-                            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent ${isSelected ? 'opacity-0' : 'opacity-100'}`} />
+                        <div className="flex gap-2.5">
+                          <div className="w-12 h-14 rounded-md overflow-hidden shrink-0 border border-white/10 bg-black flex items-center justify-center">
+                            {thumb ? (
+                              <img src={thumb} className="w-full h-full object-cover" alt="" />
+                            ) : (
+                              <ShoppingBag size={16} className="text-zinc-700" />
+                            )}
                           </div>
-
-                          <div className="flex-1 min-w-0 flex flex-col justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <p className={`text-[10px] font-black uppercase tracking-wider ${isSelected ? 'text-[#ce112d]' : 'text-zinc-600'}`}>
-                                  {new Date(o.created_at).toLocaleDateString()}
-                                </p>
-                                <span className={`px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider backdrop-blur-md border ${o.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                  o.status === 'Shipped' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                    o.status === 'Delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
-                                  }`}>
-                                  {o.status}
-                                </span>
+                          <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <p className="text-[10px] text-zinc-500">{new Date(o.created_at).toLocaleDateString()}</p>
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${
+                                  o.status === 'Pending' ? 'bg-yellow-500/15 text-yellow-400' :
+                                  o.status === 'Shipped' ? 'bg-blue-500/15 text-blue-400' :
+                                  o.status === 'Delivered' ? 'bg-green-500/15 text-green-400' :
+                                  'bg-red-500/15 text-red-400'
+                                }`}>{o.status}</span>
                               </div>
-                              <h4 className="text-[13px] font-black text-white leading-tight italic truncate uppercase group-hover:text-[#ce112d] transition-colors">
-                                {o.product_name?.split('(')[0]?.trim() || 'Custom Order'}
-                              </h4>
-                              <p className="text-[11px] font-bold text-zinc-500 truncate flex items-center gap-1.5">
-                                <User size={10} className="text-[#ce112d]/50" /> {o.customer_name}
+                              <p className="text-[12px] font-semibold text-white truncate leading-snug">
+                                {firstItemName || 'Custom Order'}
                               </p>
+                              <p className="text-[11px] text-zinc-500 truncate mt-0.5">{o.customer_name}</p>
                             </div>
-
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/[0.03]">
-                              <p className="text-[12px] font-black text-[#ce112d]">৳{amount.toLocaleString()}</p>
-                              <div className="flex items-center gap-1 text-[9px] font-black text-zinc-600 uppercase">
-                                <MapPin size={10} /> {o.delivery_area}
-                              </div>
+                            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-white/5">
+                              <p className="text-[12px] font-semibold text-[#ce112d]">৳{(amount || 0).toLocaleString()}</p>
+                              <p className="text-[10px] text-zinc-500 uppercase flex items-center gap-0.5 truncate max-w-[45%]">
+                                <MapPin size={10} className="shrink-0" /> {o.delivery_area}
+                              </p>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   });
                 })()}
               </div>
 
-              {/* RIGHT: Detailed Command Center (8/12) */}
-              <div className="col-span-8 bg-[#121215]/30 border border-[#1d1d21] rounded-[40px] overflow-hidden flex flex-col shadow-2xl relative">
+              {/* RIGHT: details */}
+              <div className="col-span-8 bg-[#121215]/40 border border-white/10 rounded-xl overflow-hidden flex flex-col">
                 {!selectedOrder ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-6">
-                    <div className="w-24 h-24 bg-zinc-900 rounded-[32px] flex items-center justify-center border border-white/5 shadow-xl animate-pulse">
-                      <ShoppingBag size={40} className="text-zinc-700" />
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-2">
+                    <div className="w-12 h-12 bg-zinc-900 rounded-lg flex items-center justify-center border border-white/5">
+                      <ShoppingBag size={22} className="text-zinc-600" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-zinc-300">Select an order to manage</h3>
-                      <p className="text-zinc-500 text-sm mt-2 max-w-xs mx-auto">Complete details, customer info, and quick actions will appear here.</p>
-                    </div>
+                    <h3 className="text-sm font-semibold text-zinc-300">Select an order</h3>
+                    <p className="text-zinc-500 text-xs max-w-xs">Customer, items, payment and status appear here.</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Detail Panel Header */}
-                    <div className="p-8 bg-black/20 border-b border-[#1d1d21] flex items-center justify-between relative z-10 backdrop-blur-xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-1.5 h-8 bg-gradient-to-b from-[#ce112d] to-[#ff1c3a] rounded-full shadow-[0_0_20px_rgba(206,17,45,0.4)]" />
-                        <div>
-                          <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">Order <span className="text-[#ce112d]">Command</span></h3>
-                          <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em] mt-1">
-                            Ref: #{selectedOrder.id.toString().slice(-6).toUpperCase()} • {new Date(selectedOrder.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => copyFullOrderDetails(selectedOrder)}
-                          className="flex items-center gap-1.5 px-4 h-10 bg-[#ce112d]/10 hover:bg-[#ce112d] text-[#ce112d] hover:text-white rounded-xl border border-[#ce112d]/20 active:scale-95 transition-all text-xs font-black uppercase tracking-wider shadow-lg shadow-red-900/20"
-                          title="Copy Full Order Details"
-                        >
-                          <Copy size={14} /> Copy Order Details
-                        </button>
-                        <button onClick={() => deleteOrder(selectedOrder.id)} className="w-10 h-10 flex items-center justify-center bg-red-500/5 text-red-500/50 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/10">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Detail Panel Content */}
-                    <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar no-scrollbar">
-
-                      {/* Section 1: Customer & Logistics */}
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="bg-black/20 rounded-3xl p-6 border border-[#1d1d21] space-y-4">
-                          <div className="flex items-center gap-2">
-                            <User size={12} className="text-[#ce112d]" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-[#ce112d]">Customer Profile</p>
-                          </div>
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mb-1">Full Name</p>
-                              <p className="text-lg font-bold text-white tracking-tight">{selectedOrder.customer_name}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mb-1">Phone Number</p>
-                              <p className="text-lg font-bold text-white">{selectedOrder.customer_phone}</p>
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <a href={`tel:${selectedOrder.customer_phone}`} className="flex-1 h-10 flex items-center justify-center bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl hover:bg-blue-500 hover:text-white transition-all text-[10px] font-black uppercase">Call Now</a>
-                              <a href={`https://wa.me/${selectedOrder.customer_phone.replace(/[^0-9]/g, '')}`} target="_blank" className="flex-1 h-10 flex items-center justify-center bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl hover:bg-green-500 hover:text-white transition-all text-[10px] font-black uppercase">WhatsApp</a>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-black/20 rounded-3xl p-6 border border-[#1d1d21] space-y-4">
-                          <div className="flex items-center gap-2">
-                            <MapPin size={12} className="text-zinc-500" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Shipping Details</p>
-                          </div>
-                          <div className="space-y-4">
-                            <div>
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mb-1">Delivery Area</p>
-                              <span className="inline-block bg-[#121215] text-zinc-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border border-[#1d1d21]">{selectedOrder.delivery_area}</span>
-                            </div>
-                            <div>
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em] mb-1">Full Address</p>
-                              <p className="text-sm font-medium text-zinc-300 leading-relaxed">{selectedOrder.customer_address}</p>
-                            </div>
-                            <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="w-full h-10 flex items-center justify-center gap-2 bg-[#1d1d22] hover:bg-[#25252b] text-white rounded-xl transition-all text-[10px] font-black uppercase border border-white/5 shadow-lg">
-                              <Copy size={14} /> Copy Address
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 2: Items & Financials */}
-                      <div className="bg-black/20 rounded-[32px] border border-[#1d1d21] overflow-hidden">
-                        <div className="p-6 border-b border-[#1d1d21] flex justify-between items-center bg-white/[0.01]">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Order Items & Summary</p>
-                          <span className="text-[10px] font-black bg-[#ce112d] text-white px-3 py-1.5 rounded-full uppercase italic shadow-lg shadow-red-900/20 ring-1 ring-white/10">Items: {selectedOrder.product_name?.split('+').length || 1}</span>
-                        </div>
-                        <div className="p-6 space-y-6">
-                          {(() => {
-                            // Robust Parser for Item details
-                            const parseLine = (str) => {
-                              const res = { name: str, size: null, color: null, sku: null, qty: 1 };
-                              const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
-                              const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
-                              const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
-                              const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
-
-                              if (colorMatch) res.color = colorMatch[1].trim();
-                              if (sizeMatch) res.size = sizeMatch[1].trim();
-                              if (skuMatch) res.sku = skuMatch[1].trim();
-                              if (qtyMatch) res.qty = qtyMatch[1];
-
-                              res.name = str.split('(')[0].trim();
-                              return res;
-                            };
-
-                            const items = (selectedOrder.product_name || '').split(' + ').map(parseLine);
-                            return items.map((item, idx) => {
-                              const targetProduct =
-                                products.find(p => p.id == selectedOrder.product_id && idx === 0) ||
-                                products.find(p => item.sku && (p.platform_id == item.sku || p.serial_no == item.sku)) ||
-                                products.find(p => p.name === item.name) ||
-                                products.find(p => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
-
-                              const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
-
-                              return (
-                                <div key={idx} className="flex gap-6 items-start group">
-                                  <div className="w-24 h-32 bg-[#121215] rounded-2xl overflow-hidden shrink-0 border border-[#1d1d21] relative shadow-2xl group-hover:scale-[1.02] transition-transform flex items-center justify-center">
-                                    {thumb ? (
-                                      <img src={thumb} className="w-full h-full object-cover" alt="" />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-zinc-800 bg-zinc-950/50">
-                                        <ImageIcon size={32} />
-                                      </div>
-                                    )}
-                                    <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] font-black text-white/50">
-                                      #{targetProduct?.serial_no || idx + 1}
-                                    </div>
-                                  </div>
-                                  <div className="flex-1 space-y-4 pt-1">
-                                    <h4 className="text-xl font-bold text-white leading-tight italic group-hover:text-[#ce112d] transition-colors">{item.name}</h4>
-
-                                    <div className="grid grid-cols-2 gap-3 max-w-md">
-                                      <div className="bg-[#1d1d22] border border-[#ce112d]/10 p-3 rounded-2xl space-y-1">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-[#ce112d]/60">Size Spec</p>
-                                        <p className={`text-[13px] font-black uppercase ${item.size || selectedOrder.size ? 'text-white' : 'text-zinc-700'}`}>
-                                          {item.size || selectedOrder.size || 'Not Specified'}
-                                        </p>
-                                      </div>
-                                      <div className="bg-[#1d1d22] border border-blue-500/10 p-3 rounded-2xl space-y-1">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-blue-500/60">Color Variant</p>
-                                        <p className={`text-[13px] font-black uppercase ${item.color || selectedOrder.color ? 'text-white' : 'text-zinc-700'}`}>
-                                          {item.color || selectedOrder.color || 'Not Specified'}
-                                        </p>
-                                      </div>
-                                      <div className="bg-[#1d1d22] border border-zinc-800 p-3 rounded-2xl space-y-1">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Product SKU</p>
-                                        <p className={`text-[11px] font-bold font-mono ${item.sku ? 'text-zinc-400' : 'text-zinc-800'}`}>
-                                          {item.sku || 'No SKU'}
-                                        </p>
-                                      </div>
-                                      <div className="bg-[#1d1d22] border border-green-500/10 p-3 rounded-2xl space-y-1">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-green-500/60">Order Quantity</p>
-                                        <p className="text-[13px] font-black text-white">
-                                          {item.qty} UNIT(S)
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            });
-                          })()}
-
-                          <div className="pt-6 border-t border-white/5 grid grid-cols-3 gap-6">
-                            <div className="bg-zinc-950/50 p-4 rounded-2xl border border-white/5">
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Product Price</p>
-                              <p className="text-xl font-black text-white italic">৳{selectedOrder.product_price.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-zinc-950/50 p-4 rounded-2xl border border-white/5">
-                              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Delivery Charge</p>
-                              <p className="text-xl font-black text-white italic">৳{selectedOrder.delivery_charge || 0}</p>
-                            </div>
-                            <div className="bg-[#ce112d]/5 p-4 rounded-2xl border border-[#ce112d]/10">
-                              <p className="text-[9px] text-[#ce112d] font-bold uppercase tracking-widest mb-1">Advance Received</p>
-                              <p className="text-xl font-black text-[#ce112d] italic">৳{(() => {
-                                const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                                return selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                              })()}</p>
-                            </div>
-                          </div>
-
-                          <div className="p-6 bg-[#ce112d] rounded-[24px] flex items-center justify-between shadow-2xl relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-1">Total Due on Delivery</p>
-                              <p className="text-4xl font-black text-white italic tracking-tighter">
-                                ৳{(() => {
-                                  const totalAmount = typeof selectedOrder.total_amount === 'string'
-                                    ? Number(selectedOrder.total_amount.replace(/[^0-9.]/g, ''))
-                                    : Number(selectedOrder.total_amount);
-                                  const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                                  const advanceAmount = selectedOrder.is_advance_paid ? (selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                                  return (selectedOrder.payment_status === 'Fully Paid' ? 0 : totalAmount - advanceAmount).toLocaleString();
-                                })()}
-                              </p>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); togglePaymentStatus(selectedOrder, 'Advance Paid'); }}
-                                className={`px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedOrder.is_advance_paid ? 'bg-white text-[#ce112d] shadow-xl' : 'bg-black/20 text-white/50 border border-white/10 hover:bg-black/30'}`}
-                              >
-                                {selectedOrder.is_advance_paid ? 'Advance Paid' : 'Mark Advance Paid'}
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); togglePaymentStatus(selectedOrder, 'Fully Paid'); }}
-                                className={`px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-white text-[#ce112d] shadow-xl' : 'bg-black/20 text-white/50 border border-white/10 hover:bg-black/30'}`}
-                              >
-                                {selectedOrder.payment_status === 'Fully Paid' ? 'Fully Paid' : 'Mark Fully Paid'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 3: Notes & Status Control */}
-                      <div className="grid grid-cols-2 gap-8 pt-4">
-                        <div className="space-y-4">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Internal Management Note</p>
-                          <button
-                            onClick={() => updateOrderNote(selectedOrder.id, selectedOrder.customer_note)}
-                            className="w-full text-left p-6 bg-zinc-900 border border-white/5 rounded-[32px] hover:border-[#ce112d]/30 transition-all min-h-[120px] flex flex-col justify-between group"
-                          >
-                            <p className={`text-sm italic font-medium leading-relaxed ${selectedOrder.customer_note ? 'text-zinc-300' : 'text-zinc-700 font-bold'}`}>
-                              {selectedOrder.customer_note || "Write an internal note for this order (visible only to admin)..."}
-                            </p>
-                            <p className="text-[10px] text-zinc-700 font-black uppercase mt-4 text-right group-hover:text-[#ce112d]">Click to Edit Note</p>
-                          </button>
-                        </div>
-                        <div className="space-y-4">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Order Fulfilment Status</p>
-                          <div className="grid grid-cols-1 gap-4">
-                            {['Pending', 'Shipped', 'Delivered', 'Canceled'].map(status => (
-                              <button
-                                key={status}
-                                onClick={() => updateOrderStatus(selectedOrder.id, status)}
-                                className={`h-14 rounded-2xl text-xs font-black uppercase tracking-widest border transition-all flex items-center justify-between px-6 ${selectedOrder.status === status
-                                  ? (status === 'Delivered' ? 'bg-green-500 border-green-500 text-white shadow-lg' :
-                                    status === 'Shipped' ? 'bg-blue-500 border-blue-500 text-white shadow-lg' :
-                                      status === 'Canceled' ? 'bg-red-500 border-red-500 text-white shadow-lg' :
-                                        'bg-yellow-500 border-yellow-500 text-black shadow-lg')
-                                  : 'bg-zinc-900/50 border-white/5 text-zinc-500 hover:border-zinc-500 hover:text-white'
-                                  }`}
-                              >
-                                {status}
-                                {selectedOrder.status === status && <CheckCircle2 size={16} />}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  </>
+                  <OrderDetailsPanel
+                    order={selectedOrder}
+                    products={products}
+                    variant="panel"
+                    onCopyFull={copyFullOrderDetails}
+                    onCopy={copyToClipboard}
+                    onDelete={deleteOrder}
+                    onTogglePayment={togglePaymentStatus}
+                    onUpdateStatus={updateOrderStatus}
+                    onEditNote={updateOrderNote}
+                  />
                 )}
               </div>
             </div>
 
-            {/* Mobile View remains unchanged for specialized experience */}
-            <div className="lg:hidden space-y-4 pb-24">
+            {/* Mobile list */}
+            <div className="lg:hidden space-y-2 pb-24">
               {(() => {
                 const productMap = {};
-                products.forEach(p => productMap[p.id] = p);
+                products.forEach(p => { productMap[p.id] = p; });
 
                 return orders.filter(o => o && o.status !== 'Deleted').map(o => {
                   const product = productMap[o.product_id];
                   let productThumb = product?.image_url || product?.images?.[0];
+                  const amount = typeof o.total_amount === 'string'
+                    ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
+                    : parseFloat(o.total_amount);
 
                   return (
-                    <div
+                    <button
                       key={o.id}
+                      type="button"
                       onClick={() => setSelectedOrder(o)}
-                      className="bg-zinc-900 border border-white/5 rounded-[24px] p-4 space-y-4 relative hover:border-[#ce112d]/30 transition-all cursor-pointer shadow-xl"
+                      className="w-full text-left bg-[#121215] border border-white/10 rounded-lg p-2.5 hover:border-[#ce112d]/40 transition-colors"
                     >
-                      <div className="flex gap-4">
-                        <div className="w-16 h-20 bg-black rounded-xl overflow-hidden shrink-0 relative border border-white/5">
+                      <div className="flex gap-2.5">
+                        <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 relative border border-white/10">
                           {productThumb && <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt="" />}
-                          {product?.serial_no && (
-                            <div className="absolute top-0 right-0 bg-[#ce112d] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-bl">#{product.serial_no}</div>
-                          )}
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div className="flex justify-between items-start gap-2">
-                            <p className="text-[13px] font-bold text-white truncate">{o.customer_name}</p>
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase shrink-0 ${o.status === 'Pending' ? 'bg-yellow-500/10 text-yellow-500' : o.status === 'Shipped' ? 'bg-blue-500/10 text-blue-500' : o.status === 'Delivered' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                              {o.status}
-                            </span>
+                            <p className="text-[12px] font-semibold text-white truncate">{o.customer_name}</p>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
+                              o.status === 'Pending' ? 'bg-yellow-500/15 text-yellow-400' :
+                              o.status === 'Shipped' ? 'bg-blue-500/15 text-blue-400' :
+                              o.status === 'Delivered' ? 'bg-green-500/15 text-green-400' :
+                              'bg-red-500/15 text-red-400'
+                            }`}>{o.status}</span>
                           </div>
-                          <div className="space-y-0.5">
-                            {o.product_name?.split(' + ').map((item, idx) => (
-                              <p key={idx} className="text-[10px] font-medium text-zinc-400 leading-tight truncate">
-                                {item}
-                              </p>
-                            )) || <p className="text-[10px] font-medium text-zinc-400">Generic Item</p>}
+                          <p className="text-[11px] text-zinc-500 truncate">{(o.product_name || '').split('(')[0]?.trim()}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-[12px] font-semibold text-[#ce112d]">৳{(amount || 0).toLocaleString()}</p>
+                            <p className="text-[10px] text-zinc-500 uppercase">{o.delivery_area}</p>
                           </div>
-                          <p className="text-xs text-[#ce112d] font-bold">৳{o.total_amount}</p>
                         </div>
                       </div>
-
-                      <div className="pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePaymentStatus(o, 'Advance Paid');
-                            }}
-                            className={`text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border transition-all ${o.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20' : o.is_advance_paid && o.payment_status !== 'Fully Paid' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-black text-zinc-600 border-white/5'}`}
-                          >
-                            {o.is_exclusive_order ? 'Adv' : (o.delivery_area === 'mirsarai' && (parseFloat(o.delivery_charge) || 0) === 0 ? 'Conf' : 'Del')} Paid
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              togglePaymentStatus(o, 'Fully Paid');
-                            }}
-                            className={`text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border transition-all ${o.payment_status === 'Fully Paid' ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-black text-zinc-600 border-white/5'}`}
-                          >
-                            Full Paid
-                          </button>
-                        </div>
-                        <p className="text-[10px] font-bold text-zinc-500">{o.customer_phone}</p>
-                      </div>
-
-                      <button onClick={(e) => { e.stopPropagation(); deleteOrder(o.id); }} className="absolute bottom-4 right-4 text-zinc-700 hover:text-red-500 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    </button>
                   );
                 });
               })()}
             </div>
             {orders.filter(o => o && o.status !== 'Deleted').length === 0 && !loading && (
-              <div className="py-32 text-center space-y-4">
-                <div className="w-20 h-20 bg-zinc-900 rounded-[32px] flex items-center justify-center mx-auto border border-white/5">
-                  <ShoppingBag className="text-zinc-700" size={32} />
+              <div className="py-16 text-center space-y-2">
+                <div className="w-14 h-14 bg-zinc-900 rounded-xl flex items-center justify-center mx-auto border border-white/5">
+                  <ShoppingBag className="text-zinc-600" size={22} />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-zinc-400 text-base font-bold">No orders found.</p>
-                  <p className="text-zinc-600 text-sm">Waiting for new orders to arrive</p>
-                </div>
+                <p className="text-zinc-400 text-sm font-semibold">No orders found</p>
+                <p className="text-zinc-600 text-xs">Waiting for new orders</p>
               </div>
             )}
           </div>
         ) : activeTab === 'deleted' ? (
-          <div className="space-y-12">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h2 className="text-3xl font-bold uppercase tracking-tight text-white">Deleted <span className="text-[#ce112d]">Orders</span></h2>
-                <p className="text-zinc-500 text-xs mt-3 uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">{orders.filter(o => o && o.status === 'Deleted').length} Deleted Orders</p>
+          <div className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-xl font-semibold text-white tracking-tight">
+                  Deleted <span className="text-[#ce112d]">Orders</span>
+                </h2>
+                <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
+                  {orders.filter(o => o && o.status === 'Deleted').length} in trash
+                </span>
               </div>
               {orders.filter(o => o && o.status === 'Deleted').length > 0 && (
                 <button
                   onClick={emptyBin}
-                  className="flex items-center justify-center gap-2 px-6 h-12 bg-zinc-900 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-all shadow-lg"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-zinc-900 border border-white/10 text-[11px] font-semibold text-[#ce112d] hover:bg-[#ce112d] hover:text-white transition-colors self-start"
                 >
-                  <Trash2 size={16} /> Empty Bin
+                  <Trash2 size={14} /> Empty Bin
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {(() => {
                 const productMap = {};
-                products.forEach(p => productMap[p.id] = p);
+                products.forEach(p => { productMap[p.id] = p; });
 
                 return orders.filter(o => o && o.status === 'Deleted').map(o => {
                   const product = productMap[o.product_id];
@@ -4031,48 +3423,35 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     <div
                       key={o.id}
                       onClick={() => setSelectedOrder(o)}
-                      className="bg-zinc-900 border border-white/5 rounded-[32px] overflow-hidden p-6 space-y-6 opacity-70 hover:opacity-100 transition-all border-dashed shadow-xl group cursor-pointer hover:border-[#ce112d]/30"
+                      className="bg-[#121215] border border-dashed border-white/10 rounded-xl p-3 space-y-3 opacity-80 hover:opacity-100 hover:border-[#ce112d]/40 transition-all cursor-pointer"
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">
-                          {new Date(o.created_at).toLocaleDateString()} • {new Date(o.created_at).toLocaleTimeString()}
-                        </div>
-                        <span className="px-3 py-1 bg-red-500/10 text-red-500 text-[10px] font-bold uppercase rounded-lg border border-red-500/20">Deleted</span>
+                      <div className="flex justify-between items-center gap-2">
+                        <p className="text-[10px] text-zinc-500 truncate">
+                          {new Date(o.created_at).toLocaleDateString()}
+                        </p>
+                        <span className="px-1.5 py-0.5 bg-red-500/10 text-red-400 text-[9px] font-semibold uppercase rounded border border-red-500/20">Deleted</span>
                       </div>
-
-                      <div className="flex gap-4 p-3 bg-black/40 border border-white/5 rounded-[24px]">
-                        <div className="w-16 h-20 bg-zinc-900 rounded-xl overflow-hidden flex-shrink-0 relative border border-white/5">
+                      <div className="flex gap-2.5">
+                        <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 border border-white/10 flex items-center justify-center">
                           {productThumb ? (
                             <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover grayscale" alt="" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-800">
-                              <ImageIcon size={20} />
-                            </div>
+                            <ImageIcon size={16} className="text-zinc-700" />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <p className="text-sm font-bold text-white leading-tight mb-1 truncate">{o.product_name}</p>
-                          <p className="text-base font-bold text-[#ce112d]">৳{o.total_amount}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-semibold text-white truncate">{o.product_name}</p>
+                          <p className="text-[12px] font-semibold text-[#ce112d] mt-0.5">৳{o.total_amount}</p>
+                          <p className="text-[11px] text-zinc-400 truncate mt-1">{o.customer_name}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">{o.customer_phone} · {o.delivery_area}</p>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-white truncate">{o.customer_name}</p>
-                          <p className="text-xs text-zinc-500 font-semibold">{o.customer_phone}</p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="text-[10px] font-bold uppercase text-zinc-400 truncate">{o.delivery_area}</p>
-                          <p className="text-[10px] text-zinc-500 line-clamp-2 leading-relaxed">{o.customer_address}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3 pt-4 border-t border-white/5" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => restoreOrder(o.id)} className="flex-1 h-11 flex items-center justify-center gap-2 bg-green-500/10 text-green-500 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-green-500 hover:text-white transition-all shadow-lg shadow-green-500/10">
-                          <RotateCcw size={14} /> Restore
+                      <div className="flex gap-1.5 pt-1 border-t border-white/5" onClick={e => e.stopPropagation()}>
+                        <button type="button" onClick={() => restoreOrder(o.id)} className="flex-1 h-9 inline-flex items-center justify-center gap-1 bg-green-500/10 text-green-400 rounded-lg text-[10px] font-semibold hover:bg-green-500 hover:text-white transition-colors">
+                          <RotateCcw size={12} /> Restore
                         </button>
-                        <button onClick={() => permanentDeleteOrder(o.id)} className="flex-1 h-11 flex items-center justify-center gap-2 bg-zinc-800 text-zinc-400 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
-                          <Trash2 size={14} /> Wipe
+                        <button type="button" onClick={() => permanentDeleteOrder(o.id)} className="flex-1 h-9 inline-flex items-center justify-center gap-1 bg-zinc-800 text-zinc-400 rounded-lg text-[10px] font-semibold hover:bg-red-500 hover:text-white transition-colors">
+                          <Trash2 size={12} /> Wipe
                         </button>
                       </div>
                     </div>
@@ -4081,161 +3460,157 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               })()}
             </div>
             {orders.filter(o => o && o.status === 'Deleted').length === 0 && (
-              <div className="py-32 text-center space-y-4">
-                <div className="w-20 h-20 bg-zinc-900 rounded-[32px] flex items-center justify-center mx-auto border border-white/5 shadow-xl">
-                  <Archive className="text-zinc-700" size={32} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-zinc-400 text-lg font-bold">Trash is Empty</p>
-                  <p className="text-zinc-600 text-sm font-medium">No deleted orders to show here</p>
-                </div>
+              <div className="py-16 text-center space-y-2">
+                <Archive className="mx-auto text-zinc-700" size={28} />
+                <p className="text-sm font-semibold text-zinc-400">Trash is empty</p>
+                <p className="text-xs text-zinc-600">No deleted orders</p>
               </div>
             )}
           </div>
         ) : activeTab === 'reviews' ? (
-          <div className="space-y-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-xl font-semibold text-white tracking-tight">
+                Reviews <span className="text-[#ce112d]">& Feedback</span>
+              </h2>
+              <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
+                {reviews.length} total
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
               {(() => {
                 const avgRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
                 return (
-                  <div className="col-span-1 md:col-span-2 lg:col-span-1 bg-zinc-900 border border-white/5 p-8 rounded-[40px] flex flex-col items-center justify-center text-center space-y-4 shadow-xl">
-                    <p className="text-xs font-semibold uppercase text-zinc-500 tracking-[0.2em]">Avg Rating</p>
-                    <div className="flex items-end gap-1">
-                      <span className="text-6xl font-bold tracking-tighter text-white">{reviews.length > 0 ? avgRating.toFixed(1) : '—'}</span>
-                      <span className="text-2xl font-bold text-[#ce112d] mb-2">/5</span>
-                    </div>
-                    <div className="flex gap-1.5 text-[#ce112d]">
+                  <div className="rounded-lg border border-white/10 border-t-2 border-t-[#ce112d] bg-[#121215] px-3 py-3 flex flex-col items-center justify-center text-center gap-1.5">
+                    <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Avg rating</p>
+                    <p className="text-2xl font-semibold text-white">
+                      {reviews.length > 0 ? avgRating.toFixed(1) : '—'}
+                      <span className="text-sm text-[#ce112d] font-medium"> /5</span>
+                    </p>
+                    <div className="flex gap-0.5 text-[#ce112d]">
                       {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} size={20} fill={s <= avgRating ? 'currentColor' : 'none'} className={s <= avgRating ? 'opacity-100' : 'opacity-20'} />
+                        <Star key={s} size={12} fill={s <= avgRating ? 'currentColor' : 'none'} className={s <= avgRating ? 'opacity-100' : 'opacity-20'} />
                       ))}
                     </div>
-                    <p className="text-xs font-medium text-zinc-600 uppercase tracking-widest">Based on {reviews.length} reviews</p>
                   </div>
                 );
               })()}
 
-              <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-zinc-900 border border-white/5 p-8 rounded-[40px] space-y-6 shadow-xl">
-                <p className="text-xs font-semibold uppercase text-zinc-500 tracking-wider">Rating Distribution</p>
-                <div className="space-y-4">
-                  {[5, 4, 3, 2, 1].map(stars => {
-                    const count = reviews.filter(r => r.rating === stars).length;
-                    const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
-                    return (
-                      <div key={stars} className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-zinc-500 w-4">{stars}</span>
-                        <div className="flex-1 h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                          <div className="h-full bg-[#ce112d] transition-all duration-1000" style={{ width: `${percentage}%` }} />
-                        </div>
-                        <span className="text-xs font-bold text-zinc-400 w-8 text-right">{count}</span>
+              <div className="lg:col-span-3 rounded-lg border border-white/10 bg-[#121215] p-3 space-y-2">
+                <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Distribution</p>
+                {[5, 4, 3, 2, 1].map(stars => {
+                  const count = reviews.filter(r => r.rating === stars).length;
+                  const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                  return (
+                    <div key={stars} className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-zinc-500 w-3">{stars}</span>
+                      <div className="flex-1 h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                        <div className="h-full bg-[#ce112d]" style={{ width: `${percentage}%` }} />
                       </div>
-                    );
-                  })}
-                </div>
+                      <span className="text-[10px] font-semibold text-zinc-400 w-6 text-right">{count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="space-y-8">
-              <h3 className="text-xl font-bold uppercase tracking-tight text-zinc-400 border-b border-white/5 pb-4">Recent <span className="text-white">Feedback</span></h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-zinc-300">Recent feedback</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
                 {reviews.map(r => (
-                  <div key={r.id} className="bg-zinc-900 border border-white/5 rounded-3xl p-6 space-y-4 hover:border-zinc-700 transition-all shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-1">
+                  <div key={r.id} className="bg-[#121215] border border-white/10 rounded-lg p-3 space-y-2 hover:border-white/20 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex gap-0.5">
                         {[1, 2, 3, 4, 5].map(s => (
-                          <Star key={s} size={16} className={s <= r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-800'} />
+                          <Star key={s} size={12} className={s <= r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-700'} />
                         ))}
                       </div>
-                      <span className="text-[11px] text-zinc-500 font-bold">{new Date(r.created_at).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
                     </div>
                     {r.comment && (
-                      <p className="text-sm text-zinc-300 leading-relaxed font-medium">"{r.comment}"</p>
+                      <p className="text-[12px] text-zinc-300 leading-relaxed line-clamp-3">"{r.comment}"</p>
                     )}
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                      <p className="text-xs text-zinc-400 font-bold">{r.customer_name || 'Anonymous'}</p>
-                      {r.product_name && <p className="text-[10px] text-zinc-600 font-bold uppercase truncate max-w-[120px]">{r.product_name}</p>}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 gap-2">
+                      <p className="text-[11px] text-zinc-400 font-medium truncate">{r.customer_name || 'Anonymous'}</p>
+                      {r.product_name && <p className="text-[10px] text-zinc-600 truncate max-w-[40%]">{r.product_name}</p>}
                     </div>
                   </div>
                 ))}
               </div>
               {reviews.length === 0 && (
-                <div className="py-20 text-center space-y-4">
-                  <div className="w-16 h-16 bg-zinc-900 rounded-2xl flex items-center justify-center mx-auto border border-white/5">
-                    <Star className="text-zinc-800" size={32} />
-                  </div>
-                  <p className="text-zinc-500 text-sm font-bold">No reviews submitted yet.</p>
+                <div className="py-14 text-center space-y-2">
+                  <Star className="mx-auto text-zinc-700" size={28} />
+                  <p className="text-sm text-zinc-500 font-medium">No reviews yet</p>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-                <div>
-                  <h2 className="text-3xl font-bold uppercase tracking-tight text-white">
-                    {activeTab === 'published' ? 'Published' : activeTab === 'pending' ? 'Pending' : 'Sold Out'} <span className="text-[#ce112d]">Feed</span>
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-semibold text-white tracking-tight">
+                    {activeTab === 'published' ? 'Live' : activeTab === 'pending' ? 'Draft' : 'Sold Out'} <span className="text-[#ce112d]">Products</span>
                   </h2>
-                  <div className="flex items-center gap-3 flex-wrap mt-3">
-                    <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest bg-zinc-900 py-1.5 px-4 rounded-full border border-white/5 inline-block">
-                      {products.filter(p => {
-                        if (!p) return false;
-                        if (activeTab === 'soldout') return p.is_sold_out;
-                        return p.status === activeTab && !p.is_sold_out;
-                      }).length} Items in Tab
-                    </p>
-                    {hasMoreProducts && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleLoadMoreProducts}
-                          disabled={loading}
-                          className="flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/10 hover:bg-[#ce112d]/20 px-3.5 py-1.5 rounded-full border border-[#ce112d]/20 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          {loading ? <RotateCcw size={12} className="animate-spin" /> : <Plus size={12} />}
-                          <span>Load 100 More</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleLoadAllProducts}
-                          disabled={loading}
-                          className="flex items-center gap-1.5 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-white/10 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          <Sparkles size={12} className="text-amber-400" />
-                          <span>Load All Products</span>
-                        </button>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowRangeDeleteModal(true)}
-                      className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-1.5 rounded-full border border-red-500/20 transition-all active:scale-95 ml-auto"
-                    >
-                      <Trash2 size={12} />
-                      <span>Delete Serial Range</span>
-                    </button>
-                  </div>
+                  <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
+                    {products.filter(p => {
+                      if (!p) return false;
+                      if (activeTab === 'soldout') return p.is_sold_out;
+                      return p.status === activeTab && !p.is_sold_out;
+                    }).length} items
+                  </span>
+                  {hasMoreProducts && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreProducts}
+                        disabled={loading}
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[11px] font-semibold text-[#ce112d] bg-[#ce112d]/10 border border-[#ce112d]/20 hover:bg-[#ce112d]/20 disabled:opacity-50"
+                      >
+                        {loading ? <RotateCcw size={11} className="animate-spin" /> : <Plus size={11} />}
+                        Load 100
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLoadAllProducts}
+                        disabled={loading}
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[11px] font-semibold text-white bg-zinc-800 border border-white/10 hover:bg-zinc-700 disabled:opacity-50"
+                      >
+                        <Sparkles size={11} className="text-amber-400" />
+                        Load all
+                      </button>
+                    </>
+                  )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRangeDeleteModal(true)}
+                  className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[11px] font-semibold text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 self-start"
+                >
+                  <Trash2 size={11} />
+                  Delete range
+                </button>
               </div>
 
-              {/* ── Filter Controls Bar: Search + Category Dropdown + Subcategory Dropdown ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-zinc-900/60 p-3.5 rounded-2xl border border-white/5 backdrop-blur-md">
-                {/* Search Bar */}
+              {/* Filter bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-[#121215]/80 p-2.5 rounded-lg border border-white/10">
                 <div className="sm:col-span-4 relative group">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#ce112d] transition-colors" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-[#ce112d]" />
                   <input
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full bg-black/50 border border-zinc-800 pl-10 pr-4 h-11 rounded-xl text-xs font-medium focus:border-zinc-500 outline-none transition-all placeholder:text-zinc-600 text-white"
+                    className="w-full bg-black/50 border border-white/10 pl-9 pr-8 h-9 rounded-lg text-xs font-medium focus:border-[#ce112d]/40 outline-none placeholder:text-zinc-600 text-white"
                     placeholder="Search name, SKU, serial..."
                   />
                   {searchTerm && (
-                    <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
-                      <X size={14} />
+                    <button type="button" onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+                      <X size={12} />
                     </button>
                   )}
                 </div>
 
-                {/* Category Dropdown Filter */}
                 <div className="sm:col-span-4 relative">
                   <select
                     value={selectedCategoryFilter}
@@ -4392,7 +3767,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 }
 
                 return (
-                  <div key={p.id} className="group bg-zinc-900 border border-white/5 rounded-[32px] overflow-hidden hover:border-[#ce112d]/30 transition-all duration-300 shadow-xl">
+                  <div key={p.id} className="group bg-[#121215] border border-white/10 rounded-xl overflow-hidden hover:border-[#ce112d]/40 transition-colors">
 
                     {/* ── Top section: Image + Details ── */}
                     <div className="flex gap-5 p-4">
@@ -4707,393 +4082,25 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         </div>
       )}
 
-      {/* Mobile/Shared Detail Modal restricted to appropriate tabs */}
       {selectedOrder && (activeTab !== 'orders' && activeTab !== 'pending-items') && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setSelectedOrder(null)}>
-          {(() => {
-            // ── Parser ──────────────────────────────────────────────
-            const parseOrderItem = (str) => {
-              let s = str.trim();
-              let quantity = 1;
-              let sku = null;
-              let size = null;
-              let color = null;
-
-              const structuredMatch = s.match(/^(.*?)\s*(?:\((?:Color|রঙ):\s*([^)]*)\))?\s*(?:\((?:Size|সাইজ):\s*([^)]*)\))?\s*(?:\((?:SKU):\s*([^)]*)\))?\s*(?:\((?:Qty|পরিমাণ):\s*(\d+)\))?\s*$/i);
-              if (structuredMatch && (structuredMatch[2] || structuredMatch[3] || structuredMatch[4] || structuredMatch[5])) {
-                return {
-                  name: structuredMatch[1].trim() || 'Unknown Item',
-                  color: structuredMatch[2]?.trim() || null,
-                  size: structuredMatch[3]?.trim() || null,
-                  sku: structuredMatch[4]?.trim() || null,
-                  quantity: parseInt(structuredMatch[5] || '1')
-                };
-              }
-
-              const qtyMatch = s.match(/^(.*)\s+(\d+)\s*(?:piece|pc)\s*$/i);
-              if (qtyMatch) {
-                quantity = parseInt(qtyMatch[2]);
-                s = qtyMatch[1].trim();
-              }
-
-              const skuMatch = s.match(/^(.*)\s*\(SKU:\s*([^)]*)\)\s*$/i);
-              if (skuMatch) {
-                sku = skuMatch[2].trim();
-                s = skuMatch[1].trim();
-              } else {
-                const truncatedSku = s.match(/^(.*)\s*\(SKU:\s*([^)]*)\s*$/i);
-                if (truncatedSku) {
-                  sku = truncatedSku[2].trim() + '…';
-                  s = truncatedSku[1].trim();
-                }
-              }
-
-              const sizeMatch = s.match(/^(.*)\s+(.+?)\s+size\s*$/i);
-              if (sizeMatch) {
-                size = sizeMatch[2].trim();
-                s = sizeMatch[1].trim();
-              }
-
-              const colorMatch = s.match(/^(.*)\s+(.+?)\s+color\s*$/i);
-              if (colorMatch) {
-                color = colorMatch[2].trim();
-                s = colorMatch[1].trim();
-              }
-
-              return { name: s.trim() || 'Unknown Item', color, size, sku, quantity };
-            };
-
-            const productByName = {};
-            const productBySku = {};
-            products.forEach(p => {
-              if (p.name) productByName[p.name.toLowerCase().trim()] = p;
-              if (p.platform_id) productBySku[p.platform_id.toLowerCase().trim()] = p;
-              if (p.available_colors) {
-                p.available_colors.forEach(c => {
-                  if (typeof c === 'object' && c.sizes) {
-                    c.sizes.forEach(sz => {
-                      if (typeof sz === 'object' && sz.sku) {
-                        productBySku[sz.sku.toLowerCase().trim()] = p;
-                      }
-                    });
-                  }
-                });
-              }
-            });
-
-            const rawParts = (selectedOrder.product_name || '').split(' + ');
-            const parsedItems = rawParts.map(parseOrderItem);
-
-            const alreadyUsedIds = new Set();
-            const detailedItems = parsedItems.map((item, idx) => {
-              const isTruncatedSku = item.sku?.endsWith('…');
-              let p = idx === 0 ? products.find(pr => pr.id == selectedOrder.product_id) : null;
-
-              if (!p && !isTruncatedSku) {
-                if (item.sku && item.sku.length > 2) {
-                  const candidate = productBySku[item.sku.toLowerCase().trim()];
-                  if (candidate && !alreadyUsedIds.has(candidate.id)) p = candidate;
-                }
-                if (!p && item.name) {
-                  const candidate = productByName[item.name.toLowerCase().trim()];
-                  if (candidate && !alreadyUsedIds.has(candidate.id)) p = candidate;
-                }
-                if (!p && item.name && item.name.length > 2) {
-                  const needle = item.name.toLowerCase().trim();
-                  p = products.find(pr =>
-                    !alreadyUsedIds.has(pr.id) && (
-                      pr.name?.toLowerCase().includes(needle) ||
-                      needle.includes(pr.name?.toLowerCase())
-                    )
-                  );
-                }
-              }
-
-              if (p) alreadyUsedIds.add(p.id);
-
-              const unitPrice = (parsedItems.length === 1)
-                ? (Number(selectedOrder.product_price) / item.quantity)
-                : (p?.price || 0);
-
-              return { ...item, p, unitPrice };
-            });
-
-            const derivedItemsSubtotal = detailedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-            const totalQty = detailedItems.reduce((s, i) => s + i.quantity, 0);
-            const derivedTotalAmount = Number(derivedItemsSubtotal) + Number(selectedOrder.delivery_charge || 0);
-
-            return (
-              <div className="relative w-full max-w-lg bg-neutral-950 rounded-[40px] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[85vh] sm:max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <div className="h-1.5 bg-gradient-to-r from-transparent via-[#ce112d] to-transparent opacity-80 flex-shrink-0" />
-
-                <div className="px-8 pt-8 pb-5 flex justify-between items-center bg-neutral-950 border-b border-white/5 relative z-30 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-8 bg-[#ce112d] rounded-full shadow-[0_0_15px_rgba(206,17,45,0.4)]" />
-                    <div>
-                      <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Order <span className="text-[#ce112d]">Details</span></h3>
-                      <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.2em] mt-1.5 opacity-60">
-                        {new Date(selectedOrder.created_at).toLocaleDateString('bn-BD')} • {new Date(selectedOrder.created_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => setSelectedOrder(null)} className="p-2.5 bg-white/5 hover:bg-[#ce112d] hover:text-white text-neutral-600 rounded-full transition-all border border-white/5">
-                    <X size={20} className="stroke-2" />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-7 custom-scrollbar shadow-inner">
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-neutral-500">
-                          Ordered Items <span className="text-[#ce112d]">({detailedItems.length})</span>
-                        </p>
-                      </div>
-
-                      {detailedItems.map((item, idx) => {
-                        const { p, unitPrice } = item;
-                        const thumb = p?.image_url || p?.images?.[0];
-                        const colorObj = p?.available_colors?.find(c => (typeof c === 'object' ? c.name : c) === item.color);
-                        const hex = typeof colorObj === 'object' ? colorObj.hex : null;
-
-                        return (
-                          <div key={idx} className="relative overflow-hidden bg-neutral-900/50 rounded-[20px] border border-white/5 p-4 hover:border-white/10 transition-all">
-                            <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                              <span className="text-[8px] font-black text-neutral-500">{idx + 1}</span>
-                            </div>
-                            <div className="flex gap-4">
-                              <div className="w-16 h-20 bg-neutral-900 rounded-xl overflow-hidden shrink-0 border border-white/10 relative">
-                                {thumb ? <img src={getOptimizedUrl(thumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt={item.name} /> : <div className="w-full h-full flex items-center justify-center text-neutral-800"><ImageIcon size={20} /></div>}
-                                {p?.serial_no && <div className="absolute top-0 left-0 bg-[#ce112d] text-white text-[6px] font-black px-1 rounded-br">#{p.serial_no}</div>}
-                              </div>
-                              <div className="flex-1 min-w-0 space-y-2 pr-5">
-                                <div className="flex justify-between items-start gap-2">
-                                  <p className="text-xs font-black text-white uppercase italic leading-snug truncate pr-2">{item.name || 'Unknown Item'}</p>
-                                  <span className="text-xs font-black text-[#ce112d] italic shrink-0">৳{unitPrice}</span>
-                                </div>
-                                {item.sku && <p className="text-[9px] font-mono text-neutral-600 tracking-wider">SKU: <span className="text-neutral-400">{item.sku}</span></p>}
-                                <div className="flex flex-wrap gap-1.5">
-                                  {item.size && !['size', 'সাইজ'].includes(item.size.toLowerCase()) && (
-                                    <span className="text-[9px] font-black bg-[#ce112d]/10 text-[#ce112d] px-2 py-0.5 rounded border border-[#ce112d]/20 uppercase">{item.size}</span>
-                                  )}
-                                  {item.color && !['color', 'কালার'].includes(item.color.toLowerCase()) && (
-                                    <div className="flex items-center gap-1 bg-white/5 text-white px-2 py-0.5 rounded border border-white/10">
-                                      {hex && <div className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0" style={{ backgroundColor: hex }} />}
-                                      <span className="text-[9px] font-black uppercase">{item.color}</span>
-                                    </div>
-                                  )}
-                                  <span className="text-[9px] font-black bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">×{item.quantity} pcs</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      <div className="mt-2 rounded-[24px] border border-white/10 overflow-hidden bg-neutral-900/30">
-                        <div className="px-5 py-3 bg-white/[0.03] border-b border-white/5">
-                          <p className="text-[8px] font-black uppercase tracking-[0.2em] text-neutral-500">Order Summary</p>
-                        </div>
-                        <div className="px-5 py-4 space-y-3">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-500 font-bold uppercase tracking-wider">Subtotal ({totalQty} items)</span>
-                            <span className="font-black text-white italic">৳{derivedItemsSubtotal}</span>
-                          </div>
-                          <div className="flex justify-between text-[11px]">
-                            <span className="text-neutral-500 font-bold uppercase tracking-wider">Delivery Charge</span>
-                            <span className="font-black text-white italic">৳{selectedOrder.delivery_charge || 0}</span>
-                          </div>
-
-                          <div className="flex justify-between items-center py-3 border-y border-white/5">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500">Total Order Value</span>
-                            <span className="text-xl font-black text-white italic">৳{derivedTotalAmount}</span>
-                          </div>
-
-                          {selectedOrder.is_advance_paid && (
-                            <div className="flex justify-between text-[11px] bg-orange-500/5 p-2 rounded-lg border border-orange-500/10">
-                              <span className="text-orange-500 font-bold uppercase tracking-wider">Advance / Partial Paid</span>
-                              <span className="font-black text-orange-400 italic">-৳{(() => {
-                                const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                                return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                              })()}</span>
-                            </div>
-                          )}
-
-                          <div className="flex justify-between items-center pt-1">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#ce112d]">Due on Delivery</span>
-                            <span className="text-2xl font-black text-[#ce112d] italic">৳{(() => {
-                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                              const adv = selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                              return selectedOrder.payment_status === 'Fully Paid' ? 0 : (selectedOrder.is_advance_paid ? derivedTotalAmount - adv : derivedTotalAmount);
-                            })()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Consolidated Customer & Delivery Details */}
-                    <div className="bg-neutral-900/50 rounded-[32px] border border-white/10 p-6 space-y-6 shadow-2xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-4 bg-[#ce112d] rounded-full" />
-                        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-neutral-500">Customer & Shipping Info</p>
-                      </div>
-
-                      <div className="space-y-6">
-                        {/* Name & ID Group */}
-                        <div className="flex items-center justify-between group">
-                          <div className="flex items-center gap-4">
-                            <div className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-neutral-500 group-hover:bg-[#ce112d]/10 group-hover:text-[#ce112d] transition-all">
-                              <User size={20} strokeWidth={2.5} />
-                            </div>
-                            <div>
-                              <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-0.5">Full Name</p>
-                              <p className="text-base font-black text-white tracking-tight">{selectedOrder.customer_name}</p>
-                            </div>
-                          </div>
-                          <button onClick={() => copyToClipboard(selectedOrder.customer_name, "Name")} className="p-3 bg-neutral-900 hover:bg-[#ce112d] text-neutral-600 hover:text-white rounded-2xl transition-all shadow-lg active:scale-90">
-                            <Copy size={14} />
-                          </button>
-                        </div>
-
-                        {/* Phone Group - Fixed Clipping */}
-                        <div className="flex items-center justify-between group">
-                          <div className="flex items-center gap-4 min-w-0 flex-1">
-                            <div className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-neutral-500 group-hover:bg-green-500/10 group-hover:text-green-500 transition-all">
-                              <Phone size={20} strokeWidth={2.5} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-0.5">Phone Number</p>
-                              <p className="text-lg font-black text-[#ce112d] tracking-tighter truncate">{selectedOrder.customer_phone}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 ml-4 shrink-0">
-                            <a href={`tel:${selectedOrder.customer_phone}`} className="p-3 bg-neutral-900 hover:bg-green-600 text-neutral-600 hover:text-white rounded-2xl transition-all shadow-lg">
-                              <ExternalLink size={14} />
-                            </a>
-                            <button onClick={() => copyToClipboard(selectedOrder.customer_phone, "Phone")} className="p-3 bg-neutral-900 hover:bg-[#ce112d] text-neutral-600 hover:text-white rounded-2xl transition-all shadow-lg shadow-black/20">
-                              <Copy size={14} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Address Group */}
-                        <div className="flex items-start justify-between group">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-neutral-500 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all mt-1">
-                              <MapPin size={20} strokeWidth={2.5} />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-[8px] font-black uppercase text-neutral-600 tracking-widest mb-1.5">
-                                Delivery Address <span className="text-[#ce112d] ml-1">({selectedOrder.delivery_area})</span>
-                              </p>
-                              <p className="text-[13px] font-bold text-neutral-300 leading-relaxed italic">{selectedOrder.customer_address}</p>
-                            </div>
-                          </div>
-                          <button onClick={() => copyToClipboard(selectedOrder.customer_address, "Address")} className="p-3 bg-neutral-900 hover:bg-[#ce112d] text-neutral-600 hover:text-white rounded-2xl transition-all shadow-lg ml-4 shrink-0 mt-1">
-                            <Copy size={14} />
-                          </button>
-                        </div>
-
-                        {/* Merchant Note */}
-                        {selectedOrder.customer_note && (
-                          <div className="bg-yellow-500/5 p-4 rounded-3xl border border-yellow-500/10 flex items-start gap-3 mt-4">
-                            <AlertCircle size={16} className="text-yellow-600 mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[8px] font-black uppercase text-yellow-600/80 mb-1 tracking-widest">Internal Order Note</p>
-                              <p className="text-xs font-bold text-yellow-500/80 leading-relaxed italic">{selectedOrder.customer_note}</p>
-                            </div>
-                            <button onClick={() => copyToClipboard(selectedOrder.customer_note, "Note")} className="p-2 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-600/50 hover:text-white rounded-xl transition-all shrink-0">
-                              <Copy size={12} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Refactored Footer Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-white/20 transition-all">
-                        <div className="flex items-center gap-2 mb-2 opacity-60">
-                          <Truck size={14} className="text-neutral-500" />
-                          <p className="text-[8px] font-black uppercase text-neutral-500 tracking-widest">
-                            {selectedOrder.is_exclusive_order ? 'Adv Required' : 'Deli Charge'}
-                          </p>
-                        </div>
-                        <span className="text-2xl font-black italic tracking-tighter">৳{(() => {
-                          const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                          return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                        })()}</span> </div>
-
-                      <div className="bg-neutral-900/40 p-5 rounded-[28px] border border-white/5 group hover:border-[#ce112d]/30 transition-all overflow-hidden">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2 opacity-60">
-                            <ShieldCheck size={14} className="text-neutral-500" />
-                            <p className="text-[8px] font-black uppercase text-neutral-500 tracking-widest">
-                              {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
-                                ? `${selectedOrder.last_four_digits.split(': ')[0]} Ref`
-                                : 'Sender ID'}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const val = selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
-                                ? selectedOrder.last_four_digits.split(': ')[1]
-                                : selectedOrder.last_four_digits;
-                              copyToClipboard(val, "Sender Detail");
-                            }}
-                            className="p-1.5 bg-neutral-950 text-neutral-700 hover:text-[#ce112d] rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Copy size={10} />
-                          </button>
-                        </div>
-                        <p className="text-xl font-black text-[#ce112d] italic truncate" title={selectedOrder.last_four_digits}>
-                          {selectedOrder.last_four_digits && selectedOrder.last_four_digits.includes(': ')
-                            ? selectedOrder.last_four_digits.split(': ')[1]
-                            : (selectedOrder.last_four_digits || 'COD')}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t border-white/5">
-                      <p className="text-[9px] font-black uppercase tracking-[0.3em] text-neutral-600 text-center">Admin Controls & Status</p>
-                      <div className="flex gap-4">
-                        <button
-                          onClick={() => togglePaymentStatus(selectedOrder, 'Advance Paid')}
-                          className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Advance Paid' ? 'bg-orange-500 border-orange-400 text-white shadow-2xl shadow-orange-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-orange-500/50 hover:bg-orange-950/20'}`}
-                        >
-                          <div className="relative z-10 flex flex-col items-center">
-                            <span className="text-2xl font-black italic tracking-tighter">৳{(() => {
-                              const charge = parseFloat(selectedOrder.delivery_charge) || 0;
-                              return selectedOrder.is_exclusive_order ? 500 : (selectedOrder.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge);
-                            })()}</span>
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">{selectedOrder.is_exclusive_order ? 'Adv Paid' : (selectedOrder.delivery_area === 'mirsarai' && (parseFloat(selectedOrder.delivery_charge) || 0) === 0 ? 'Conf Paid' : 'Deli Paid')}</span>
-                          </div>
-                          {selectedOrder.payment_status === 'Advance Paid' && <div className="absolute top-0 right-0 p-1.5 bg-white/20 rounded-bl-xl"><Check size={10} strokeWidth={4} /></div>}
-                        </button>
-                        <button
-                          onClick={() => togglePaymentStatus(selectedOrder, 'Fully Paid')}
-                          className={`flex-1 group relative overflow-hidden p-5 rounded-[28px] border transition-all duration-500 ${selectedOrder.payment_status === 'Fully Paid' ? 'bg-green-600 border-green-500 text-white shadow-2xl shadow-green-500/40' : 'bg-neutral-900/50 border-white/5 text-neutral-500 hover:border-green-500/50 hover:bg-green-950/20'}`}
-                        >
-                          <div className="relative z-10 flex flex-col items-center">
-                            <span className="text-2xl font-black italic tracking-tighter">৳{derivedTotalAmount}</span>
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Full Paid</span>
-                          </div>
-                          {selectedOrder.payment_status === 'Fully Paid' && <div className="absolute top-0 right-0 p-1.5 bg-white/20 rounded-bl-xl"><Check size={10} strokeWidth={4} /></div>}
-                        </button>
-                      </div>
-                      <div className={`w-full p-6 rounded-[32px] border-2 flex items-center justify-between font-black uppercase tracking-[0.2em] shadow-inner transition-colors duration-500 ${selectedOrder.status === 'Delivered' ? 'bg-green-500/5 border-green-500/10 text-green-500' : selectedOrder.status === 'Canceled' ? 'bg-red-500/5 border-red-500/10 text-red-500' : selectedOrder.status === 'Deleted' ? 'bg-zinc-800 border-white/10 text-zinc-600' : 'bg-[#ce112d]/5 border-[#ce112d]/10 text-[#ce112d]'}`}>
-                        <div className="flex items-center gap-4">
-                          <div className={`w-3 h-3 rounded-full animate-pulse shadow-[0_0_15px_currentColor] ${selectedOrder.status === 'Delivered' ? 'bg-green-500' : selectedOrder.status === 'Canceled' ? 'bg-red-500' : selectedOrder.status === 'Deleted' ? 'bg-zinc-600' : 'bg-[#ce112d]'}`} />
-                          <span className="text-[11px] opacity-60">Order Status</span>
-                        </div>
-                        <span className="text-2xl italic tracking-tighter transform -skew-x-12">{selectedOrder.status}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
+          <div
+            className="relative w-full md:max-w-2xl md:rounded-xl overflow-hidden shadow-2xl border-t md:border border-white/10 bg-[#0a0a0c] h-[100dvh] md:h-auto md:max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <OrderDetailsPanel
+              order={selectedOrder}
+              products={products}
+              variant="modal"
+              onClose={() => setSelectedOrder(null)}
+              onCopyFull={copyFullOrderDetails}
+              onCopy={copyToClipboard}
+              onDelete={(id) => { deleteOrder(id); setSelectedOrder(null); }}
+              onTogglePayment={togglePaymentStatus}
+              onUpdateStatus={updateOrderStatus}
+              onEditNote={updateOrderNote}
+            />
+          </div>
         </div>
       )}
 
@@ -5106,13 +4113,11 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             setActiveTab('add');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#ce112d] via-[#e61535] to-[#ff1c3a] text-white rounded-full font-black uppercase text-xs tracking-wider shadow-[0_10px_35px_rgba(206,17,45,0.55)] hover:shadow-[0_15px_45px_rgba(206,17,45,0.75)] hover:scale-105 active:scale-95 transition-all group ring-4 ring-white/10 hover:ring-white/20"
-          title="Add New Product (নতুন পণ্য যুক্ত করুন)"
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 h-11 px-4 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-full text-xs font-semibold shadow-lg shadow-red-900/40 transition-colors"
+          title="Add New Product"
         >
-          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform duration-300">
-            <Plus size={14} strokeWidth={3.5} />
-          </div>
-          <span className="font-bold tracking-widest text-[11px] drop-shadow-md">Add Product</span>
+          <Plus size={14} strokeWidth={2.5} />
+          Add Product
         </button>
       )}
 

@@ -94,20 +94,20 @@ export default function SuperadminPanel() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl pb-20">
+    <div className="space-y-5 max-w-4xl pb-20">
       <div>
-        <h2 className="text-2xl font-bold uppercase tracking-tight text-white flex items-center gap-2">
-          <ShieldAlert className="text-emerald-500" size={24} />
+        <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2">
+          <ShieldAlert className="text-emerald-500" size={18} />
           Superadmin <span className="text-emerald-500">Panel</span>
         </h2>
-        <p className="text-zinc-500 text-xs mt-1 font-medium">
+        <p className="text-zinc-500 text-xs mt-0.5">
           Manage backend administrators. Only you have access to this screen.
         </p>
       </div>
 
       {flash && (
         <div
-          className={`rounded-xl px-4 py-3 text-sm font-medium border ${
+          className={`rounded-lg px-3 py-2.5 text-sm font-medium border ${
             flash.type === 'ok'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
               : 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -117,37 +117,37 @@ export default function SuperadminPanel() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-4">
-          <div className="bg-[#111113] border border-white/5 p-5 rounded-2xl">
-            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
-              <Plus size={16} className="text-emerald-500" /> Add Admin
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="md:col-span-1">
+          <div className="bg-[#121215] border border-white/10 p-4 rounded-xl">
+            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+              <Plus size={15} className="text-emerald-500" /> Add Admin
             </h3>
-            <form onSubmit={handleAddAdmin} className="space-y-4">
+            <form onSubmit={handleAddAdmin} className="space-y-3">
               <div>
-                <label className="text-[10px] font-black uppercase text-zinc-500 mb-1 block">Email Address</label>
+                <label className="text-[11px] font-medium text-zinc-500 mb-1 block">Email address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
                   placeholder="admin@example.com"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-black uppercase text-zinc-500 mb-1 block">Password</label>
+                <label className="text-[11px] font-medium text-zinc-500 mb-1 block">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
+                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
                   placeholder="Strong password"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                className="w-full h-9 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : 'Create Admin'}
               </button>
@@ -156,25 +156,25 @@ export default function SuperadminPanel() {
         </div>
 
         <div className="md:col-span-2">
-          <div className="bg-[#111113] border border-white/5 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/5">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Active Administrators</h3>
+          <div className="bg-[#121215] border border-white/10 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-white">Active administrators</h3>
             </div>
 
             {loading ? (
-              <div className="p-8 text-center text-zinc-500">Loading...</div>
+              <div className="p-6 text-center text-zinc-500 text-sm">Loading...</div>
             ) : managers.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500 text-sm">No administrators found.</div>
+              <div className="p-6 text-center text-zinc-500 text-sm">No administrators found.</div>
             ) : (
               <div className="divide-y divide-white/5">
                 {managers.map(m => (
-                  <div key={m.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02]">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${m.role === 'superadmin' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-white/10 bg-white/5 text-zinc-400'}`}>
-                        {m.role === 'superadmin' ? <ShieldAlert size={18} /> : <Shield size={18} />}
+                  <div key={m.id} className="p-3 flex items-center justify-between hover:bg-white/[0.02]">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${m.role === 'superadmin' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-white/10 bg-white/5 text-zinc-400'}`}>
+                        {m.role === 'superadmin' ? <ShieldAlert size={16} /> : <Shield size={16} />}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">{m.email}</p>
+                        <p className="text-sm font-semibold text-white">{m.email}</p>
                         <p className="text-xs text-zinc-500 capitalize">{m.role}</p>
                       </div>
                     </div>
@@ -184,7 +184,7 @@ export default function SuperadminPanel() {
                         className="text-zinc-500 hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                         title="Remove Admin"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
                     )}
                   </div>

@@ -47,6 +47,13 @@ export async function onRequest(context) {
   const path = url.pathname;
   const publicOrigin = normalizeOrigin(env?.PUBLIC_SITE_ORIGIN);
 
+  // Always handle API on this host first — never 301 /api/* to the custom
+  // domain. Proxies (Vite local) follow redirects and turn POST→GET, which
+  // then hits Hostinger's SPA fallback as "Endpoint not found".
+  if (path.startsWith('/api/')) {
+    return handleApi(context);
+  }
+
   if (
     publicOrigin &&
     url.hostname.endsWith('.pages.dev') &&
@@ -54,11 +61,6 @@ export async function onRequest(context) {
   ) {
     const dest = new URL(path + url.search + url.hash, publicOrigin);
     return Response.redirect(dest.toString(), 301);
-  }
-
-  // Always handle API here so we never SPA-fallback HTML for /api/*
-  if (path.startsWith('/api/')) {
-    return handleApi(context);
   }
 
   // Dedicated function files (not SPA HTML)
