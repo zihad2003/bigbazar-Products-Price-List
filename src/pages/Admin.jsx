@@ -21,6 +21,7 @@ import AdminUsers from '../components/admin/AdminUsers';
 import SuperadminPanel from '../components/admin/SuperadminPanel';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -72,6 +73,17 @@ export default function Admin() {
   const [rangeStart, setRangeStart] = useState('1');
   const [rangeEnd, setRangeEnd] = useState('200');
   const [deletingRangeProgress, setDeletingRangeProgress] = useState(null);
+
+  useBodyScrollLock(
+    !!(
+      confirmation.isOpen ||
+      alertModal.isOpen ||
+      selectedOrder ||
+      previewVideo ||
+      showRangeDeleteModal ||
+      deletingRangeProgress
+    )
+  );
 
   const copyToClipboard = (text, label) => {
     if (!text) return;
@@ -206,7 +218,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       .from('products')
       // DB-1 fix: use fixed 100-item page size (range 0..99, 100..199, etc.) for stable KV cache reuse
       .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
-      .order('created_at', { ascending: false })
+      .order('serial_no', { ascending: false })
       .range(pageToFetch * 100, (pageToFetch + 1) * 100 - 1);
 
     const fetched = data || [];
@@ -229,6 +241,21 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchProducts(nextPage, true);
   };
 
+  /** Optimistic flag/status patch — keeps list order stable (no full refetch). */
+  const patchProductFields = async (id, fields) => {
+    setProducts((prev) => prev.map((x) => (x.id === id ? { ...x, ...fields } : x)));
+    const { error } = await bigBazarApi.from('products').update(fields).eq('id', id);
+    if (error) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Update Failed',
+        message: error.message || 'Could not update product.',
+        type: 'error',
+      });
+      fetchProducts();
+    }
+  };
+
   const handleLoadAllProducts = async () => {
     setLoading(true);
     try {
@@ -239,7 +266,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         const { data } = await bigBazarApi
           .from('products')
           .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
-          .order('created_at', { ascending: false })
+          .order('serial_no', { ascending: false })
           .range(currentPage * 100, (currentPage + 1) * 100 - 1);
 
         if (!data || data.length === 0) {
@@ -689,7 +716,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       };
       setProducts(prev => prev.map(p => p.id === editingProduct.id ? updatedProduct : p));
       cancelEdit();
-      setActiveTab('published');
+      // Stay on the correct list for this product (draft vs live vs sold out)
+      if (updatedProduct.is_sold_out) setActiveTab('soldout');
+      else if (updatedProduct.status === 'pending') setActiveTab('pending');
+      else setActiveTab('published');
       setAlertModal({
         isOpen: true,
         title: "Updated!",
@@ -697,7 +727,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         type: "success"
       });
 
-      // Background DB sync
+      // Background DB sync — avoid full refetch (prevents list jump / order shuffle)
       bigBazarApi.from('products').update(productData).eq('id', editingProduct.id).then(({ error }) => {
         if (error) {
           console.error("Background update error:", error);
@@ -707,8 +737,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             message: "Failed to sync update to database: " + error.message,
             type: "error"
           });
+          fetchProducts();
         }
-        fetchProducts();
       });
     } else {
       // ── OPTIMISTIC INSTANT INSERT (<50ms UI response) ──
@@ -4646,8 +4676,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             message: 'Are you sure you want to Publish this product to the main site?',
                             confirmText: 'Publish',
                             onConfirm: () => {
-                              setProducts(prev => prev.map(x => x.id === p.id ? { ...x, status: 'published' } : x));
-                              bigBazarApi.from('products').update({ status: 'published' }).eq('id', p.id).then(fetchProducts);
+                              patchProductFields(p.id, { status: 'published' });
                             }
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-green-500 hover:bg-green-500/10 transition-all group/btn"
@@ -4665,8 +4694,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             message: 'Are you sure you want to move this product back to Pending/Drafts?',
                             confirmText: 'Unpublish',
                             onConfirm: () => {
-                              setProducts(prev => prev.map(x => x.id === p.id ? { ...x, status: 'pending' } : x));
-                              bigBazarApi.from('products').update({ status: 'pending' }).eq('id', p.id).then(fetchProducts);
+                              patchProductFields(p.id, { status: 'pending' });
                             }
                           })}
                           className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-yellow-500 hover:bg-yellow-500/10 transition-all group/btn"
@@ -4682,7 +4710,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           title: p.is_exclusive ? 'Remove Exclusive Status' : 'Mark as Exclusive/Premium',
                           message: p.is_exclusive ? 'আপনি কি নিশ্চিত যে পণ্যটি আর এক্সক্লুসিভ নয়?' : 'আপনি কি এই পণ্যটিকে Exclusive/Premium হিসেবে চিহ্নিত করতে চান?',
                           confirmText: 'Confirm',
-                          onConfirm: () => bigBazarApi.from('products').update({ is_exclusive: !p.is_exclusive }).eq('id', p.id).then(fetchProducts)
+                          onConfirm: () => patchProductFields(p.id, { is_exclusive: !p.is_exclusive })
                         })}
                         className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_exclusive ? 'bg-orange-500/10 text-orange-400' : 'text-neutral-500 hover:text-orange-400 hover:bg-orange-500/10'}`}
                       >
@@ -4696,7 +4724,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           title: p.is_sold_out ? 'Mark as Available' : 'Mark as Sold Out',
                           message: p.is_sold_out ? 'আপনি কি নিশ্চিত যে পণ্যটি স্টকে আছে?' : 'আপনি কি এই পণ্যটিকে Sold Out হিসেবে চিহ্নিত করতে চান?',
                           confirmText: 'Confirm',
-                          onConfirm: () => bigBazarApi.from('products').update({ is_sold_out: !p.is_sold_out }).eq('id', p.id).then(fetchProducts)
+                          onConfirm: () => patchProductFields(p.id, { is_sold_out: !p.is_sold_out })
                         })}
                         className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${p.is_sold_out ? 'bg-[#ce112d] text-white' : 'text-neutral-500 hover:text-red-400 hover:bg-red-500/10'}`}
                       >

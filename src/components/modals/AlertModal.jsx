@@ -1,24 +1,26 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 const AlertModal = ({ isOpen, onClose, title, message, type = 'error' }) => {
+    useBodyScrollLock(!!isOpen);
+
     return (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overscroll-none"
                     onClick={onClose}
                 >
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-md bg-[#121215] border border-white/10 rounded-[32px] p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden"
+                        className="relative w-full max-w-md bg-[#121215] border border-white/10 rounded-[32px] p-8 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Background Glow */}
                         <div className={`absolute -top-20 -right-20 w-48 h-48 rounded-full blur-[100px] opacity-25 ${type === 'success' ? 'bg-emerald-500' : 'bg-[#ce112d]'}`} />
 
                         <div className="relative z-10 flex flex-col items-center text-center gap-4">

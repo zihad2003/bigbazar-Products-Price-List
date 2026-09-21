@@ -1321,6 +1321,9 @@ app.put('/products/:id', requireAuth, requireAdmin, async (c) => {
     if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
   }
   if (!setClauses.length) return c.json({ success: true });
+  // MySQL/MariaDB often auto-bumps the first TIMESTAMP on any UPDATE, which
+  // reorders the storefront (ORDER BY created_at DESC). Pin created_at.
+  setClauses.push('created_at = created_at');
   params.push(id);
   await conn.execute(`UPDATE products SET ${setClauses.join(', ')} WHERE id = ?`, params);
   await bumpCatalogVersion(c);
