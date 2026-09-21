@@ -2417,476 +2417,303 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
           </div>
         ) : activeTab === 'add' ? (
-          <form onSubmit={handleProductSubmit} className="max-w-5xl space-y-6 md:space-y-12 pb-24 mx-auto">
-            {/* Form Header */}
-            <div className="bg-zinc-900/80 p-6 md:p-8 rounded-2xl border border-white/5 backdrop-blur-xl sticky top-0 lg:top-0 z-30 shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight text-white line-clamp-1">
-                    {editingProduct ? 'Update' : 'Add'} <span className="text-[#ce112d]">Product</span>
-                  </h2>
-                  <p className="text-xs font-semibold text-zinc-400 mt-1">
-                    Photo required · Instagram URL = video only
-                  </p>
-                </div>
-                <button type="button" onClick={cancelEdit} className="p-3 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all" title="Cancel">
-                  <X size={22} />
-                </button>
+          <form onSubmit={handleProductSubmit} className="max-w-6xl mx-auto pb-28 space-y-5">
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">Catalog</p>
+                <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
+                  {editingProduct ? 'Edit product' : 'New product'}
+                </h2>
+                <p className="text-sm text-zinc-500 mt-1.5 max-w-xl">
+                  Name, price, photo, then sizes and colors. Instagram URL is optional for video only.
+                </p>
               </div>
+              <button type="button" onClick={cancelEdit} className="shrink-0 p-2.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors" title="Close">
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Contextual In-Page Alert */}
             {formAlert && (
-              <div className={`p-5 rounded-2xl border flex items-center justify-between gap-4 transition-all shadow-2xl ${formAlert.type === 'error'
-                  ? 'bg-[#ce112d]/15 border-[#ce112d]/40 text-red-200'
-                  : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
-                }`}>
-                <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${formAlert.type === 'error' ? 'bg-[#ce112d] text-white' : 'bg-emerald-500 text-black'
-                    }`}>
-                    {formAlert.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black uppercase tracking-wider">{formAlert.title}</h4>
-                    <p className="text-xs font-medium text-zinc-300 mt-1">{formAlert.message}</p>
-                  </div>
+              <div className={`flex items-start gap-3 p-4 rounded-xl border ${
+                formAlert.type === 'error'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-100'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-100'
+              }`}>
+                {formAlert.type === 'error' ? <AlertCircle size={18} className="shrink-0 mt-0.5" /> : <CheckCircle2 size={18} className="shrink-0 mt-0.5" />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{formAlert.title}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{formAlert.message}</p>
                 </div>
-                <button type="button" onClick={() => setFormAlert(null)} className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-white/10 transition-all">
-                  <X size={18} />
+                <button type="button" onClick={() => setFormAlert(null)} className="p-1 text-zinc-500 hover:text-white">
+                  <X size={16} />
                 </button>
               </div>
             )}
 
-            {/* IDENTITY & PRICING */}
-            <div className="space-y-10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                {/* Left Column: Basic Info */}
-                <div className="lg:col-span-12 space-y-8">
-                  <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 md:space-y-8">
-                    <div className="space-y-6">
-                      <div className="group">
-                        <div className="flex items-center justify-between mb-3 px-1">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.2em] group-focus-within:text-[#ce112d] transition-colors">Product Name</label>
-                          {form.subcategory && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const subName = form.subcategory.split('/')[0].trim();
-                                if (!form.name.toLowerCase().includes(subName.toLowerCase())) {
-                                  setForm(prev => ({ ...prev, name: `${subName} ${prev.name}`.trim() }));
-                                }
-                              }}
-                              className="text-[10px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-lg border border-rose-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <span>Prefix subcategory "{form.subcategory.split('/')[0]}"</span>
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          value={form.name}
-                          placeholder="e.g. Premium Mirror Work Panjabi 2024"
-                          className="w-full bg-black/40 border-2 border-zinc-800 p-4 md:p-5 h-12 md:h-16 rounded-2xl md:rounded-3xl text-sm md:text-base font-black focus:border-[#ce112d] outline-none transition-all placeholder:text-zinc-800 text-white shadow-inner uppercase italic"
-                          onChange={e => setForm({ ...form, name: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 pt-4">
-                        <div className="group">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Original Price</label>
-                          <div className="relative">
-                            <span className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-zinc-400 font-black text-base md:text-xl italic">৳</span>
-                            <input
-                              type="number"
-                              value={form.original_price || ''}
-                              placeholder="1850"
-                              className="w-full bg-black/40 border-2 border-zinc-800 pl-7 md:pl-12 pr-2 md:pr-4 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-white/20 outline-none transition-all placeholder:text-zinc-800 text-zinc-400 italic"
-                              onChange={e => setForm({ ...form, original_price: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="group">
-                          <label className="text-[10px] font-black uppercase text-red-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Sale Price *</label>
-                          <div className="relative">
-                            <span className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-red-400 font-black text-base md:text-xl italic animate-pulse">৳</span>
-                            <input
-                              type="number"
-                              required
-                              value={form.price || ''}
-                              placeholder="1450"
-                              className="w-full bg-black/40 border-2 border-[#ce112d]/30 pl-7 md:pl-12 pr-2 md:pr-4 h-12 md:h-16 rounded-xl md:rounded-3xl text-lg md:text-2xl font-black focus:border-[#ce112d] outline-none transition-all placeholder:text-zinc-800 text-[#ce112d] italic shadow-[0_0_30px_rgba(206,17,45,0.1)]"
-                              onChange={e => setForm({ ...form, price: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="group col-span-2 md:col-span-1">
-                          <label className="text-[10px] font-black uppercase text-emerald-400 mb-2 md:mb-3 block tracking-[0.15em] md:tracking-[0.2em] px-1">Stock (স্টক)</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={form.stock_count !== undefined && form.stock_count !== null ? form.stock_count : ''}
-                              placeholder="e.g. 50"
-                              className="w-full bg-black/40 border-2 border-emerald-500/30 px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-3xl text-base md:text-xl font-black focus:border-emerald-400 outline-none transition-all placeholder:text-zinc-800 text-emerald-400 italic"
-                              onChange={e => setForm({ ...form, stock_count: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-6 space-y-6">
-                        {/* Top-Level Category Dropdown */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-bold uppercase text-zinc-400 block tracking-wider px-1">Top-Level Category (প্রধান ক্যাটাগরি)</label>
-                            {form.category && (
-                              <button
-                                type="button"
-                                onClick={() => setForm(prev => ({ ...prev, category: '', subcategory: '' }))}
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1 rounded-lg transition-colors"
-                              >
-                                Clear Category
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Category Dropdown */}
-                          <div className="relative group">
-                            <select
-                              value={form.category || ''}
-                              onChange={e => setForm(prev => ({ ...prev, category: e.target.value, subcategory: '' }))}
-                              aria-label="Top-level product category"
-                              className={`w-full bg-black/40 border-2 px-4 md:px-5 h-12 md:h-14 rounded-2xl text-xs md:text-sm font-black outline-none transition-all appearance-none cursor-pointer pr-10 text-white ${
-                                form.category ? 'border-[#ce112d]/50 bg-[#ce112d]/5 focus:border-[#ce112d]' : 'border-zinc-800 hover:border-zinc-700 focus:border-[#ce112d]'
-                              }`}
-                            >
-                              <option value="" className="bg-zinc-900 text-amber-400 font-bold">Uncategorized (ক্যাটাগরি নেই)</option>
-                              {TOP_CATEGORIES.map(cat => (
-                                <option key={cat.id} value={cat.id} className="bg-zinc-900 text-white">
-                                  {cat.en} ({cat.bn})
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-[#ce112d] transition-colors" />
-                          </div>
-                        </div>
-
-                        {/* Subcategory Dropdown */}
-                        {form.category && (
-                          <div className="pt-2 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold uppercase text-rose-400 block tracking-wider px-1">Subcategory / Garment Type (সাব-ক্যাটাগরি / পোশাকের ধরন)</label>
-                              {form.subcategory && (
-                                <button
-                                  type="button"
-                                  onClick={() => setForm(prev => ({ ...prev, subcategory: '' }))}
-                                  className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 px-2.5 py-1 rounded-lg transition-colors"
-                                >
-                                  Clear Subcategory
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Subcategory Dropdown */}
-                            <div className="relative group">
-                              <select
-                                value={form.subcategory || ''}
-                                onChange={e => setForm(prev => ({ ...prev, subcategory: e.target.value }))}
-                                aria-label="Product subcategory"
-                                className={`w-full bg-black/40 border-2 px-4 md:px-5 h-12 md:h-14 rounded-2xl text-xs md:text-sm font-black outline-none transition-all appearance-none cursor-pointer pr-10 text-white ${
-                                  form.subcategory ? 'border-rose-500/50 bg-rose-500/5 focus:border-rose-500' : 'border-zinc-800 hover:border-zinc-700 focus:border-rose-500'
-                                }`}
-                              >
-                                <option value="" className="bg-zinc-900 text-amber-400 font-bold">No Subcategory (সাব-ক্যাটাগরি নেই)</option>
-                                {getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => (
-                                  <option key={sub.id} value={sub.id} className="bg-zinc-900 text-white">
-                                    {sub.name_en || sub.en} ({sub.name_bn || sub.bn})
-                                  </option>
-                                ))}
-                              </select>
-                              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-focus-within:text-rose-500 transition-colors" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="pt-6 group">
-                        <label className="text-[10px] font-black uppercase text-zinc-500 mb-3 block tracking-[0.2em] px-1 group-focus-within:text-white transition-colors">Description</label>
-                        <textarea
-                          rows="6"
-                          value={form.description}
-                          placeholder="Crafted from premium fabrics. Elegant hand-stitch details. Perfect for festive celebrations..."
-                          className="w-full bg-black/40 border-2 border-zinc-800 p-4 md:p-8 rounded-2xl md:rounded-[40px] text-sm md:text-base font-medium focus:border-white/20 outline-none transition-all placeholder:text-zinc-800 text-zinc-300 resize-none leading-relaxed italic"
-                          onChange={e => setForm({ ...form, description: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* MEDIA & ASSETS */}
-            <div className="space-y-6">
-              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-xl space-y-6 md:space-y-8">
-                <div className="flex items-start gap-3 border-b border-white/5 pb-4">
-                  <div className="w-1.5 h-8 bg-[#ce112d] rounded-full shrink-0" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              <div className="lg:col-span-7 space-y-5">
+                <section className="rounded-xl border border-white/10 bg-[#111113] p-5 md:p-6 space-y-5">
                   <div>
-                    <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white">Photos & Video</h3>
-                    <p className="text-[10px] font-bold text-zinc-500 mt-1">
-                      Upload product photos for the catalog. Instagram link is optional — used only to play the reel/post as video.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="group">
-                      <label className="text-xs font-bold uppercase text-zinc-400 mb-2 block tracking-wider px-1">
-                        Instagram video URL <span className="text-xs text-zinc-400 normal-case tracking-normal font-normal">(optional · video only)</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          value={form.video_url}
-                          onBlur={handleVideoBlur}
-                          placeholder="https://www.instagram.com/reels/..."
-                          className="w-full bg-black/40 border border-zinc-800 p-4 h-12 rounded-xl text-sm font-medium focus:border-[#ce112d]/50 outline-none transition-all placeholder:text-zinc-700 text-white pr-12"
-                          onChange={e => setForm({ ...form, video_url: e.target.value })}
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-zinc-500">
-                          <Video size={16} />
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-zinc-600 mt-2 px-1 leading-relaxed">
-                        Does not download photos from Instagram. Paste a reel/post link to show the video on the product page.
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase text-[#ce112d] mb-1 block tracking-[0.15em] px-1">
-                        Main photo <span className="text-zinc-500">*</span>
-                      </label>
-                      <label className="flex items-center gap-4 w-full bg-black/40 border border-dashed border-zinc-700 p-4 rounded-xl cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/50 transition-all group">
-                        <div className="w-12 h-12 rounded-xl bg-[#ce112d] flex items-center justify-center text-white shadow-lg shadow-red-900/30 group-hover:scale-105 transition-transform shrink-0">
-                          <Upload size={20} strokeWidth={2.5} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-white group-hover:text-[#ce112d] transition-colors">Upload product photo</span>
-                          <span className="text-[10px] font-medium text-zinc-500 mt-0.5">Required · best 1080×1350</span>
-                        </div>
-                        <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
-                      </label>
-                    </div>
+                    <h3 className="text-sm font-semibold text-white">Basics</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Title, pricing, stock</p>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black uppercase text-zinc-500 block tracking-[0.15em] px-1">Photo preview</label>
-                    <div className="aspect-[4/5] w-full bg-[#0a0a0c] rounded-2xl border border-[#1d1d21] overflow-hidden relative ring-4 ring-black/20">
-                      {(previewImage || form.image_url) ? (
-                        <>
-                          <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top" alt="Preview" />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPreviewImage(null);
-                              setForm(prev => ({
-                                ...prev,
-                                image_url: null,
-                                images: (prev.images || []).filter((_, idx) => idx !== 0)
-                              }));
-                            }}
-                            className="absolute top-3 right-3 p-2.5 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-700 bg-black/40 px-6 text-center">
-                          <ImageIcon size={28} className="opacity-40" />
-                          <p className="text-xs font-semibold text-zinc-400 tracking-normal">Upload a photo to preview</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {form.video_url && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between px-1">
-                          <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.15em]">Video preview</label>
-                          <button
-                            type="button"
-                            onClick={() => setForm(prev => ({ ...prev, video_url: '', platform_id: prev.platform_id }))}
-                            className="text-[10px] font-bold text-red-400 hover:underline"
-                          >
-                            Clear video
-                          </button>
-                        </div>
-                        <div className="aspect-[4/5] w-full max-h-64 bg-black rounded-2xl border border-[#1d1d21] overflow-hidden relative">
-                          <VideoPlayer src={form.video_url} priority={true} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-white/5">
-                  <div className="flex items-center justify-between mb-4 px-1">
-                    <label className="text-[10px] font-black uppercase text-zinc-500 tracking-[0.15em]">More photos</label>
-                    {loading && uploadStatus !== 'idle' && (
-                      <div className="flex items-center gap-2 text-[10px] font-black text-[#ce112d] uppercase tracking-widest animate-pulse">
-                        <div className="w-3 h-3 border-2 border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
-                        {uploadStatus === 'compressing'
-                          ? 'Compressing...'
-                          : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                    {form.images?.map((img, i) => (
-                      <div key={i} className="relative aspect-[3/4] rounded-xl overflow-hidden border border-[#1d1d21] group bg-black">
-                        <img
-                          src={img}
-                          onError={(e) => { e.target.src = 'https://placehold.co/400x500/0a0a0c/ce112d?text=Error'; }}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          alt="Gallery"
-                        />
-                        <div className="absolute inset-x-1.5 bottom-1.5 bg-red-600 h-8 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer" onClick={() => {
-                          const removedImg = form.images[i];
-                          const updatedImages = form.images.filter((_, idx) => idx !== i);
-                          const updatedColors = (form.available_colors || []).map(c =>
-                            c.image === removedImg ? { ...c, image: null } : c
-                          );
-                          setForm({ ...form, images: updatedImages, available_colors: updatedColors });
-                        }}>
-                          <Trash2 size={14} className="text-white" />
-                        </div>
-                        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 rounded text-[8px] font-black text-white/60 uppercase">#{i + 1}</div>
-                      </div>
-                    ))}
-                    <label className="aspect-[3/4] rounded-xl border border-dashed border-[#1d1d21] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-white/5 hover:border-[#ce112d]/40 transition-all group">
-                      <Plus size={18} strokeWidth={2.5} className="text-[#ce112d]" />
-                      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Add</span>
-                      <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'product')} />
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* LOGISTICS & VARIANTS */}
-            <div className="space-y-10">
-              <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6 md:p-8 shadow-2xl space-y-8">
-                <div className="space-y-8">
-                  <div className="border-b border-white/5 pb-6">
-                    <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight text-white italic">Sizes & Colors</h3>
-                    <p className="text-xs font-semibold text-zinc-400 mt-1">Select available sizes, then add colors</p>
-                  </div>
-
-                  <div className="space-y-8">
-                    {/* Manual Sizes Section */}
-                    <div className="space-y-6 bg-black/20 p-4 md:p-8 rounded-2xl md:rounded-[32px] border border-white/5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="text-[11px] font-black uppercase text-white tracking-[0.2em] block">Available Sizes (সাইজ সমূহ)</label>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">Type custom size manually or tap quick preset chips</p>
-                        </div>
-                      </div>
-
-                      {/* Manual Size Input Box */}
-                      <div className="flex gap-3">
-                        <input
-                          value={customSizeInput}
-                          placeholder="Type custom size (e.g. S, M, L, XL, 38, 40, Free Size)..."
-                          onChange={e => setCustomSizeInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' || e.key === ',') {
-                              e.preventDefault();
-                              const val = customSizeInput.trim().toUpperCase();
-                              if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
-                                setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
-                                setCustomSizeInput('');
-                              }
-                            }
-                          }}
-                          className="flex-1 bg-black/60 border-2 border-zinc-800 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all uppercase"
-                        />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-zinc-400">Product name</label>
+                      {form.subcategory && (
                         <button
                           type="button"
                           onClick={() => {
-                            const val = customSizeInput.trim().toUpperCase();
-                            if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
-                              setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
-                              setCustomSizeInput('');
+                            const subName = form.subcategory.split('/')[0].trim();
+                            if (!form.name.toLowerCase().includes(subName.toLowerCase())) {
+                              setForm(prev => ({ ...prev, name: `${subName} ${prev.name}`.trim() }));
                             }
                           }}
-                          className="px-6 h-12 bg-[#ce112d] hover:bg-[#e61535] text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shrink-0"
+                          className="text-[11px] font-medium text-[#ce112d] hover:underline"
                         >
-                          + Add Size
+                          Prefix "{form.subcategory.split('/')[0]}"
                         </button>
-                      </div>
-
-                      {/* Quick Presets */}
-                      <div className="space-y-2">
-                        <span className="text-[9px] font-black uppercase text-zinc-600 tracking-widest">Quick Presets:</span>
-                        <div className="flex flex-wrap gap-2">
-                          {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', 'Free Size'].map(s => {
-                            const isAdded = (form.available_sizes || []).some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
-                            return (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => {
-                                  if (isAdded) {
-                                    setForm({ ...form, available_sizes: (form.available_sizes || []).filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
-                                  } else {
-                                    setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
-                                  }
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${isAdded
-                                    ? 'bg-[#ce112d] border-[#ce112d] text-white'
-                                    : 'bg-zinc-900 border-white/5 text-zinc-400 hover:text-white hover:border-white/20'
-                                  }`}
-                              >
-                                {isAdded ? <span className="inline-flex items-center gap-1"><Check size={11} /> {s}</span> : <span className="inline-flex items-center gap-1"><Plus size={11} /> {s}</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Active Added Size Tags */}
-                      {(form.available_sizes || []).length > 0 && (
-                        <div className="mt-4 p-4 bg-black/40 rounded-2xl border border-white/5 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-[#ce112d]" />
-                            <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Active Sizes ({(form.available_sizes || []).length}):</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {form.available_sizes.map((size, idx) => {
-                              const name = typeof size === 'object' ? size.name : size;
-                              const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
-                              return (
-                                <div
-                                  key={idx}
-                                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-3 transition-all border ${isAvailable ? 'bg-[#ce112d]/20 text-white border-[#ce112d]/40' : 'bg-zinc-900 text-zinc-600 border-white/5 line-through'
-                                    }`}
-                                >
-                                  <span>{name}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const updated = (form.available_sizes || []).filter((_, i) => i !== idx);
-                                      setForm({ ...form, available_sizes: updated });
-                                    }}
-                                    className="p-1 hover:text-red-400 text-zinc-400 transition-colors"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
                       )}
                     </div>
+                    <input
+                      value={form.name}
+                      placeholder="e.g. Premium Mirror Work Panjabi"
+                      className="w-full h-11 px-3.5 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/60"
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-zinc-400">Original</label>
+                      <input type="number" value={form.original_price || ''} placeholder="1850"
+                        className="w-full h-11 px-3 rounded-lg bg-black/50 border border-white/10 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-white/25"
+                        onChange={e => setForm({ ...form, original_price: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-[#ce112d]">Sale *</label>
+                      <input type="number" required value={form.price || ''} placeholder="1450"
+                        className="w-full h-11 px-3 rounded-lg bg-black/50 border border-[#ce112d]/40 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]"
+                        onChange={e => setForm({ ...form, price: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-zinc-400">Stock</label>
+                      <input type="number" value={form.stock_count !== undefined && form.stock_count !== null ? form.stock_count : ''} placeholder="50"
+                        className="w-full h-11 px-3 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-emerald-500/50"
+                        onChange={e => setForm({ ...form, stock_count: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-zinc-400">Category</label>
+                        {form.category && (
+                          <button type="button" onClick={() => setForm(prev => ({ ...prev, category: '', subcategory: '' }))} className="text-[11px] text-zinc-500 hover:text-white">Clear</button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <select value={form.category || ''} onChange={e => setForm(prev => ({ ...prev, category: e.target.value, subcategory: '' }))} aria-label="Top-level product category"
+                          className="w-full h-11 pl-3.5 pr-9 rounded-lg bg-black/50 border border-white/10 text-sm text-white outline-none appearance-none focus:border-[#ce112d]/60">
+                          <option value="" className="bg-zinc-900">Uncategorized</option>
+                          {TOP_CATEGORIES.map(cat => (
+                            <option key={cat.id} value={cat.id} className="bg-zinc-900">{cat.en} ({cat.bn})</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-zinc-400">Subcategory</label>
+                        {form.subcategory && (
+                          <button type="button" onClick={() => setForm(prev => ({ ...prev, subcategory: '' }))} className="text-[11px] text-zinc-500 hover:text-white">Clear</button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <select value={form.subcategory || ''} onChange={e => setForm(prev => ({ ...prev, subcategory: e.target.value }))} disabled={!form.category} aria-label="Product subcategory"
+                          className="w-full h-11 pl-3.5 pr-9 rounded-lg bg-black/50 border border-white/10 text-sm text-white outline-none appearance-none focus:border-[#ce112d]/60 disabled:opacity-40">
+                          <option value="" className="bg-zinc-900">None</option>
+                          {form.category && getSubcategoriesForCategory(form.category, subcategoriesData).map(sub => (
+                            <option key={sub.id} value={sub.id} className="bg-zinc-900">{sub.name_en || sub.en} ({sub.name_bn || sub.bn})</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-400">Description</label>
+                    <textarea rows="4" value={form.description} placeholder="Fabric, fit, occasion…"
+                      className="w-full px-3.5 py-3 rounded-lg bg-black/50 border border-white/10 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-white/25 resize-y min-h-[96px] leading-relaxed"
+                      onChange={e => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                </section>
+              </div>
+
+              <div className="lg:col-span-5 space-y-5 lg:sticky lg:top-4">
+                <section className="rounded-xl border border-white/10 bg-[#111113] p-5 md:p-6 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Photos & video</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Main photo required · Instagram optional</p>
+                  </div>
+
+                  <div className="aspect-[4/5] w-full rounded-lg border border-white/10 bg-black/40 overflow-hidden relative">
+                    {(previewImage || form.image_url) ? (
+                      <>
+                        <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top" alt="Preview" />
+                        <button type="button" onClick={() => {
+                          setPreviewImage(null);
+                          setForm(prev => ({
+                            ...prev,
+                            image_url: null,
+                            images: (prev.images || []).filter((_, idx) => idx !== 0)
+                          }));
+                        }} className="absolute top-2.5 right-2.5 p-2 bg-black/70 hover:bg-red-600 text-white rounded-lg transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-600 px-4 text-center">
+                        <ImageIcon size={28} className="opacity-50" />
+                        <p className="text-xs text-zinc-500">No photo yet</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <label className="flex items-center gap-3 w-full px-3.5 py-3 rounded-lg border border-dashed border-white/15 cursor-pointer hover:border-[#ce112d]/50 hover:bg-white/[0.03] transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-[#ce112d] flex items-center justify-center text-white shrink-0">
+                      <Upload size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white">Upload main photo</p>
+                      <p className="text-[11px] text-zinc-500">Best 1080×1350</p>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'product')} />
+                  </label>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-400">Instagram video URL</label>
+                    <div className="relative">
+                      <input value={form.video_url} onBlur={handleVideoBlur} placeholder="https://www.instagram.com/reels/..."
+                        className="w-full h-11 pl-3.5 pr-10 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
+                        onChange={e => setForm({ ...form, video_url: e.target.value })} />
+                      <Video size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    </div>
+                  </div>
+
+                  {form.video_url && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-500">Video preview</span>
+                        <button type="button" onClick={() => setForm(prev => ({ ...prev, video_url: '', platform_id: prev.platform_id }))} className="text-[11px] text-red-400 hover:underline">Clear</button>
+                      </div>
+                      <div className="aspect-[4/5] max-h-52 rounded-lg border border-white/10 overflow-hidden bg-black">
+                        <VideoPlayer src={form.video_url} priority={true} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-zinc-400">Gallery</span>
+                      {loading && uploadStatus !== 'idle' && (
+                        <span className="text-[11px] text-[#ce112d]">
+                          {uploadStatus === 'compressing' ? 'Compressing…' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {form.images?.map((img, i) => (
+                        <div key={i} className="relative aspect-[3/4] rounded-md overflow-hidden border border-white/10 group bg-black">
+                          <img src={img} onError={(e) => { e.target.src = 'https://placehold.co/400x500/0a0a0c/ce112d?text=Error'; }} className="w-full h-full object-cover" alt="Gallery" />
+                          <button type="button" className="absolute inset-0 bg-red-600/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                            onClick={() => {
+                              const removedImg = form.images[i];
+                              const updatedImages = form.images.filter((_, idx) => idx !== i);
+                              const updatedColors = (form.available_colors || []).map(c => c.image === removedImg ? { ...c, image: null } : c);
+                              setForm({ ...form, images: updatedImages, available_colors: updatedColors });
+                            }}>
+                            <Trash2 size={14} className="text-white" />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="aspect-[3/4] rounded-md border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[#ce112d]/40 hover:bg-white/[0.03]">
+                        <Plus size={16} className="text-zinc-400" />
+                        <span className="text-[10px] text-zinc-500">Add</span>
+                        <input type="file" className="hidden" accept="image/*" multiple onChange={e => handleFileUpload(e, 'product')} />
+                      </label>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-[#111113] p-5 md:p-6 space-y-6">
+              <div className="pb-4 border-b border-white/10">
+                <h3 className="text-sm font-semibold text-white">Sizes & colors</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">Optional variants for the product page</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-4 rounded-lg border border-white/5 bg-black/20 p-4 md:p-5">
+                  <div>
+                    <label className="text-xs font-semibold text-white">Available sizes</label>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">Type a size or use presets</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={customSizeInput} placeholder="e.g. S, M, L, 38, Free Size"
+                      onChange={e => setCustomSizeInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          const val = customSizeInput.trim().toUpperCase();
+                          if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                            setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
+                            setCustomSizeInput('');
+                          }
+                        }
+                      }}
+                      className="flex-1 h-11 px-3.5 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50 uppercase" />
+                    <button type="button" onClick={() => {
+                      const val = customSizeInput.trim().toUpperCase();
+                      if (val && !(form.available_sizes || []).some(s => (typeof s === 'object' ? s.name : s) === val)) {
+                        setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: val, is_available: true }] });
+                        setCustomSizeInput('');
+                      }
+                    }} className="px-4 h-11 bg-[#ce112d] hover:bg-[#b00e26] text-white rounded-lg text-xs font-semibold shrink-0">Add</button>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[11px] text-zinc-500">Presets</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', 'Free Size'].map(s => {
+                        const isAdded = (form.available_sizes || []).some(sz => (typeof sz === 'object' ? sz.name : sz) === s);
+                        return (
+                          <button key={s} type="button" onClick={() => {
+                            if (isAdded) setForm({ ...form, available_sizes: (form.available_sizes || []).filter(sz => (typeof sz === 'object' ? sz.name : sz) !== s) });
+                            else setForm({ ...form, available_sizes: [...(form.available_sizes || []), { name: s, is_available: true }] });
+                          }} className={`px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${isAdded ? 'bg-[#ce112d]/20 border-[#ce112d]/50 text-white' : 'bg-transparent border-white/10 text-zinc-400 hover:border-white/25 hover:text-white'}`}>{s}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {(form.available_sizes || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {form.available_sizes.map((size, idx) => {
+                        const name = typeof size === 'object' ? size.name : size;
+                        const isAvailable = typeof size === 'object' ? (size.is_available ?? true) : true;
+                        return (
+                          <div key={idx} className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 border ${isAvailable ? 'bg-white/5 text-white border-white/15' : 'bg-transparent text-zinc-600 border-white/5 line-through'}`}>
+                            <span>{name}</span>
+                            <button type="button" onClick={() => setForm({ ...form, available_sizes: (form.available_sizes || []).filter((_, i) => i !== idx) })} className="p-0.5 hover:text-red-400 text-zinc-500"><X size={12} /></button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                     {/* Colors & Color Picker — Redesigned */}
                     <div className="space-y-6 pt-4">
@@ -3062,74 +2889,69 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null, sizes: [] };
                           const isAvailable = color.is_available ?? true;
                           return (
-                            <div key={idx} className="bg-zinc-950 border border-white/5 rounded-2xl md:rounded-[40px] p-4 md:p-8 space-y-6 md:space-y-8 relative overflow-hidden group/card shadow-2xl">
-                              <div className="absolute top-0 left-0 w-2 h-full bg-[#ce112d]/5 group-hover/card:bg-[#ce112d] transition-all"></div>
-
-                              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 rounded-2xl border-2 border-white/10 shadow-2xl" style={{ backgroundColor: color.hex || '#888' }}></div>
+                            <div key={idx} className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-md border border-white/15" style={{ backgroundColor: color.hex || '#888' }}></div>
                                   <div>
-                                    <h4 className="text-xl font-black text-white uppercase italic tracking-tight">{color.name}</h4>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${isAvailable ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
-                                        {isAvailable ? 'Status: Active' : 'Status: Sold Out'}
-                                      </span>
-                                    </div>
+                                    <h4 className="text-sm font-semibold text-white">{color.name}</h4>
+                                    <span className={`text-[10px] font-medium ${isAvailable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                      {isAvailable ? 'Active' : 'Sold out'}
+                                    </span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   <button type="button" onClick={() => {
                                     const updated = [...form.available_colors];
                                     updated[idx] = { ...color, is_available: !isAvailable };
                                     setForm({ ...form, available_colors: updated });
-                                  }} className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isAvailable ? 'bg-zinc-800 text-zinc-500' : 'bg-green-600 text-white shadow-lg'}`}>
-                                    {isAvailable ? 'Mark Sold Out' : 'Restore'}
+                                  }} className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${isAvailable ? 'bg-white/5 text-zinc-400 hover:text-white' : 'bg-emerald-600 text-white'}`}>
+                                    {isAvailable ? 'Mark sold out' : 'Restore'}
                                   </button>
-                                  <button type="button" onClick={() => setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) })} className="p-3 bg-red-600/10 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-xl">
-                                    <Trash2 size={16} />
+                                  <button type="button" onClick={() => setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) })} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors">
+                                    <Trash2 size={14} />
                                   </button>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                                <div className="lg:col-span-12 space-y-4">
-                                  <label className="text-[11px] font-bold uppercase text-zinc-500 px-1 italic tracking-wide">Stock & SKU per Size</label>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                              <div className="space-y-3">
+                                <label className="text-[11px] font-medium text-zinc-500">Stock & SKU per size</label>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
                                     {form.available_sizes?.map((sz, sIdx) => {
                                       const sName = typeof sz === 'object' ? sz.name : sz;
                                       const sObj = color.sizes?.find(s => (typeof s === 'object' ? s.name : s) === sName);
                                       const isLinked = !!sObj;
                                       return (
-                                        <div key={sIdx} className={`p-3 md:p-5 rounded-2xl md:rounded-[28px] border-2 transition-all ${isLinked ? 'bg-black/40 border-[#ce112d]/30 shadow-2xl' : 'bg-black/10 border-white/5 opacity-60'}`}>
-                                          <div className="flex items-center justify-between mb-4">
-                                            <span className="text-sm font-black text-white italic">{sName}</span>
+                                        <div key={sIdx} className={`p-3 rounded-lg border transition-colors ${isLinked ? 'bg-black/40 border-[#ce112d]/30' : 'bg-black/10 border-white/5 opacity-60'}`}>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-semibold text-white">{sName}</span>
                                             <input type="checkbox" checked={isLinked} onChange={() => {
                                               const updated = [...form.available_colors];
                                               const curSizes = color.sizes || [];
                                               const newSizes = isLinked ? curSizes.filter(s => (typeof s === 'object' ? s.name : s) !== sName) : [...curSizes, { name: sName, stock: 0, sku: '' }];
                                               updated[idx] = { ...color, sizes: newSizes };
                                               setForm({ ...form, available_colors: updated });
-                                            }} className="w-5 h-5 accent-[#ce112d]" />
+                                            }} className="w-4 h-4 accent-[#ce112d]" />
                                           </div>
                                           {isLinked && (
-                                            <div className="space-y-4">
+                                            <div className="space-y-2">
                                               <div>
-                                                <p className="text-[8px] font-black text-zinc-600 uppercase mb-1.5 ml-1">Stock</p>
+                                                <p className="text-[10px] text-zinc-500 mb-1">Stock</p>
                                                 <input type="number" value={sObj.stock || 0} onChange={e => {
                                                   const updated = [...form.available_colors];
                                                   const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, stock: parseInt(e.target.value) || 0 } : s);
                                                   updated[idx] = { ...color, sizes: newSizes };
                                                   setForm({ ...form, available_colors: updated });
-                                                }} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl h-9 px-3 text-[11px] font-black text-white outline-none focus:border-[#ce112d]" />
+                                                }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-xs text-white outline-none focus:border-[#ce112d]" />
                                               </div>
                                               <div>
-                                                <p className="text-[8px] font-black text-zinc-600 uppercase mb-1.5 ml-1">SKU</p>
-                                                <input type="text" placeholder="SKU Code" value={sObj.sku || ''} onChange={e => {
+                                                <p className="text-[10px] text-zinc-500 mb-1">SKU</p>
+                                                <input type="text" placeholder="SKU" value={sObj.sku || ''} onChange={e => {
                                                   const updated = [...form.available_colors];
                                                   const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, sku: e.target.value } : s);
                                                   updated[idx] = { ...color, sizes: newSizes };
                                                   setForm({ ...form, available_colors: updated });
-                                                }} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl h-9 px-3 text-[9px] font-mono font-black text-[#ce112d] outline-none focus:border-[#ce112d] uppercase" />
+                                                }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-[11px] font-mono text-[#ce112d] outline-none focus:border-[#ce112d] uppercase" />
                                               </div>
                                             </div>
                                           )}
@@ -3138,16 +2960,15 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                     })}
                                   </div>
                                 </div>
-                              </div>
 
-                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                <div className="pt-4 border-t border-white/10 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <label className="text-[11px] font-bold uppercase text-zinc-400 px-1 block italic tracking-wide">
-                                      Photo for {color.name || 'this Color'}
+                                    <label className="text-[11px] font-medium text-zinc-500">
+                                      Photo for {color.name || 'this color'}
                                     </label>
-                                    <label className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-white/10">
+                                    <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-md text-[11px] font-medium cursor-pointer border border-white/10">
                                       <Upload size={12} />
-                                      <span>Upload New</span>
+                                      <span>Upload</span>
                                       <input
                                         type="file"
                                         accept="image/*"
@@ -3211,71 +3032,64 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         })}
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                  <label className="flex items-center gap-4 md:gap-6 p-6 md:p-10 bg-black/40 rounded-2xl md:rounded-[40px] border border-white/5 cursor-pointer hover:bg-white/5 transition-all group shadow-2xl">
-                    <input type="checkbox" checked={form.is_sold_out} onChange={e => setForm({ ...form, is_sold_out: e.target.checked })} className="w-8 h-8 rounded-xl accent-[#ce112d] shrink-0" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <label className="flex items-center gap-3 p-4 rounded-lg border border-white/10 bg-black/30 cursor-pointer hover:bg-white/[0.03] transition-colors">
+                    <input type="checkbox" checked={form.is_sold_out} onChange={e => setForm({ ...form, is_sold_out: e.target.checked })} className="w-4 h-4 rounded accent-[#ce112d] shrink-0" />
                     <div>
-                      <span className="text-base font-black text-white uppercase tracking-wider group-hover:text-red-500 transition-colors italic">Sold Out</span>
-                      <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mt-1">Hide product from the store</p>
+                      <span className="text-sm font-medium text-white">Sold out</span>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">Hide from store</p>
                     </div>
                   </label>
-                  <label className="flex items-center gap-4 md:gap-6 p-6 md:p-10 bg-[#ce112d]/5 rounded-2xl md:rounded-[40px] border border-[#ce112d]/20 cursor-pointer hover:bg-[#ce112d]/10 transition-all group shadow-2xl">
-                    <input type="checkbox" checked={form.is_exclusive} onChange={e => setForm({ ...form, is_exclusive: e.target.checked })} className="w-8 h-8 rounded-xl accent-[#ce112d] shrink-0" />
+                  <label className="flex items-center gap-3 p-4 rounded-lg border border-[#ce112d]/25 bg-[#ce112d]/5 cursor-pointer hover:bg-[#ce112d]/10 transition-colors">
+                    <input type="checkbox" checked={form.is_exclusive} onChange={e => setForm({ ...form, is_exclusive: e.target.checked })} className="w-4 h-4 rounded accent-[#ce112d] shrink-0" />
                     <div>
-                      <span className="text-base font-black text-red-400 uppercase tracking-wider italic">Exclusive Product</span>
-                      <p className="text-xs font-semibold text-red-300/70 mt-1">Requires 500 TK advance</p>
+                      <span className="text-sm font-medium text-red-300">Exclusive</span>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">৳500 advance</p>
                     </div>
                   </label>
+                  {!editingProduct && (
+                    <label className="flex items-center gap-3 p-4 rounded-lg border border-emerald-500/25 bg-emerald-500/5 cursor-pointer hover:bg-emerald-500/10 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={notifySignedInUsers}
+                        onChange={(e) => setNotifySignedInUsers(e.target.checked)}
+                        className="w-4 h-4 rounded accent-emerald-500 shrink-0"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-emerald-300">Notify users</span>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">On publish</p>
+                      </div>
+                    </label>
+                  )}
                 </div>
-
-                {!editingProduct && (
-                  <label className="flex items-center gap-4 md:gap-6 p-6 md:p-8 bg-emerald-500/5 rounded-2xl md:rounded-[32px] border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/10 transition-all group shadow-2xl">
-                    <input
-                      type="checkbox"
-                      checked={notifySignedInUsers}
-                      onChange={(e) => setNotifySignedInUsers(e.target.checked)}
-                      className="w-8 h-8 rounded-xl accent-emerald-500 shrink-0"
-                    />
-                    <div>
-                      <span className="text-base font-black text-emerald-400 uppercase tracking-wider italic">Notify Signed-in Users</span>
-                      <p className="text-xs font-semibold text-emerald-400/60 mt-1">
-                        Send an in-app alert on their Account page when this product is published
-                      </p>
-                    </div>
-                  </label>
-                )}
               </div>
 
-              {/* Submit & Discard — Standardized Height, Proportional Width & Conventional Action Color */}
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-8 border-t border-white/5">
-                <button 
-                  type="button" 
-                  onClick={cancelEdit} 
-                  className="w-full sm:w-44 h-12 md:h-14 border border-zinc-800 rounded-xl uppercase text-xs font-bold tracking-wider text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-all active:scale-[0.98]"
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="w-full sm:w-36 h-11 border border-white/10 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
                   Discard
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={loading} 
-                  className="w-full sm:w-60 bg-emerald-600 hover:bg-emerald-500 h-12 md:h-14 rounded-xl font-bold uppercase tracking-wider text-xs md:text-sm text-white shadow-xl shadow-emerald-950/50 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 disabled:opacity-50"
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full sm:w-48 bg-emerald-600 hover:bg-emerald-500 h-11 rounded-lg font-semibold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                 >
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Save Product')}</span>
-                </button>
-              </div>
-
-              {/* Mobile Sticky Save Action Bar */}
-              <div className="fixed bottom-0 left-0 right-0 p-3 bg-zinc-950/95 border-t border-white/10 backdrop-blur-xl z-50 lg:hidden flex items-center gap-3 shadow-2xl">
-                <button type="button" onClick={cancelEdit} className="px-5 h-12 border border-zinc-800 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-400 hover:bg-zinc-800">
-                  Discard
-                </button>
-                <button type="submit" disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 h-12 rounded-xl font-bold uppercase text-xs text-white tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-50">
                   {loading ? <RotateCcw size={16} className="animate-spin" /> : <Save size={16} />}
-                  <span>{loading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Save Product')}</span>
+                  <span>{loading ? 'Saving…' : (editingProduct ? 'Update product' : 'Save product')}</span>
+                </button>
+              </div>
+
+              <div className="fixed bottom-0 left-0 right-0 p-3 bg-[#0a0a0c]/95 border-t border-white/10 backdrop-blur-md z-50 lg:hidden flex items-center gap-2">
+                <button type="button" onClick={cancelEdit} className="px-4 h-11 border border-white/10 rounded-lg text-xs font-semibold text-zinc-400">
+                  Discard
+                </button>
+                <button type="submit" disabled={loading} className="flex-1 bg-emerald-600 hover:bg-emerald-500 h-11 rounded-lg font-semibold text-xs text-white flex items-center justify-center gap-2 disabled:opacity-50">
+                  {loading ? <RotateCcw size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>{loading ? 'Saving…' : (editingProduct ? 'Update' : 'Save')}</span>
                 </button>
               </div>
             </div>
