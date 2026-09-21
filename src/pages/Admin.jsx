@@ -1179,6 +1179,21 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         ? '/api/admin/product-copy'
         : `${API_URL.replace(/\/$/, '')}/api/admin/product-copy`;
       const token = getToken();
+
+      // Only send colors the admin actually added (not the draft picker value)
+      const confirmedColors = (form.available_colors || [])
+        .map((c) => (typeof c === 'object' ? { name: c.name, hex: c.hex } : { name: c }))
+        .filter((c) => c.name && String(c.name).trim());
+
+      const subLabel = (() => {
+        if (!form.subcategory || !form.category) return form.subcategory || '';
+        const list = getSubcategoriesForCategory(form.category, subcategoriesData) || [];
+        const hit = list.find((s) => s.id === form.subcategory);
+        return hit ? (hit.name_en || hit.en || hit.id) : form.subcategory;
+      })();
+
+      const imageUrl = form.image_url || (Array.isArray(form.images) ? form.images[0] : '') || '';
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -1191,11 +1206,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           description: form.description,
           category: form.category,
           subcategory: form.subcategory,
+          subcategory_label: subLabel,
           price: form.price,
           original_price: form.original_price,
-          colors: form.available_colors,
+          colors: confirmedColors,
           sizes: form.available_sizes,
           is_exclusive: form.is_exclusive,
+          image_url: imageUrl,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1204,6 +1221,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       if (mode === 'name' || mode === 'both') {
         const names = Array.isArray(data.names) ? data.names.filter(Boolean) : [];
         setNameSuggestions(names);
+        // Don't auto-overwrite a name the admin already typed unless empty
         if (!form.name?.trim() && names[0]) {
           setForm((prev) => ({ ...prev, name: names[0] }));
         }
@@ -1214,10 +1232,12 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         }
       }
       setFormAlert({
-        title: data.source === 'ai' ? 'AI copy ready' : 'Template copy ready',
+        title: data.source === 'ai'
+          ? (data.used_image ? 'AI copy ready (photo read)' : 'AI copy ready')
+          : 'Smart template ready',
         message: data.source === 'ai'
-          ? 'Suggestions generated. Pick a name chip or edit the description.'
-          : 'AI key offline — used Big Bazar template. Still editable.',
+          ? 'Pick a name chip, then tweak description if needed.'
+          : 'AI key offline/failed — used smarter template from category + colors. Add a photo for better AI names.',
         type: 'success',
       });
     } catch (err) {
@@ -2565,6 +2585,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           disabled={!!copyBusy}
                           onClick={() => requestProductCopy('name')}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                          title="Uses subcategory + colors + product photo when available"
                         >
                           <Sparkles size={12} />
                           {copyBusy === 'name' ? 'Suggesting…' : 'AI names'}

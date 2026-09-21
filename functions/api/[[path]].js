@@ -3077,11 +3077,13 @@ app.post('/admin/product-copy', requireAuth, requireAdmin, async (c) => {
       description: body.description,
       category: body.category,
       subcategory: body.subcategory,
+      subcategory_label: body.subcategory_label,
       price: body.price,
       original_price: body.original_price,
       colors: body.colors || body.available_colors,
       sizes: body.sizes || body.available_sizes,
       is_exclusive: body.is_exclusive,
+      image_url: body.image_url,
       notes: body.notes,
     });
     return c.json(result);

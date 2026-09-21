@@ -1,6 +1,6 @@
 /**
  * Admin product naming + description helper.
- * Uses Groq/Gemini when keys exist; otherwise template fallback.
+ * Prefer AI (Gemini vision when image available, then Groq); smart template fallback.
  */
 
 function cleanText(s) {
@@ -10,8 +10,12 @@ function cleanText(s) {
 function colorLabels(colors) {
   if (!Array.isArray(colors)) return [];
   return colors
-    .map((c) => (typeof c === 'object' ? c.name : c))
-    .filter(Boolean)
+    .map((c) => {
+      if (typeof c === 'object' && c) return String(c.name || '').trim();
+      return String(c || '').trim();
+    })
+    .filter((n) => n && !/^#?[0-9a-f]{3,8}$/i.test(n) && !/^unknown$/i.test(n))
+    .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i)
     .slice(0, 6);
 }
 
@@ -19,51 +23,127 @@ function sizeLabels(sizes) {
   if (!Array.isArray(sizes)) return [];
   return sizes
     .map((s) => (typeof s === 'object' ? s.name : s))
+    .map((s) => String(s || '').trim())
     .filter(Boolean)
     .slice(0, 8);
 }
 
+/** Turn IDs like "STITCHED PARTY THREE PIECE" into retail labels */
+export function humanizeLabel(raw) {
+  let s = String(raw || '').split('/')[0].trim();
+  if (!s) return '';
+  s = s
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Drop noisy prefixes
+  s = s.replace(/^(stitched|unstitched|ready|premium|exclusive)\s+/i, '').trim() || s;
+  // Title-ish case for Latin words only
+  s = s.replace(/\b[a-zA-Z][a-zA-Z']*\b/g, (w) => {
+    if (w.length <= 3 && w === w.toUpperCase()) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  });
+  // Common fashion normalizations
+  s = s
+    .replace(/\bThree Piece\b/gi, 'Three Piece')
+    .replace(/\b3 Piece\b/gi, 'Three Piece')
+    .replace(/\b2 Piece\b/gi, 'Two Piece')
+    .replace(/\bPartywear\b/gi, 'Partywear')
+    .replace(/\bParshi\b/gi, 'Parshi');
+  return s;
+}
+
+function styleHints(label) {
+  const t = label.toLowerCase();
+  if (/panjabi|punjabi|shirt/.test(t)) {
+    return {
+      occasion: 'casual ও semi-formal',
+      fabric: 'নরম আরামদায়ক কাপড়',
+      pitch: 'দৈনন্দিন ও অফিস লুকে সহজে পরা যায়',
+    };
+  }
+  if (/saree|sharee|শাড়ি|jamdani|katan|karchupi/.test(t)) {
+    return {
+      occasion: 'পার্টি, বিয়েবাড়ি ও উৎসব',
+      fabric: 'এলিগ্যান্ট ড্রেপ',
+      pitch: 'বিশেষ দিনের জন্য প্রিমিয়াম লুক',
+    };
+  }
+  if (/three.?piece|3.?piece|থ্রি|party/.test(t)) {
+    return {
+      occasion: 'পার্টি ও অনুষ্ঠান',
+      fabric: 'ম্যাচিং সেট',
+      pitch: 'একসাথে পরার পারফেক্ট পার্টি লুক',
+    };
+  }
+  if (/two.?piece|2.?piece|western|kurti|parshi/.test(t)) {
+    return {
+      occasion: 'ক্যাজুয়াল ও আউটগোয়িং',
+      fabric: 'আরামদায়ক ফ্যাব্রিক',
+      pitch: 'স্মার্ট ও স্টাইলিশ ডেইলি লুক',
+    };
+  }
+  return {
+    occasion: 'দৈনন্দিন ও উপলক্ষ',
+    fabric: 'নরম পরতে সুবিধাজনক কাপড়',
+    pitch: 'ফ্যামিলি ফ্যাশনের জন্য সহজ চয়েস',
+  };
+}
+
 export function buildTemplateCopy(ctx = {}) {
-  const category = String(ctx.category || '').trim() || 'Fashion';
-  const subcategory = String(ctx.subcategory || '').split('/')[0].trim();
+  const category = humanizeLabel(ctx.category) || 'Fashion';
+  const subcategory = humanizeLabel(ctx.subcategory_label || ctx.subcategory);
   const seed = String(ctx.name || '').trim();
   const colors = colorLabels(ctx.colors);
-  const sizes = sizeLabels(ctx.sizes);
-  const price = ctx.price ? `৳${ctx.price}` : '';
   const exclusive = Boolean(ctx.is_exclusive);
   const base = subcategory || category;
+  const hints = styleHints(base);
   const colorBit = colors.length ? colors.slice(0, 2).join(' / ') : '';
 
+  // Never invent colors — only mention if admin already added them
   const names = [
-    seed || null,
     exclusive ? `Exclusive ${base}` : null,
-    colorBit ? `${base} — ${colorBit}` : `${base} Collection`,
+    colorBit ? `${base} — ${colorBit}` : null,
     `Premium ${base}`,
-    `Ready ${base}`,
+    /party|three|saree|parshi/i.test(base) ? `Ready ${base}` : `New ${base}`,
+    subcategory && category && subcategory.toLowerCase() !== category.toLowerCase()
+      ? `${category} ${base}`
+      : null,
+    seed && !/^women collection$/i.test(seed) ? seed : null,
   ]
     .filter(Boolean)
     .map((n) => n.replace(/\s+/g, ' ').trim())
+    .filter((n) => !/^women collection$/i.test(n) && !/^men collection$/i.test(n))
     .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i)
     .slice(0, 5);
 
-  const fabricHint = /panjabi|shirt|t-shirt|tee/i.test(base)
-    ? 'Comfortable fabric with a clean everyday fit.'
-    : /saree|sharee|শাড়ি/i.test(base)
-      ? 'Elegant drape for parties, weddings, and festive wear.'
-      : /three.?piece|3.?piece|থ্রি/i.test(base)
-        ? 'Matching set designed for a polished party look.'
-        : 'Soft fabric, easy to wear, made for regular and occasion use.';
+  if (!names.length) names.push(`Premium ${base}`);
 
-  const colorLine = colors.length ? ` Available colors: ${colors.join(', ')}.` : '';
-  const sizeLine = sizes.length ? ` Sizes: ${sizes.join(', ')}.` : '';
-  const priceLine = price ? ` Sale price ${price}.` : '';
+  const colorLine = colors.length
+    ? ` উপলব্ধ রং: ${colors.join(', ')}।`
+    : '';
 
-  const descriptionBn = `${base} — ${fabricHint.replace(/\.$/, '')}।${colorLine}${sizeLine}${priceLine} Big Bazar, Baraiyarhat।`.trim();
-  const descriptionEn = `${names[0] || base}: ${fabricHint}${colorLine}${sizeLine}${priceLine} Shop Big Bazar, Baraiyarhat.`.trim();
+  const description = [
+    `${base} — ${hints.fabric}, ${hints.pitch}।`,
+    `${hints.occasion}-এর জন্য উপযোগী।`,
+    colorLine.trim(),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const descriptionEn = [
+    `${names[0]}: ${hints.pitch} with a polished finish.`,
+    `Ideal for ${hints.occasion.replace(/ও/g, 'and')}.`,
+    colors.length ? `Colors: ${colors.join(', ')}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return {
     names,
-    description: descriptionBn,
+    description,
     description_en: descriptionEn,
     source: 'template',
   };
@@ -90,6 +170,70 @@ function parseAiJson(raw) {
   }
 }
 
+function sanitizeNames(names, ctx) {
+  const base = humanizeLabel(ctx.subcategory_label || ctx.subcategory || ctx.category) || 'Fashion';
+  const allowedColors = new Set(colorLabels(ctx.colors).map((c) => c.toLowerCase()));
+  return (Array.isArray(names) ? names : [])
+    .map((n) => String(n || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .filter((n) => n.length <= 70)
+    .filter((n) => !/^women collection$/i.test(n) && !/^men collection$/i.test(n) && !/^kids collection$/i.test(n))
+    .map((n) => {
+      // Strip color claims that were not in admin color list
+      if (!allowedColors.size && /\s[—\-–]\s*[A-Za-z\u0980-\u09FF]+$/.test(n)) {
+        // keep as-is if no colors provided — AI may have seen image; still ok
+        return n;
+      }
+      if (allowedColors.size) {
+        const m = n.match(/\s[—\-–]\s*([A-Za-z\u0980-\u09FF /]+)$/);
+        if (m) {
+          const claimed = m[1].split(/[\/,]/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+          if (claimed.some((c) => !allowedColors.has(c))) {
+            return n.replace(/\s[—\-–]\s*[A-Za-z\u0980-\u09FF /]+$/, '').trim() || base;
+          }
+        }
+      }
+      return n;
+    })
+    .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i)
+    .slice(0, 5);
+}
+
+function sanitizeDescription(text, ctx) {
+  let d = String(text || '').trim();
+  if (!d) return '';
+  // Remove store spam / fake claims
+  d = d
+    .replace(/\s*Big\s*Bazar\s*,?\s*Baraiyarhat\.?/gi, '')
+    .replace(/\s*Shop\s+Big\s*Bazar[^.]*\.?/gi, '')
+    .replace(/\s*Sale price\s*৳?\s*[\d,]+\.?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const colors = colorLabels(ctx.colors);
+  if (!colors.length) {
+    // Drop "Available colors: X" lines when admin didn't set colors
+    d = d.replace(/(উপলব্ধ রং|Available colors?)\s*[:：][^.।]*[.।]?/gi, '').trim();
+  }
+  return d;
+}
+
+const SYSTEM_PROMPT = `You are Big Bazar's expert fashion copywriter for a Bangladeshi family clothing store.
+Return ONLY valid JSON (no markdown):
+{"names":["...","...","...","...","..."],"description":"...","description_en":"..."}
+
+STRICT RULES:
+1. names: exactly 4-5 short retail titles (max 55 chars). Specific fashion names customers search on Facebook/WhatsApp.
+2. NEVER use vague titles like "Women Collection", "Men Collection", "New Arrival", "Fashion Item".
+3. Anchor titles on the subcategory product type (Three Piece, Saree, Panjabi, Parshi, Two Piece, etc.).
+4. description: 2-3 natural Bangla sentences — look/feel, occasion, who it suits. No emojis.
+5. description_en: 1-2 English sentences mirroring the Bangla pitch.
+6. ONLY mention a color if it appears in the provided colors array OR you can clearly see it in the product photo. Never guess wrong colors (e.g. do not say Brown for a lavender outfit).
+7. Do NOT invent fabric composition, discounts, stock, or brand claims not given.
+8. Do NOT append store address, "Big Bazar", or "Baraiyarhat" in the description.
+9. If improving existing copy, keep truth and only polish clarity + appeal.
+10. Prefer searchable Bangla-English mix titles when natural (e.g. "রেডি পার্টি থ্রি পিস", "Premium Party Three Piece").`;
+
 async function callGroq(apiKey, systemPrompt, userPrompt) {
   const models = ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b'];
   for (const model of models) {
@@ -106,8 +250,8 @@ async function callGroq(apiKey, systemPrompt, userPrompt) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 700,
-          temperature: 0.45,
+          max_tokens: 800,
+          temperature: 0.55,
         }),
       });
       const data = await res.json();
@@ -120,8 +264,29 @@ async function callGroq(apiKey, systemPrompt, userPrompt) {
   return '';
 }
 
-async function callGemini(apiKey, systemPrompt, userPrompt) {
+async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
   const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  const userParts = [{ text: userPrompt }];
+
+  if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
+    try {
+      const imgRes = await fetch(imageUrl, { cf: { cacheTtl: 300 } });
+      if (imgRes.ok) {
+        const buf = await imgRes.arrayBuffer();
+        if (buf.byteLength > 0 && buf.byteLength < 4_500_000) {
+          const bytes = new Uint8Array(buf);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+          const b64 = btoa(binary);
+          const mime = imgRes.headers.get('content-type') || 'image/jpeg';
+          userParts.push({ inlineData: { mimeType: mime.split(';')[0], data: b64 } });
+        }
+      }
+    } catch (e) {
+      console.error('product-copy image fetch:', e);
+    }
+  }
+
   for (const model of models) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -130,8 +295,8 @@ async function callGemini(apiKey, systemPrompt, userPrompt) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: { maxOutputTokens: 700, temperature: 0.45 },
+          contents: [{ role: 'user', parts: userParts }],
+          generationConfig: { maxOutputTokens: 800, temperature: 0.5 },
         }),
       });
       const data = await res.json();
@@ -144,6 +309,23 @@ async function callGemini(apiKey, systemPrompt, userPrompt) {
   return '';
 }
 
+function absoluteImageUrl(env, imageUrl) {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('data:')) return '';
+  const site =
+    env?.PUBLIC_SITE_URL ||
+    env?.SITE_URL ||
+    (typeof process !== 'undefined' && (process.env?.PUBLIC_SITE_URL || process.env?.SITE_URL)) ||
+    'https://onlinebigbazar.com';
+  try {
+    return new URL(raw, String(site).replace(/\/$/, '') + '/').href;
+  } catch {
+    return '';
+  }
+}
+
 export async function generateProductCopy(env, ctx = {}) {
   const fallback = buildTemplateCopy(ctx);
   const groqApiKey = env?.GROQ_API_KEY || (typeof process !== 'undefined' && process.env?.GROQ_API_KEY);
@@ -154,53 +336,49 @@ export async function generateProductCopy(env, ctx = {}) {
   const mode = ctx.mode === 'name' || ctx.mode === 'description' ? ctx.mode : 'both';
   const colors = colorLabels(ctx.colors);
   const sizes = sizeLabels(ctx.sizes);
-
-  const systemPrompt = `You are Big Bazar's product copywriter for a Bangladeshi family fashion store (Baraiyarhat, Mirsarai, Chattogram).
-Return ONLY valid JSON (no markdown) with this shape:
-{"names":["...","...","..."],"description":"...","description_en":"..."}
-
-Rules:
-- names: 3 to 5 short retail titles (max ~60 chars). Mix natural Bangla + English fashion wording customers search for.
-- Prefer category/subcategory style (e.g. Panjabi, Three Piece, Partywear) over vague words.
-- description: 2-4 short Bangla sentences covering fabric/feel, occasion, fit, and care if obvious. No emojis. No fake claims.
-- description_en: 1-2 English sentences mirroring the Bangla pitch.
-- If improving an existing name/description, keep brand truth and only polish clarity.
-- Never invent stock, discounts, or materials that were not provided.`;
+  const subcategory = humanizeLabel(ctx.subcategory_label || ctx.subcategory);
+  const category = humanizeLabel(ctx.category);
+  const imageUrl = absoluteImageUrl(env, ctx.image_url);
 
   const userPrompt = JSON.stringify({
-    mode,
+    task: mode === 'name'
+      ? 'Suggest retail product names only (still return full JSON; description can be short polish of current).'
+      : mode === 'description'
+        ? 'Write a better product description; still return name options anchored on subcategory.'
+        : 'Suggest names and write description.',
     current_name: ctx.name || '',
     current_description: ctx.description || '',
-    category: ctx.category || '',
-    subcategory: ctx.subcategory || '',
+    category,
+    subcategory,
+    subcategory_raw: ctx.subcategory || '',
     price: ctx.price || '',
     original_price: ctx.original_price || '',
-    colors,
+    colors_confirmed_by_admin: colors,
     sizes,
     is_exclusive: Boolean(ctx.is_exclusive),
+    has_product_photo: Boolean(imageUrl),
     notes: ctx.notes || '',
+    reminder: 'If colors_confirmed_by_admin is empty, do not invent color names unless clearly visible in the photo.',
   });
 
   let raw = '';
-  if (groqApiKey) raw = await callGroq(groqApiKey, systemPrompt, userPrompt);
-  if (!raw && geminiApiKey) raw = await callGemini(geminiApiKey, systemPrompt, userPrompt);
+  // Prefer Gemini when we have a photo (vision) or always try Gemini first for copy quality
+  if (geminiApiKey) raw = await callGemini(geminiApiKey, SYSTEM_PROMPT, userPrompt, imageUrl);
+  if (!raw && groqApiKey) raw = await callGroq(groqApiKey, SYSTEM_PROMPT, userPrompt);
   if (!raw) return fallback;
 
   const parsed = parseAiJson(raw);
   if (!parsed) return { ...fallback, source: 'template', ai_raw: raw.slice(0, 200) };
 
-  const names = (Array.isArray(parsed.names) ? parsed.names : [])
-    .map((n) => String(n || '').replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .slice(0, 5);
-
-  const description = String(parsed.description || '').trim();
-  const descriptionEn = String(parsed.description_en || '').trim();
+  const names = sanitizeNames(parsed.names, ctx);
+  const description = sanitizeDescription(parsed.description, ctx);
+  const descriptionEn = sanitizeDescription(parsed.description_en, ctx);
 
   return {
     names: names.length ? names : fallback.names,
     description: description || fallback.description,
     description_en: descriptionEn || fallback.description_en,
     source: 'ai',
+    used_image: Boolean(imageUrl),
   };
 }
