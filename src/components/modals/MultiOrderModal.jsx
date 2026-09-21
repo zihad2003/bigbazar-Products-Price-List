@@ -193,8 +193,9 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     size: combinedSizes.substring(0, 250) || null,
                     color: combinedColors.substring(0, 250) || null,
                     is_exclusive_order: isExclusiveOrder || false,
-                    is_advance_paid: (formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'bangla_qr' && paymentOption === 'advance') || (formData.paymentMethod === 'cod' && Boolean(formData.senderNumber))) ? 1 : (formData.paymentMethod === 'bangla_qr' && paymentOption === 'full' ? 1 : 0),
-                    payment_status: (formData.paymentMethod === 'bangla_qr' && paymentOption === 'full') ? 'Fully Paid' : ((formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'bangla_qr' && paymentOption === 'advance') || (formData.paymentMethod === 'cod' && Boolean(formData.senderNumber))) ? 'Advance Paid' : 'Unpaid'),
+                    // Advance/Fully Paid is confirmed by admin only — send payment ref via last_four_digits
+                    is_advance_paid: 0,
+                    payment_status: 'Unpaid',
                     customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500)
                 }]);
 

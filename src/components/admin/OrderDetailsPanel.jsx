@@ -18,7 +18,11 @@ function parseOrderLine(str) {
 }
 
 function advanceAmount(order) {
-  if (!order?.is_advance_paid) return 0;
+  const confirmed =
+    Boolean(order?.is_advance_paid) ||
+    order?.payment_status === 'Advance Paid' ||
+    order?.payment_status === 'Fully Paid';
+  if (!confirmed) return 0;
   const charge = parseFloat(order.delivery_charge) || 0;
   if (order.is_exclusive_order) return 500;
   if (order.delivery_area === 'mirsarai' && charge === 0) return 100;
@@ -31,6 +35,16 @@ function balanceDue(order) {
     : Number(order.total_amount) || 0;
   if (order.payment_status === 'Fully Paid') return 0;
   return Math.max(0, total - advanceAmount(order));
+}
+
+function hasCustomerPaymentClaim(order) {
+  const raw = String(order?.last_four_digits || '').trim();
+  if (!raw || /^cod$/i.test(raw)) return false;
+  const confirmed =
+    Boolean(order?.is_advance_paid) ||
+    order?.payment_status === 'Advance Paid' ||
+    order?.payment_status === 'Fully Paid';
+  return !confirmed;
 }
 
 function paymentRef(order) {
@@ -244,14 +258,25 @@ export default function OrderDetailsPanel({
             <div>
               <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Due on delivery</p>
               <p className="text-2xl font-bold text-white tracking-tight">৳{due.toLocaleString()}</p>
+              {hasCustomerPaymentClaim(order) && (
+                <p className="text-[10px] text-white/80 mt-1">
+                  Customer sent payment ref — confirm below after verifying
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => onTogglePayment?.(order, 'Advance Paid')}
-                className={`h-9 px-4 rounded-md text-[11px] font-semibold transition-colors ${order.is_advance_paid ? 'bg-white text-[#ce112d]' : 'bg-black/25 text-white/80 border border-white/15'}`}
+                className={`h-9 px-4 rounded-md text-[11px] font-semibold transition-colors ${
+                  order.is_advance_paid || order.payment_status === 'Advance Paid' || order.payment_status === 'Fully Paid'
+                    ? 'bg-white text-[#ce112d]'
+                    : 'bg-black/25 text-white/80 border border-white/15'
+                }`}
               >
-                {order.is_advance_paid ? 'Advance paid' : 'Mark advance'}
+                {order.is_advance_paid || order.payment_status === 'Advance Paid' || order.payment_status === 'Fully Paid'
+                  ? 'Advance paid'
+                  : 'Mark advance'}
               </button>
               <button
                 type="button"

@@ -172,6 +172,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                     size: selectedSize || null,
                     color: selectedColor || null,
                     is_exclusive_order: isExclusiveOrder || false,
+                    is_advance_paid: 0,
+                    payment_status: 'Unpaid',
                     customer_note: formData.note || null
                 }])
                 .select();

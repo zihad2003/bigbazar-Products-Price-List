@@ -68,6 +68,8 @@ export default function Admin() {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [formAlert, setFormAlert] = useState(null); // { title, message, type: 'error' | 'success' }
   const [customSizeInput, setCustomSizeInput] = useState('');
+  const [copyBusy, setCopyBusy] = useState(null); // null | 'name' | 'description' | 'both'
+  const [nameSuggestions, setNameSuggestions] = useState([]);
   const [productPage, setProductPage] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
   const [showRangeDeleteModal, setShowRangeDeleteModal] = useState(false);
@@ -405,8 +407,28 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
   };
 
   const togglePaymentStatus = async (order, targetStatus) => {
-    // If targetStatus matches current, reset to Unpaid
-    const nextStatus = order.payment_status === targetStatus ? 'Unpaid' : targetStatus;
+    // Normalize current status (legacy rows may only have is_advance_paid)
+    const current =
+      order.payment_status === 'Fully Paid'
+        ? 'Fully Paid'
+        : order.payment_status === 'Advance Paid' || order.is_advance_paid
+          ? 'Advance Paid'
+          : 'Unpaid';
+
+    let nextStatus;
+    if (targetStatus === 'Advance Paid') {
+      // Unpaid → Advance; Advance → Unpaid; Fully → Advance (one-step demote)
+      if (current === 'Unpaid') nextStatus = 'Advance Paid';
+      else if (current === 'Advance Paid') nextStatus = 'Unpaid';
+      else nextStatus = 'Advance Paid';
+    } else if (targetStatus === 'Fully Paid') {
+      // Not fully → Fully; Fully → Advance (keep advance, don't wipe to Unpaid)
+      nextStatus = current === 'Fully Paid' ? 'Advance Paid' : 'Fully Paid';
+    } else {
+      nextStatus = targetStatus;
+    }
+
+    const nextAdvance = nextStatus !== 'Unpaid';
 
     setConfirmation({
       isOpen: true,
@@ -418,7 +440,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           .from('orders')
           .update({
             payment_status: nextStatus,
-            is_advance_paid: nextStatus !== 'Unpaid'
+            is_advance_paid: nextAdvance
           })
           .eq('id', order.id);
 
@@ -426,7 +448,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           // Fallback for older schemas without payment_status column
           const { error: fallbackError } = await bigBazarApi
             .from('orders')
-            .update({ is_advance_paid: nextStatus !== 'Unpaid' })
+            .update({ is_advance_paid: nextAdvance })
             .eq('id', order.id);
 
           if (fallbackError) {
@@ -434,13 +456,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
           } else {
             fetchOrders();
             if (selectedOrder?.id === order.id) {
-              setSelectedOrder({ ...selectedOrder, is_advance_paid: nextStatus !== 'Unpaid' });
+              setSelectedOrder({ ...selectedOrder, is_advance_paid: nextAdvance });
             }
           }
         } else {
           fetchOrders();
           if (selectedOrder?.id === order.id) {
-            setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextStatus !== 'Unpaid' });
+            setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextAdvance });
           }
         }
       }
@@ -1138,6 +1160,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setEditingProduct(null);
     setPreviewImage(null);
     setPreviewVideo(null);
+    setNameSuggestions([]);
+    setCopyBusy(null);
     setForm({
       name: '', price: '', original_price: '', description: '',
       images: [], video_url: '', is_sale: false, is_hot: false,
@@ -1148,8 +1172,69 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setFormStep(1);
   };
 
+  const requestProductCopy = async (mode = 'both') => {
+    setCopyBusy(mode);
+    try {
+      const endpoint = (!API_URL || API_URL === '/')
+        ? '/api/admin/product-copy'
+        : `${API_URL.replace(/\/$/, '')}/api/admin/product-copy`;
+      const token = getToken();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          mode,
+          name: form.name,
+          description: form.description,
+          category: form.category,
+          subcategory: form.subcategory,
+          price: form.price,
+          original_price: form.original_price,
+          colors: form.available_colors,
+          sizes: form.available_sizes,
+          is_exclusive: form.is_exclusive,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Copy helper failed');
+
+      if (mode === 'name' || mode === 'both') {
+        const names = Array.isArray(data.names) ? data.names.filter(Boolean) : [];
+        setNameSuggestions(names);
+        if (!form.name?.trim() && names[0]) {
+          setForm((prev) => ({ ...prev, name: names[0] }));
+        }
+      }
+      if (mode === 'description' || mode === 'both') {
+        if (data.description) {
+          setForm((prev) => ({ ...prev, description: data.description }));
+        }
+      }
+      setFormAlert({
+        title: data.source === 'ai' ? 'AI copy ready' : 'Template copy ready',
+        message: data.source === 'ai'
+          ? 'Suggestions generated. Pick a name chip or edit the description.'
+          : 'AI key offline — used Big Bazar template. Still editable.',
+        type: 'success',
+      });
+    } catch (err) {
+      setFormAlert({
+        title: 'Copy helper failed',
+        message: err.message || 'Could not generate product copy',
+        type: 'error',
+      });
+    } finally {
+      setCopyBusy(null);
+    }
+  };
+
   const startEdit = (p) => {
     setEditingProduct(p);
+    setNameSuggestions([]);
+    setCopyBusy(null);
     const isFakePoster = (url) => typeof url === 'string' && (url.startsWith('data:image/svg+xml') || url.includes('Big Bazar Video') || url.includes('Big Bazar Reel') || /instagram\.com|instagr\.am/i.test(url));
     const rawImages = Array.isArray(p.images) ? p.images.filter(img => !isFakePoster(img)) : [];
     const mainImg = p.image_url && !isFakePoster(p.image_url) ? p.image_url : (rawImages[0] || null);
@@ -1372,6 +1457,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 onClick={() => {
                   setActiveTab(tab.id);
                   setIsMobileMenuOpen(false);
+                  // Order details only belongs on Orders / Pending — close when leaving
+                  if (tab.id !== 'orders' && tab.id !== 'pending-items') {
+                    setSelectedOrder(null);
+                  }
                   if (tab.id === 'settings' || tab.id === 'subcategories') {
                     fetchSiteSettings();
                     if (tab.id === 'settings') fetchPendingCodes();
@@ -2454,29 +2543,62 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   </div>
 
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <label className="text-xs font-medium text-zinc-400">Product name</label>
-                      {form.subcategory && (
+                      <div className="flex items-center gap-2">
+                        {form.subcategory && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const subName = form.subcategory.split('/')[0].trim();
+                              if (!form.name.toLowerCase().includes(subName.toLowerCase())) {
+                                setForm(prev => ({ ...prev, name: `${subName} ${prev.name}`.trim() }));
+                              }
+                            }}
+                            className="text-[11px] font-medium text-[#ce112d] hover:underline"
+                          >
+                            Prefix "{form.subcategory.split('/')[0]}"
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => {
-                            const subName = form.subcategory.split('/')[0].trim();
-                            if (!form.name.toLowerCase().includes(subName.toLowerCase())) {
-                              setForm(prev => ({ ...prev, name: `${subName} ${prev.name}`.trim() }));
-                            }
-                          }}
-                          className="text-[11px] font-medium text-[#ce112d] hover:underline"
+                          disabled={!!copyBusy}
+                          onClick={() => requestProductCopy('name')}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50"
                         >
-                          Prefix "{form.subcategory.split('/')[0]}"
+                          <Sparkles size={12} />
+                          {copyBusy === 'name' ? 'Suggesting…' : 'AI names'}
                         </button>
-                      )}
+                      </div>
                     </div>
                     <input
                       value={form.name}
+                      maxLength={255}
                       placeholder="e.g. Premium Mirror Work Panjabi"
                       className="w-full h-11 px-3.5 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/60"
                       onChange={e => setForm({ ...form, name: e.target.value })}
                     />
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[10px] text-zinc-600">{(form.name || '').length}/255</p>
+                    </div>
+                    {nameSuggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {nameSuggestions.map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, name: n }))}
+                            className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                              form.name === n
+                                ? 'bg-[#ce112d]/15 border-[#ce112d]/40 text-[#ce112d]'
+                                : 'bg-white/5 border-white/10 text-zinc-300 hover:border-[#ce112d]/30 hover:text-white'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
@@ -2540,8 +2662,31 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-zinc-400">Description</label>
-                    <textarea rows="4" value={form.description} placeholder="Fabric, fit, occasion…"
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <label className="text-xs font-medium text-zinc-400">Description</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={!!copyBusy}
+                          onClick={() => requestProductCopy('description')}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                        >
+                          <Sparkles size={12} />
+                          {copyBusy === 'description'
+                            ? 'Writing…'
+                            : (form.description?.trim() ? 'Improve desc' : 'Write desc')}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!!copyBusy}
+                          onClick={() => requestProductCopy('both')}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-white disabled:opacity-50"
+                        >
+                          {copyBusy === 'both' ? 'Working…' : 'Name + desc'}
+                        </button>
+                      </div>
+                    </div>
+                    <textarea rows="4" value={form.description} placeholder="Fabric, fit, occasion… or tap Write desc"
                       className="w-full px-3.5 py-3 rounded-lg bg-black/50 border border-white/10 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-white/25 resize-y min-h-[96px] leading-relaxed"
                       onChange={e => setForm({ ...form, description: e.target.value })} />
                   </div>
@@ -3795,12 +3940,12 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           </div>
                         )}
                         {p.is_sold_out && (
-                          <div className="absolute inset-0 bg-red-600/60 backdrop-blur-[2px] flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-white uppercase tracking-widest">Sold Out</span>
+                          <div className="absolute inset-0 bg-red-600/30 backdrop-blur-[1px] flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-white uppercase tracking-widest drop-shadow">Sold Out</span>
                           </div>
                         )}
                         {p.serial_no && (
-                          <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-lg border border-white/10">
+                          <div className="absolute top-2 left-2 bg-black/35 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-lg border border-white/25 drop-shadow">
                             #{p.serial_no}
                           </div>
                         )}
@@ -4082,34 +4227,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         </div>
       )}
 
-      {selectedOrder && (activeTab !== 'orders' && activeTab !== 'pending-items') && (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-end md:items-center justify-center p-0 md:p-6 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
-          <div
-            className="relative w-full md:max-w-2xl md:rounded-xl overflow-hidden shadow-2xl border-t md:border border-white/10 bg-[#0a0a0c] h-[100dvh] md:h-auto md:max-h-[90vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            <OrderDetailsPanel
-              order={selectedOrder}
-              products={products}
-              variant="modal"
-              onClose={() => setSelectedOrder(null)}
-              onCopyFull={copyFullOrderDetails}
-              onCopy={copyToClipboard}
-              onDelete={(id) => { deleteOrder(id); setSelectedOrder(null); }}
-              onTogglePayment={togglePaymentStatus}
-              onUpdateStatus={updateOrderStatus}
-              onEditNote={updateOrderNote}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Floating Action Button (FAB) for Add Product */}
       {activeTab !== 'add' && (
         <button
           type="button"
           onClick={() => {
             cancelEdit();
+            setSelectedOrder(null);
             setActiveTab('add');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}

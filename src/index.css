@@ -21,11 +21,11 @@
   --border-hover: rgba(9, 9, 11, 0.25);
   
   /* Verified Contrast Ratios vs #ffffff / #f4f4f5 */
-  --text-primary: #09090b;   /* zinc-950 â 19.5:1 ratio (Pass AAA) */
-  --text-secondary: #3f3f46; /* zinc-700 â 9.5:1 ratio (Pass AAA) */
-  --text-tertiary: #52525b;  /* zinc-600 â 4.68:1 ratio (Pass AA) */
-  --text-muted: #71717a;     /* zinc-500 â 4.54:1 ratio (Pass AA) */
-  --text-faint: #d4d4d8;     /* zinc-300 â Borders / Disabled */
+  --text-primary: #09090b;   /* zinc-950 Ã¢ÂÂ 19.5:1 ratio (Pass AAA) */
+  --text-secondary: #3f3f46; /* zinc-700 Ã¢ÂÂ 9.5:1 ratio (Pass AAA) */
+  --text-tertiary: #52525b;  /* zinc-600 Ã¢ÂÂ 4.68:1 ratio (Pass AA) */
+  --text-muted: #71717a;     /* zinc-500 Ã¢ÂÂ 4.54:1 ratio (Pass AA) */
+  --text-faint: #d4d4d8;     /* zinc-300 Ã¢ÂÂ Borders / Disabled */
   
   /* Brand Accent Tokens */
   --accent-color: #ce112d;   /* Brand Red */
@@ -58,11 +58,11 @@
   --border-hover: rgba(255, 255, 255, 0.3);
 
   /* Verified Contrast Ratios vs #09090b / #18181b */
-  --text-primary: #f4f4f5;   /* zinc-100 â 16.2:1 ratio (Pass AAA) */
-  --text-secondary: #d4d4d8; /* zinc-300 â 11.5:1 ratio (Pass AAA) */
-  --text-tertiary: #a1a1aa;  /* zinc-400 â 5.4:1 ratio (Pass AA) */
-  --text-muted: #a1a1aa;     /* zinc-400 â 5.4:1 ratio (Pass AA) */
-  --text-faint: #52525b;     /* zinc-600 â Disabled / Decorative */
+  --text-primary: #f4f4f5;   /* zinc-100 Ã¢ÂÂ 16.2:1 ratio (Pass AAA) */
+  --text-secondary: #d4d4d8; /* zinc-300 Ã¢ÂÂ 11.5:1 ratio (Pass AAA) */
+  --text-tertiary: #a1a1aa;  /* zinc-400 Ã¢ÂÂ 5.4:1 ratio (Pass AA) */
+  --text-muted: #a1a1aa;     /* zinc-400 Ã¢ÂÂ 5.4:1 ratio (Pass AA) */
+  --text-faint: #52525b;     /* zinc-600 Ã¢ÂÂ Disabled / Decorative */
 
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-raised: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
@@ -315,20 +315,20 @@ html {
   animation-play-state: paused;
 }
 
-/* âââââââââââââââââââââââââââââââââââââââââââââââ
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    WCAG 2.2 AA Admin Dashboard Contrast Overrides
    Fixes ~60 insufficient contrast issues where
    Tailwind zinc-500 (#71717a, 4.09:1) and zinc-600
    (#52525b, 2.49:1) fail against bg-[#0a0a0c].
-   Override to zinc-400 (#a1a1aa, 5.4:1 â Pass AA).
-   âââââââââââââââââââââââââââââââââââââââââââââââ */
+   Override to zinc-400 (#a1a1aa, 5.4:1 Ã¢ÂÂ Pass AA).
+   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 
-/* ââ Labels & Help Text: zinc-500 â zinc-400 ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Labels & Help Text: zinc-500 Ã¢ÂÂ zinc-400 Ã¢ÂÂÃ¢ÂÂ */
 .admin-a11y .text-zinc-500 {
   color: #a1a1aa;
 }
 
-/* ââ Decorative / Secondary Text: zinc-600 â zinc-400 ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Decorative / Secondary Text: zinc-600 Ã¢ÂÂ zinc-400 Ã¢ÂÂÃ¢ÂÂ */
 .admin-a11y .text-zinc-600 {
   color: #a1a1aa;
 }
@@ -356,7 +356,7 @@ html {
   color: #ffffff;
 }
 
-/* ââ Type Scale Normalization: Consolidate micro-fonts into standard text-xs (Issue 1) ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Type Scale Normalization: Consolidate micro-fonts into standard text-xs (Issue 1) Ã¢ÂÂÃ¢ÂÂ */
 .admin-a11y .text-\[8px\],
 .admin-a11y .text-\[9px\],
 .admin-a11y .text-\[10px\],
@@ -365,7 +365,7 @@ html {
   line-height: 1rem !important;
 }
 
-/* ââ Corner Radii Normalization: Consolidate non-standard radii into rounded-2xl (Issue 2) ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Corner Radii Normalization: Consolidate non-standard radii into rounded-2xl (Issue 2) Ã¢ÂÂÃ¢ÂÂ */
 .admin-a11y .rounded-\[40px\],
 .admin-a11y .rounded-\[32px\],
 .admin-a11y .rounded-\[24px\],
@@ -373,20 +373,20 @@ html {
   border-radius: 1rem !important; /* 16px */
 }
 
-/* ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-   ADMIN LIGHT THEME â .admin-theme-light overrides
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
+   ADMIN LIGHT THEME Ã¢ÂÂ .admin-theme-light overrides
    Applied when user toggles to light mode (default)
    Uses [class*=] substring selectors to reliably catch ALL
    Tailwind dark variants incl. opacity mods (/80 /60 etc.)
-   ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 
-/* ââ Canvas / page background ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Canvas / page background Ã¢ÂÂÃ¢ÂÂ */
 .admin-theme-light {
   background-color: #f8fafc;
   color: #0f172a;
 }
 
-/* ââ Inputs, selects, textareas ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Inputs, selects, textareas Ã¢ÂÂÃ¢ÂÂ */
 .admin-theme-light input:not([type='checkbox']):not([type='radio']):not([type='range']),
 .admin-theme-light select,
 .admin-theme-light textarea {
@@ -397,7 +397,8 @@ html {
 
 .admin-theme-light input::placeholder,
 .admin-theme-light textarea::placeholder {
-  color: #94a3b8 !important;
+  color: #64748b !important;
+  opacity: 1 !important;
 }
 
 .admin-theme-light input:focus,
@@ -408,14 +409,14 @@ html {
   outline: none !important;
 }
 
-/* ââ Tables ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Tables Ã¢ÂÂÃ¢ÂÂ */
 .admin-theme-light table thead tr { background-color: #f1f5f9 !important; }
 .admin-theme-light table thead th { color: #475569 !important; }
 .admin-theme-light table tbody tr { border-color: #e2e8f0 !important; }
 .admin-theme-light table tbody tr:hover { background-color: #f8fafc !important; }
 .admin-theme-light table tbody td { color: #0f172a !important; }
 
-/* ââ Shadows ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Shadows Ã¢ÂÂÃ¢ÂÂ */
 .admin-theme-light .shadow-2xl,
 .admin-theme-light .shadow-xl {
   box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04) !important;
@@ -426,13 +427,13 @@ html {
   color: #ffffff !important;
 }
 
-/* ââ Hover states for bg-white/5 in light mode â slate-100 ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Hover states for bg-white/5 in light mode Ã¢ÂÂ slate-100 Ã¢ÂÂÃ¢ÂÂ */
 .admin-theme-light .hover\:bg-white\/5:hover,
 .admin-theme-light .hover\:bg-white\/\[0\.03\]:hover {
   background-color: #f1f5f9 !important;
 }
 /* ------------------------------------------------------------
-   ADMIN LIGHT THEME  Robust [class*=] substring selectors
+   ADMIN LIGHT THEME Â Robust [class*=] substring selectors
    Catches ALL Tailwind dark variants incl. /80 /60 /50 mods
    ------------------------------------------------------------ */
 
@@ -489,6 +490,15 @@ html {
 .admin-theme-light [class*="text-zinc-6"] {
   color: #64748b !important;
 }
+/* Tailwind neutral-* used on Live Product action buttons — was invisible on white cards */
+.admin-theme-light [class*="text-neutral-4"],
+.admin-theme-light [class*="text-neutral-5"] {
+  color: #475569 !important;
+}
+.admin-theme-light [class*="text-neutral-6"],
+.admin-theme-light [class*="text-neutral-7"] {
+  color: #64748b !important;
+}
 /* text-white ? near-black */
 .admin-theme-light [class*="text-white"] {
   color: #0f172a !important;
@@ -499,30 +509,30 @@ html {
 }
 
 /* ------------------------------------------------------------
-   EXCEPTIONS — Brand / action colours MUST stay intact
-   NOTE: never use `background-color: revert` / `color: revert` here —
+   EXCEPTIONS â Brand / action colours MUST stay intact
+   NOTE: never use `background-color: revert` / `color: revert` here â
    with !important it wipes Tailwind utilities (transparent / inherited),
    which made FAB/Done buttons white-on-white in light mode.
    ------------------------------------------------------------ */
 
-/* Coloured text — explicit hex so light-theme text-white override cannot win */
+/* Coloured text â explicit hex so light-theme text-white override cannot win */
 .admin-theme-light [class*="text-[#ce112d]"] { color: #ce112d !important; }
 .admin-theme-light [class*="text-red-400"],
-.admin-theme-light [class*="text-red-500"] { color: #ef4444 !important; }
+.admin-theme-light [class*="text-red-500"] { color: #dc2626 !important; }
 .admin-theme-light [class*="text-emerald-400"],
-.admin-theme-light [class*="text-emerald-500"] { color: #10b981 !important; }
+.admin-theme-light [class*="text-emerald-500"] { color: #047857 !important; }
 .admin-theme-light [class*="text-green-400"],
-.admin-theme-light [class*="text-green-500"] { color: #22c55e !important; }
+.admin-theme-light [class*="text-green-500"] { color: #15803d !important; }
 .admin-theme-light [class*="text-yellow-400"],
-.admin-theme-light [class*="text-yellow-500"] { color: #eab308 !important; }
+.admin-theme-light [class*="text-yellow-500"] { color: #a16207 !important; }
 .admin-theme-light [class*="text-amber-400"],
-.admin-theme-light [class*="text-amber-500"] { color: #f59e0b !important; }
+.admin-theme-light [class*="text-amber-500"] { color: #b45309 !important; }
 .admin-theme-light [class*="text-blue-400"],
-.admin-theme-light [class*="text-blue-500"] { color: #3b82f6 !important; }
+.admin-theme-light [class*="text-blue-500"] { color: #1d4ed8 !important; }
 .admin-theme-light [class*="text-purple-400"],
-.admin-theme-light [class*="text-purple-500"] { color: #a855f7 !important; }
+.admin-theme-light [class*="text-purple-500"] { color: #7e22ce !important; }
 .admin-theme-light [class*="text-orange-400"],
-.admin-theme-light [class*="text-orange-500"] { color: #f97316 !important; }
+.admin-theme-light [class*="text-orange-500"] { color: #c2410c !important; }
 .admin-theme-light [class*="text-cyan-400"],
 .admin-theme-light [class*="text-cyan-500"] { color: #06b6d4 !important; }
 .admin-theme-light [class*="text-indigo-400"],
@@ -530,7 +540,7 @@ html {
 .admin-theme-light [class*="text-teal-400"],
 .admin-theme-light [class*="text-teal-500"] { color: #14b8a6 !important; }
 
-/* Solid brand / status backgrounds — explicit, never revert */
+/* Solid brand / status backgrounds â explicit, never revert */
 .admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) {
   background-color: #ce112d !important;
   color: #ffffff !important;
@@ -541,7 +551,7 @@ html {
   color: #ffffff !important;
 }
 /* Nested controls on solid brand bars (Mark advance / paid): frosted chips.
-   Global bg-black → slate remap would make white labels vanish otherwise. */
+   Global bg-black â slate remap would make white labels vanish otherwise. */
 .admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-black"],
 .admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) a[class*="bg-black"],
 .admin-theme-light [class*="bg-[#ce112d]"]:not([class*="bg-[#ce112d]/"]) button[class*="bg-white/"],
@@ -619,6 +629,48 @@ html {
 .admin-theme-light [class*="bg-orange-500/10"],
 .admin-theme-light [class*="bg-orange-500/15"] { background-color: rgba(249, 115, 22, 0.15) !important; }
 
+/* Product thumbnail overlays must stay dark/red with WHITE labels
+   (global bg-black + text-white remaps made Sold Out / #serial unreadable) */
+.admin-theme-light .absolute[class*="bg-black"],
+.admin-theme-light .absolute[class*="bg-black/"] {
+  background-color: rgba(15, 23, 42, 0.32) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(6px);
+}
+.admin-theme-light .absolute[class*="bg-black"][class*="text-white"],
+.admin-theme-light .absolute[class*="bg-black/"][class*="text-white"],
+.admin-theme-light .absolute[class*="bg-black"] *,
+.admin-theme-light .absolute[class*="bg-black/"] * {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.55);
+}
+.admin-theme-light .absolute[class*="bg-red-600"],
+.admin-theme-light .absolute[class*="bg-red-500/"] {
+  background-color: rgba(220, 38, 38, 0.28) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(2px);
+}
+.admin-theme-light .absolute[class*="bg-red-600"] *,
+.admin-theme-light .absolute[class*="bg-red-600"][class*="text-white"],
+.admin-theme-light .absolute[class*="bg-red-600"] [class*="text-white"] {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(15, 23, 42, 0.65);
+}
+
+/* Exclusive / Premium active chip on product cards */
+.admin-theme-light button[class*="bg-orange-500/10"][class*="text-orange"],
+.admin-theme-light .group button[class*="bg-orange-500/"] {
+  background-color: rgba(234, 88, 12, 0.14) !important;
+  color: #c2410c !important;
+  border-color: rgba(234, 88, 12, 0.35);
+}
+.admin-theme-light button[class*="bg-orange-500/10"] svg,
+.admin-theme-light .group button[class*="bg-orange-500/"] svg {
+  color: #c2410c !important;
+  fill: #c2410c;
+}
+
 /* Active gradient nav keeps red + white text */
 .admin-theme-light [class*="from-[#ce112d]"][class*="to-[#ff1c3a]"] {
   background-image: linear-gradient(to right, #ce112d, #ff1c3a) !important;
@@ -640,12 +692,14 @@ html {
   background-color: rgba(255,255,255,0.2) !important;
 }
 
-/* hover:bg-white/x → slate-100 on hover */
+/* hover:bg-white/x â slate-100 on hover */
 .admin-theme-light [class*="hover:bg-white/"]:hover {
   background-color: #f1f5f9 !important;
 }
 
-/* -- Additional dark arbitrary hex backgrounds (stat cards etc.) -- */
+/* -- Additional dark arbitrary hex backgrounds (stat cards / add-product panels) -- */
+.admin-theme-light [class*="bg-[#0a0a"],
+.admin-theme-light [class*="bg-[#111"],
 .admin-theme-light [class*="bg-[#121"],
 .admin-theme-light [class*="bg-[#151"],
 .admin-theme-light [class*="bg-[#161"],
@@ -662,7 +716,7 @@ html {
   border-color: #e2e8f0 !important;
 }
 
-/* CSV / action button dark bg → light */
+/* CSV / action button dark bg â light */
 .admin-theme-light [class*="bg-[#0a0a"] {
   background-color: #ffffff !important;
 }
@@ -674,7 +728,7 @@ html {
 }
 
 /* ------------------------------------------------------------
-   LIGHT THEME REFINEMENTS — overlays, ghost buttons, hover
+   LIGHT THEME REFINEMENTS â overlays, ghost buttons, hover
    ------------------------------------------------------------ */
 
 /* Modal / drawer dimmers must stay dark overlays in light mode */
@@ -687,9 +741,9 @@ html {
   background-color: rgba(15, 23, 42, 0.72) !important;
 }
 
-/* Soft tint chip backgrounds already set above — skip old revert rules */
+/* Soft tint chip backgrounds already set above â skip old revert rules */
 
-/* Ghost / outline cards — clearer border + surface in light mode */
+/* Ghost / outline cards â clearer border + surface in light mode */
 .admin-theme-light .rounded-lg[class*="border-white/"],
 .admin-theme-light .rounded-xl[class*="border-white/"],
 .admin-theme-light .rounded-md[class*="border-white/"] {
@@ -697,7 +751,7 @@ html {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-/* Hover white text on light surfaces → dark slate */
+/* Hover white text on light surfaces â dark slate */
 .admin-theme-light .hover\:text-white:hover {
   color: #0f172a !important;
 }
@@ -755,7 +809,7 @@ html {
 }
 
 /* ------------------------------------------------------------
-   DARK THEME — button / card contrast polish
+   DARK THEME â button / card contrast polish
    ------------------------------------------------------------ */
 .admin-theme-dark [class*="bg-[#121215]"],
 .admin-theme-dark [class*="bg-[#121"] {
@@ -798,4 +852,133 @@ html {
 }
 .admin-theme-dark button[class*="bg-yellow-5"]:not([class*="/"])[class*="text-black"] {
   color: #0f172a !important;
+}
+
+/* ------------------------------------------------------------
+   ADD PRODUCT form — light-mode readability
+   Cards were bg-[#111113] (missed by older remaps) + text-white→slate
+   which made headings nearly invisible on dark panels.
+   ------------------------------------------------------------ */
+.admin-theme-light section.rounded-xl[class*="border-white/"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.admin-theme-light section.rounded-xl h3 {
+  color: #0f172a !important;
+}
+
+.admin-theme-light section.rounded-xl > div > p[class*="text-zinc-"],
+.admin-theme-light section.rounded-xl label[class*="text-zinc-"],
+.admin-theme-light section.rounded-xl .text-xs[class*="text-zinc-"] {
+  color: #64748b !important;
+}
+
+/* Size / color chips & dashed upload zones */
+.admin-theme-light button[class*="border-white/10"][class*="bg-transparent"],
+.admin-theme-light button[class*="border-white/10"]:not([class*="bg-[#ce112d]"]):not([class*="bg-emerald"]) {
+  border-color: #cbd5e1 !important;
+}
+.admin-theme-light button[class*="border-white/10"][class*="text-zinc-4"],
+.admin-theme-light button[class*="border-white/10"][class*="text-zinc-5"] {
+  color: #475569 !important;
+  background-color: #f8fafc !important;
+}
+.admin-theme-light label[class*="border-dashed"],
+.admin-theme-light [class*="border-dashed"][class*="border-white/"] {
+  border-color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+}
+.admin-theme-light label[class*="border-dashed"] [class*="text-zinc-"],
+.admin-theme-light label[class*="border-dashed"] [class*="text-white"] {
+  color: #475569 !important;
+}
+
+/* Nested variant panels inside add product */
+.admin-theme-light [class*="bg-black/20"],
+.admin-theme-light [class*="bg-black/30"],
+.admin-theme-light [class*="bg-black/40"] {
+  background-color: #f1f5f9 !important;
+}
+
+/* Sticky save bar Discard should not vanish into white footer */
+.admin-theme-light button[class*="bg-white/5"][class*="border-white/"] {
+  background-color: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  color: #334155 !important;
+}
+.admin-theme-light button.bg-emerald-600,
+.admin-theme-light button[class*="bg-emerald-600"],
+.admin-theme-light button[class*="bg-emerald-500"] {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+/* AI helper links stay visible on white cards */
+.admin-theme-light button[class*="text-amber-"] {
+  color: #b45309 !important;
+}
+.admin-theme-light button[class*="text-amber-"]:hover {
+  color: #92400e !important;
+}
+
+/* Select option list (native) */
+.admin-theme-light option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+/* ------------------------------------------------------------
+   LIVE / DRAFT / SOLD-OUT product cards — light contrast
+   ------------------------------------------------------------ */
+.admin-theme-light .group[class*="bg-[#121"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.admin-theme-light .group[class*="bg-[#121"] h4 {
+  color: #0f172a !important;
+}
+/* Action footer strip */
+.admin-theme-light .group [class*="bg-black/20"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+.admin-theme-light .group [class*="divide-white/"] > * {
+  border-color: #e2e8f0 !important;
+}
+.admin-theme-light .group button[class*="text-zinc-4"],
+.admin-theme-light .group button[class*="text-neutral-"] {
+  color: #475569 !important;
+}
+.admin-theme-light .group button[class*="hover:bg-zinc-800"]:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+/* Meta badges STOCK / VARIANTS / ID */
+.admin-theme-light .group span[class*="bg-zinc-800"] {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+/* Filter bar */
+.admin-theme-light [class*="bg-[#121215]/"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+/* Load all secondary button */
+.admin-theme-light button[class*="bg-zinc-800"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+.admin-theme-light button[class*="bg-zinc-800"] [class*="text-amber"] {
+  color: #b45309 !important;
+}
+/* Active filter chips that used text-white on soft tint */
+.admin-theme-light span[class*="bg-[#ce112d]/"][class*="text-white"],
+.admin-theme-light span[class*="bg-rose-500/"][class*="text-white"] {
+  color: #9f1239 !important;
 }

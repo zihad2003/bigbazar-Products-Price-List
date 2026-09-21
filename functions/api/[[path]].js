@@ -18,6 +18,7 @@ import {
   defaultQuickReplies
 } from './assistant-query.js';
 import { getVapidConfig, sendWebPushBatch } from './webPush.js';
+import { generateProductCopy } from './product-copy.js';
 
 async function sha256Hex(text) {
   const data = new TextEncoder().encode(String(text));
@@ -1251,7 +1252,14 @@ app.get('/products/:id', async (c) => {
 
 const toTitleCase = (str) => {
   if (!str || typeof str !== 'string') return str;
-  return str.replace(/[a-zA-Z]+/g, (match) => match.charAt(0).toUpperCase() + match.slice(1).toLowerCase());
+  const trimmed = str.trim();
+  // Keep Bangla / mixed marketing titles as the admin typed them
+  if (/[\u0980-\u09FF]/.test(trimmed)) return trimmed;
+  return trimmed.replace(/\b[a-zA-Z][a-zA-Z']*\b/g, (word) => {
+    if (word.length <= 4 && word === word.toUpperCase()) return word; // XL, SKU, COD
+    if (/[a-z]/.test(word) && /[A-Z]/.test(word)) return word; // already intentional casing
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
 };
 
 app.post('/products', requireAuth, requireAdmin, async (c) => {
@@ -1511,19 +1519,10 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
     const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
 
-    // Public clients may claim payment — never trust Fully Paid; require a non-COD reference for Advance
-    const paymentRef = String(o.last_four_digits || '').trim();
-    const isCodOnly = !paymentRef || /^cod$/i.test(paymentRef);
-    const claimedPaid = Boolean(o.is_advance_paid) ||
-      o.payment_status === 'Advance Paid' ||
-      o.payment_status === 'Fully Paid';
-    let safePaymentStatus = 'Unpaid';
-    let safeAdvancePaid = 0;
-    if (claimedPaid && !isCodOnly) {
-      // Cap at Advance Paid — admin must confirm Fully Paid after verifying the transfer
-      safePaymentStatus = 'Advance Paid';
-      safeAdvancePaid = 1;
-    }
+    // Payment confirmation is admin-only. Customers may send a payment ref
+    // (last_four_digits) as evidence, but never set Advance/Fully Paid themselves.
+    const safePaymentStatus = 'Unpaid';
+    const safeAdvancePaid = 0;
 
     // 3. Create the order using server-side calculated totals
     // Build INSERT with optional user_id column
@@ -3065,6 +3064,33 @@ RULES:
 
 
 // Admin Conversation Dashboard APIs (Part 3b)
+app.post('/admin/product-copy', requireAuth, requireAdmin, async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'product-copy', 20, 60000)) {
+    return c.json({ error: 'Too many copy requests. Try again in a minute.' }, 429);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const result = await generateProductCopy(c.env, {
+      mode: body.mode || 'both',
+      name: body.name,
+      description: body.description,
+      category: body.category,
+      subcategory: body.subcategory,
+      price: body.price,
+      original_price: body.original_price,
+      colors: body.colors || body.available_colors,
+      sizes: body.sizes || body.available_sizes,
+      is_exclusive: body.is_exclusive,
+      notes: body.notes,
+    });
+    return c.json(result);
+  } catch (err) {
+    console.error('product-copy error:', err);
+    return c.json({ error: err.message || 'Copy generation failed' }, 500);
+  }
+});
+
 app.get('/admin/conversations/stats', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   try {

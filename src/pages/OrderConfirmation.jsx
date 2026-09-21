@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { bigBazarApi } from '../api/client';
 
 export default function OrderConfirmation() {
     const { orderId } = useParams();
-    const location = useLocation();
     const { t, language } = useLanguage();
-    const [order, setOrder] = useState(location.state?.orderDetails || null);
-    const [loading, setLoading] = useState(!order && !!orderId);
+    const [order, setOrder] = useState(null);
+    const [loading, setLoading] = useState(!!orderId);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        if (!order && orderId) {
-            setLoading(true);
-            bigBazarApi.from('orders').select('*').eq('id', orderId).single()
-                .then(res => {
-                    if (res && res.data) {
-                        const dbOrder = res.data;
+        if (!orderId) return;
+        setLoading(true);
+        bigBazarApi.from('orders').select('*').eq('id', orderId).single()
+            .then(res => {
+                if (res && res.data) {
+                    const dbOrder = res.data;
 
                         // Parse address
                         const addressParts = (dbOrder.customer_address || '').split(' | ');
@@ -51,11 +50,13 @@ export default function OrderConfirmation() {
                         }
 
                         const rawLastDigits = dbOrder.last_four_digits || '';
-                        const hasAdvanceHint = rawLastDigits.toLowerCase().includes('bkash') || rawLastDigits.toLowerCase().includes('advance') || (rawLastDigits.toLowerCase().includes('bangla qr') && !rawLastDigits.toLowerCase().includes('full'));
-                        const hasFullHint = rawLastDigits.toLowerCase().includes('full') || dbOrder.payment_status === 'Fully Paid';
+                        const ref = String(rawLastDigits).trim();
+                        const hasPaymentRef = Boolean(ref) && !/^cod$/i.test(ref);
 
-                        const isAdvancePaid = Boolean(dbOrder.is_advance_paid) || hasAdvanceHint;
-                        const isFullyPaid = hasFullHint;
+                        // Trust admin-confirmed flags only (not customer payment hints)
+                        const isFullyPaid = dbOrder.payment_status === 'Fully Paid';
+                        const isAdvancePaid = isFullyPaid || Boolean(dbOrder.is_advance_paid) || dbOrder.payment_status === 'Advance Paid';
+                        const paymentPendingVerify = hasPaymentRef && !isAdvancePaid && !isFullyPaid;
 
                         const subtotalVal = parseFloat(dbOrder.product_price) || 0;
                         const deliveryChargeVal = parseFloat(dbOrder.delivery_charge) || 0;
@@ -84,6 +85,7 @@ export default function OrderConfirmation() {
                             finalTotal: totalVal,
                             isAdvancePaid,
                             isFullyPaid,
+                            paymentPendingVerify,
                             paidAmount,
                             dueOnDelivery,
                             lastFourDigits: rawLastDigits
@@ -96,8 +98,7 @@ export default function OrderConfirmation() {
                 .finally(() => {
                     setLoading(false);
                 });
-        }
-    }, [orderId, order]);
+    }, [orderId]);
 
     const handleCopyId = () => {
         if (order?.id) {
@@ -266,6 +267,17 @@ export default function OrderConfirmation() {
                         <div className="flex justify-between text-zinc-500 font-medium">
                             <span>{language === 'bn' ? 'মোট অর্ডার মূল্য' : 'Total Order Value'}</span>
                             <span className="text-zinc-800 font-semibold">৳{order.finalTotal}</span>
+                        </div>
+                    )}
+
+                    {order.paymentPendingVerify && (
+                        <div className="flex justify-between items-center text-blue-700 bg-blue-50 border border-blue-200/70 rounded-xl px-3 py-2 text-xs font-bold">
+                            <span>{language === 'bn' ? 'পেমেন্ট ভেরিফাই করা হচ্ছে' : 'Payment submitted — verifying'}</span>
+                            {order.lastFourDigits && order.lastFourDigits.includes(':') && (
+                                <span className="text-[10px] text-blue-600/80 font-normal">
+                                    ({order.lastFourDigits.split(':')[0]})
+                                </span>
+                            )}
                         </div>
                     )}
 

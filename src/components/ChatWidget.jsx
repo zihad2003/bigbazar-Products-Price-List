@@ -562,7 +562,7 @@ export default function ChatWidget() {
     const advanceAmount = getAdvanceAmount(orderModalProduct, deliveryInfo);
     const senderDigits = orderForm.senderNumber.replace(/\D/g, '');
 
-    // Match Checkout + hardened API: claim Advance Paid only with a real payment ref (never Fully Paid)
+    // Payment ref only — admin confirms Advance Paid after verifying transfer
     const orderPayload = {
       product_id: orderModalProduct.id,
       product_name: orderModalProduct.name,
@@ -574,12 +574,12 @@ export default function ChatWidget() {
       delivery_area: deliveryInfo.area || 'outside',
       delivery_charge: deliveryInfo.charge,
       total_amount: totalAmount,
-      last_four_digits: senderDigits,
+      last_four_digits: senderDigits ? `bKash: ${senderDigits}` : 'COD',
       status: 'Pending',
       size: orderForm.size || null,
       color: orderForm.color || null,
-      is_advance_paid: true,
-      payment_status: 'Advance Paid',
+      is_advance_paid: 0,
+      payment_status: 'Unpaid',
       is_exclusive_order: Boolean(orderModalProduct.is_exclusive),
       items: [{
         id: orderModalProduct.id,
