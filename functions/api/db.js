@@ -9,6 +9,7 @@ let mysqlPool = null;
  *
  * @param {object} env - Cloudflare env bindings or node process.env
  * @returns {object} Database Connection instance with .execute(sql, params)
+ *                   and TiDB-compatible .begin() for transactions
  */
 export const getDb = (env = {}) => {
   const getVar = (key) => {
@@ -65,6 +66,46 @@ export const getDb = (env = {}) => {
       const safeParams = (params || []).map(p => p === undefined ? null : p);
       const [results] = await mysqlPool.execute(sql, safeParams);
       return results;
-    }
+    },
+
+    /**
+     * TiDB-compatible transaction API used by order create/update/delete.
+     * Holds one pooled connection for the full begin → execute* → commit/rollback cycle.
+     */
+    async begin() {
+      const connection = await mysqlPool.getConnection();
+      await connection.beginTransaction();
+      let finished = false;
+
+      const releaseOnce = () => {
+        if (finished) return;
+        finished = true;
+        try {
+          connection.release();
+        } catch (_) {}
+      };
+
+      return {
+        async execute(sql, params = []) {
+          const safeParams = (params || []).map(p => p === undefined ? null : p);
+          const [results] = await connection.execute(sql, safeParams);
+          return results;
+        },
+        async commit() {
+          try {
+            await connection.commit();
+          } finally {
+            releaseOnce();
+          }
+        },
+        async rollback() {
+          try {
+            await connection.rollback();
+          } finally {
+            releaseOnce();
+          }
+        },
+      };
+    },
   };
 };

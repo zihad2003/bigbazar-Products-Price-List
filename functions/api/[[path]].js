@@ -419,8 +419,13 @@ app.get('/health', async (c) => {
 // ============================================
 // IMAGE CDN ENDPOINT — zero TiDB queries, instant static asset delivery
 // ============================================
+const IMG_EXT_RE = /\.(jpe?g|png|webp)$/i;
+
 app.get('/img/:id', async (c) => {
-  const id = c.req.param('id');
+  const rawId = c.req.param('id');
+  const hadExt = IMG_EXT_RE.test(rawId);
+  // Strip extension so KV / DB lookups use the bare upload or product id
+  const id = hadExt ? rawId.replace(IMG_EXT_RE, '') : rawId;
   const kv = c.env?.BIGBAZAR_CACHE;
 
   // 1. Try KV for ANY id (up-* uploads and legacy product-id keys)
@@ -491,9 +496,13 @@ app.get('/img/:id', async (c) => {
     console.error('img resolve error:', err?.message || err);
   }
 
-  // 3. Legacy static product JPG (only works for migrated assets)
-  // For Hostinger: we downloaded all images and put them in /api/img/ with .jpg
-  return c.redirect(`/api/img/${id}.jpg`, 301);
+  // 3. Legacy static product JPG (Hostinger migrated assets under /api/img/*.jpg)
+  //    Only redirect once — never append .jpg when the request already had an extension
+  //    (that caused up-xxx.jpg → up-xxx.jpg.jpg redirect loops).
+  if (!hadExt) {
+    return c.redirect(`/api/img/${id}.jpg`, 301);
+  }
+  return c.json({ error: 'Image not found' }, 404);
 });
 
 // ============================================
