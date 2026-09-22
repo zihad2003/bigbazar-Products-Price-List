@@ -421,12 +421,34 @@ app.get('/health', async (c) => {
 // ============================================
 const IMG_EXT_RE = /\.(jpe?g|png|webp)$/i;
 
+/** Lost Hostinger upload ids → static files already live at /img/subcats/ */
+const UPLOAD_ID_TO_SUBCAT_STATIC = {
+  'up-d2d8d9bb9e994d11': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
+  'up-5aad3564db464f07': '/img/subcats/PARSHI.jpg',
+  'up-d261e7532265425f': '/img/subcats/SAREE.jpg',
+  'up-74c647d7e4614b8c': '/img/subcats/WESTERN-2-PIECE.jpg',
+};
+
+const SUBCAT_ID_TO_STATIC = {
+  'Stiched-Coton-Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
+  Parshi: '/img/subcats/PARSHI.jpg',
+  Saree: '/img/subcats/SAREE.jpg',
+  'Two-piece': '/img/subcats/WESTERN-2-PIECE.jpg',
+  Kurti: '/img/subcats/KURTI.jpg',
+  'Party-Three-Piece': '/img/subcats/Party-Three-Piece.jpg',
+};
+
 app.get('/img/:id', async (c) => {
   const rawId = c.req.param('id');
   const hadExt = IMG_EXT_RE.test(rawId);
   // Strip extension so KV / DB lookups use the bare upload or product id
   const id = hadExt ? rawId.replace(IMG_EXT_RE, '') : rawId;
   const kv = c.env?.BIGBAZAR_CACHE;
+
+  // 0. Known subcategory uploads that never landed in KV/disk
+  if (UPLOAD_ID_TO_SUBCAT_STATIC[id]) {
+    return c.redirect(UPLOAD_ID_TO_SUBCAT_STATIC[id], 302);
+  }
 
   // 1. Try KV for ANY id (up-* uploads and legacy product-id keys)
   if (kv) {
@@ -516,6 +538,9 @@ app.get('/settings-img/:type/:id', async (c) => {
     return c.redirect(`/img/slides/${id}.jpg`, 301);
   }
   if (type === 'subcat') {
+    if (SUBCAT_ID_TO_STATIC[id]) {
+      return c.redirect(SUBCAT_ID_TO_STATIC[id], 302);
+    }
     const safeId = id.replace(/[^a-zA-Z0-9-_]/g, '_');
     return c.redirect(`/img/subcats/${safeId}.jpg`, 301);
   }
@@ -864,10 +889,19 @@ function transformSettingsLite(settings) {
     for (const [cat, list] of Object.entries(clean.subcategories)) {
       if (Array.isArray(list)) {
         transformed[cat] = list.map(s => {
-          if (s && typeof s.image_url === 'string' && s.image_url.startsWith('data:')) {
+          if (!s || typeof s !== 'object') return s;
+          let image_url = s.image_url;
+          // Prefer static Hostinger files when upload CDN ids are missing
+          if (SUBCAT_ID_TO_STATIC[s.id]) {
+            const url = typeof image_url === 'string' ? image_url : '';
+            if (!url || url.includes('/api/img/up-') || url.startsWith('data:')) {
+              image_url = SUBCAT_ID_TO_STATIC[s.id];
+            }
+          }
+          if (typeof image_url === 'string' && image_url.startsWith('data:')) {
             return { ...s, image_url: `/api/settings-img/subcat/${encodeURIComponent(s.id)}` };
           }
-          return s;
+          return image_url !== s.image_url ? { ...s, image_url } : s;
         });
       } else {
         transformed[cat] = list;

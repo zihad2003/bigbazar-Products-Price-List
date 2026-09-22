@@ -10,7 +10,7 @@ import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
 import { extractInstagramId } from '../utils/instagram';
-import { getSubcategoriesForCategory, getAllSubcategories } from '../data/categories';
+import { getSubcategoriesForCategory, getAllSubcategories, resolveSubcategoryImage } from '../data/categories';
 import { useDebounce } from '../hooks/useDebounce';
 import { sanitizeInput } from '../utils/security';
 
@@ -236,9 +236,9 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                   className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0 snap-start"
                 >
                   <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
-                    {sub.image_url ? (
+                    {resolveSubcategoryImage(sub) ? (
                       <img
-                        src={sub.image_url}
+                        src={resolveSubcategoryImage(sub)}
                         alt={sub.name_en || ''}
                         className="w-full h-full object-cover"
                         loading="lazy"

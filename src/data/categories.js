@@ -26,6 +26,31 @@ export const SEED_SUBCATEGORIES = {
 };
 
 /**
+ * Hostinger already serves these static files at /img/subcats/*.jpg (200).
+ * Prefer them when admin settings still point at missing /api/img/up-* uploads.
+ */
+export const SUBCAT_STATIC_IMAGES = {
+  'Stiched-Coton-Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
+  Parshi: '/img/subcats/PARSHI.jpg',
+  Saree: '/img/subcats/SAREE.jpg',
+  'Two-piece': '/img/subcats/WESTERN-2-PIECE.jpg',
+  Kurti: '/img/subcats/KURTI.jpg',
+  'Party-Three-Piece': '/img/subcats/Party-Three-Piece.jpg',
+};
+
+/** Resolve a displayable subcategory image URL (static fallback for lost uploads). */
+export function resolveSubcategoryImage(sub) {
+  if (!sub) return '';
+  const staticUrl = SUBCAT_STATIC_IMAGES[sub.id];
+  const url = typeof sub.image_url === 'string' ? sub.image_url : '';
+  // Missing or known-broken upload CDN paths → use static file that exists on Hostinger
+  if (staticUrl && (!url || url.includes('/api/img/up-') || url.includes('/api/settings-img/'))) {
+    return staticUrl;
+  }
+  return url || staticUrl || '';
+}
+
+/**
  * Merge admin-managed subcategories with seed defaults.
  * Admin data takes precedence when it exists for a category.
  * @param {object|null} dynamicData — from site_settings key "subcategories"
