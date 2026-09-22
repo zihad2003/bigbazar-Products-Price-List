@@ -14,43 +14,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Test downstream access
+      - name: Verify downstream credentials
         env:
+          DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
           DOWNSTREAM_TOKEN: ${{ secrets.DOWNSTREAM_REPO_TOKEN }}
         run: |
           set -euo pipefail
 
-          if [ -z "$DOWNSTREAM_TOKEN" ]; then
-            echo "DOWNSTREAM_REPO_TOKEN is missing"
+          if [ -z "$DOWNSTREAM_URL" ] || [ -z "$DOWNSTREAM_TOKEN" ]; then
+            echo "Downstream URL or token is missing"
             exit 1
           fi
 
-          AUTH="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
 
-          git -c "http.extraheader=Authorization: basic $AUTH" \
-            ls-remote \
-            https://github.com/nhsakil/Big_Bazar.git
+          echo "Testing downstream read access..."
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            ls-remote "$DOWNSTREAM_URL"
 
-      - name: Sync to downstream
+      - name: Push to Downstream Repository
         env:
+          DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
           DOWNSTREAM_TOKEN: ${{ secrets.DOWNSTREAM_REPO_TOKEN }}
         run: |
           set -euo pipefail
 
-          AUTH="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
 
-          git -c "http.extraheader=Authorization: basic $AUTH" \
-            push --force --prune \
-            https://github.com/nhsakil/Big_Bazar.git \
-            '+refs/heads/*:refs/heads/*' \
-            '+refs/tags/*:refs/tags/*'
-
-    echo "Checking downstream repository access..."
-    curl --fail-with-body \
-      -H "Authorization: Bearer $DOWNSTREAM_TOKEN" \
-      https://api.github.com/repos/nhsakil/Big_Bazar
+          echo "Syncing commits to downstream repository..."
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            push --force --prune "$DOWNSTREAM_URL" \
+            +refs/heads/*:refs/heads/* \
+            +refs/tags/*:refs/tags/*
