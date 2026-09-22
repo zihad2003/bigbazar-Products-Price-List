@@ -1,30 +1,17 @@
-name: Sync to Downstream Repository
+- name: Verify downstream credentials
+  env:
+    DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
+  run: |
+    set -euo pipefail
 
-on:
-  push:
-    branches:
-      - main
-      - master
-    tags:
-      - '*'
+    if [ -z "$DOWNSTREAM_URL" ]; then
+      echo "DOWNSTREAM_REPO_URL is empty"
+      exit 1
+    fi
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full git history for clean mirroring
+    echo "Testing downstream read access..."
+    git ls-remote "$DOWNSTREAM_URL"
 
-      - name: Push to Downstream Repository
-        env:
-          DOWNSTREAM_REPO: ${{ secrets.DOWNSTREAM_REPO_URL }} # e.g. https://x-access-token:ghp_xxx@github.com/other-user/repo.git
-        run: |
-          if [ -z "$DOWNSTREAM_REPO" ]; then
-            echo "❌ ERROR: DOWNSTREAM_REPO_URL secret is not set."
-            exit 1
-          fi
-          echo "🚀 Syncing commits to downstream repository..."
-          git push --force --prune "$DOWNSTREAM_REPO" +refs/heads/*:refs/heads/* +refs/tags/*:refs/tags/*
-          echo "✅ Successfully synced to downstream repository!"
+    echo "Testing downstream write permission..."
+    git push --dry-run "$DOWNSTREAM_URL" \
+      HEAD:refs/heads/actions-permission-test
