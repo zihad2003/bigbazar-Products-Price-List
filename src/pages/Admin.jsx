@@ -1825,7 +1825,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               <div className="bg-[#151518] border border-white/10 rounded-lg p-3 text-xs space-y-2.5">
                 <div className="flex items-center gap-2 text-white font-semibold text-xs">
                   <Sparkles size={14} className="text-[#ce112d]" />
-                  <span>Banner size guide</span>
+                  <span>Banner size guide (editorial frame)</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
                   <div className="bg-black/50 border border-white/5 rounded-lg p-2.5 space-y-1">
@@ -1833,26 +1833,24 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       <Monitor size={13} className="text-[#ce112d]" />
                       <span>Desktop / Laptop</span>
                     </div>
-                    <p className="text-white font-mono font-semibold text-xs">1920 × 1080 px <span className="text-zinc-500 font-normal">(16:9)</span></p>
-                    <p className="text-white font-mono font-semibold text-xs">1920 × 600 px <span className="text-zinc-500 font-normal">(Slim)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Wide PC & laptop</p>
+                    <p className="text-white font-mono font-semibold text-xs">1920 × 800 px <span className="text-zinc-500 font-normal">(2.4:1)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Cinematic fashion banner — best first impression</p>
                   </div>
                   <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
                       <Tablet size={14} className="text-[#ce112d]" />
                       <span>Tablet View</span>
                     </div>
-                    <p className="text-white font-mono font-bold text-xs">1024 × 500 px <span className="text-zinc-500 font-normal">(~2:1 ratio)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Perfect for iPad &amp; mid-size tablets</p>
+                    <p className="text-white font-mono font-bold text-xs">1600 × 900 px <span className="text-zinc-500 font-normal">(16:9)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">iPad & mid-size tablets</p>
                   </div>
                   <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
                     <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
                       <Smartphone size={14} className="text-[#ce112d]" />
                       <span>Mobile View</span>
                     </div>
-                    <p className="text-white font-mono font-bold text-xs">768 × 1024 px <span className="text-zinc-500 font-normal">(Vertical / 3:4)</span></p>
-                    <p className="text-white font-mono font-bold text-xs">600 × 600 px / 420 × 400 px</p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Attach mobile banner to slide for pixel-perfect display</p>
+                    <p className="text-white font-mono font-bold text-xs">1080 × 864 px <span className="text-zinc-500 font-normal">(5:4)</span></p>
+                    <p className="text-zinc-400 text-[10px] leading-tight">Optional separate mobile banner for sharper crop</p>
                   </div>
                 </div>
               </div>
@@ -1861,13 +1859,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#121215] border border-white/10 rounded-2xl">
                 <div>
                   <span className="text-xs font-bold text-white uppercase tracking-wider block">Slider Display Ratio Mode</span>
-                  <span className="text-[11px] text-zinc-400">Controls how banner aspect ratio behaves across screens</span>
+                  <span className="text-[11px] text-zinc-400">Locked frames — same proportion on every slide</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {[
-                    { id: 'auto', label: 'Auto / Smart Adaptive', desc: 'Preserves exact banner proportions without crop' },
-                    { id: 'slim', label: '1920 × 600 (Slim)', desc: 'Slim banner mode' },
-                    { id: 'fullscreen', label: '1920 × 1080 (16:9)', desc: '16:9 Fullscreen' },
+                    { id: 'auto', label: 'Editorial (recommended)', desc: '5:4 → 16:9 → 2.4:1' },
+                    { id: 'slim', label: 'Slim strip', desc: '16:9 / 16:5' },
+                    { id: 'fullscreen', label: 'Tall / 16:9', desc: '3:4 mobile, 16:9 desktop' },
                   ].map(m => (
                     <button
                       key={m.id}

@@ -172,12 +172,12 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-16">
-      {/* Hero Section */}
+      {/* Hero Section — full-bleed editorial frame */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
         <section className="w-full relative">
-          <div className="w-full overflow-hidden bg-neutral-950 relative">
-            <HeroSlider 
-              slides={siteSettings.main_slides} 
+          <div className="w-full overflow-hidden bg-neutral-100 relative">
+            <HeroSlider
+              slides={siteSettings.main_slides}
               aspectMode={siteSettings.slider_aspect || 'auto'}
             />
           </div>
@@ -189,9 +189,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full aspect-[16/9] md:aspect-[1920/600] bg-neutral-100 animate-pulse flex items-center justify-center">
-            <div className="w-16 h-16 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
-          </div>
+          <div className="w-full aspect-[5/4] sm:aspect-[16/9] lg:aspect-[12/5] max-h-[72vh] lg:max-h-[640px] bg-neutral-100 animate-pulse" />
         </section>
       )}
 
