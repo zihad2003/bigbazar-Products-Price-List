@@ -1,17 +1,51 @@
-- name: Verify downstream credentials
-  env:
-    DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
-  run: |
-    set -euo pipefail
+name: Sync to Downstream Repository
 
-    if [ -z "$DOWNSTREAM_URL" ]; then
-      echo "DOWNSTREAM_REPO_URL is empty"
-      exit 1
-    fi
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  workflow_dispatch:
 
-    echo "Testing downstream read access..."
-    git ls-remote "$DOWNSTREAM_URL"
+jobs:
+  sync:
+    runs-on: ubuntu-latest
 
-    echo "Testing downstream write permission..."
-    git push --dry-run "$DOWNSTREAM_URL" \
-      HEAD:refs/heads/actions-permission-test
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify downstream credentials
+        env:
+          DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$DOWNSTREAM_URL" ]; then
+            echo "DOWNSTREAM_REPO_URL is empty"
+            exit 1
+          fi
+
+          echo "Testing downstream read access..."
+          git ls-remote "$DOWNSTREAM_URL"
+
+          echo "Testing downstream write permission..."
+          git push --dry-run "$DOWNSTREAM_URL" \
+            HEAD:refs/heads/actions-permission-test
+
+      - name: Push to Downstream Repository
+        env:
+          DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "Syncing commits to downstream repository..."
+          git push --force --prune "$DOWNSTREAM_URL" \
+            +refs/heads/*:refs/heads/* \
+            +refs/tags/*:refs/tags/*
+
+          echo "Successfully synced to downstream repository!"
