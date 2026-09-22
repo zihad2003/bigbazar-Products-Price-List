@@ -50,24 +50,6 @@ jobs:
             '+refs/heads/*:refs/heads/*' \
             '+refs/tags/*:refs/tags/*'
 
-
-
-
-
-
-
-
-- name: Diagnose token
-  env:
-    DOWNSTREAM_TOKEN: ${{ secrets.DOWNSTREAM_REPO_TOKEN }}
-  run: |
-    set -euo pipefail
-
-    echo "Checking token identity..."
-    curl --fail-with-body \
-      -H "Authorization: Bearer $DOWNSTREAM_TOKEN" \
-      https://api.github.com/user
-
     echo "Checking downstream repository access..."
     curl --fail-with-body \
       -H "Authorization: Bearer $DOWNSTREAM_TOKEN" \
