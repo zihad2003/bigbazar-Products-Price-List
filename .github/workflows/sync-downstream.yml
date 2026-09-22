@@ -1,51 +1,31 @@
-name: Sync to Downstream Repository
-
-on:
-  push:
-    branches:
-      - main
-      - master
-    tags:
-      - '*'
-  workflow_dispatch:
-
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Verify downstream credentials
         env:
           DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
+          DOWNSTREAM_TOKEN: ${{ secrets.DOWNSTREAM_REPO_TOKEN }}
         run: |
           set -euo pipefail
 
-          if [ -z "$DOWNSTREAM_URL" ]; then
-            echo "DOWNSTREAM_REPO_URL is empty"
+          if [ -z "$DOWNSTREAM_URL" ] || [ -z "$DOWNSTREAM_TOKEN" ]; then
+            echo "Downstream URL or token is missing"
             exit 1
           fi
 
-          echo "Testing downstream read access..."
-          git ls-remote "$DOWNSTREAM_URL"
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
 
-          echo "Testing downstream write permission..."
-          git push --dry-run "$DOWNSTREAM_URL" \
-            HEAD:refs/heads/actions-permission-test
+          echo "Testing downstream read access..."
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            ls-remote "$DOWNSTREAM_URL"
 
       - name: Push to Downstream Repository
         env:
           DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
+          DOWNSTREAM_TOKEN: ${{ secrets.DOWNSTREAM_REPO_TOKEN }}
         run: |
           set -euo pipefail
 
-          echo "Syncing commits to downstream repository..."
-          git push --force --prune "$DOWNSTREAM_URL" \
+          AUTH_HEADER="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
+
+          git -c "http.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
+            push --force --prune "$DOWNSTREAM_URL" \
             +refs/heads/*:refs/heads/* \
             +refs/tags/*:refs/tags/*
-
-          echo "Successfully synced to downstream repository!"
