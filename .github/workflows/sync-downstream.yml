@@ -1,3 +1,24 @@
+name: Sync to Downstream Repository
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Verify downstream credentials
         env:
           DOWNSTREAM_URL: ${{ secrets.DOWNSTREAM_REPO_URL }}
@@ -25,7 +46,10 @@
 
           AUTH_HEADER="$(printf 'x-access-token:%s' "$DOWNSTREAM_TOKEN" | base64 -w 0)"
 
+          echo "Syncing commits to downstream repository..."
           git -c "http.extraheader=AUTHORIZATION: basic $AUTH_HEADER" \
             push --force --prune "$DOWNSTREAM_URL" \
             +refs/heads/*:refs/heads/* \
             +refs/tags/*:refs/tags/*
+
+          echo "Successfully synced to downstream repository!"
