@@ -20,6 +20,27 @@ const STATIC_ROUTES = [
   '/terms',
 ];
 
+/** Escape text for XML element content (& must become &amp;). */
+function escapeXml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function urlEntry(loc, lastmod, changefreq, priority) {
+  return [
+    '  <url>',
+    `    <loc>${escapeXml(loc)}</loc>`,
+    `    <lastmod>${escapeXml(lastmod)}</lastmod>`,
+    `    <changefreq>${escapeXml(changefreq)}</changefreq>`,
+    `    <priority>${escapeXml(priority)}</priority>`,
+    '  </url>',
+  ].join('\n') + '\n';
+}
+
 async function fetchPublishedProducts(domain) {
   const all = [];
   let page = 0;
@@ -75,23 +96,13 @@ export async function buildSitemapXml(domain) {
   for (const r of STATIC_ROUTES) {
     const loc = `${origin}${r}`;
     const priority = r === '' ? '1.0' : r === '/products' ? '0.9' : '0.8';
-    xml += `  <url>\n`;
-    xml += `    <loc>${loc}</loc>\n`;
-    xml += `    <lastmod>${currentDate}</lastmod>\n`;
-    xml += `    <changefreq>daily</changefreq>\n`;
-    xml += `    <priority>${priority}</priority>\n`;
-    xml += `  </url>\n`;
+    xml += urlEntry(loc, currentDate, 'daily', priority);
   }
 
   try {
     const subUrls = await fetchSubcategoryUrls(origin);
     for (const path of subUrls) {
-      xml += `  <url>\n`;
-      xml += `    <loc>${origin}${path}</loc>\n`;
-      xml += `    <lastmod>${currentDate}</lastmod>\n`;
-      xml += `    <changefreq>daily</changefreq>\n`;
-      xml += `    <priority>0.85</priority>\n`;
-      xml += `  </url>\n`;
+      xml += urlEntry(`${origin}${path}`, currentDate, 'daily', '0.85');
     }
   } catch (err) {
     console.warn('Sitemap subcategory urls warning:', err?.message || err);
@@ -102,12 +113,7 @@ export async function buildSitemapXml(domain) {
     for (const p of products) {
       if (!p?.id) continue;
       const lastMod = p.created_at ? String(p.created_at).split('T')[0] : currentDate;
-      xml += `  <url>\n`;
-      xml += `    <loc>${origin}/product/${p.id}</loc>\n`;
-      xml += `    <lastmod>${lastMod}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
-      xml += `  </url>\n`;
+      xml += urlEntry(`${origin}/product/${p.id}`, lastMod, 'weekly', '0.7');
     }
   } catch (err) {
     console.warn('Sitemap products fetch warning:', err?.message || err);
