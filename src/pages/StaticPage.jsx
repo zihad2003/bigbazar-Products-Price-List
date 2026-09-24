@@ -11,43 +11,89 @@ const Card = ({ children, className = '' }) => (
 
 const pageData = {
   '/about-us': {
-    title: 'আমাদের সম্পর্কে (About Us)',
+    title: 'আমাদের সম্পর্কে',
+    hook: (
+      <>
+        এক শোরুম। <span className="text-[#ce112d]">পুরো পরিবার।</span>
+        <br className="hidden sm:block" /> ফিক্সড প্রাইস।
+      </>
+    ),
     icon: <Info className="w-7 h-7 text-[#ce112d]" />,
     content: (
       <div className="space-y-5 text-sm text-zinc-600 leading-relaxed">
-        <p>
-          চট্টগ্রামের মীরসরাই, বারইয়ারহাটের <strong className="text-zinc-900">জমিদার প্লাজা (২য় তলা)</strong>-এ অবস্থিত{' '}
-          <strong className="text-zinc-900">Big Bazar</strong> — পুরো পরিবারের ফিক্সড-প্রাইস ফ্যাশন শপ।
-          ৬৫,০০০+ সোশ্যাল ফলোয়ারের আস্থায় শাড়ি থেকে থান কাপড়, জায়নামাজ পর্যন্ত এক ছাদের নিচে।
-        </p>
+        <div className="space-y-3">
+          <p>
+            <strong className="text-zinc-900">Big Bazar</strong> — চট্টগ্রামের মীরসরাই, বারইয়ারহাটের{' '}
+            <strong className="text-zinc-900">জমিদার প্লাজা (২য় তলা)</strong>-এর ফিক্সড-প্রাইস ফ্যাশন ডেস্টিনেশন।
+            শোরুমে দেখে কিনুন, অথবা <strong className="text-zinc-900">onlinebigbazar.com</strong>-এ অর্ডার করুন —
+            একই মান, একই বিশ্বাস।
+          </p>
+          <p className="text-xs md:text-sm text-zinc-500">
+            এক লক্ষেরও বেশি সোশ্যাল ফলোয়ারের আস্থা নিয়ে আমরা প্রতিদিন হাজারো পরিবারকে সাজাতে সাহায্য করি।
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: Shield, title: 'ফিক্সড প্রাইস', desc: 'টানা-টানা ছাড়াই স্বচ্ছ দাম — যা দেখবেন, তাই পাবেন।' },
+            { icon: Store, title: 'শোরুম + অনলাইন', desc: 'বারইয়ারহাটে দেখে নিন, বা ঘরে বসে অর্ডার করুন।' },
+            { icon: Truck, title: 'দেশজুড়ে ডেলিভারি', desc: 'মীরসরাইতে ফ্রি হোম ডেলিভারি · সারা দেশে COD।' },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card key={item.title} className="space-y-2">
+                <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-[#ce112d]">
+                  <Icon size={16} />
+                </div>
+                <h5 className="font-bold text-zinc-900 text-sm">{item.title}</h5>
+                <p className="text-xs text-zinc-600 leading-relaxed">{item.desc}</p>
+              </Card>
+            );
+          })}
+        </div>
 
         <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-red-50/60">
           <div className="flex items-center gap-2 text-[#ce112d] mb-2">
             <ShoppingBag size={18} />
-            <h4 className="font-bold text-sm md:text-base">সিগনেচার: বিয়ের সাজনি</h4>
+            <h4 className="font-bold text-sm md:text-base">সিগনেচার — বিয়ের সাজনি</h4>
           </div>
-          <p className="text-xs md:text-sm text-zinc-700">
-            কনের জামদানি, কাতান, জর্জেট, স্টোন ওয়ার্ক শাড়ি, পার্টি ড্রেস, সারারা ও গারারা —
-            বরের শেরওয়ানি, পাঞ্জাবি ও ফর্মাল পোশাকের এক্সক্লুসিভ কালেকশন।
+          <p className="text-xs md:text-sm text-zinc-700 mb-3">
+            বিয়ের দিনের সম্পূর্ণ লুক এক জায়গায়। কনের জামদানি, কাতান, জর্জেট ও স্টোন ওয়ার্ক শাড়ি থেকে
+            পার্টি ড্রেস, সারারা-গারারা; বরের শেরওয়ানি, পাঞ্জাবি ও ফর্মাল — কুরেটেড ওয়েডিং কালেকশন।
+          </p>
+          <p className="text-[11px] text-zinc-500">
+            সাইজ, স্টক বা ম্যাচিং সেট নিয়ে দ্বিধা? শোরুমে এসে দেখুন, বা WhatsApp-এ ছবি পাঠান — আমরা গাইড করব।
           </p>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Card>
-            <h5 className="font-bold text-[#ce112d] text-sm mb-1.5">লেডিস ও কিডস</h5>
-            <p className="text-xs md:text-sm">বোরকা, আবায়া, হিজাব; ১–৫ ও ৫–১৫ বছরের ছেলে-মেয়ের আলাদা সেকশন।</p>
-          </Card>
-          <Card>
-            <h5 className="font-bold text-[#ce112d] text-sm mb-1.5">জেন্টস ও হোম</h5>
-            <p className="text-xs md:text-sm">টি-শার্ট, পোলো, শার্ট, শর্টস; বেডশিট, পর্দা, মশারি ও গজ কাপড়।</p>
-          </Card>
+        <div>
+          <h4 className="font-bold text-zinc-900 text-sm mb-2.5">এক ছাদের নিচে যা পাবেন</h4>
+          <div className="flex flex-wrap gap-2">
+            {[
+              'শাড়ি ও থান',
+              'লেডিস ওয়েয়ার',
+              'বোরকা · আবায়া · হিজাব',
+              'জেন্টস ক্যাজুয়াল',
+              'কিডস (১–১৫)',
+              'হোম টেক্সটাইল',
+              'জায়নামাজ',
+              'গজ কাপড়',
+            ].map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[11px] md:text-xs font-medium text-zinc-700"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
 
-        <div className="rounded-2xl bg-zinc-900 text-white p-5 space-y-1.5">
-          <h4 className="text-[#ce112d] font-bold text-xs uppercase tracking-wider">মীরসরাই বিশেষ</h4>
-          <p className="text-zinc-300 text-xs md:text-sm">
-            অনলাইন অর্ডারে মীরসরাই উপজেলায় <strong className="text-white">ফ্রি হোম ডেলিভারি</strong>।
-            সারা দেশে ক্যাশ অন ডেলিভারি উপলব্ধ।
+        <div className="rounded-2xl bg-zinc-900 text-white p-5 space-y-2">
+          <h4 className="text-[#ce112d] font-bold text-xs uppercase tracking-wider">আমাদের প্রতিশ্রুতি</h4>
+          <p className="text-zinc-300 text-xs md:text-sm leading-relaxed">
+            মানসম্মত পণ্য, পরিষ্কার দাম, দ্রুত সাপোর্ট। মীরসরাই উপজেলায় অনলাইন অর্ডারে{' '}
+            <strong className="text-white">ফ্রি হোম ডেলিভারি</strong> — বাকি দেশে নির্ভরযোগ্য ক্যাশ অন ডেলিভারি।
           </p>
         </div>
       </div>
@@ -394,8 +440,15 @@ export default function StaticPage({ path }) {
             {data.icon}
           </div>
           <div className="min-w-0 pt-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+              Big Bazar · Baraiyarhat
+            </p>
             <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">{data.title}</h1>
-            <p className="text-zinc-400 text-[11px] font-medium mt-1">Big Bazar · Baraiyarhat</p>
+            {data.hook && (
+              <p className="mt-3 text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 leading-[1.25]">
+                {data.hook}
+              </p>
+            )}
           </div>
         </div>
 
