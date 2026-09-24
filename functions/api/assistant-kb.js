@@ -51,7 +51,7 @@ export const FAQ_KB = {
   },
   contact_info: {
     keywords: ["contact", "phone", "number", "showroom", "address", "location", "hours", "open", "whatsapp", "email", "call", "যোগাযোগ", "ফোন", "নাম্বার", "শোরুম"],
-    answer_bn: "যোগাযোগ ও শোরুম:\nহেল্পলাইন: 01857045449\nহোয়াটসঅ্যাপ: 01824950082\nইমেইল: infobigbazar01@gmail.com\nশোরুম: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই।\nসময়: প্রতিদিন সকাল ৯:৩০ টা - রাত ৯:৩০ টা।",
+    answer_bn: "যোগাযোগ ও শোরুম:\nহেল্পলাইন: 01857045449\nহোয়াটসঅ্যাপ: 01824950082\nইমেইল: infobigbazar01@gmail.com\nশোরুম: ২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই।\nম্যাপ: https://maps.app.goo.gl/nTyss67XVkuZRLwy9\nসময়: প্রতিদিন সকাল ৯:৩০ টা - রাত ৯:৩০ টা।",
     answer_en: "Contact Info: Phone 01857045449 | WhatsApp 01824950082 | Email infobigbazar01@gmail.com. Showroom: 2nd Floor Jomidar Plaza, Baraiyarhat. Open 9:30 AM - 9:30 PM daily."
   },
   how_to_order: {

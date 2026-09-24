@@ -38,6 +38,29 @@ async function fetchPublishedProducts(domain) {
   return all;
 }
 
+/** Collect /products?category=&subcategory= URLs from site settings */
+async function fetchSubcategoryUrls(domain) {
+  const urls = [];
+  try {
+    const res = await fetch(`${domain}/api/settings`);
+    if (!res.ok) return urls;
+    const json = await res.json();
+    const settings = json?.data || json || {};
+    const subcats = settings.subcategories || {};
+    for (const [category, list] of Object.entries(subcats)) {
+      if (!Array.isArray(list)) continue;
+      for (const sub of list) {
+        if (!sub?.id) continue;
+        const q = `category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(sub.id)}`;
+        urls.push(`/products?${q}`);
+      }
+    }
+  } catch (err) {
+    console.warn('Sitemap subcategory fetch warning:', err?.message || err);
+  }
+  return urls;
+}
+
 /**
  * @param {string} domain - e.g. https://onlinebigbazar.com
  * @returns {Promise<string>} XML document
@@ -58,6 +81,20 @@ export async function buildSitemapXml(domain) {
     xml += `    <changefreq>daily</changefreq>\n`;
     xml += `    <priority>${priority}</priority>\n`;
     xml += `  </url>\n`;
+  }
+
+  try {
+    const subUrls = await fetchSubcategoryUrls(origin);
+    for (const path of subUrls) {
+      xml += `  <url>\n`;
+      xml += `    <loc>${origin}${path}</loc>\n`;
+      xml += `    <lastmod>${currentDate}</lastmod>\n`;
+      xml += `    <changefreq>daily</changefreq>\n`;
+      xml += `    <priority>0.85</priority>\n`;
+      xml += `  </url>\n`;
+    }
+  } catch (err) {
+    console.warn('Sitemap subcategory urls warning:', err?.message || err);
   }
 
   try {

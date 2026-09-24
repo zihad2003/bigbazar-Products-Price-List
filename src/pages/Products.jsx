@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, ArrowRight, ShoppingBag, X, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, ShoppingBag, X, Check } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
+import SubcategorySeoBlock from '../components/SubcategorySeoBlock';
 import { bigBazarApi } from '../api/client';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getSubcategoriesForCategory, TOP_CATEGORIES } from '../data/categories';
 import { useDebounce } from '../hooks/useDebounce';
 import { sanitizeInput } from '../utils/security';
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = 12;
 
 const BASE_CATEGORIES = [
   { id: 'All',          en: 'All',            bn: 'সকল' },
@@ -22,7 +23,6 @@ export default function Products() {
   const [weddingConfig, setWeddingConfig] = useState(null);
   const [subcategoriesData, setSubcategoriesData] = useState(null);
 
-  // Source of truth from URL params
   const selectedCategory = searchParams.get('category') || 'All';
   const selectedSubcategory = searchParams.get('subcategory') || '';
 
@@ -30,28 +30,29 @@ export default function Products() {
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [isFiltering, setIsFiltering] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const searchRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const loadingRef = useRef(false);
 
-  // Fetch admin settings
   useEffect(() => {
     bigBazarApi.from('site_settings').select('*').then(({ data }) => {
       if (!data) return;
       const isArray = Array.isArray(data);
       const getValue = (key) => isArray ? data.find(s => s.key === key)?.value : data[key];
-      
+
       const wb = getValue('wedding_banner');
       if (wb?.enabled && wb?.category_filter) setWeddingConfig(wb);
-      
+
       const subcats = getValue('subcategories');
       if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
     });
   }, []);
 
-  // Build category list
   const CATEGORIES = [
     ...BASE_CATEGORIES,
     ...(weddingConfig ? [{
@@ -63,7 +64,6 @@ export default function Products() {
 
   const handleCategoryChange = (cat) => {
     if (cat === selectedCategory && !selectedSubcategory) return;
-    setPage(0);
     setIsFiltering(true);
     if (cat === 'All') {
       setSearchParams({});
@@ -74,7 +74,6 @@ export default function Products() {
 
   const handleSubcategoryChange = (subId) => {
     const nextSub = selectedSubcategory === subId ? '' : subId;
-    setPage(0);
     setIsFiltering(true);
     const params = {};
     if (selectedCategory && selectedCategory !== 'All') params.category = selectedCategory;
@@ -82,15 +81,18 @@ export default function Products() {
     setSearchParams(params);
   };
 
-  // Fetch products cleanly without flickering layout
+  useEffect(() => {
+    setPage(0);
+    setProducts([]);
+    setHasMore(true);
+  }, [selectedCategory, selectedSubcategory, debouncedSearchQuery]);
+
   useEffect(() => {
     let isMounted = true;
     const fetchProducts = async () => {
-      if (page === 0 && products.length === 0) {
-        setLoading(true);
-      } else {
-        setIsFiltering(true);
-      }
+      loadingRef.current = true;
+      if (page === 0) setLoading(true);
+      else setLoadingMore(true);
 
       const start = page * PAGE_SIZE;
       const end = start + PAGE_SIZE - 1;
@@ -132,42 +134,58 @@ export default function Products() {
       if (isMounted) {
         if (data) {
           if (page === 0) setProducts(data);
-          else setProducts(prev => [...prev, ...data]);
+          else setProducts((prev) => [...prev, ...data]);
           setHasMore(count > (page + 1) * PAGE_SIZE);
           setTotalCount(count || 0);
+        } else {
+          setHasMore(false);
         }
         setLoading(false);
+        setLoadingMore(false);
         setIsFiltering(false);
+        loadingRef.current = false;
       }
     };
 
     fetchProducts();
     return () => { isMounted = false; };
-  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery]);
+  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery, weddingConfig]);
 
-  const [subCounts, setSubCounts] = useState({});
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingRef.current || loading || loadingMore) return;
+    loadingRef.current = true;
+    setPage((p) => p + 1);
+  }, [hasMore, loading, loadingMore]);
 
-  // Fetch subcategory counts to filter out empty subcategories
   useEffect(() => {
-    let query = bigBazarApi.from('subcategory-counts').select('*');
-    if (selectedCategory && selectedCategory !== 'All') {
-      query = query.eq('category', selectedCategory);
-    }
-    query.then(({ data }) => {
-      if (data && Array.isArray(data)) {
-        const countsMap = {};
-        data.forEach(item => {
-          if (item.subcategory) countsMap[item.subcategory] = item.count;
-        });
-        setSubCounts(countsMap);
-      }
-    });
-  }, [selectedCategory]);
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root: null, rootMargin: '280px', threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore, products.length]);
 
-  const currentCat = CATEGORIES.find(c => c.id === selectedCategory);
-  const catLabel = currentCat ? (language === 'bn' ? currentCat.bn : currentCat.en) : 'All';
-  const allSubcategories = getSubcategoriesForCategory(selectedCategory, subcategoriesData);
-  const availableSubcategories = allSubcategories;
+  const currentCat = CATEGORIES.find((c) => c.id === selectedCategory);
+  const availableSubcategories = getSubcategoriesForCategory(selectedCategory, subcategoriesData);
+  const activeSub = availableSubcategories.find((s) => s.id === selectedSubcategory)
+    || (selectedSubcategory
+      ? {
+          id: selectedSubcategory,
+          name_en: selectedSubcategory.replace(/-/g, ' '),
+          name_bn: selectedSubcategory.replace(/-/g, ' '),
+        }
+      : null);
+
+  const catLabel = activeSub
+    ? (language === 'bn'
+      ? (activeSub.name_bn || activeSub.bn || activeSub.name_en)
+      : (activeSub.name_en || activeSub.en || activeSub.name_bn))
+    : (currentCat ? (language === 'bn' ? currentCat.bn : currentCat.en) : 'All');
 
   const resetAllFilters = () => {
     handleCategoryChange('All');
@@ -176,7 +194,6 @@ export default function Products() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Page Header */}
       <div className="border-b border-zinc-100 bg-white">
         <div className="w-full max-w-[1920px] mx-auto px-4 md:px-12 py-5 md:py-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
@@ -186,7 +203,7 @@ export default function Products() {
               </span>
             </div>
             <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-baseline gap-3">
+              <div className="flex items-baseline gap-3 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-zinc-900 leading-none">
                   {catLabel}
                 </h1>
@@ -197,14 +214,13 @@ export default function Products() {
                 )}
               </div>
 
-              {/* Integrated Search Bar aligned with Product Grid */}
               <div className="relative group w-full sm:w-72 md:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-[#ce112d] transition-colors" size={16} />
                 <input
                   ref={searchRef}
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={language === 'bn' ? `${catLabel}-এ খুঁজুন...` : `Search in ${catLabel}...`}
                   aria-label={language === 'bn' ? 'পণ্য খুঁজুন' : 'Search products'}
                   className="w-full bg-zinc-50 border border-zinc-200 focus:border-[#ce112d]/50 focus:bg-white rounded-xl py-2.5 pl-10 pr-9 text-sm outline-none transition-all placeholder:text-zinc-600"
@@ -222,14 +238,12 @@ export default function Products() {
 
       <div className="w-full max-w-[1920px] mx-auto px-4 md:px-12">
         <div className="flex gap-8 py-6 md:py-8">
-
-          {/* Desktop Sidebar */}
           <aside className="hidden md:block w-44 lg:w-52 shrink-0">
             <div className="sticky top-24 space-y-1">
               <p className="text-xs font-bold uppercase tracking-wider text-zinc-600 px-3 pb-2">
                 {language === 'bn' ? 'ক্যাটাগরি সমূহ' : 'All Categories'}
               </p>
-              {CATEGORIES.map(cat => (
+              {CATEGORIES.map((cat) => (
                 <div key={cat.id} className="space-y-1">
                   <button
                     onClick={() => handleCategoryChange(cat.id)}
@@ -246,7 +260,7 @@ export default function Products() {
                   </button>
                   {selectedCategory === cat.id && availableSubcategories.length > 0 && (
                     <div className="pl-3 space-y-1 py-1 border-l-2 border-zinc-100 ml-3">
-                      {availableSubcategories.map(sub => {
+                      {availableSubcategories.map((sub) => {
                         const isSubSelected = selectedSubcategory === sub.id;
                         return (
                           <button
@@ -272,12 +286,10 @@ export default function Products() {
             </div>
           </aside>
 
-          {/* Product Grid Container */}
           <div className="flex-1 min-w-0">
-            {/* Mobile Filter Bar & Subcategory Chips */}
             <div className="mb-4 space-y-2">
               <div className="md:hidden w-full flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar scrollbar-hide">
-                {CATEGORIES.map(cat => (
+                {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => handleCategoryChange(cat.id)}
@@ -292,7 +304,6 @@ export default function Products() {
                 ))}
               </div>
 
-              {/* Horizontal subcategory chips: only shown on mobile/tablet (sidebar handles desktop) */}
               {availableSubcategories.length > 0 && (
                 <div className="md:hidden flex items-center gap-2 overflow-x-auto pb-2 pt-1 no-scrollbar scrollbar-hide">
                   <span className="text-xs font-bold uppercase text-zinc-600 shrink-0 mr-1">
@@ -308,7 +319,7 @@ export default function Products() {
                   >
                     {language === 'bn' ? 'সব' : 'All'}
                   </button>
-                  {availableSubcategories.map(sub => {
+                  {availableSubcategories.map((sub) => {
                     const isSubSelected = selectedSubcategory === sub.id;
                     return (
                       <button
@@ -332,8 +343,7 @@ export default function Products() {
               )}
             </div>
 
-            {/* Clean In-Page Empty State (No Popup Modal) */}
-            {!loading && !isFiltering && products.length === 0 && (
+            {!loading && products.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300">
                   <ShoppingBag size={28} strokeWidth={1.5} />
@@ -355,39 +365,45 @@ export default function Products() {
               </div>
             )}
 
-            {/* Product Grid with Smooth Transition */}
-            <div className={`transition-opacity duration-300 ${isFiltering ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`transition-opacity duration-300 ${isFiltering && page === 0 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {loading && page === 0
-                  ? Array.from({ length: 16 }).map((_, i) => <ProductSkeleton key={i} />)
-                  : products.map(product => (
+                  ? Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)
+                  : products.map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
                         onClick={() => navigate(`/product/${product.id}`)}
                       />
-                    ))
-                }
+                    ))}
               </div>
             </div>
 
-            {loading && page > 0 && (
-              <div className="flex items-center justify-center py-12 gap-3">
-                <div className="w-5 h-5 border-2 border-[#ce112d] border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Loading…</span>
+            {hasMore && products.length > 0 && (
+              <div ref={sentinelRef} className="flex items-center justify-center py-10 gap-3 min-h-[3rem]">
+                {loadingMore && (
+                  <>
+                    <div className="w-5 h-5 border-2 border-[#ce112d] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      {language === 'bn' ? 'লোড হচ্ছে…' : 'Loading…'}
+                    </span>
+                  </>
+                )}
               </div>
             )}
 
-            {hasMore && !loading && (
-              <div className="flex justify-center pt-10 pb-4">
-                <button
-                  onClick={() => setPage(p => p + 1)}
-                  className="group inline-flex items-center gap-2.5 px-8 py-3 bg-zinc-900 hover:bg-[#ce112d] text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 active:scale-95 shadow-md"
-                >
-                  <span>{language === 'bn' ? 'আরো দেখুন' : 'Load More'}</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
+            {!hasMore && products.length > 0 && (
+              <p className="text-center text-xs font-semibold text-zinc-400 uppercase tracking-wider py-10">
+                {language === 'bn' ? 'আর কোনো পণ্য নেই' : 'No more products'}
+              </p>
+            )}
+
+            {activeSub && (
+              <SubcategorySeoBlock
+                subcategory={activeSub}
+                category={selectedCategory}
+                language={language}
+              />
             )}
           </div>
         </div>

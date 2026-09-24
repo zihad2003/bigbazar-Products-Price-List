@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { getSubcategoryMeta } from '../data/subcategorySeo';
 
 /**
  * Client-Side SPA Head & Metadata Manager.
@@ -10,13 +11,39 @@ const SEOHead = ({ title, description, image, productData }) => {
 
   useEffect(() => {
     const origin = window.location.origin;
-    const canonicalUrl = `${origin}${location.pathname}`;
+    const params = new URLSearchParams(location.search);
+    const category = params.get('category') || '';
+    const subcategory = params.get('subcategory') || '';
+
+    // Prefer query-aware canonical for category/subcategory listing pages
+    const canonicalPath =
+      location.pathname === '/products' && (category || subcategory)
+        ? `${location.pathname}?${[
+            category ? `category=${encodeURIComponent(category)}` : '',
+            subcategory ? `subcategory=${encodeURIComponent(subcategory)}` : '',
+          ]
+            .filter(Boolean)
+            .join('&')}`
+        : location.pathname;
+    const canonicalUrl = `${origin}${canonicalPath}`;
 
     const defaultTitle = "Big Bazar | Baraiyarhat — Complete Family Fashion & Lifestyle Destination";
     const defaultDesc = "Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.";
 
-    const pageTitle = title || defaultTitle;
-    const pageDesc = description || defaultDesc;
+    let pageTitle = title || defaultTitle;
+    let pageDesc = description || defaultDesc;
+
+    if (!title && !description && location.pathname === '/products' && subcategory) {
+      const meta = getSubcategoryMeta({ id: subcategory, name_en: subcategory.replace(/-/g, ' ') }, category);
+      if (meta) {
+        pageTitle = meta.title;
+        pageDesc = meta.description;
+      }
+    } else if (!title && !description && location.pathname === '/products' && category && category !== 'All') {
+      pageTitle = `${category} Fashion | Big Bazar Baraiyarhat — Buy Online`;
+      pageDesc = `Shop ${category} collection at Big Bazar, Baraiyarhat (Mirsharai, Chattogram). Fixed prices, COD nationwide, free home delivery within Mirsharai.`;
+    }
+
     const pageImage = image || `${origin}/b.jpg`;
 
     // 1. Update Title
@@ -48,6 +75,11 @@ const SEOHead = ({ title, description, image, productData }) => {
     updateMeta('meta[name="twitter:title"]', 'content', pageTitle);
     updateMeta('meta[name="twitter:description"]', 'content', pageDesc);
     updateMeta('meta[name="twitter:image"]', 'content', pageImage);
+
+    if (subcategory) {
+      const meta = getSubcategoryMeta({ id: subcategory }, category);
+      if (meta?.keywords) updateMeta('meta[name="keywords"]', 'content', meta.keywords);
+    }
 
     // 3. Update Canonical Tag
     let canonical = document.querySelector('link[rel="canonical"]');
@@ -104,8 +136,10 @@ const SEOHead = ({ title, description, image, productData }) => {
           "sameAs": [
             "https://www.facebook.com/100063541603515",
             "https://www.instagram.com/big_bazar_25",
-            "https://www.tiktok.com/@big.bazar2"
-          ]
+            "https://www.tiktok.com/@big.bazar2",
+            "https://maps.app.goo.gl/nTyss67XVkuZRLwy9"
+          ],
+          "hasMap": "https://maps.app.goo.gl/nTyss67XVkuZRLwy9"
         }
       ]
     };
@@ -123,6 +157,19 @@ const SEOHead = ({ title, description, image, productData }) => {
           "price": productData.price,
           "availability": productData.is_sold_out ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
           "seller": { "@id": `${origin}/#organization` }
+        }
+      });
+    } else if (location.pathname === '/products' && subcategory) {
+      schemaGraph["@graph"].push({
+        "@type": "CollectionPage",
+        "@id": canonicalUrl,
+        "name": pageTitle,
+        "description": pageDesc,
+        "url": canonicalUrl,
+        "isPartOf": { "@id": `${origin}/#organization` },
+        "about": {
+          "@type": "Thing",
+          "name": subcategory.replace(/-/g, ' ')
         }
       });
     }

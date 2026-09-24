@@ -65,11 +65,16 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                             </div>
                             <div className="flex items-start gap-3">
                                 <MapPin size={16} className="text-[#ce112d] shrink-0 mt-0.5" />
-                                <span className="leading-snug text-zinc-600">
+                                <a
+                                    href="https://maps.app.goo.gl/nTyss67XVkuZRLwy9"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="leading-snug text-zinc-600 hover:text-[#ce112d] transition-colors"
+                                >
                                     {language === 'bn' 
                                         ? '২য় তলা, জমিদারের প্লাজা, বারইয়ারহাট, মীরসরাই, চট্টগ্রাম' 
                                         : '2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsharai, Chattogram'}
-                                </span>
+                                </a>
                             </div>
                         </div>
 

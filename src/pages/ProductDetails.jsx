@@ -13,6 +13,7 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { bigBazarApi } from '../api/client';
 import { trackViewItem, trackAddToCart, trackMessengerClick } from '../utils/analytics';
+import Reveal from '../components/Reveal';
 
 export default function ProductDetails() {
     const { productId } = useParams();
@@ -651,13 +652,16 @@ export default function ProductDetails() {
                     </div>
 
                     {/* Product Tabs - Description, Video, Size Guide */}
-                    <ProductTabs
-                        description={product.description}
-                        videoUrl={product.video_url}
-                        hasSizes={hasValidSizes}
-                    />
+                    <Reveal>
+                      <ProductTabs
+                          description={product.description}
+                          videoUrl={product.video_url}
+                          hasSizes={hasValidSizes}
+                      />
+                    </Reveal>
 
                     {/* Guarantee / Perks Grid - Fixed 4-column layout */}
+                    <Reveal>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-neutral-100">
                         {[
                             { icon: Truck, label: language === 'bn' ? 'ডেলিভারি' : 'Delivery', desc: language === 'bn' ? 'দ্রুত হোম ডেলিভারি' : 'Fast Shipping' },
@@ -676,16 +680,23 @@ export default function ProductDetails() {
                             </div>
                         ))}
                     </div>
+                    </Reveal>
                 </div>
             </div>
 
-            {/* Recently Viewed Products Section — Full Width from Left */}
+            {/* Reviews + Recently Viewed */}
             {product && (
-              <div className="max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
-                <ProductReviews productId={product.id} productName={product.name} />
-              </div>
+              <Reveal>
+                <div className="max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
+                  <ProductReviews productId={product.id} productName={product.name} />
+                </div>
+              </Reveal>
             )}
-            {product && <RecentlyViewed currentProductId={product.id} />}
+            {product && (
+              <Reveal>
+                <RecentlyViewed currentProductId={product.id} />
+              </Reveal>
+            )}
 
             <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />
 

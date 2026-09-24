@@ -982,3 +982,24 @@ html {
 .admin-theme-light span[class*="bg-rose-500/"][class*="text-white"] {
   color: #9f1239 !important;
 }
+
+/* Scroll reveal — site-wide (Home, About, Product sections) */
+.bb-reveal,
+.about-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.bb-reveal--in,
+.about-reveal--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb-reveal,
+  .about-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

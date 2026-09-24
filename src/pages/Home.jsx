@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ArrowRight, ShoppingBag, Truck, CreditCard, CheckCircle, ChevronRight, X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, ShoppingBag, Truck, CreditCard, CheckCircle, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import HomeReviews from '../components/HomeReviews';
@@ -14,6 +14,7 @@ import { extractInstagramId } from '../utils/instagram';
 import { getSubcategoriesForCategory, getAllSubcategories, resolveSubcategoryImage } from '../data/categories';
 import { useDebounce } from '../hooks/useDebounce';
 import { sanitizeInput } from '../utils/security';
+import Reveal from '../components/Reveal';
 
 const PAGE_SIZE = 12;
 
@@ -32,10 +33,13 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [subcategoriesData, setSubcategoriesData] = useState(null);
+  const sentinelRef = useRef(null);
+  const loadingRef = useRef(false);
   const [siteSettings, setSiteSettings] = useState(() => {
     try {
       const cached = localStorage.getItem('bb_site_settings_cache');
@@ -121,7 +125,10 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   useEffect(() => {
     let cancelled = false;
     const fetchProducts = async () => {
-      setLoading(true);
+      loadingRef.current = true;
+      if (page === 0) setLoading(true);
+      else setLoadingMore(true);
+
       const start = page * PAGE_SIZE;
       const end = start + PAGE_SIZE - 1;
 
@@ -163,13 +170,36 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         if (page === 0) setProducts(data);
         else setProducts(prev => [...prev, ...data]);
         setHasMore(count > (page + 1) * PAGE_SIZE);
+      } else {
+        setHasMore(false);
       }
       setLoading(false);
+      setLoadingMore(false);
+      loadingRef.current = false;
     };
 
     fetchProducts();
     return () => { cancelled = true; };
   }, [page, selectedCategory, debouncedSearchQuery]);
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || loadingRef.current || loading || loadingMore) return;
+    loadingRef.current = true;
+    setPage((prev) => prev + 1);
+  }, [hasMore, loading, loadingMore]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root: null, rootMargin: '280px', threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loadMore, products.length]);
 
   return (
     <div className="min-h-screen bg-white pb-16">
@@ -197,217 +227,229 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
       {/* Wedding Collection Banner — Admin Controlled Canva Poster */}
       {siteSettings.wedding_banner?.enabled && siteSettings.wedding_banner?.image_url && (
-        <section className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-6 md:mt-8">
-          <Link
-            to={`/products?category=${encodeURIComponent(siteSettings.wedding_banner.category_filter || 'Wedding')}`}
-            className="block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
-          >
-            <img
-              src={siteSettings.wedding_banner.image_url}
-              alt="Collection Banner"
-              className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
-              loading="lazy"
-            />
-          </Link>
-        </section>
+        <Reveal>
+          <section className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-6 md:mt-8">
+            <Link
+              to={`/products?category=${encodeURIComponent(siteSettings.wedding_banner.category_filter || 'Wedding')}`}
+              className="block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
+            >
+              <img
+                src={siteSettings.wedding_banner.image_url}
+                alt="Collection Banner"
+                className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
+                loading="lazy"
+              />
+            </Link>
+          </section>
+        </Reveal>
       )}
 
       <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto mt-8 md:mt-12 space-y-10">
-        {/* Photo-Based Subcategory Rail — justify-start so first item is never clipped; scroll works */}
+        {/* Photo-Based Subcategory Rail */}
         {activeSubcategories.length > 0 && (
-          <section className="relative">
-            <div
-              className="flex items-start justify-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto overscroll-x-contain pb-4 pt-2 no-scrollbar scrollbar-hide px-4 md:px-12 snap-x snap-mandatory"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              {activeSubcategories.map((sub) => (
-                <button
-                  key={sub.id}
-                  onClick={() => {
-                    const targetCat = sub._category || selectedCategory || 'All';
-                    const cat = targetCat === 'All' ? sub._category : targetCat;
-                    if (cat && cat !== 'All') {
-                      navigate(`/products?category=${encodeURIComponent(cat)}&subcategory=${encodeURIComponent(sub.id)}`);
-                    } else {
-                      navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
-                    }
-                  }}
-                  className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0 snap-start"
-                >
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
-                    {resolveSubcategoryImage(sub) ? (
-                      <img
-                        src={resolveSubcategoryImage(sub)}
-                        alt={sub.name_en || ''}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#ce112d]/10 via-rose-50 to-white flex items-center justify-center border border-[#ce112d]/15 shrink-0">
-                        <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#ce112d]">
-                          {(sub.name_en || sub.name_bn || '?')[0]}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug w-[5.5rem] sm:w-[7rem] md:w-[8rem] min-h-[2.5em] line-clamp-2">
-                    {formatTitleCase(language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn))}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
+          <Reveal>
+            <section className="relative">
+              <div
+                className="flex items-start justify-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto overscroll-x-contain pb-4 pt-2 no-scrollbar scrollbar-hide px-4 md:px-12 snap-x snap-mandatory"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {activeSubcategories.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      const targetCat = sub._category || selectedCategory || 'All';
+                      const cat = targetCat === 'All' ? sub._category : targetCat;
+                      if (cat && cat !== 'All') {
+                        navigate(`/products?category=${encodeURIComponent(cat)}&subcategory=${encodeURIComponent(sub.id)}`);
+                      } else {
+                        navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
+                      }
+                    }}
+                    className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0 snap-start"
+                  >
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
+                      {resolveSubcategoryImage(sub) ? (
+                        <img
+                          src={resolveSubcategoryImage(sub)}
+                          alt={sub.name_en || ''}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#ce112d]/10 via-rose-50 to-white flex items-center justify-center border border-[#ce112d]/15 shrink-0">
+                          <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#ce112d]">
+                            {(sub.name_en || sub.name_bn || '?')[0]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug w-[5.5rem] sm:w-[7rem] md:w-[8rem] min-h-[2.5em] line-clamp-2">
+                      {formatTitleCase(language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn))}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </Reveal>
         )}
 
         {/* Product Grid Section */}
         <section className="space-y-8 pt-2 px-4 md:px-12">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-100">
-            <div className="space-y-1">
-              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-none text-zinc-900">
-                {searchQuery 
-                  ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results') 
-                  : (selectedCategory === 'All' ? (language === 'bn' ? 'নতুন কালেকশন' : 'New Arrival') : selectedCategory)
-                }
-              </h2>
-              {searchQuery && (
-                <p className="text-xs text-zinc-500 font-bold">
-                  {language === 'bn' ? `"${searchQuery}" এর জন্য অনুসন্ধান করা হচ্ছে` : `Showing results for "${searchQuery}"`}
-                </p>
-              )}
-            </div>
+          <Reveal>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-100">
+              <div className="space-y-1">
+                <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-none text-zinc-900">
+                  {searchQuery
+                    ? (language === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results')
+                    : (selectedCategory === 'All' ? (language === 'bn' ? 'নতুন কালেকশন' : 'New Arrival') : selectedCategory)
+                  }
+                </h2>
+                {searchQuery && (
+                  <p className="text-xs text-zinc-500 font-bold">
+                    {language === 'bn' ? `"${searchQuery}" এর জন্য অনুসন্ধান করা হচ্ছে` : `Showing results for "${searchQuery}"`}
+                  </p>
+                )}
+              </div>
 
-            {/* Seamlessly Integrated Search Bar */}
-            <div className="relative group w-full sm:w-72 md:w-80" role="search">
-              <label htmlFor="home-product-search" className="sr-only">
-                {language === 'bn' ? 'পণ্য অনুসন্ধান' : 'Search products'}
-              </label>
-              <Search 
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#ce112d] transition-colors" 
-                size={16} 
-                aria-hidden="true" 
-              />
-              <input
-                id="home-product-search"
-                type="search"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
-                aria-label={language === 'bn' ? 'পণ্য খুঁজুন' : 'Search products'}
-                className="w-full bg-zinc-50 border border-zinc-200/90 focus:border-[#ce112d] focus:bg-white rounded-xl py-2.5 pl-10 pr-9 text-sm outline-none transition-all shadow-sm"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange('')}
-                  aria-label={language === 'bn' ? 'অনুসন্ধান মুছুন' : 'Clear search'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 p-0.5 rounded-full hover:bg-zinc-100 transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              )}
+              <div className="relative group w-full sm:w-72 md:w-80" role="search">
+                <label htmlFor="home-product-search" className="sr-only">
+                  {language === 'bn' ? 'পণ্য অনুসন্ধান' : 'Search products'}
+                </label>
+                <Search
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#ce112d] transition-colors"
+                  size={16}
+                  aria-hidden="true"
+                />
+                <input
+                  id="home-product-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder={language === 'bn' ? 'পণ্য খুঁজুন...' : 'Search products...'}
+                  aria-label={language === 'bn' ? 'পণ্য খুঁজুন' : 'Search products'}
+                  className="w-full bg-zinc-50 border border-zinc-200/90 focus:border-[#ce112d] focus:bg-white rounded-xl py-2.5 pl-10 pr-9 text-sm outline-none transition-all shadow-sm"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange('')}
+                    aria-label={language === 'bn' ? 'অনুসন্ধান মুছুন' : 'Clear search'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 p-0.5 rounded-full hover:bg-zinc-100 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          </Reveal>
 
           {loading && page === 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)}
             </div>
           ) : products.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onClick={() => navigate(`/product/${product.id}`)}
-                />
-              ))}
-            </div>
+            <Reveal>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  />
+                ))}
+              </div>
+            </Reveal>
           ) : (
-            <div className="bg-gradient-to-b from-[#ce112d]/[0.03] via-zinc-50/50 to-white border border-zinc-200/80 rounded-3xl p-8 md:p-14 flex flex-col items-center text-center gap-6 shadow-sm max-w-3xl mx-auto my-4">
-              <div className="w-20 h-20 bg-gradient-to-b from-[#ce112d]/15 to-[#ce112d]/5 rounded-3xl flex items-center justify-center border border-[#ce112d]/20 text-[#ce112d] shadow-xl shadow-red-900/10">
-                <ShoppingBag size={36} strokeWidth={2} />
+            <Reveal>
+              <div className="bg-gradient-to-b from-[#ce112d]/[0.03] via-zinc-50/50 to-white border border-zinc-200/80 rounded-3xl p-8 md:p-14 flex flex-col items-center text-center gap-6 shadow-sm max-w-3xl mx-auto my-4">
+                <div className="w-20 h-20 bg-gradient-to-b from-[#ce112d]/15 to-[#ce112d]/5 rounded-3xl flex items-center justify-center border border-[#ce112d]/20 text-[#ce112d] shadow-xl shadow-red-900/10">
+                  <ShoppingBag size={36} strokeWidth={2} />
+                </div>
+                <div className="space-y-3">
+                  <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase">
+                    {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Available'}
+                  </h2>
+                  <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
+                    {searchQuery
+                      ? (language === 'bn' ? `"${searchQuery}" নামে কোনো পণ্য পাওয়া যায়নি। অন্য কোনো নাম লিখে চেষ্টা করুন।` : `Sorry, no items matched "${searchQuery}". Try exploring all collections or clearing search.`)
+                      : (language === 'bn' ? 'দুঃখিত, কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।' : 'Sorry, no items matched. Try exploring all collections or clearing your search filter.')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setSelectedCategory) setSelectedCategory('All');
+                    if (onSearchChange) onSearchChange('');
+                  }}
+                  className="mt-2 px-8 py-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <span>{language === 'bn' ? 'সকল পণ্য দেখুন' : 'Explore All Collections'}</span>
+                </button>
               </div>
-              <div className="space-y-3">
-                <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight uppercase">
-                  {language === 'bn' ? 'কোনো পণ্য পাওয়া যায়নি' : 'No Products Available'}
-                </h2>
-                <p className="text-xs md:text-sm text-neutral-600 max-w-lg mx-auto leading-relaxed font-medium">
-                  {searchQuery
-                    ? (language === 'bn' ? `"${searchQuery}" নামে কোনো পণ্য পাওয়া যায়নি। অন্য কোনো নাম লিখে চেষ্টা করুন।` : `Sorry, no items matched "${searchQuery}". Try exploring all collections or clearing search.`)
-                    : (language === 'bn' ? 'দুঃখিত, কোনো পণ্য পাওয়া যায়নি। অনুগ্রহ করে সকল পণ্য ক্লিক করুন অথবা অন্য ক্যাটাগরি সিলেক্ট করুন।' : 'Sorry, no items matched. Try exploring all collections or clearing your search filter.')}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (setSelectedCategory) setSelectedCategory('All');
-                  if (onSearchChange) onSearchChange('');
-                }}
-                className="mt-2 px-8 py-3 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-2"
-              >
-                <span>{language === 'bn' ? 'সকল পণ্য দেখুন' : 'Explore All Collections'}</span>
-              </button>
+            </Reveal>
+          )}
+
+          {loadingMore && (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <div className="w-8 h-8 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-bold text-[#ce112d] animate-pulse">
+                {language === 'bn' ? 'লোড হচ্ছে…' : 'Loading more…'}
+              </p>
             </div>
           )}
 
-          {loading && page > 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="w-10 h-10 border-4 border-[#ce112d] border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs font-bold text-[#ce112d] animate-pulse">Loading more...</p>
-            </div>
+          {hasMore && products.length > 0 && (
+            <div ref={sentinelRef} className="h-6" aria-hidden />
           )}
 
-          {/* Load More */}
-          {hasMore && !loading && (
-            <div className="flex flex-col items-center justify-center pt-10 pb-4">
-              <button
-                onClick={() => setPage(prev => prev + 1)}
-                className="group inline-flex items-center gap-2.5 px-8 py-3 bg-zinc-900 hover:bg-[#ce112d] text-white rounded-xl shadow-md hover:shadow-red-900/25 active:scale-95 transition-all duration-300 text-xs font-black uppercase tracking-wider"
-              >
-                <span>{language === 'bn' ? 'আরো পণ্য দেখুন' : 'Explore More Designs'}</span>
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+          {!hasMore && products.length > 0 && (
+            <p className="text-center text-xs font-semibold text-zinc-400 uppercase tracking-wider py-8">
+              {language === 'bn' ? 'আর কোনো পণ্য নেই' : 'No more products'}
+            </p>
           )}
         </section>
       </div>
 
-      <HomeReviews />
+      <Reveal>
+        <HomeReviews />
+      </Reveal>
 
       {/* Trust & Guarantee Strip */}
-      <section className="w-full border-t border-b border-zinc-100 bg-zinc-50/70 mt-14 py-8">
-        <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80">
-            {[
-              { 
-                icon: <Truck size={20} strokeWidth={1.8} />, 
-                title: language === 'bn' ? 'ফ্রি ডেলিভারি' : 'Free Delivery', 
-                sub: language === 'bn' ? 'মীরসরাই এলাকায়' : 'Within Mirsarai' 
-              },
-              { 
-                icon: <CreditCard size={20} strokeWidth={1.8} />, 
-                title: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', 
-                sub: language === 'bn' ? 'হাতে পেয়ে পেমেন্ট' : 'Pay on receipt' 
-              },
-              { 
-                icon: <CheckCircle size={20} strokeWidth={1.8} />, 
-                title: language === 'bn' ? '১০০% গুণমান' : '100% Quality', 
-                sub: language === 'bn' ? 'প্রিমিয়াম ফেব্রিক' : 'Premium finish' 
-              },
-            ].map((item, i) => (
-              <div key={i} className={`flex items-center justify-center text-left gap-3.5 sm:gap-4 py-2 sm:py-0 px-2 sm:px-6 ${i > 0 ? 'pt-4 sm:pt-0' : ''}`}>
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-sm border border-zinc-200/60 flex items-center justify-center text-[#ce112d] shrink-0">
-                  {item.icon}
+      <Reveal>
+        <section className="w-full border-t border-b border-zinc-100 bg-zinc-50/70 mt-14 py-8">
+          <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80">
+              {[
+                {
+                  icon: <Truck size={20} strokeWidth={1.8} />,
+                  title: language === 'bn' ? 'ফ্রি ডেলিভারি' : 'Free Delivery',
+                  sub: language === 'bn' ? 'মীরসরাই এলাকায়' : 'Within Mirsarai',
+                },
+                {
+                  icon: <CreditCard size={20} strokeWidth={1.8} />,
+                  title: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery',
+                  sub: language === 'bn' ? 'হাতে পেয়ে পেমেন্ট' : 'Pay on receipt',
+                },
+                {
+                  icon: <CheckCircle size={20} strokeWidth={1.8} />,
+                  title: language === 'bn' ? '১০০% গুণমান' : '100% Quality',
+                  sub: language === 'bn' ? 'প্রিমিয়াম ফেব্রিক' : 'Premium finish',
+                },
+              ].map((item, i) => (
+                <div key={i} className={`flex items-center justify-center text-left gap-3.5 sm:gap-4 py-2 sm:py-0 px-2 sm:px-6 ${i > 0 ? 'pt-4 sm:pt-0' : ''}`}>
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white shadow-sm border border-zinc-200/60 flex items-center justify-center text-[#ce112d] shrink-0">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900 leading-tight">{item.title}</p>
+                    <p className="text-xs text-zinc-500 font-medium leading-normal mt-0.5">{item.sub}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-zinc-900 leading-tight">{item.title}</p>
-                  <p className="text-xs text-zinc-500 font-medium leading-normal mt-0.5">{item.sub}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
 
       <ProductModal
         product={selectedProduct}
