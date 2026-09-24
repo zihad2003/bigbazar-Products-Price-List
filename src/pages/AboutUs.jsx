@@ -1,45 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, MapPin } from 'lucide-react';
 import { STORE, btnBase, bnFont } from '../components/EditorialShell';
 import Reveal from '../components/Reveal';
+import { bigBazarApi } from '../api/client';
+import { getAllSubcategories, resolveSubcategoryImage } from '../data/categories';
+import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /**
  * Easy-to-edit media constants for the About page.
  * Contact/maps come from shared STORE — change photos here later.
+ * Subcategories under “এক ছাদের নিচে” load live from admin settings.
  */
 const ABOUT = {
-  // TODO: replace each URL with real photo paths when ready
   images: {
-    hero: '', // portrait 4:5 — showroom / family fashion hero
-    bridal: '', // portrait 4:5 — বিয়ের সাজনি / bridal
-    categories: {
-      saree: '', // 3:4
-      ladies: '',
-      burqa: '',
-      abaya: '',
-      hijab: '',
-      gents: '',
-      kids: '',
-      home: '',
-      prayer: '',
-      fabric: '',
-    },
+    hero: '/img/about/showroom.jpg',
+    bridal: '/img/about/biyer-sajani.jpg',
   },
 };
-
-const CATEGORIES = [
-  { key: 'saree', label: 'শাড়ি ও থান' },
-  { key: 'ladies', label: 'লেডিস ওয়্যার' },
-  { key: 'burqa', label: 'বোরকা' },
-  { key: 'abaya', label: 'আবায়া' },
-  { key: 'hijab', label: 'হিজাব' },
-  { key: 'gents', label: 'জেন্টস ক্যাজুয়াল' },
-  { key: 'kids', label: 'কিডস (১–১৫)' },
-  { key: 'home', label: 'হোম টেক্সটাইল' },
-  { key: 'prayer', label: 'জায়নামাজ' },
-  { key: 'fabric', label: 'গজ কাপড়' },
-];
 
 /** Gradient placeholder until real photo URL is set */
 function PhotoSlot({ src, alt, aspect = 'aspect-[4/5]', className = '' }) {
@@ -50,10 +29,10 @@ function PhotoSlot({ src, alt, aspect = 'aspect-[4/5]', className = '' }) {
           src={src}
           alt={alt}
           loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
-        // TODO: drop real photo URL into ABOUT.images
         <div
           className="absolute inset-0 bg-gradient-to-br from-[#EDE7DC] via-[#E0D8CC] to-[#D2C8BA]"
           aria-hidden
@@ -64,6 +43,36 @@ function PhotoSlot({ src, alt, aspect = 'aspect-[4/5]', className = '' }) {
 }
 
 export default function AboutUs() {
+  const { language } = useLanguage();
+  const [subcategoriesData, setSubcategoriesData] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await bigBazarApi.from('site_settings').select('*');
+        if (cancelled || !data) return;
+        if (data.subcategories && typeof data.subcategories === 'object') {
+          setSubcategoriesData(data.subcategories);
+          return;
+        }
+        if (Array.isArray(data)) {
+          const settingsMap = {};
+          data.forEach((row) => {
+            if (row?.key) settingsMap[row.key] = row.value;
+          });
+          if (settingsMap.subcategories && typeof settingsMap.subcategories === 'object') {
+            setSubcategoriesData(settingsMap.subcategories);
+          }
+        }
+      } catch (_) {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // All admin-managed subcategories (with images) — grows as superadmin adds more
+  const showcaseSubs = getAllSubcategories(subcategoriesData, 48);
+
   return (
     <div
       className="about-page min-h-screen bg-[#FAF7F2] text-[#1F1D1B]"
@@ -124,8 +133,8 @@ export default function AboutUs() {
           <Reveal className="lg:pl-4">
             <PhotoSlot
               src={ABOUT.images.hero}
-              alt="Big Bazar বারইয়ারহাট শোরুম"
-              aspect="aspect-[4/5]"
+              alt="Big Bazar বারইয়ারহাট শোরুম — জমিদার প্লাজা"
+              aspect="aspect-[4/3] lg:aspect-[5/4]"
               className="w-full max-w-md mx-auto lg:max-w-none rounded-sm"
             />
           </Reveal>
@@ -204,42 +213,80 @@ export default function AboutUs() {
           </div>
         </section>
 
-        {/* 5. CATEGORIES */}
+        {/* 5. SUBCATEGORIES — live from admin (images + labels) */}
         <section className="mt-16 md:mt-24">
           <Reveal>
             <h2
-              className="text-2xl md:text-3xl font-bold text-[#1F1D1B] mb-8 md:mb-10"
+              className="text-2xl md:text-3xl font-bold text-[#1F1D1B] mb-3 md:mb-4"
               style={bnFont}
             >
               এক ছাদের নিচে যা পাবেন
             </h2>
+            <p className="text-[15px] text-[#5C574F] mb-8 md:mb-10 max-w-xl leading-relaxed">
+              শাড়ি থেকে ব্রাইডাল, কিডস থেকে হোম টেক্সটাইল — কালেকশন দেখতে ট্যাপ করুন।
+            </p>
           </Reveal>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {CATEGORIES.map((cat) => (
-              <Reveal key={cat.key}>
-                <div className="group relative overflow-hidden rounded-sm bg-[#E8E2D9] aspect-[3/4]">
-                  {ABOUT.images.categories[cat.key] ? (
-                    <img
-                      src={ABOUT.images.categories[cat.key]}
-                      alt={cat.label}
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                    />
-                  ) : (
-                    // TODO: ABOUT.images.categories.${cat.key}
-                    <div
-                      className="absolute inset-0 bg-gradient-to-br from-[#EDE7DC] via-[#DDD5C8] to-[#C9BFB0] transition-transform duration-700 ease-out group-hover:scale-105"
-                      aria-hidden
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1F1D1B]/75 via-[#1F1D1B]/15 to-transparent" />
-                  <p className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-[14px] sm:text-[15px] font-semibold text-[#FAF7F2] leading-snug">
-                    {cat.label}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+
+          {showcaseSubs.length === 0 ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="aspect-[3/4] rounded-sm bg-[#E8E2D9] animate-pulse"
+                  aria-hidden
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {showcaseSubs.map((sub) => {
+                const label =
+                  language === 'bn'
+                    ? (sub.name_bn || sub.name_en || sub.id)
+                    : (sub.name_en || sub.name_bn || sub.id);
+                const imgSrc = resolveSubcategoryImage(sub);
+                const cat = sub._category;
+                const to =
+                  cat && cat !== 'All'
+                    ? `/products?category=${encodeURIComponent(cat)}&subcategory=${encodeURIComponent(sub.id)}`
+                    : `/products?subcategory=${encodeURIComponent(sub.id)}`;
+
+                return (
+                  <Reveal key={sub.id}>
+                    <Link
+                      to={to}
+                      className="group relative block overflow-hidden rounded-sm bg-[#E8E2D9] aspect-[3/4] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B3122B]/50"
+                    >
+                      {imgSrc ? (
+                        <img
+                          src={getOptimizedUrl(imgSrc, mediaSizes.subcat)}
+                          alt={label}
+                          loading="lazy"
+                          decoding="async"
+                          width={280}
+                          height={360}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        />
+                      ) : (
+                        <div
+                          className="absolute inset-0 bg-gradient-to-br from-[#EDE7DC] via-[#DDD5C8] to-[#C9BFB0] flex items-center justify-center"
+                          aria-hidden
+                        >
+                          <span className="text-3xl font-bold text-[#1F1D1B]/25">
+                            {(label || '?')[0]}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1F1D1B]/75 via-[#1F1D1B]/15 to-transparent" />
+                      <p className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-[14px] sm:text-[15px] font-semibold text-[#FAF7F2] leading-snug">
+                        {label}
+                      </p>
+                    </Link>
+                  </Reveal>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
 
