@@ -3642,6 +3642,61 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               </span>
             </div>
 
+            {/* Admin upload — shows on homepage featured strip */}
+            <form
+              className="rounded-lg border border-white/10 bg-[#121215] p-4 space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const payload = {
+                  customer_name: String(fd.get('customer_name') || '').trim() || 'Customer',
+                  rating: parseInt(fd.get('rating'), 10) || 5,
+                  comment: String(fd.get('comment') || '').trim(),
+                  product_name: String(fd.get('product_name') || '').trim() || null,
+                };
+                if (!payload.comment) {
+                  setAlertModal({ isOpen: true, title: 'Missing', message: 'Comment is required', type: 'error' });
+                  return;
+                }
+                try {
+                  const token = getToken();
+                  const endpoint = (!API_URL || API_URL === '/')
+                    ? '/api/admin/reviews'
+                    : `${API_URL.replace(/\/$/, '')}/api/admin/reviews`;
+                  const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(payload),
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok) throw new Error(json.error || 'Failed');
+                  e.currentTarget.reset();
+                  await fetchReviews();
+                  setAlertModal({ isOpen: true, title: 'Saved', message: 'Review added — it will show on the homepage.', type: 'success' });
+                } catch (err) {
+                  setAlertModal({ isOpen: true, title: 'Error', message: err.message || 'Could not save', type: 'error' });
+                }
+              }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Add homepage / store review</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <input name="customer_name" placeholder="Customer name" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40" />
+                <select name="rating" defaultValue="5" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                  {[5, 4, 3, 2, 1].map((n) => (
+                    <option key={n} value={n}>{n} stars</option>
+                  ))}
+                </select>
+                <input name="product_name" placeholder="Product (optional)" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40" />
+              </div>
+              <textarea name="comment" required rows={3} placeholder="Review text..." className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40 resize-none" />
+              <button type="submit" className="px-4 py-2 rounded-lg bg-[#ce112d] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#b00e26]">
+                Publish review
+              </button>
+            </form>
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
               {(() => {
                 const avgRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
@@ -3690,7 +3745,31 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           <Star key={s} size={12} className={s <= r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-zinc-700'} />
                         ))}
                       </div>
-                      <span className="text-[10px] text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-zinc-500">{new Date(r.created_at).toLocaleDateString()}</span>
+                        <button
+                          type="button"
+                          className="text-[10px] text-red-400 hover:text-red-300"
+                          onClick={async () => {
+                            try {
+                              const token = getToken();
+                              const endpoint = (!API_URL || API_URL === '/')
+                                ? `/api/admin/reviews/${r.id}`
+                                : `${API_URL.replace(/\/$/, '')}/api/admin/reviews/${r.id}`;
+                              const res = await fetch(endpoint, {
+                                method: 'DELETE',
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                              });
+                              if (!res.ok) throw new Error('Delete failed');
+                              await fetchReviews();
+                            } catch (err) {
+                              setAlertModal({ isOpen: true, title: 'Error', message: err.message, type: 'error' });
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     {r.comment && (
                       <p className="text-[12px] text-zinc-300 leading-relaxed line-clamp-3">"{r.comment}"</p>

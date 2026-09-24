@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, ArrowRight, ShoppingBag, Truck, CreditCard, CheckCircle, ChevronRight, X } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
+import HomeReviews from '../components/HomeReviews';
 import { ProductCard, ProductSkeleton } from '../components/ProductCard';
 import ProductModal from '../components/modals/ProductModal';
 import TickerAnnouncement from '../components/TickerAnnouncement';
@@ -189,7 +190,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
       {settingsLoading && (
         <section className="w-full">
-          <div className="w-full aspect-[5/4] sm:aspect-[16/9] lg:aspect-[12/5] max-h-[72vh] lg:max-h-[640px] bg-neutral-100 animate-pulse" />
+          <div className="w-full aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] max-h-[78vh] lg:max-h-[560px] bg-neutral-100 animate-pulse" />
         </section>
       )}
 
@@ -370,6 +371,8 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
           )}
         </section>
       </div>
+
+      <HomeReviews />
 
       {/* Trust & Guarantee Strip */}
       <section className="w-full border-t border-b border-zinc-100 bg-zinc-50/70 mt-14 py-8">

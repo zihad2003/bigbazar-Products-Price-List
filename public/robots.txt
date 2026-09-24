@@ -1,8 +1,6 @@
-# Fallback only — live rules served by functions/robots.txt.js
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /api/auth/
 Disallow: /checkout
 Disallow: /account
 

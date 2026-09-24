@@ -1,29 +1,7 @@
 /**
  * Cloudflare Pages Function — Dynamic Cached XML Sitemap.
- * Origin-aware via PUBLIC_SITE_ORIGIN; paginates all published products.
  */
-
-const PAGE_SIZE = 100;
-
-async function fetchPublishedProducts(domain) {
-  const all = [];
-  let page = 0;
-
-  while (page < 50) {
-    const apiRes = await fetch(
-      `${domain}/api/products?status=published&limit=${PAGE_SIZE}&page=${page}`
-    );
-    if (!apiRes.ok) break;
-    const apiJson = await apiRes.json();
-    const batch = Array.isArray(apiJson?.data) ? apiJson.data : [];
-    if (!batch.length) break;
-    all.push(...batch);
-    if (batch.length < PAGE_SIZE) break;
-    page += 1;
-  }
-
-  return all;
-}
+import { buildSitemapXml } from './sitemap-builder.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -32,9 +10,7 @@ export async function onRequest(context) {
   const cache = caches.default;
 
   let response = await cache.match(cacheKey);
-  if (response) {
-    return response;
-  }
+  if (response) return response;
 
   let domain = url.origin;
   try {
@@ -42,82 +18,17 @@ export async function onRequest(context) {
     if (preferred) domain = new URL(preferred).origin;
   } catch (_) {}
 
-  const staticRoutes = [
-    '',
-    '/products',
-    '/about-us',
-    '/store-locations',
-    '/faq',
-    '/shipping',
-    '/returns',
-    '/size-guide',
-    '/contact-us',
-    '/privacy-policy',
-    '/terms',
-  ];
-
-  const currentDate = new Date().toISOString().split('T')[0];
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-
-  for (const r of staticRoutes) {
-    const loc = `${domain}${r}`;
-    const priority = r === '' ? '1.0' : r === '/products' ? '0.9' : '0.8';
-    xml += `  <url>\n`;
-    xml += `    <loc>${loc}</loc>\n`;
-    xml += `    <lastmod>${currentDate}</lastmod>\n`;
-    xml += `    <changefreq>daily</changefreq>\n`;
-    xml += `    <priority>${priority}</priority>\n`;
-    xml += `  </url>\n`;
-  }
-
-  try {
-    let products = null;
-    try {
-      products = await fetchPublishedProducts(domain);
-      if (!products.length) products = null;
-    } catch (_) {}
-
-    if (!products) {
-      try {
-        const prodRes = await fetch(`${domain}/all_products.json`);
-        if (prodRes.ok) {
-          const json = await prodRes.json();
-          if (Array.isArray(json)) products = json;
-        }
-      } catch (_) {}
-    }
-
-    if (Array.isArray(products)) {
-      for (const p of products) {
-        if (p.id) {
-          const lastMod = p.created_at
-            ? String(p.created_at).split('T')[0]
-            : currentDate;
-          xml += `  <url>\n`;
-          xml += `    <loc>${domain}/product/${p.id}</loc>\n`;
-          xml += `    <lastmod>${lastMod}</lastmod>\n`;
-          xml += `    <changefreq>weekly</changefreq>\n`;
-          xml += `    <priority>0.7</priority>\n`;
-          xml += `  </url>\n`;
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Sitemap products fetch warning:', err);
-  }
-
-  xml += `</urlset>`;
-
+  const xml = await buildSitemapXml(domain);
   response = new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+      'Cache-Control': 'public, max-age=3600, s-maxage=86400',
     },
   });
 
-  context.waitUntil(cache.put(cacheKey, response.clone()));
+  try {
+    context.waitUntil(cache.put(cacheKey, response.clone()));
+  } catch (_) {}
 
   return response;
 }

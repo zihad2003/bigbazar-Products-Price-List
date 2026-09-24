@@ -6,8 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import apiApp from './functions/api/[[path]].js';
+import { buildSitemapXml, buildRobotsTxt } from './functions/sitemap-builder.js';
 
-// Load environment variables from .env
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,32 +16,47 @@ const distPath = path.join(__dirname, 'dist');
 
 const app = new Hono();
 
-// Inject Hostinger / Node.js environment variables into Hono context
 app.use('*', async (c, next) => {
   c.env = { ...(c.env || {}), ...process.env };
   await next();
 });
 
-// Serve uploaded static images first (before API routing intercepts them)
+const siteOrigin = () =>
+  String(process.env.PUBLIC_SITE_ORIGIN || 'https://onlinebigbazar.com').replace(/\/$/, '');
+
+// Dynamic sitemap + robots BEFORE static/SPA fallback (Hostinger was serving HTML before)
+app.get('/sitemap.xml', async (c) => {
+  try {
+    const xml = await buildSitemapXml(siteOrigin());
+    return c.body(xml, 200, {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    });
+  } catch (err) {
+    console.error('sitemap error:', err);
+    return c.text('Sitemap unavailable', 500);
+  }
+});
+
+app.get('/robots.txt', (c) => {
+  return c.text(buildRobotsTxt(siteOrigin()), 200, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'public, max-age=86400',
+  });
+});
+
 app.use('/api/img/*', serveStatic({ root: './dist' }));
 app.use('/api/settings-img/*', serveStatic({ root: './dist' }));
 
-// apiApp already uses basePath('/api'). Mount at "/" only — mounting at "/api"
-// would strip the prefix and make /api/auth/login 404 ("Endpoint not found").
 app.route('/', apiApp);
 
-// Serve static assets from the dist folder built by Vite
 app.use('/assets/*', serveStatic({ root: './dist' }));
 app.use('/b.jpg', serveStatic({ root: './dist' }));
 app.use('/favicon.ico', serveStatic({ root: './dist' }));
-app.use('/robots.txt', serveStatic({ root: './dist' }));
-app.use('/sitemap.xml', serveStatic({ root: './dist' }));
 app.use('/*', serveStatic({ root: './dist' }));
 
-// SPA Fallback: Serve dist/index.html for any client-side routes (e.g. /admin, /product/123)
 app.get('*', (c) => {
   const reqPath = c.req.path;
-  // If it's an API route that wasn't matched, return 404 JSON
   if (reqPath.startsWith('/api/')) {
     return c.json({ error: 'Endpoint not found' }, 404);
   }
@@ -54,13 +69,12 @@ app.get('*', (c) => {
   return c.text('Frontend build not found. Please run "npm run build" first.', 500);
 });
 
-// Port configuration for Hostinger / VPS / Production
 const port = parseInt(process.env.PORT || '3000', 10);
 const host = '0.0.0.0';
 
 console.log(`=============================================`);
 console.log(`BigBazar Production Server starting...`);
-console.log(`Domain: ${process.env.PUBLIC_SITE_ORIGIN || 'https://onlinebigbazar.com'}`);
+console.log(`Domain: ${siteOrigin()}`);
 console.log(`Server listening on: http://${host}:${port}`);
 console.log(`Database Host: ${process.env.DB_HOST || 'Not specified'}`);
 console.log(`=============================================`);

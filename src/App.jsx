@@ -62,11 +62,12 @@ const NotFound = () => (
 );
 
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
-    trackPageview(pathname);
-  }, [pathname]);
+    // Track every SPA view (path + query) so GA sees each page
+    trackPageview(`${pathname}${search || ''}`);
+  }, [pathname, search]);
   return null;
 }
 

@@ -247,21 +247,28 @@ const pageData = {
     title: 'গোপনীয়তা নীতি (Privacy Policy)',
     icon: <Shield className="w-8 h-8 text-[#ce112d]" />,
     content: (
-      <div className="space-y-6">
-        <p className="text-zinc-600 leading-relaxed text-sm md:text-base">
-          আমরা আপনার তথ্যের গোপনীয়তাকে সর্বোচ্চ গুরুত্ব দিয়ে থাকি। বিগ বাজার ওয়েবসাইটে অর্ডার বা ট্র্যাকিং করার সময় সংগৃহীত ব্যক্তিগত তথ্য কীভাবে সুরক্ষিত রাখা হয় তা নিচে ব্যাখ্যা করা হলো:
+      <div className="space-y-6 text-sm text-zinc-600 leading-relaxed">
+        <p>
+          Big Bazar (<strong className="text-zinc-900">onlinebigbazar.com</strong>) আপনার ব্যক্তিগত তথ্যের গোপনীয়তাকে গুরুত্ব দেয়। এই নীতি ব্যাখ্যা করে আমরা কী সংগ্রহ করি, কেন করি এবং কীভাবে সুরক্ষা করি।
         </p>
-
-        <div className="space-y-4 text-xs md:text-sm text-zinc-500 leading-relaxed font-medium">
-          <p>
-            <strong className="text-zinc-800">ব্যক্তিগত তথ্য সংগ্রহ:</strong> আমরা শুধুমাত্র কাস্টমারের নাম, ফোন নম্বর, ডেলিভারির ঠিকানা এবং বিশেষ অর্ডার নোট সংগ্রহ করি যা পণ্যটি আপনার কাছে সফলভাবে পৌঁছে দিতে প্রয়োজন।
-          </p>
-          <p>
-            <strong className="text-zinc-800">তথ্য ব্যবহার:</strong> কোনো অবস্থাতেই আপনার এই তথ্য বা ফোন নম্বর আমরা অন্য কোনো তৃতীয় পক্ষ বা মার্কেটিং এজেন্সির কাছে বিক্রি বা লিক করি না।
-          </p>
-          <p>
-            <strong className="text-zinc-800">পেমেন্ট সিকিউরিটি:</strong> বিকাশ বা নগদে পেমেন্ট করার সময় তা সম্পূর্ণ সুরক্ষিত ও থার্ড-পার্টি অথেনটিকেটেড গেটওয়ে দিয়ে প্রসেস করা হয়।
-          </p>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-5">
+            <h4 className="font-bold text-zinc-900 text-sm mb-2">১. আমরা কী তথ্য সংগ্রহ করি</h4>
+            <ul className="list-disc list-inside space-y-1.5 text-zinc-600 text-xs md:text-sm">
+              <li>অর্ডারের জন্য নাম, মোবাইল নম্বর, ডেলিভারি ঠিকানা</li>
+              <li>অ্যাকাউন্ট থাকলে ইমেইল / Google সাইন-ইন তথ্য</li>
+              <li>পেমেন্ট রেফারেন্স (বিকাশ নম্বরের শেষ অংশ) — কার্ড তথ্য আমরা সংরক্ষণ করি না</li>
+              <li>ওয়েবসাইট ব্যবহারের বেসিক অ্যানালিটিক্স (পৃষ্ঠা ভিউ)</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-5">
+            <h4 className="font-bold text-zinc-900 text-sm mb-2">২. তথ্য কীভাবে ব্যবহার হয়</h4>
+            <p className="text-xs md:text-sm">অর্ডার ডেলিভারি, কাস্টমার সাপোর্ট, অর্ডার স্ট্যাটাস আপডেট এবং সার্ভিস উন্নত করতে। বিপণন এজেন্সির কাছে আমরা আপনার ফোন নম্বর বিক্রি করি না।</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-5">
+            <h4 className="font-bold text-zinc-900 text-sm mb-2">৩. নিরাপত্তা ও অধিকার</h4>
+            <p className="text-xs md:text-sm">তথ্য শুধু প্রয়োজনীয় স্টাফ ও ডেলিভারি পার্টনারের সাথে শেয়ার হয়। তথ্য সংশোধন বা মুছে ফেলার অনুরোধ: <a href="tel:01857045449" className="text-[#ce112d] font-semibold">01857045449</a> বা <a href="mailto:infobigbazar01@gmail.com" className="text-[#ce112d] font-semibold">infobigbazar01@gmail.com</a></p>
+          </div>
         </div>
       </div>
     )
@@ -270,22 +277,15 @@ const pageData = {
     title: 'সেবার শর্তাবলী (Terms of Service)',
     icon: <FileText className="w-8 h-8 text-[#ce112d]" />,
     content: (
-      <div className="space-y-6">
-        <p className="text-zinc-600 leading-relaxed text-sm md:text-base">
-          বিগ বাজার ওয়েবসাইটে কেনাকাটা করার জন্য আপনার ও আমাদের মধ্যে গড়ে ওঠা চুক্তি ও শর্তসমূহ নিচে উল্লেখ করা হলো:
-        </p>
-
-        <div className="space-y-4 text-xs md:text-sm text-zinc-500 leading-relaxed font-medium">
-          <p>
-            ১. কাস্টমারকে অর্ডারের সময় তার সঠিক ও সচল নাম, ঠিকানা এবং ফোন নম্বর ব্যবহার করতে হবে। ভুল তথ্যের কারণে পার্সেল রিটার্ন হলে তার ডেলিভারি চার্জের দায়িত্ব কোম্পানি বহন করবে না।
-          </p>
-          <p>
-            ২. স্টক এবং টেকনিক্যাল সমস্যার কারণে অর্ডার ডেলিভারিতে বিলম্ব কিংবা পরিবর্তন করার অধিকার প্রতিষ্ঠান সংরক্ষণ করে।
-          </p>
-          <p>
-            ৩. আমাদের পোশাকে উল্লেখিত প্রাইস বা কালার ফটোগ্রাফিক আলোর পার্থক্যের কারণে সামান্য ১৫-২০% ভ্যারিয়েশন হতে পারে যা গ্রাহককে বিবেচনা করার অনুরোধ করা হলো।
-          </p>
-        </div>
+      <div className="space-y-5 text-sm text-zinc-600 leading-relaxed">
+        <p>onlinebigbazar.com ব্যবহার করে আপনি নিচের শর্তাবলীতে সম্মত হচ্ছেন।</p>
+        <ol className="space-y-3 list-decimal list-inside text-xs md:text-sm">
+          <li><strong className="text-zinc-900">সঠিক তথ্য:</strong> অর্ডারের সময় সঠিক নাম, ফোন ও ঠিকানা দিতে হবে। ভুল ঠিকানায় রিটার্ন হলে ডেলিভারি চার্জ গ্রাহক বহন করতে পারেন।</li>
+          <li><strong className="text-zinc-900">মূল্য ও স্টক:</strong> ওয়েবসাইটের মূল্য ও স্টক পরিবর্তন হতে পারে। কনফার্মেশনের আগে স্টক শেষ হলে বিকল্প বা রিফান্ড দেওয়া হবে।</li>
+          <li><strong className="text-zinc-900">ছবির তারতম্য:</strong> আলোর কারণে রঙ ১০–২০% ভিন্ন দেখাতে পারে — এটা স্বাভাবিক।</li>
+          <li><strong className="text-zinc-900">পেমেন্ট:</strong> COD, বিকাশ অগ্রিম বা QR গ্রহণযোগ্য। সম্পূর্ণ পেমেন্ট ভেরিফিকেশন অ্যাডমিন নিশ্চিত করে।</li>
+          <li><strong className="text-zinc-900">আচরণ:</strong> অপব্যবহার, ভুয়া অর্ডার বা হয়রানি করলে অর্ডার বাতিলের অধিকার সংরক্ষিত।</li>
+        </ol>
       </div>
     )
   },
@@ -293,15 +293,21 @@ const pageData = {
     title: 'রিফান্ড পলিসি (Refund Policy)',
     icon: <RefreshCw className="w-8 h-8 text-[#ce112d]" />,
     content: (
-      <div className="space-y-6">
-        <p className="text-zinc-600 leading-relaxed text-sm md:text-base">
-          যেসকল ক্ষেত্রে প্রোডাক্ট ড্যামেজ বা মিসিং থাকার দরুন আমরা পোশাকটি বদলে দিতে অক্ষম হই, বা যদি কোনো পেমেন্ট করার পর স্টক না থাকার কারণে অর্ডার ক্যান্সেল হয়, সেইক্ষেত্রে আমরা খুব সহজে ১০০% রিফান্ড দিয়ে থাকি।
-        </p>
-
-        <div className="p-6 bg-zinc-50 border border-zinc-150 rounded-3xl mt-4 space-y-4 text-xs md:text-sm text-zinc-500 leading-relaxed font-medium">
-          <p>
-            <strong className="text-zinc-800">প্রক্রিয়া:</strong> রিফান্ড আবেদন যাচাই এবং সত্যতা পাওয়ার পরবর্তী ৩ থেকে ৫ কার্যদিবসের মধ্যে আপনার ব্যবহৃত বিকাশ, নগদ অথবা ব্যাংক অ্যাকাউন্টে সম্পূর্ণ মূল্য ফেরত পাঠিয়ে দেওয়া হবে।
-          </p>
+      <div className="space-y-6 text-sm text-zinc-600 leading-relaxed">
+        <p>নিচের ক্ষেত্রে Big Bazar সম্পূর্ণ বা আংশিক রিফান্ড প্রদান করে:</p>
+        <div className="grid gap-3">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+            <h4 className="font-bold text-emerald-800 text-sm mb-2">রিফান্ড পাবেন যখন</h4>
+            <ul className="list-disc list-inside text-xs md:text-sm space-y-1.5 text-emerald-900/80">
+              <li>স্টক না থাকায় অর্ডার ক্যান্সেল</li>
+              <li>ডেলিভারিতে প্রোডাক্ট মিসিং / মারাত্মক ড্যামেজ এবং এক্সচেঞ্জ সম্ভব নয়</li>
+              <li>ভুল পণ্য পাঠানো হয়েছে এবং রিপ্লেসমেন্ট সম্ভব নয়</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+            <h4 className="font-bold text-zinc-900 text-sm mb-2">প্রক্রিয়া</h4>
+            <p className="text-xs md:text-sm">হোয়াটসঅ্যাপ / কলে জানান → যাচাই → সাধারণত <strong>৩–৫ কার্যদিবস</strong>-এ বিকাশ/নগদ/ব্যাংকে ফেরত। অগ্রিম কনফার্মেশন ফি প্রযোজ্য ক্ষেত্রে নীতি অনুযায়ী সমন্বয় হয়।</p>
+          </div>
         </div>
       </div>
     )
@@ -323,26 +329,23 @@ export default function StaticPage({ path }) {
   }
 
   return (
-    <div className="min-h-[60vh] py-16 md:py-24 px-4 md:px-6 bg-white font-sans text-zinc-900">
-      <div className="max-w-3xl mx-auto space-y-12">
-        {/* Navigation */}
-        <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-900 hover:border-zinc-300 font-bold uppercase tracking-wider text-[10px] transition-all bg-zinc-55/40 px-5 py-2.5 rounded-full border border-zinc-200 duration-300">
-          <ArrowLeft size={14} /> হোম ব্যাক করুন (Back to Home)
+    <div className="min-h-[70vh] py-10 md:py-16 px-4 md:px-6 bg-gradient-to-b from-zinc-50 to-white font-sans text-zinc-900">
+      <div className="max-w-3xl mx-auto space-y-8">
+        <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-900 font-semibold tracking-wide text-[11px] transition-colors">
+          <ArrowLeft size={14} /> {path.startsWith('/') ? 'হোমে ফিরুন' : 'Back home'}
         </Link>
 
-        {/* Title Block */}
-        <div className="flex items-center gap-4 border-b border-zinc-150 pb-6">
-          <div className="w-16 h-16 rounded-3xl bg-zinc-50 flex items-center justify-center border border-zinc-150 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center border border-zinc-200 shadow-sm shrink-0">
             {data.icon}
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black italic uppercase tracking-tight text-zinc-900 mb-1">{data.title}</h1>
-            <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest leading-none">Big Bazar Customer Center</p>
+          <div className="min-w-0 pt-1">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">{data.title}</h1>
+            <p className="text-zinc-400 text-[11px] font-medium mt-1">Big Bazar · Baraiyarhat</p>
           </div>
         </div>
 
-        {/* Content Block */}
-        <div className="bg-white border border-zinc-150 rounded-[32px] p-8 md:p-12 shadow-sm">
+        <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 md:p-10 shadow-sm">
           {data.content}
         </div>
       </div>

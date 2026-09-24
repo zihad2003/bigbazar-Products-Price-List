@@ -6,6 +6,7 @@ import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import ProductGallery from '../components/ProductGallery';
 import ProductTabs from '../components/ProductTabs';
+import ProductReviews from '../components/ProductReviews';
 import RecentlyViewed from '../components/RecentlyViewed';
 import AlertModal from '../components/modals/AlertModal';
 import { useCart } from '../contexts/CartContext';
@@ -679,6 +680,11 @@ export default function ProductDetails() {
             </div>
 
             {/* Recently Viewed Products Section — Full Width from Left */}
+            {product && (
+              <div className="max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
+                <ProductReviews productId={product.id} productName={product.name} />
+              </div>
+            )}
             {product && <RecentlyViewed currentProductId={product.id} />}
 
             <AlertModal isOpen={showAlert} onClose={() => setShowAlert(false)} type="success" title="Copied!" message="Link copied to clipboard!" />

@@ -1858,7 +1858,8 @@ app.get('/orders/track', async (c) => {
 // ============================================
 app.get('/reviews', async (c) => {
   const pid = c.req.query('product_id') || '';
-  const cacheKey = `cache:reviews:${pid}`;
+  const featured = c.req.query('featured') === '1' || c.req.query('home') === '1';
+  const cacheKey = `cache:reviews:${pid || 'all'}:${featured ? 'feat' : 'all'}`;
   const cached = await kvGet(c, cacheKey);
   if (cached) {
     c.header('Cache-Control', 'public, max-age=60, s-maxage=300');
@@ -1866,7 +1867,20 @@ app.get('/reviews', async (c) => {
   }
 
   const conn = getDb(c.env);
-  const res = await conn.execute('SELECT * FROM reviews' + (pid ? ' WHERE product_id = ?' : '') + ' ORDER BY created_at DESC', pid ? [pid] : []);
+  let res;
+  if (featured) {
+    // Home strip: high-rated public feedback (with or without product)
+    res = await conn.execute(
+      'SELECT * FROM reviews WHERE rating >= 4 ORDER BY created_at DESC LIMIT 24'
+    );
+  } else if (pid) {
+    res = await conn.execute(
+      'SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC',
+      [pid]
+    );
+  } else {
+    res = await conn.execute('SELECT * FROM reviews ORDER BY created_at DESC LIMIT 200');
+  }
   const responseData = { data: res };
   await kvSet(c, cacheKey, responseData, 120);
   c.header('Cache-Control', 'public, max-age=60, s-maxage=300');
@@ -1874,15 +1888,53 @@ app.get('/reviews', async (c) => {
 });
 
 app.post('/reviews', async (c) => {
-  const r = await c.req.json();
+  if (!(await checkRateLimitKV(c, 'reviews', 8, 60000))) {
+    return c.json({ error: 'Too many review submissions. Please try again later.' }, 429);
+  }
+  const r = await c.req.json().catch(() => ({}));
+  const rating = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+  const comment = String(r.comment || '').trim().slice(0, 1000);
+  const customerName = String(r.customer_name || 'Customer').trim().slice(0, 80);
+  if (!comment && !r.product_id) {
+    return c.json({ error: 'Comment is required' }, 400);
+  }
   const conn = getDb(c.env);
   const id = crypto.randomUUID();
   await conn.execute(
     'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, r.rating || 5, r.comment, r.customer_name, r.product_id, r.product_name]
+    [id, rating, comment || null, customerName, r.product_id || null, r.product_name || null]
+  );
+  await kvDelete(c, 'cache:reviews');
+  try {
+    const keys = ['cache:reviews:all:all', 'cache:reviews:all:feat', `cache:reviews:${r.product_id || ''}:all`];
+    for (const k of keys) await kvDelete(c, k);
+  } catch (_) {}
+  return c.json({ success: true, id });
+});
+
+// Admin can create homepage / product testimonials without a product order
+app.post('/admin/reviews', requireAuth, requireAdmin, async (c) => {
+  const r = await c.req.json().catch(() => ({}));
+  const rating = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
+  const comment = String(r.comment || '').trim().slice(0, 1000);
+  const customerName = String(r.customer_name || 'Customer').trim().slice(0, 80);
+  if (!comment) return c.json({ error: 'Comment is required' }, 400);
+  const conn = getDb(c.env);
+  const id = crypto.randomUUID();
+  await conn.execute(
+    'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, rating, comment, customerName, r.product_id || null, r.product_name || null]
   );
   await kvDelete(c, 'cache:reviews');
   return c.json({ success: true, id });
+});
+
+app.delete('/admin/reviews/:id', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const conn = getDb(c.env);
+  await conn.execute('DELETE FROM reviews WHERE id = ?', [id]);
+  await kvDelete(c, 'cache:reviews');
+  return c.json({ success: true });
 });
 
 // ============================================
@@ -2923,10 +2975,22 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
     }
 
     if (targetProduct) {
+      const orderReply = replyLang === 'en'
+        ? ('Ready to order ' + targetProduct.name + ' (×' + orderQty + '). Fill in your name and delivery address, then submit.')
+        : ('আপনার ' + targetProduct.name + ' (' + orderQty + ' টি) অর্ডারের জন্য নিচে ফরমটি প্রস্তুত করা হয়েছে। অনুগ্রহ করে আপনার নাম ও ডেলিভারির ঠিকানা দিয়ে সাবমিট করুন:');
+      const sessionId = String(body.session_id || '').trim() || crypto.randomUUID();
+      try {
+        await persistAssistantTurn(conn, {
+          sessionId,
+          userId: c.get('customer')?.id || null,
+          userMessage,
+          replyText: orderReply,
+          meta: { order_intent: true, product_id: targetProduct.id },
+        });
+      } catch (_) {}
       return c.json({
-        reply: replyLang === 'en'
-          ? ('Ready to order ' + targetProduct.name + ' (×' + orderQty + '). Fill in your name and delivery address, then submit.')
-          : ('আপনার ' + targetProduct.name + ' (' + orderQty + ' টি) অর্ডারের জন্য নিচে ফরমটি প্রস্তুত করা হয়েছে। অনুগ্রহ করে আপনার নাম ও ডেলিভারির ঠিকানা দিয়ে সাবমিট করুন:'),
+        reply: orderReply,
+        session_id: sessionId,
         order_intent: { product: targetProduct, quantity: orderQty },
         products: [targetProduct],
         total_count: 1,
@@ -3093,8 +3157,27 @@ RULES:
     replyText = faqReply || getSmartFallbackReply(lowerMsg, replyLang);
   }
 
+  // Persist conversation (guest or logged-in) so Admin Conversations works
+  const sessionId = String(body.session_id || '').trim() || crypto.randomUUID();
+  const customer = c.get('customer');
+  try {
+    await persistAssistantTurn(conn, {
+      sessionId,
+      userId: customer?.id || null,
+      userMessage,
+      replyText,
+      meta: {
+        products: (productsRes || []).slice(0, 5).map((p) => ({ id: p.id, name: p.name })),
+        category_query: matchedCategory || searchTerm || '',
+      },
+    });
+  } catch (persistErr) {
+    console.error('assistant persist error:', persistErr?.message || persistErr);
+  }
+
   return c.json({
     reply: replyText,
+    session_id: sessionId,
     products: productsRes,
     total_count: totalAvailable,
     has_more: hasMore,
@@ -3104,6 +3187,40 @@ RULES:
     handoff: false
   });
 });
+
+async function persistAssistantTurn(conn, { sessionId, userId, userMessage, replyText, meta }) {
+  if (!sessionId || !userMessage) return;
+
+  let convId = null;
+  const existing = await conn.execute(
+    'SELECT id FROM conversations WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1',
+    [sessionId]
+  );
+  if (existing?.[0]?.id) {
+    convId = existing[0].id;
+    await conn.execute(
+      'UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, user_id = COALESCE(user_id, ?) WHERE id = ?',
+      [userId, convId]
+    );
+  } else {
+    convId = crypto.randomUUID();
+    await conn.execute(
+      'INSERT INTO conversations (id, session_id, user_id) VALUES (?, ?, ?)',
+      [convId, sessionId, userId]
+    );
+  }
+
+  const userMsgId = crypto.randomUUID();
+  const asstMsgId = crypto.randomUUID();
+  await conn.execute(
+    'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
+    [userMsgId, convId, 'user', userMessage, null]
+  );
+  await conn.execute(
+    'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
+    [asstMsgId, convId, 'assistant', replyText || '', meta ? JSON.stringify(meta) : null]
+  );
+}
 
 
 // Admin Conversation Dashboard APIs (Part 3b)

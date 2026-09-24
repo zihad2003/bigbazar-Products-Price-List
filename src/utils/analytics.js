@@ -54,10 +54,24 @@ export function initAnalytics() {
     }
 }
 
-// --- Page view (call on route change) ---
+// --- Page view (call on every SPA route change) ---
 export function trackPageview(path) {
-    if (window.gtag && GA_ID) window.gtag('event', 'page_view', { page_path: path });
-    if (window.fbq && FB_PIXEL_ID) window.fbq('track', 'PageView');
+    const pagePath = path || (typeof window !== 'undefined' ? window.location.pathname : '/');
+    const pageLocation = typeof window !== 'undefined' ? window.location.href : pagePath;
+    const pageTitle = typeof document !== 'undefined' ? document.title : undefined;
+
+    if (window.gtag && GA_ID) {
+        window.gtag('event', 'page_view', {
+            page_path: pagePath,
+            page_location: pageLocation,
+            page_title: pageTitle,
+            send_to: GA_ID,
+        });
+    }
+    // Meta: only fire PageView on route change after init (init already sent one)
+    if (window.fbq && FB_PIXEL_ID && initialized) {
+        window.fbq('track', 'PageView');
+    }
 }
 
 // --- Product viewed ---

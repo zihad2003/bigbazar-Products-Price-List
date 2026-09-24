@@ -13,9 +13,10 @@ import { getOptimizedUrl, mediaSizes } from '../../utils/media';
  * Desktop 2.4:1 — cinematic fashion banner (~1920×800)
  */
 const FRAME_CLASS = {
-  auto: 'aspect-[5/4] sm:aspect-[16/9] lg:aspect-[12/5] max-h-[72vh] lg:max-h-[640px]',
-  slim: 'aspect-[16/9] md:aspect-[16/5] max-h-[56vh] lg:max-h-[520px]',
-  fullscreen: 'aspect-[3/4] sm:aspect-[16/9] max-h-[80vh] lg:max-h-[720px]',
+  // Modern full-bleed fashion frame — taller mobile, cinematic desktop
+  auto: 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] max-h-[78vh] lg:max-h-[560px]',
+  slim: 'aspect-[16/9] md:aspect-[21/9] max-h-[52vh] lg:max-h-[420px]',
+  fullscreen: 'aspect-[3/4] sm:aspect-[16/9] lg:aspect-[16/9] max-h-[85vh] lg:max-h-[680px]',
 };
 
 export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {

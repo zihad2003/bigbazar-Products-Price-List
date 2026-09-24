@@ -220,7 +220,7 @@ export default function ChatWidget() {
     return `${API_URL.replace(/\/$/, '')}/api/assistant`;
   };
 
-  const [sessionId] = useState(() => {
+  const [sessionId, setSessionId] = useState(() => {
     let saved = localStorage.getItem('bb_ai_session_id');
     if (!saved) {
       saved = 'session-' + crypto.randomUUID();
@@ -348,6 +348,12 @@ export default function ChatWidget() {
 
       if (!res.ok && !data.reply) {
         throw new Error(data.error || `Assistant HTTP ${res.status}`);
+      }
+
+      // Keep guest session stable when server mints/echoes session_id
+      if (data.session_id && data.session_id !== sessionId) {
+        setSessionId(data.session_id);
+        try { localStorage.setItem('bb_ai_session_id', data.session_id); } catch (_) {}
       }
 
       if (data.order_intent && data.order_intent.product) {
