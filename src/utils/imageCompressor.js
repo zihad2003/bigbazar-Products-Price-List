@@ -1,35 +1,24 @@
 /**
  * imageCompressor.js
- * ─────────────────────────────────────────────────────────────────────────────
- * Client-side image compression using the browser's Canvas API.
- * Zero external dependencies — works entirely in the browser before upload,
- * so no large base64 payloads ever hit the network or database.
+ * Client-side Canvas compression before upload.
  *
- * Presets are tuned per use-case:
- *   • product  — 1080 × 1350 (portrait 4:5), quality 82%  → ~80-150 KB
- *   • gallery  — 900  × 1125 (portrait 4:5), quality 80%  → ~60-120 KB
- *   • color    — 600  × 750  (portrait 4:5), quality 75%  → ~30-60  KB
- *   • banner   — 1920 × 1080 (landscape),   quality 85%  → ~200-400 KB
- *   • slider   — 1920 × 900  (ultra-wide),  quality 83%  → ~150-350 KB
+ * Product photos → WebP (high quality, no aggressive crush)
+ * Banner / slider / subcategory thumbnails → JPEG (unchanged)
  */
 
-// ── Presets ──────────────────────────────────────────────────────────────────
 export const COMPRESS_PRESETS = {
-  product:   { maxW: 1080, maxH: 1350, quality: 0.82 },
-  gallery:   { maxW: 900,  maxH: 1125, quality: 0.80 },
-  color:     { maxW: 600,  maxH: 750,  quality: 0.75 },
-  banner:        { maxW: 1920, maxH: 1080, quality: 0.85 },
-  slider:        { maxW: 1920, maxH: 1080, quality: 0.85 }, // 1920x1080 (16:9), 1920x600 (Slim), 1024x500 (Tablet)
-  slider_mobile: { maxW: 1080, maxH: 1080, quality: 0.85 }, // 768x1024 (Vertical), 600x600 (Square), 420x400
-  thumbnail:     { maxW: 400,  maxH: 400,  quality: 0.80 },
+  // Products: WebP, near-original quality, generous max size
+  product:       { maxW: 2000, maxH: 2500, quality: 0.92, format: 'webp' },
+  gallery:       { maxW: 1600, maxH: 2000, quality: 0.90, format: 'webp' },
+  color:         { maxW: 1200, maxH: 1500, quality: 0.90, format: 'webp' },
+  // Banners / subcategory — keep JPEG as requested
+  banner:        { maxW: 1920, maxH: 1080, quality: 0.85, format: 'jpeg' },
+  slider:        { maxW: 1920, maxH: 1080, quality: 0.85, format: 'jpeg' },
+  slider_mobile: { maxW: 1080, maxH: 1080, quality: 0.85, format: 'jpeg' },
+  thumbnail:     { maxW: 400,  maxH: 400,  quality: 0.80, format: 'jpeg' },
 };
 
-/**
- * Helper: Try multiple browser image decoding mechanisms
- * (createImageBitmap -> FileReader DataURL -> ObjectURL)
- */
 async function decodeImageFile(file) {
-  // Method 1: createImageBitmap (Modern, off-thread, fast & extremely reliable for AI PNGs/JPEGs)
   if (typeof createImageBitmap === 'function') {
     try {
       const bitmap = await createImageBitmap(file);
@@ -42,11 +31,10 @@ async function decodeImageFile(file) {
         }
       };
     } catch (e) {
-      console.warn('imageCompressor: createImageBitmap decoding failed, trying FileReader:', e);
+      console.warn('imageCompressor: createImageBitmap failed, trying FileReader:', e);
     }
   }
 
-  // Method 2: FileReader Data URL + HTMLImageElement (Bypasses object URL security restrictions)
   try {
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -69,10 +57,9 @@ async function decodeImageFile(file) {
       cleanup: () => {}
     };
   } catch (e) {
-    console.warn('imageCompressor: FileReader DataURL load failed, trying ObjectURL:', e);
+    console.warn('imageCompressor: FileReader failed, trying ObjectURL:', e);
   }
 
-  // Method 3: Blob ObjectURL + HTMLImageElement
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = new Image();
@@ -94,38 +81,49 @@ async function decodeImageFile(file) {
   }
 }
 
+function supportsWebP() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 1;
+    c.height = 1;
+    return c.toDataURL('image/webp').startsWith('data:image/webp');
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
- * Compress a single File or Blob using Canvas.
- *
- * @param {File|Blob} file       - Source image file from <input type="file">
- * @param {object}   options     - { maxW, maxH, quality } — see COMPRESS_PRESETS
- * @returns {Promise<File>}      - Compressed File (always JPEG for maximum compat)
+ * @param {File|Blob} file
+ * @param {object} options - { maxW, maxH, quality, format: 'webp'|'jpeg' }
+ * @returns {Promise<File>}
  */
 export async function compressImage(file, options = {}) {
-  const { maxW = 1080, maxH = 1350, quality = 0.82 } = options;
+  const {
+    maxW = 1080,
+    maxH = 1350,
+    quality = 0.82,
+    format = 'jpeg',
+  } = options;
 
-  // Check mime type and file extension fallback
-  const isImage = (file.type && file.type.startsWith('image/')) || 
-                  /\.(jpe?g|png|webp|jfif|hdr|heic|heif|bmp|tiff)$/i.test(file.name);
+  const isImage = (file.type && file.type.startsWith('image/')) ||
+    /\.(jpe?g|png|webp|jfif|hdr|heic|heif|bmp|tiff)$/i.test(file.name);
 
   if (!isImage) {
     throw new Error(`File "${file.name}" is not a recognized image format.`);
   }
 
-  // Skip GIFs (animation frame flattening prevention)
   if (file.type === 'image/gif' || /\.gif$/i.test(file.name)) {
-    console.log('imageCompressor: Skipped GIF to reserve animation:', file.name);
     return file;
   }
 
-  console.log(`imageCompressor: Starting compression for ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)...`);
+  const wantWebp = format === 'webp' && supportsWebP();
+  const mime = wantWebp ? 'image/webp' : 'image/jpeg';
+  const ext = wantWebp ? 'webp' : 'jpg';
 
   try {
     const { drawable, width: origW, height: origH, cleanup } = await decodeImageFile(file);
-    console.log(`imageCompressor: Decoded ${file.name}. Dimensions: ${origW}x${origH}`);
 
-    // Calculate scaled dimensions keeping aspect ratio
-    const ratio = Math.min(maxW / origW, maxH / origH, 1); // never upscale
+    const ratio = Math.min(maxW / origW, maxH / origH, 1);
     const width = Math.round(origW * ratio);
     const height = Math.round(origH * ratio);
 
@@ -134,50 +132,41 @@ export async function compressImage(file, options = {}) {
     canvas.height = height;
     const ctx = canvas.getContext('2d');
 
-    // White background (handles transparent PNGs gracefully when saving as JPEG)
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    // WebP keeps alpha; JPEG needs white fill for transparent PNGs
+    if (!wantWebp) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+    }
     ctx.drawImage(drawable, 0, 0, width, height);
 
-    if (typeof cleanup === 'function') {
-      cleanup();
-    }
+    if (typeof cleanup === 'function') cleanup();
 
     const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', quality);
+      canvas.toBlob(resolve, mime, quality);
     });
 
     if (!blob) {
-      console.warn('imageCompressor: canvas.toBlob returned null for', file.name, '- using original file fallback');
+      console.warn('imageCompressor: toBlob null — using original');
+      return file;
+    }
+
+    // Prefer compressed only if smaller OR we converted format; never inflate tiny originals badly
+    if (blob.size > file.size * 1.15 && file.type === mime) {
       return file;
     }
 
     const baseName = file.name.replace(/\.[^.]+$/, '');
-    const compressed = new File([blob], `${baseName}.jpg`, {
-      type: 'image/jpeg',
+    return new File([blob], `${baseName}.${ext}`, {
+      type: mime,
       lastModified: Date.now(),
     });
-
-    console.log(`imageCompressor: Compressed ${file.name} successfully. Size: ${(compressed.size / 1024 / 1024).toFixed(4)} MB`);
-    return compressed;
   } catch (err) {
-    console.warn(`imageCompressor: Multi-stage decoding failed for "${file.name}". Falling back to raw file:`, err.message);
-    // Resilient fallback: if the original file is less than 8MB, return it directly so upload doesn't fail!
-    if (file.size <= 8 * 1024 * 1024) {
-      return file;
-    }
-    throw new Error(`Failed to decode image "${file.name}". This file format might not be supported natively by your browser (e.g. corrupt image). Please convert it to JPG/PNG before uploading.`);
+    console.warn(`imageCompressor: failed for "${file.name}":`, err.message);
+    if (file.size <= 8 * 1024 * 1024) return file;
+    throw new Error(`Failed to decode image "${file.name}". Convert to JPG/PNG/WebP and retry.`);
   }
 }
 
-/**
- * Compress multiple files in parallel (up to 4 concurrent to avoid OOM).
- *
- * @param {File[]}  files    - Array of image files
- * @param {object}  options  - Same as compressImage options
- * @param {Function} [onProgress] - Called with (done, total) after each file
- * @returns {Promise<File[]>}
- */
 export async function compressImages(files, options = {}, onProgress) {
   const CONCURRENCY = 4;
   const results = new Array(files.length);
@@ -198,10 +187,6 @@ export async function compressImages(files, options = {}, onProgress) {
   return results;
 }
 
-/**
- * Returns a human-readable file size string.
- * @param {number} bytes
- */
 export function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

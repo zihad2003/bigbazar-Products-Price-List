@@ -518,11 +518,15 @@ app.get('/img/:id', async (c) => {
     console.error('img resolve error:', err?.message || err);
   }
 
-  // 3. Legacy static product JPG (Hostinger migrated assets under /api/img/*.jpg)
-  //    Only redirect once — never append .jpg when the request already had an extension
-  //    (that caused up-xxx.jpg → up-xxx.jpg.jpg redirect loops).
+  // 3. Legacy static product assets under /api/img/*.(webp|jpg)
+  //    Prefer webp for new product uploads; never re-append if already extended.
   if (!hadExt) {
-    return c.redirect(`/api/img/${id}.jpg`, 301);
+    return c.redirect(`/api/img/${id}.webp`, 302);
+  }
+  // If .webp miss fell through here with extension already present → try sibling .jpg once
+  if (/\.webp$/i.test(rawId)) {
+    const jpgId = rawId.replace(/\.webp$/i, '.jpg');
+    return c.redirect(`/api/img/${jpgId}`, 302);
   }
   return c.json({ error: 'Image not found' }, 404);
 });
@@ -2128,22 +2132,25 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     // ── Hostinger Local Storage (since KV is not available) ──
     const arrayBuffer = await file.arrayBuffer();
     const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+    const mimeType = file.type || 'image/jpeg';
+    const ext =
+      mimeType.includes('webp') ? 'webp'
+      : mimeType.includes('png') ? 'png'
+      : 'jpg';
     
     try {
       const fs = await import('fs');
       const path = await import('path');
       
-      // Ensure directory exists
       const publicImgDir = path.resolve(process.cwd(), 'public', 'api', 'img');
       const distImgDir = path.resolve(process.cwd(), 'dist', 'api', 'img');
       
       if (!fs.existsSync(publicImgDir)) fs.mkdirSync(publicImgDir, { recursive: true });
       if (!fs.existsSync(distImgDir)) fs.mkdirSync(distImgDir, { recursive: true });
 
-      const fileName = `${uploadId}.jpg`;
+      const fileName = `${uploadId}.${ext}`;
       const buffer = Buffer.from(arrayBuffer);
       
-      // Save to both public and dist so it's available immediately and persists builds
       fs.writeFileSync(path.join(publicImgDir, fileName), buffer);
       fs.writeFileSync(path.join(distImgDir, fileName), buffer);
 
@@ -2162,7 +2169,6 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     // Stores the binary image in Cloudflare KV edge cache.
     // Zero multi-megabyte base64 strings in the database!
     const kv = c.env?.BIGBAZAR_CACHE;
-    const mimeType = file.type || 'image/jpeg';
 
     if (kv) {
       try {
