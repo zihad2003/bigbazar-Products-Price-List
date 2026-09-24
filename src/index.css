@@ -101,6 +101,16 @@ html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   text-transform: none !important;
 }
 
+/* Product / listing pages — same Bangla stack as footer */
+.product-page,
+.product-page :where(h1, h2, h3, h4, p, span, a, button, li, label, td, th) {
+  font-family: 'Noto Sans Bengali', 'Inter', system-ui, sans-serif;
+}
+.product-page .product-title {
+  font-style: normal !important;
+  letter-spacing: -0.02em;
+}
+
 /* Immutable Brand Logo Typography Across All Languages */
 .brand-logo,
 .brand-logo * {

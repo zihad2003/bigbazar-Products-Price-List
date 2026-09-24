@@ -83,9 +83,9 @@ export async function onRequest(context) {
   const domain = publicOrigin || url.origin;
   const canonicalUrl = `${domain}${path}`;
   const defaultTitle =
-    'Big Bazar | Baraiyarhat — Complete Family Fashion & Lifestyle Destination';
+    'বিগ বাজার বারইয়ারহাট | Big Bazar — ফ্যামিলি ফ্যাশন ও বিয়ের সাজনি';
   const defaultDesc =
-    'Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.';
+    'বিগ বাজার — জমিদার প্লাজা (২য় তলা), বারইয়ারহাট, মীরসরাই, চট্টগ্রাম। ফিক্সড প্রাইস ফ্যামিলি ফ্যাশন, বিয়ের সাজনি, মীরসরাইতে ফ্রি হোম ডেলিভারি, সারাদেশে COD।';
 
   let pageTitle = defaultTitle;
   let pageDesc = defaultDesc;
@@ -107,26 +107,17 @@ export async function onRequest(context) {
         }
       } catch (_) {}
 
-      if (!prod) {
-        const prodRes = await fetch(`${domain}/all_products.json`);
-        if (prodRes.ok) {
-          const products = await prodRes.json();
-          prod = Array.isArray(products)
-            ? products.find((p) => String(p.id) === String(productId))
-            : null;
-        }
-      }
-
       if (prod) {
-        pageTitle = `${prod.name} — Big Bazar Baraiyarhat`;
+        const priceLabel = prod.price != null ? ` ৳${Math.round(Number(prod.price) || 0)}` : '';
+        pageTitle = `${prod.name}${priceLabel} | বিগ বাজার বারইয়ারহাট — অনলাইন অর্ডার`;
         const rawDesc = prod.description
-          ? prod.description.replace(/\s+/g, ' ').trim()
+          ? prod.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
           : '';
         pageDesc = rawDesc
           ? rawDesc.length > 160
-            ? rawDesc.substring(0, 157) + '...'
+            ? rawDesc.substring(0, 157) + '…'
             : rawDesc
-          : `${prod.name} - Buy online at Big Bazar Baraiyarhat with Cash on Delivery and Free Mirsharai Delivery.`;
+          : `${prod.name} — বিগ বাজার বারইয়ারহাট, মীরসরাই থেকে কিনুন। ফিক্সড প্রাইস, মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।`;
 
         const img =
           prod.image_url || prod.image || (prod.images && prod.images[0]);
@@ -142,7 +133,7 @@ export async function onRequest(context) {
           name: prod.name,
           description: pageDesc,
           image: ogImage,
-          sku: String(prod.id),
+          sku: String(prod.serial_no || prod.id),
           category: prod.subcategory
             ? `${prod.category} > ${prod.subcategory}`
             : prod.category,
@@ -155,6 +146,7 @@ export async function onRequest(context) {
             availability: isOutOfStock
               ? 'https://schema.org/OutOfStock'
               : 'https://schema.org/InStock',
+            itemCondition: 'https://schema.org/NewCondition',
             seller: {
               '@type': 'Organization',
               name: 'Big Bazar Baraiyarhat',
@@ -166,47 +158,60 @@ export async function onRequest(context) {
       console.warn('Edge pre-render product fetch warning:', err);
     }
     if (!productJsonLd) {
-      pageTitle = 'Exclusive Collection | Big Bazar Baraiyarhat';
+      pageTitle = 'কালেকশন | বিগ বাজার বারইয়ারহাট';
       pageDesc =
-        'Shop authentic fashion collections at Big Bazar Baraiyarhat with fast Cash on Delivery across Bangladesh.';
+        'বিগ বাজার বারইয়ারহাট থেকে ফ্যামিলি ফ্যাশন কিনুন — মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।';
     }
   } else if (path === '/products') {
     const categoryParam = url.searchParams.get('category');
     const subcategoryParam = url.searchParams.get('subcategory');
     if (subcategoryParam) {
-      pageTitle = `${subcategoryParam} Collection — Big Bazar Baraiyarhat`;
-      pageDesc = `Browse authentic ${subcategoryParam} collection${categoryParam ? ' for ' + categoryParam : ''} at Big Bazar Baraiyarhat. Best prices and Free Home Delivery in Mirsharai.`;
+      pageTitle = `${subcategoryParam} কিনুন | বিগ বাজার বারইয়ারহাট | অনলাইন অর্ডার`;
+      pageDesc = `${subcategoryParam}${categoryParam ? ' — ' + categoryParam : ''} কালেকশন বিগ বাজার বারইয়ারহাট, মীরসরাই। ফিক্সড প্রাইস, ফ্রি মীরসরাই ডেলিভারি, COD।`;
     } else if (categoryParam && categoryParam !== 'All') {
-      pageTitle = `${categoryParam} Collection — Big Bazar Baraiyarhat`;
-      pageDesc = `Explore signature ${categoryParam} fashion collections at Big Bazar Baraiyarhat. Fixed-price family shopping with Cash on Delivery across Bangladesh.`;
+      pageTitle = `${categoryParam} কালেকশন | বিগ বাজার বারইয়ারহাট`;
+      pageDesc = `${categoryParam} ফ্যাশন — বিগ বাজার বারইয়ারহাট। ফিক্সড প্রাইস, মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।`;
     } else {
-      pageTitle = 'All Products Collection — Big Bazar Baraiyarhat';
+      pageTitle = 'সব পণ্য | বিগ বাজার বারইয়ারহাট — ফ্যামিলি ফ্যাশন';
       pageDesc =
-        'Browse all family fashion, Modest Wear, Gents Wear, Kids Wear, and Biyer Sajani bridal items at Big Bazar Baraiyarhat.';
+        'শাড়ি, থ্রি পিস, পাঞ্জাবি, কিডস ও বিয়ের সাজনি — বিগ বাজার বারইয়ারহাট থেকে অনলাইন অর্ডার করুন।';
     }
   } else if (path === '/about-us') {
     pageTitle =
-      'About Us — Big Bazar Baraiyarhat | 65,000+ Community Trusted Store';
+      'আমাদের সম্পর্কে | বিগ বাজার বারইয়ারহাট — এক শোরুম, পুরো পরিবার';
     pageDesc =
-      'Discover Big Bazar at Jomidar Plaza, Baraiyarhat. Serving 65,000+ community followers with complete family fashion solutions, Biyer Sajani wedding collections, and Free Home Delivery across Mirsharai.';
+      'বিগ বাজার জমিদার প্লাজা, বারইয়ারহাট। ফিক্সড প্রাইস ফ্যামিলি ফ্যাশন, বিয়ের সাজনি, মীরসরাইতে ফ্রি হোম ডেলিভারি।';
   } else if (path === '/store-locations') {
     pageTitle =
-      'Store Outlet Location — Big Bazar Baraiyarhat | 2nd Floor Jomidar Plaza';
+      'শোরুম লোকেশন | বিগ বাজার — জমিদার প্লাজা, বারইয়ারহাট, মীরসরাই';
     pageDesc =
-      'Visit Big Bazar on the 2nd Floor of Jomidar Plaza, Baraiyarhat Pouroshoba, Mirsharai Upazila, Chattogram. Open daily 9:00 AM - 9:00 PM.';
+      'ভিজিট করুন: জমিদার প্লাজা ২য় তলা, বারইয়ারহাট পৌরসভা, মীরসরাই, চট্টগ্রাম। প্রতিদিন সকাল ৯:০০ – রাত ৯:০০।';
   } else if (path === '/faq') {
-    pageTitle = 'Frequently Asked Questions (FAQ) — Big Bazar Baraiyarhat';
+    pageTitle = 'সাধারণ প্রশ্ন (FAQ) | বিগ বাজার বারইয়ারহাট';
     pageDesc =
-      'Find answers regarding order placement, Free Mirsharai delivery, nationwide Cash on Delivery, returns, and Biyer Sajani wedding collections at Big Bazar Baraiyarhat.';
+      'অর্ডার, মীরসরাই ফ্রি ডেলিভারি, COD, রিটার্ন ও বিয়ের সাজনি নিয়ে প্রশ্নোত্তর — বিগ বাজার বারইয়ারহাট।';
   } else if (path === '/shipping') {
     pageTitle =
-      'Shipping & Free Mirsharai Home Delivery — Big Bazar Baraiyarhat';
+      'শিপিং ও ফ্রি মীরসরাই ডেলিভারি | বিগ বাজার বারইয়ারহাট';
     pageDesc =
-      'Free Home Delivery within Mirsharai Upazila. Fast nationwide Cash on Delivery across Bangladesh (60 BDT local, 120 BDT national).';
+      'মীরসরাই উপজেলায় ফ্রি হোম ডেলিভারি। চট্টগ্রাম ও সারাদেশে নির্ভরযোগ্য COD ডেলিভারি।';
   } else if (path === '/returns') {
-    pageTitle = 'Returns & Exchange Policy — Big Bazar Baraiyarhat';
+    pageTitle = 'রিটার্ন ও এক্সচেঞ্জ নীতি | বিগ বাজার বারইয়ারহাট';
     pageDesc =
-      'Hassle-free return and exchange policy within 24 hours for defective items or sizing issues at Big Bazar Baraiyarhat.';
+      'ডেলিভারির ২৪ ঘণ্টার মধ্যে ত্রুটি/সাইজ সমস্যায় রিটার্ন বা এক্সচেঞ্জ — বিগ বাজার বারইয়ারহাট।';
+  } else if (path === '/contact-us') {
+    pageTitle = 'যোগাযোগ | বিগ বাজার বারইয়ারহাট';
+    pageDesc =
+      'হেল্পলাইন 01857045449 · WhatsApp 01824950082 · জমিদার প্লাজা, বারইয়ারহাট, মীরসরাই।';
+  } else if (path === '/privacy-policy') {
+    pageTitle = 'গোপনীয়তা নীতি | বিগ বাজার বারইয়ারহাট';
+    pageDesc = 'onlinebigbazar.com-এ আপনার ব্যক্তিগত তথ্য কীভাবে সংরক্ষণ ও ব্যবহার হয়।';
+  } else if (path === '/terms') {
+    pageTitle = 'সেবার শর্তাবলী | বিগ বাজার বারইয়ারহাট';
+    pageDesc = 'onlinebigbazar.com ব্যবহারের শর্তাবলী — অর্ডার, পেমেন্ট ও আচরণনীতি।';
+  } else if (path === '/refund') {
+    pageTitle = 'রিফান্ড পলিসি | বিগ বাজার বারইয়ারহাট';
+    pageDesc = 'স্টক না থাকা, ভুল/ড্যামেজড পণ্যে রিফান্ড প্রক্রিয়া — সাধারণত ৩–৫ কার্যদিবস।';
   }
 
   const jsonLdGraph = {

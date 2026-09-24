@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Clock, ShoppingBag, X, RefreshCw, ChevronRight, User } from 'lucide-react';
+import { MessageSquare, Users, Clock, ShoppingBag, X, RefreshCw, ChevronRight, User, Trash2 } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 
 export default function AdminConversations() {
@@ -9,6 +9,7 @@ export default function AdminConversations() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchStats = async () => {
     const token = getToken();
@@ -64,6 +65,36 @@ export default function AdminConversations() {
     finally { setLoadingMessages(false); }
   };
 
+  const deleteConversation = async (conv, e) => {
+    e?.stopPropagation?.();
+    if (!conv?.id) return;
+    const label = conv.user_name || conv.user_email || conv.id.slice(0, 8);
+    if (!window.confirm(`Delete conversation for "${label}"?\nThis cannot be undone.`)) return;
+
+    setDeletingId(conv.id);
+    const token = getToken();
+    try {
+      const res = await fetch(`${API_URL}/api/admin/conversations/${conv.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Delete failed');
+      }
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      if (selectedConversation?.id === conv.id) {
+        setSelectedConversation(null);
+        setMessages([]);
+      }
+      fetchStats();
+    } catch (err) {
+      window.alert(err.message || 'Failed to delete');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -74,14 +105,15 @@ export default function AdminConversations() {
 
   return (
     <div className="space-y-5 max-w-6xl pb-20">
-      {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2">
             <MessageSquare size={18} className="text-[#ce112d]" />
             AI Chat <span className="text-[#ce112d]">Conversations</span>
           </h2>
-          <p className="text-xs text-zinc-500 mt-0.5">Live customer AI interactions and message logs</p>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Logged-in customer threads — review, then delete after analysis
+          </p>
         </div>
 
         <button
@@ -93,7 +125,6 @@ export default function AdminConversations() {
         </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="rounded-lg border border-white/10 bg-[#121215] border-t-2 border-t-emerald-500 px-3 py-2.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
@@ -119,7 +150,6 @@ export default function AdminConversations() {
         </div>
       </div>
 
-      {/* Conversations Table / List */}
       <div className="bg-[#121215] border border-white/10 rounded-xl overflow-hidden">
         <div className="px-3 py-2.5 bg-zinc-900/80 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-semibold text-zinc-300">Recent conversations</span>
@@ -147,10 +177,10 @@ export default function AdminConversations() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                       <User size={13} className="text-zinc-500" />
-                      {conv.user_name || 'Guest Customer'}
+                      {conv.user_name || conv.user_email || 'Customer'}
                     </span>
                     <span className="text-[10px] text-zinc-600 font-mono">
-                      Session: {conv.session_id ? conv.session_id.substring(0, 14) + '...' : ''}
+                      UID: {conv.user_id ? String(conv.user_id).slice(0, 10) + '…' : '—'}
                     </span>
                     {conv.has_order && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
@@ -164,9 +194,22 @@ export default function AdminConversations() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0 text-[11px] text-zinc-500">
+                <div className="flex items-center gap-2 shrink-0 text-[11px] text-zinc-500">
                   <span>{conv.message_count || 0} msgs</span>
                   <span>{formatDate(conv.updated_at)}</span>
+                  <button
+                    type="button"
+                    title="Delete after analysis"
+                    disabled={deletingId === conv.id}
+                    onClick={(e) => deleteConversation(conv, e)}
+                    className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 text-zinc-400 hover:text-red-400 hover:border-red-500/40 flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === conv.id ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                  </button>
                   <ChevronRight size={14} className="text-zinc-600 group-hover:text-white transition-colors" />
                 </div>
               </div>
@@ -175,32 +218,39 @@ export default function AdminConversations() {
         )}
       </div>
 
-      {/* Message History Modal */}
       {selectedConversation && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1050] flex items-center justify-center p-4">
           <div className="bg-[#0e0e11] border border-white/10 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
-            
-            {/* Modal Header */}
-            <div className="p-3 bg-zinc-900 border-b border-white/10 flex items-center justify-between">
-              <div>
+            <div className="p-3 bg-zinc-900 border-b border-white/10 flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                   <User size={15} className="text-[#ce112d]" />
-                  {selectedConversation.user_name || 'Guest Visitor'}
+                  {selectedConversation.user_name || selectedConversation.user_email || 'Customer'}
                 </h3>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  ID: {selectedConversation.id} • {formatDate(selectedConversation.updated_at)}
+                <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
+                  User: {selectedConversation.user_id || '—'} • {formatDate(selectedConversation.updated_at)}
                 </p>
               </div>
 
-              <button
-                onClick={() => setSelectedConversation(null)}
-                className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-all"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => deleteConversation(selectedConversation, e)}
+                  disabled={deletingId === selectedConversation.id}
+                  className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/20 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+                <button
+                  onClick={() => setSelectedConversation(null)}
+                  className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
-            {/* Messages Body */}
             <div className="flex-1 p-3 overflow-y-auto space-y-3 text-xs">
               {loadingMessages ? (
                 <div className="py-10 text-center text-zinc-500">
@@ -231,7 +281,6 @@ export default function AdminConversations() {
                 })
               )}
             </div>
-
           </div>
         </div>
       )}

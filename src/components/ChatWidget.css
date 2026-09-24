@@ -68,7 +68,15 @@
   .chat-widget-fab {
     bottom: 88px;
     right: 12px;
+    left: auto;
     padding: 8px 14px;
+  }
+
+  /* Product page: FAB stays low-right; sticky ORDER bar sits above it (~152px) */
+  .chat-widget-fab--product {
+    bottom: 88px;
+    right: 12px;
+    left: auto;
   }
 }
 

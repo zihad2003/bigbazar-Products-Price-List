@@ -451,7 +451,29 @@ export function getSubcategorySeo(sub, category = '') {
 export function getSubcategoryMeta(sub, category = '') {
   const seo = getSubcategorySeo(sub, category);
   if (!seo) return null;
-  const title = `${seo.nameEn} | ${seo.nameBn} — Big Bazar Baraiyarhat | Buy Online`;
-  const description = `${seo.intro_en} ${STORE.codEn}. Showroom: ${STORE.place}.`;
-  return { title, description, keywords: seo.keywords, seo };
+  // Bangla-first title for local search ranking
+  const title = `${seo.nameBn} (${seo.nameEn}) কিনুন | বিগ বাজার বারইয়ারহাট | অনলাইন অর্ডার`;
+  const description = clipBnEn(
+    `${seo.intro_bn} ${STORE.freeDeliveryBn}. ${STORE.codBn}. শোরুম: ${STORE.placeBn}.`,
+    160
+  );
+  const keywords = [
+    seo.keywords,
+    seo.nameBn,
+    seo.nameEn,
+    'বিগ বাজার',
+    'বারইয়ারহাট',
+    'মীরসরাই',
+    'অনলাইন শপিং বাংলাদেশ',
+    category,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return { title, description, keywords, seo };
+}
+
+function clipBnEn(text, max = 160) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).trim()}…`;
 }

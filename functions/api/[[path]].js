@@ -2920,14 +2920,20 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
   return { error: 'Tool not found' };
 }
 
-// POST /api/assistant — AI Shopping Assistant with SSE Streaming
-app.post('/assistant', optionalCustomerAuth, async (c) => {
+// POST /api/assistant — AI Shopping Assistant (login required; continues by user_id)
+app.post('/assistant', requireCustomerAuth, async (c) => {
   const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
   if (!checkRateLimit(ip, 'assistant', 30, 60000)) {
     return c.json({
       reply: 'আপনি খুব বেশি মেসেজ পাঠাচ্ছেন। ১ মিনিট পর আবার চেষ্টা করুন।',
       products: [], quick_replies: ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'পারশি কালেকশন'], order_confirmation: null
     }, 429);
+  }
+
+  const customer = c.get('customer');
+  const userId = customer?.id;
+  if (!userId) {
+    return c.json({ error: 'Login required', code: 'AUTH_REQUIRED' }, 401);
   }
 
   const geminiApiKey = c.env?.GEMINI_API_KEY || (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY);
@@ -2988,7 +2994,7 @@ app.post('/assistant', optionalCustomerAuth, async (c) => {
       try {
         await persistAssistantTurn(conn, {
           sessionId,
-          userId: c.get('customer')?.id || null,
+          userId,
           userMessage,
           replyText: orderReply,
           meta: { order_intent: true, product_id: targetProduct.id },
@@ -3163,13 +3169,12 @@ RULES:
     replyText = faqReply || getSmartFallbackReply(lowerMsg, replyLang);
   }
 
-  // Persist conversation (guest or logged-in) so Admin Conversations works
-  const sessionId = String(body.session_id || '').trim() || crypto.randomUUID();
-  const customer = c.get('customer');
+  // Persist conversation under logged-in user_id (continues same thread)
+  const sessionId = String(body.session_id || '').trim() || `user-${userId}`;
   try {
     await persistAssistantTurn(conn, {
       sessionId,
-      userId: customer?.id || null,
+      userId,
       userMessage,
       replyText,
       meta: {
@@ -3195,24 +3200,24 @@ RULES:
 });
 
 async function persistAssistantTurn(conn, { sessionId, userId, userMessage, replyText, meta }) {
-  if (!sessionId || !userMessage) return;
+  if (!userId || !userMessage) return;
 
   let convId = null;
-  const existing = await conn.execute(
-    'SELECT id FROM conversations WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1',
-    [sessionId]
+  const byUser = await conn.execute(
+    'SELECT id FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1',
+    [userId]
   );
-  if (existing?.[0]?.id) {
-    convId = existing[0].id;
+  if (byUser?.[0]?.id) {
+    convId = byUser[0].id;
     await conn.execute(
-      'UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, user_id = COALESCE(user_id, ?) WHERE id = ?',
-      [userId, convId]
+      'UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, session_id = COALESCE(?, session_id) WHERE id = ?',
+      [sessionId || `user-${userId}`, convId]
     );
   } else {
     convId = crypto.randomUUID();
     await conn.execute(
       'INSERT INTO conversations (id, session_id, user_id) VALUES (?, ?, ?)',
-      [convId, sessionId, userId]
+      [convId, sessionId || `user-${userId}`, userId]
     );
   }
 
@@ -3226,8 +3231,65 @@ async function persistAssistantTurn(conn, { sessionId, userId, userMessage, repl
     'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
     [asstMsgId, convId, 'assistant', replyText || '', meta ? JSON.stringify(meta) : null]
   );
+  return convId;
 }
 
+/** Load latest conversation history for the logged-in customer */
+app.get('/assistant/history', requireCustomerAuth, async (c) => {
+  const userId = c.get('customer')?.id;
+  if (!userId) return c.json({ error: 'Login required' }, 401);
+  const conn = getDb(c.env);
+  try {
+    const convs = await conn.execute(
+      'SELECT id, session_id, updated_at FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1',
+      [userId]
+    );
+    if (!convs?.[0]?.id) {
+      return c.json({ data: [], conversation_id: null, session_id: `user-${userId}` });
+    }
+    const conv = convs[0];
+    const rows = await conn.execute(
+      'SELECT id, role, content, metadata, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 200',
+      [conv.id]
+    );
+    const messages = (rows || []).map((m) => {
+      let meta = null;
+      if (m.metadata) {
+        try { meta = typeof m.metadata === 'string' ? JSON.parse(m.metadata) : m.metadata; } catch (_) {}
+      }
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        products: meta?.products || [],
+        category_query: meta?.category_query || '',
+        created_at: m.created_at,
+      };
+    });
+    return c.json({
+      data: messages,
+      conversation_id: conv.id,
+      session_id: conv.session_id || `user-${userId}`,
+    });
+  } catch (err) {
+    console.error('assistant history error:', err);
+    return c.json({ data: [], conversation_id: null });
+  }
+});
+
+app.delete('/admin/conversations/:id', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'Missing id' }, 400);
+  const conn = getDb(c.env);
+  try {
+    await conn.execute('DELETE FROM messages WHERE conversation_id = ?', [id]);
+    await conn.execute('DELETE FROM conversations WHERE id = ?', [id]);
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('delete conversation error:', err);
+    return c.json({ error: 'Failed to delete conversation' }, 500);
+  }
+});
 
 // Admin Conversation Dashboard APIs (Part 3b)
 app.post('/admin/product-copy', requireAuth, requireAdmin, async (c) => {

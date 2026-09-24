@@ -71,6 +71,39 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const loginWithPassword = useCallback(async ({ email, mobile, password }) => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, mobile, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data.error || 'Login failed' };
+      }
+      if (data.step === 2 || data.user?.type === 'admin' || data.session?.user?.type === 'admin') {
+        return { error: 'Admin accounts cannot use the shopping chat. Please use Google or a customer account.' };
+      }
+      const token = data.session?.access_token || data.token;
+      const sessionUser = data.session?.user || data.user;
+      if (!token || !sessionUser) {
+        return { error: 'Login failed' };
+      }
+      setToken(token);
+      setUser({
+        id: sessionUser.id,
+        name: sessionUser.name || '',
+        email: sessionUser.email || '',
+        phone: sessionUser.mobile || sessionUser.phone || null,
+        avatar_url: sessionUser.avatar_url || null,
+      });
+      return { user: sessionUser, error: null };
+    } catch (err) {
+      return { error: err.message };
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     clearCustomerToken();
@@ -102,6 +135,7 @@ export function AuthProvider({ children }) {
       isLoggedIn: !!user,
       loading,
       loginWithGoogle,
+      loginWithPassword,
       logout,
       updatePhone
     }}>

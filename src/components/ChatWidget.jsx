@@ -1,21 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   X, Send, ShoppingBag, Sparkles, ChevronRight, 
   ShoppingCart, ExternalLink, RefreshCw, 
   ShieldCheck, CheckCircle, Package, ArrowRight, Tag, Layers,
   Phone, Copy, Check, Info, HelpCircle, Truck, RotateCcw,
   Ruler, CreditCard, MapPin, Store, ChevronLeft, AlertCircle,
-  Shirt, User, Users
+  Shirt, User, Users, Lock, Loader2
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import { API_URL, getToken, bigBazarApi } from '../api/client';
+import { API_URL, getCustomerToken, bigBazarApi } from '../api/client';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useAuth } from '../contexts/AuthContext';
 import { allDistricts, chattogramUpazilas, FREE_UPAZILA, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { TOP_CATEGORIES, getSubcategoriesForCategory } from '../data/categories';
 import './ChatWidget.css';
+
+function useGoogleScript() {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.google?.accounts?.id) {
+      setLoaded(true);
+      return;
+    }
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existing) {
+      existing.addEventListener('load', () => setLoaded(true));
+      if (window.google?.accounts?.id) setLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setLoaded(true);
+    document.head.appendChild(script);
+  }, []);
+  return loaded;
+}
 
 const BKASH_NUMBER = '01857045449';
 
@@ -24,6 +49,19 @@ const CHAT_COPY = {
     fab: 'শপিং সহকারী',
     subtitle: 'শপিং সহকারী',
     welcome: 'আসসালামু আলাইকুম। Big Bazar শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি কোন ক্যাটাগরির কালেকশন দেখতে চান বা কী জানতে চান?',
+    loginRequired: 'চ্যাট করতে লগইন করুন',
+    loginHint: 'আপনার অ্যাকাউন্ট দিয়ে চ্যাট চলবে — পরে আবার এলে আগের কথোপকথন থাকবে।',
+    loginBtn: 'লগইন করুন',
+    loginWelcome: 'ফিরে আসায় স্বাগতম',
+    loginSub: 'আপনার অ্যাকাউন্টে লগইন করুন',
+    continueGoogle: 'Google দিয়ে চালিয়ে যান',
+    orEmail: 'অথবা ইমেইল / মোবাইল',
+    mobilePh: 'মোবাইল বা ইমেইল',
+    passwordPh: 'পাসওয়ার্ড',
+    loginNow: 'লগইন করুন',
+    newHere: 'অ্যাকাউন্ট নেই? অ্যাকাউন্ট পেজে যান',
+    googleMissing: 'গুগল লগইন কনফিগার করা নেই',
+    authError: 'চ্যাট করতে লগইন প্রয়োজন।',
     fallbackReply: 'আমি বুঝতে পেরেছি। আর কীভাবে সহায়তা করতে পারি?',
     connectionError: 'সাময়িক সংযোগে সমস্যা হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন বা হেল্পলাইনে কল দিন।',
     categories: 'ক্যাটাগরি',
@@ -88,6 +126,19 @@ const CHAT_COPY = {
     fab: 'Shopping Help',
     subtitle: 'Shopping assistant',
     welcome: 'Welcome to the Big Bazar shopping assistant. Which collection would you like to browse, or what can I help with?',
+    loginRequired: 'Login required to chat',
+    loginHint: 'Sign in so your conversation continues on this account when you return.',
+    loginBtn: 'Log in',
+    loginWelcome: 'Welcome Back',
+    loginSub: 'Login to your selective account',
+    continueGoogle: 'Continue with Google',
+    orEmail: 'Or email / mobile',
+    mobilePh: 'Mobile or email',
+    passwordPh: 'Password',
+    loginNow: 'Login Now',
+    newHere: 'New here? Open account page',
+    googleMissing: 'Google login is not configured',
+    authError: 'Please log in to use the shopping assistant.',
     fallbackReply: 'Got it. How else can I help?',
     connectionError: 'Temporary connection issue. Please try again shortly or call the helpline.',
     categories: 'Categories',
@@ -157,21 +208,31 @@ const QUICK_INFO_TOPICS = [
   { id: 'location', bn: 'শোরুম লোকেশন ও সময়', en: 'Showroom location', icon: <Store size={14} className="text-zinc-600" />, query: 'showroom location' }
 ];
 
-export default function ChatWidget() {
+export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart } = useCart();
   const { language } = useLanguage();
+  const { isLoggedIn, user, loading: authLoading, loginWithGoogle, loginWithPassword } = useAuth();
   const c = CHAT_COPY[language] || CHAT_COPY.bn;
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [subcategoriesData, setSubcategoriesData] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [activeProduct, setActiveProduct] = useState(null);
   const [loadingMoreMsgId, setLoadingMoreMsgId] = useState(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
-  
+  const [authForm, setAuthForm] = useState({ identifier: '', password: '' });
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const googleBtnRef = useRef(null);
+  const googleScriptLoaded = useGoogleScript();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const onProductPage = location.pathname.startsWith('/product/');
+
   // In-Chat Active Order State
   const [orderModalProduct, setOrderModalProduct] = useState(null);
   const [orderForm, setOrderForm] = useState({
@@ -238,11 +299,142 @@ export default function ChatWidget() {
     products: []
   });
 
+  const pendingOpenRef = useRef(false);
+
+  const handleFabClick = () => {
+    if (authLoading) return;
+    setIsOpen(true);
+  };
+
   useEffect(() => {
-    if (messages.length === 0) {
+    if (isLoggedIn && pendingOpenRef.current) {
+      pendingOpenRef.current = false;
+      setIsOpen(true);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn) setAuthError('');
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isOpen || isLoggedIn || !googleScriptLoaded || !googleClientId || !googleBtnRef.current) return;
+    if (!window.google?.accounts?.id) return;
+
+    window.google.accounts.id.initialize({
+      client_id: googleClientId,
+      callback: async (response) => {
+        setAuthError('');
+        setAuthBusy(true);
+        try {
+          const result = await loginWithGoogle(response.credential);
+          if (result.error) setAuthError(result.error);
+        } finally {
+          setAuthBusy(false);
+        }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      context: 'signin',
+    });
+
+    googleBtnRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleBtnRef.current, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'pill',
+      width: Math.min(320, Math.max(240, (googleBtnRef.current.parentElement?.clientWidth || 280) - 8)),
+    });
+
+    // Button-only UX — dismiss One Tap / FedCM overlays that cover the chat sheet
+    try {
+      window.google.accounts.id.cancel();
+      window.google.accounts.id.disableAutoSelect();
+    } catch (_) {}
+  }, [isOpen, isLoggedIn, googleScriptLoaded, googleClientId, loginWithGoogle]);
+
+  const handleChatPasswordLogin = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthBusy(true);
+    try {
+      const raw = (authForm.identifier || '').trim();
+      const isEmail = raw.includes('@');
+      const result = await loginWithPassword({
+        email: isEmail ? raw : '',
+        mobile: isEmail ? '' : raw,
+        password: authForm.password,
+      });
+      if (result.error) setAuthError(result.error);
+      else setAuthForm({ identifier: '', password: '' });
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const loadChatHistory = async () => {
+    const token = getCustomerToken();
+    if (!token || !isLoggedIn) return;
+    try {
+      const base = (!API_URL || API_URL === '/') ? '' : API_URL.replace(/\/$/, '');
+      const res = await fetch(`${base}/api/assistant/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.session_id) {
+        setSessionId(data.session_id);
+        try { localStorage.setItem('bb_ai_session_id', data.session_id); } catch (_) {}
+      }
+      const rows = data.data || [];
+      if (rows.length > 0) {
+        const mapped = rows.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          products: m.products || [],
+          category_query: m.category_query || '',
+          timestamp: m.created_at
+            ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '',
+        }));
+        setMessages(mapped);
+      } else {
+        setMessages([getWelcomeMessage()]);
+      }
+    } catch (_) {
+      setMessages([getWelcomeMessage()]);
+    } finally {
+      setHistoryLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setHistoryLoaded(false);
+      setMessages([]);
+      return;
+    }
+    // Stable session key tied to user id
+    if (user?.id) {
+      const uidSession = `user-${user.id}`;
+      setSessionId(uidSession);
+      try { localStorage.setItem('bb_ai_session_id', uidSession); } catch (_) {}
+    }
+  }, [isLoggedIn, user?.id]);
+
+  useEffect(() => {
+    if (isOpen && isLoggedIn && !historyLoaded) {
+      loadChatHistory();
+    }
+  }, [isOpen, isLoggedIn, historyLoaded]);
+
+  useEffect(() => {
+    if (messages.length === 0 && isLoggedIn && historyLoaded) {
       setMessages([getWelcomeMessage()]);
     }
-  }, [messages.length]);
+  }, [messages.length, isLoggedIn, historyLoaded]);
 
   // Refresh welcome-only thread when site language toggles
   useEffect(() => {
@@ -277,6 +469,7 @@ export default function ChatWidget() {
     setOrderModalProduct(null);
     setOrderStep('details');
     setOrderError('');
+    setHistoryLoaded(true);
     setMessages([getWelcomeMessage()]);
   };
 
@@ -312,6 +505,11 @@ export default function ChatWidget() {
     const text = (textToSend || inputMessage).trim();
     if (!text || isLoading) return;
 
+    if (!isLoggedIn || !getCustomerToken()) {
+      setAuthError(c.authError);
+      return;
+    }
+
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const userMsg = { id: 'msg-' + Date.now(), role: 'user', content: text, timestamp: timeStr };
     setMessages(prev => [...prev, userMsg]);
@@ -321,7 +519,7 @@ export default function ChatWidget() {
     try {
       const endpoint = getAssistantEndpoint();
       const headers = { 'Content-Type': 'application/json' };
-      const token = getToken();
+      const token = getCustomerToken();
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const payload = {
@@ -344,6 +542,12 @@ export default function ChatWidget() {
         data = await res.json();
       } catch (_) {
         throw new Error('Invalid assistant response');
+      }
+
+      if (res.status === 401 || data.code === 'AUTH_REQUIRED') {
+        setMessages(prev => prev.filter(m => m.id !== userMsg.id));
+        setAuthError(c.authError);
+        throw new Error(c.authError);
       }
 
       if (!res.ok && !data.reply) {
@@ -400,7 +604,7 @@ export default function ChatWidget() {
     try {
       const endpoint = getAssistantEndpoint();
       const headers = { 'Content-Type': 'application/json' };
-      const token = getToken();
+      const token = getCustomerToken();
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const payload = {
@@ -644,8 +848,8 @@ export default function ChatWidget() {
       {/* Floating Trigger FAB Button - Minimalist Clean Light Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
-          className="chat-widget-fab bg-white text-zinc-900 px-4 py-3 sm:px-4.5 sm:py-3.5 rounded-full flex items-center gap-2.5 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300 border border-zinc-200"
+          onClick={handleFabClick}
+          className={`chat-widget-fab bg-white text-zinc-900 px-4 py-3 sm:px-4.5 sm:py-3.5 rounded-full flex items-center gap-2.5 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300 border border-zinc-200${onProductPage ? ' chat-widget-fab--product' : ''}`}
           aria-label="Open Big Bazar Shopping Assistant"
         >
           <div className="w-7 h-7 rounded-full bg-[#ce112d] flex items-center justify-center text-white shrink-0">
@@ -710,7 +914,92 @@ export default function ChatWidget() {
 
           {/* Messages Canvas - Strict Light Theme */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 chat-canvas-bg chat-scrollbar bg-[#f8fafc]">
-            {messages.map((msg) => (
+            {!isLoggedIn ? (
+              <div className="h-full min-h-[260px] flex flex-col justify-center px-1 py-2">
+                <div className="w-full max-w-[320px] mx-auto bg-white border border-zinc-200/90 rounded-[1.75rem] shadow-sm p-5 space-y-5">
+                  <div className="space-y-1.5 text-left">
+                    <h1 className="text-xl font-black italic tracking-tighter leading-none">
+                      <span className="text-zinc-900">BIG</span>
+                      <span className="text-[#ce112d]">BAZAR</span>
+                    </h1>
+                    <h4 className="text-xl font-black text-zinc-900 tracking-tight pt-1">{c.loginWelcome}</h4>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{c.loginSub}</p>
+                    <p className="text-xs text-zinc-500 leading-relaxed">{c.loginHint}</p>
+                  </div>
+
+                  {authError && (
+                    <div className="p-2.5 bg-red-50 rounded-xl flex items-start gap-2 text-red-600 text-[11px] font-bold">
+                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                      <span>{typeof authError === 'object' ? (authError?.message || c.authError) : String(authError)}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleChatPasswordLogin} className="space-y-2.5">
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300" size={15} />
+                      <input
+                        type="text"
+                        autoComplete="username"
+                        placeholder={c.mobilePh}
+                        value={authForm.identifier}
+                        onChange={(e) => setAuthForm((prev) => ({ ...prev, identifier: e.target.value }))}
+                        className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/20 focus:bg-white rounded-2xl py-3.5 pl-10 pr-3 text-xs font-bold outline-none transition-all"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300" size={15} />
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        placeholder={c.passwordPh}
+                        value={authForm.password}
+                        onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
+                        className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/20 focus:bg-white rounded-2xl py-3.5 pl-10 pr-3 text-xs font-bold outline-none transition-all"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={authBusy || !authForm.identifier.trim() || !authForm.password}
+                      className="w-full h-12 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-red-500/15"
+                    >
+                      {authBusy ? <Loader2 className="animate-spin" size={16} /> : (
+                        <>
+                          <span>{c.loginNow}</span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-zinc-100" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{c.orEmail}</span>
+                    <div className="flex-1 h-px bg-zinc-100" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-center">{c.continueGoogle}</p>
+                    {googleClientId ? (
+                      <div ref={googleBtnRef} className="min-h-[44px] w-full flex justify-center overflow-hidden" />
+                    ) : (
+                      <p className="text-xs text-zinc-500 text-center bg-zinc-50 rounded-xl py-3 px-2">{c.googleMissing}</p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate('/account');
+                    }}
+                    className="w-full text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest hover:text-zinc-800 transition-colors"
+                  >
+                    {c.newHere}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-message-in`}
@@ -966,10 +1255,11 @@ export default function ChatWidget() {
                   {msg.timestamp}
                 </span>
               </div>
-            ))}
+            ))
+            )}
 
             {/* In-Chat Direct Order Form Drawer */}
-            {orderModalProduct && (
+            {isLoggedIn && orderModalProduct && (
               <div className="bg-white border border-zinc-200 rounded-2xl p-3.5 shadow-lg space-y-3 animate-message-in">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
                   <div className="flex items-center gap-1.5 text-xs font-black text-zinc-900">
@@ -1317,13 +1607,13 @@ export default function ChatWidget() {
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={c.placeholder}
-                disabled={isLoading}
+                placeholder={isLoggedIn ? c.placeholder : c.loginRequired}
+                disabled={isLoading || !isLoggedIn}
                 className="flex-1 px-4 py-2.5 bg-slate-50 border border-zinc-200 rounded-full text-xs font-medium focus:outline-none focus:border-[#ce112d] focus:bg-white transition-all disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!inputMessage.trim() || isLoading}
+                disabled={!isLoggedIn || !inputMessage.trim() || isLoading}
                 className="w-10 h-10 bg-[#ce112d] hover:bg-[#b30e25] text-white rounded-full flex items-center justify-center transition-all shadow-2xs active:scale-95 disabled:opacity-40 disabled:pointer-events-none shrink-0"
               >
                 <Send size={15} />

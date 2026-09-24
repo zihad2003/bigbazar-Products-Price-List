@@ -14,6 +14,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { bigBazarApi } from '../api/client';
 import { trackViewItem, trackAddToCart, trackMessengerClick } from '../utils/analytics';
 import Reveal from '../components/Reveal';
+import { buildProductSeo, applyDocumentSeo } from '../utils/productSeo';
+import { bnFont } from '../components/EditorialShell';
 
 export default function ProductDetails() {
     const { productId } = useParams();
@@ -137,29 +139,50 @@ export default function ProductDetails() {
     useEffect(() => {
         if (!product) return;
 
+        const origin = window.location.origin;
+        const seo = buildProductSeo(product, { origin, language });
+        if (seo) {
+            applyDocumentSeo({
+                title: seo.title,
+                description: seo.description,
+                keywords: seo.keywords,
+                image: seo.image?.startsWith('http') ? seo.image : (seo.image ? `${origin}${seo.image.startsWith('/') ? '' : '/'}${seo.image}` : `${origin}/b.jpg`),
+                canonicalUrl: seo.url.startsWith('http') ? seo.url : `${origin}/product/${product.id}`,
+                locale: language === 'bn' ? 'bn_BD' : 'en_US',
+            });
+        }
+
         const { price } = calculatePrice(product);
         const schemaData = {
-            "@context": "https://schema.org/",
-            "@type": "Product",
-            "name": product.name,
-            "image": product.image_url || product.image || (product.images && product.images[0]) || "",
-            "description": product.description || `${product.name} - Buy online at Big Bazar Baraiyarhat`,
-            "sku": String(product.id),
-            "brand": {
-                "@type": "Brand",
-                "name": "Big Bazar"
-            },
-            "offers": {
-                "@type": "Offer",
-                "url": window.location.href,
-                "priceCurrency": "BDT",
-                "price": price,
-                "availability": product.is_sold_out ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-                "seller": {
-                    "@type": "Organization",
-                    "name": "Big Bazar Baraiyarhat"
-                }
-            }
+            '@context': 'https://schema.org',
+            '@graph': [
+                {
+                    ...(seo?.jsonLd || {}),
+                    '@type': 'Product',
+                    name: product.name,
+                    image: product.images?.length
+                        ? product.images
+                        : [product.image_url || product.image].filter(Boolean),
+                    description: seo?.description || product.description || `${product.name} — বিগ বাজার বারইয়ারহাট`,
+                    sku: String(product.serial_no || product.id),
+                    brand: { '@type': 'Brand', name: 'Big Bazar' },
+                    category: product.subcategory
+                        ? `${product.category || ''} > ${product.subcategory}`
+                        : product.category,
+                    offers: {
+                        '@type': 'Offer',
+                        url: `${origin}/product/${product.id}`,
+                        priceCurrency: 'BDT',
+                        price: price,
+                        availability: product.is_sold_out
+                            ? 'https://schema.org/OutOfStock'
+                            : 'https://schema.org/InStock',
+                        itemCondition: 'https://schema.org/NewCondition',
+                        seller: { '@type': 'Organization', name: 'Big Bazar Baraiyarhat' },
+                    },
+                },
+                seo?.breadcrumb,
+            ].filter(Boolean),
         };
 
         const script = document.createElement('script');
@@ -176,7 +199,7 @@ export default function ProductDetails() {
             const currentScript = document.getElementById('product-jsonld-schema');
             if (currentScript) currentScript.remove();
         };
-    }, [product]);
+    }, [product, language]);
 
     const selectedColorObj = React.useMemo(() => {
         if (!selectedColor || !product || !product.available_colors) return null;
@@ -358,9 +381,9 @@ export default function ProductDetails() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12 bg-white">
-            {/* Breadcrumbs (Fashion Brand All-English Standard) */}
-            <div className="mb-6 flex items-center justify-between text-xs text-neutral-400 font-bold uppercase tracking-widest">
+        <div className="product-page max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12 bg-white" style={bnFont}>
+            {/* Breadcrumbs */}
+            <div className="mb-6 flex items-center justify-between text-xs text-neutral-500 font-bold tracking-wide">
                 <div className="flex flex-wrap items-center gap-2">
                     <Link to="/" className="hover:text-neutral-900 transition-colors">
                         Home
@@ -427,7 +450,7 @@ export default function ProductDetails() {
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">
                             {product.category || 'Clothing'}
                         </span>
-                        <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 italic leading-tight capitalize tracking-tight">
+                        <h1 className="product-title text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 leading-tight tracking-tight" style={bnFont}>
                             {product.name}
                         </h1>
                         <div className="flex flex-wrap items-baseline gap-3 pt-1">
@@ -707,7 +730,7 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="fixed bottom-[130px] right-3 sm:right-6 z-[1030] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[290px] sm:max-w-sm"
+                        className="fixed bottom-[152px] right-3 sm:bottom-6 sm:right-6 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[290px] sm:max-w-sm"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-9 h-10 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200 relative">
@@ -815,7 +838,7 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="lg:hidden fixed bottom-[130px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900"
+                        className="lg:hidden fixed bottom-[152px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900 max-w-[calc(100vw-7.5rem)]"
                     >
                         <div className="w-10 h-11 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200">
                             <img

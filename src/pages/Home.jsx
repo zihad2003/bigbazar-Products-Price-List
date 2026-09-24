@@ -203,24 +203,30 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
 
   return (
     <div className="min-h-screen bg-white pb-16">
-      {/* Hero Section — full-bleed editorial frame */}
+      {/* Hero — inset rounded frame (mobile-first broader banner) */}
       {!settingsLoading && siteSettings.main_slides?.length > 0 && (
-        <section className="w-full relative">
-          <div className="w-full overflow-hidden bg-neutral-100 relative">
-            <HeroSlider
-              slides={siteSettings.main_slides}
-              aspectMode={siteSettings.slider_aspect || 'auto'}
-            />
+        <section className="w-full relative pt-3 sm:pt-4 md:pt-6">
+          <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-3 sm:px-5 md:px-8 lg:px-12">
+            <div className="relative w-full overflow-hidden rounded-[1.35rem] sm:rounded-[1.75rem] md:rounded-[2.25rem] bg-zinc-100 shadow-[0_8px_30px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+              <HeroSlider
+                slides={siteSettings.main_slides}
+                aspectMode={siteSettings.slider_aspect || 'auto'}
+              />
+            </div>
           </div>
           {siteSettings.ticker_announcement?.position === 'bottom_slider' && (
-            <TickerAnnouncement ticker={siteSettings.ticker_announcement} />
+            <div className="mt-3 sm:mt-4">
+              <TickerAnnouncement ticker={siteSettings.ticker_announcement} />
+            </div>
           )}
         </section>
       )}
 
       {settingsLoading && (
-        <section className="w-full">
-          <div className="w-full aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] max-h-[78vh] lg:max-h-[560px] bg-neutral-100 animate-pulse" />
+        <section className="w-full pt-3 sm:pt-4 md:pt-6">
+          <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-5 md:px-8 lg:px-12">
+            <div className="w-full aspect-[16/10] sm:aspect-[16/9] lg:aspect-[11/5] max-h-[52vh] rounded-[1.35rem] sm:rounded-[1.75rem] md:rounded-[2.25rem] bg-neutral-100 animate-pulse" />
+          </div>
         </section>
       )}
 
@@ -245,17 +251,15 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       )}
 
       <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto mt-8 md:mt-12 space-y-10">
-        {/* Photo-Based Subcategory Rail */}
+        {/* Photo-Based Subcategory Grid — rounded portrait cards, ~30% larger */}
         {activeSubcategories.length > 0 && (
           <Reveal>
-            <section className="relative">
-              <div
-                className="flex items-start justify-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto overscroll-x-contain pb-4 pt-2 no-scrollbar scrollbar-hide px-4 md:px-12 snap-x snap-mandatory"
-                style={{ WebkitOverflowScrolling: 'touch' }}
-              >
+            <section className="relative px-3 sm:px-5 md:px-12">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-2.5 md:gap-3">
                 {activeSubcategories.map((sub) => (
                   <button
                     key={sub.id}
+                    type="button"
                     onClick={() => {
                       const targetCat = sub._category || selectedCategory || 'All';
                       const cat = targetCat === 'All' ? sub._category : targetCat;
@@ -265,25 +269,25 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                         navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
                       }
                     }}
-                    className="flex flex-col items-center gap-2 transition-all active:scale-95 group shrink-0 snap-start"
+                    className="flex flex-col items-center gap-1.5 sm:gap-2 transition-all active:scale-95 group min-w-0"
                   >
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-sm border-2 border-zinc-100 group-hover:border-[#ce112d]/40 group-hover:shadow-md group-hover:scale-105 shrink-0">
+                    <div className="w-full aspect-[3/4] rounded-[1.35rem] sm:rounded-[1.6rem] md:rounded-[1.85rem] overflow-hidden bg-zinc-900 shadow-sm ring-1 ring-black/[0.06] group-hover:ring-[#ce112d]/40 group-hover:shadow-md transition-all duration-300">
                       {resolveSubcategoryImage(sub) ? (
                         <img
                           src={resolveSubcategoryImage(sub)}
                           alt={sub.name_en || ''}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-[#ce112d]/10 via-rose-50 to-white flex items-center justify-center border border-[#ce112d]/15 shrink-0">
-                          <span className="text-xl sm:text-2xl md:text-3xl font-black text-[#ce112d]">
+                        <div className="w-full h-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center">
+                          <span className="text-2xl sm:text-3xl font-black text-white/90">
                             {(sub.name_en || sub.name_bn || '?')[0]}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className="block text-xs sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug w-[5.5rem] sm:w-[7rem] md:w-[8rem] min-h-[2.5em] line-clamp-2">
+                    <span className="block text-[11px] sm:text-sm md:text-base font-bold text-zinc-700 text-center leading-snug w-full min-h-[2.4em] line-clamp-2 px-0.5">
                       {formatTitleCase(language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn))}
                     </span>
                   </button>

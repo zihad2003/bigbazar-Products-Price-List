@@ -5,18 +5,17 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 
 /**
- * Editorial hero frame — locked ratios so every slide feels intentional
- * (no jump when image intrinsic ratios differ).
+ * Broader hero frame — mobile-first so banners feel wide (not tall portrait),
+ * and object-cover keeps any admin upload filling the frame cleanly.
  *
- * Mobile  5:4  — strong first impression without eating the whole viewport
- * Tablet  16:9 — classic wide
- * Desktop 2.4:1 — cinematic fashion banner (~1920×800)
+ * Mobile  ~16:10 — wider first view for phone shoppers
+ * Tablet  16:9
+ * Desktop ~2.2:1 cinematic, capped height
  */
 const FRAME_CLASS = {
-  // Modern full-bleed fashion frame — taller mobile, cinematic desktop
-  auto: 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] max-h-[78vh] lg:max-h-[560px]',
-  slim: 'aspect-[16/9] md:aspect-[21/9] max-h-[52vh] lg:max-h-[420px]',
-  fullscreen: 'aspect-[3/4] sm:aspect-[16/9] lg:aspect-[16/9] max-h-[85vh] lg:max-h-[680px]',
+  auto: 'aspect-[16/10] sm:aspect-[16/9] lg:aspect-[11/5] max-h-[52vh] sm:max-h-[56vh] lg:max-h-[520px]',
+  slim: 'aspect-[2/1] sm:aspect-[21/9] max-h-[42vh] lg:max-h-[400px]',
+  fullscreen: 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[16/9] max-h-[70vh] lg:max-h-[620px]',
 };
 
 export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
@@ -52,7 +51,6 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
     goTo((current - 1 + total) % total, -1);
   }, [current, total, goTo]);
 
-  // Preload first slide
   useEffect(() => {
     if (!slides?.length) return;
     const firstSlide = slides[0];
@@ -76,7 +74,6 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
     link.href = url;
   }, [slides, isMobile]);
 
-  // Auto-play
   useEffect(() => {
     if (isPaused || total <= 1) return;
     const timer = setInterval(next, 5500);
@@ -124,19 +121,21 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
 
   const variants = useMemo(
     () => ({
-      enter: (dir) => ({ x: dir > 0 ? '8%' : '-8%', opacity: 0 }),
+      enter: (dir) => ({ x: dir > 0 ? '6%' : '-6%', opacity: 0 }),
       center: { x: 0, opacity: 1 },
-      exit: (dir) => ({ x: dir > 0 ? '-8%' : '8%', opacity: 0 }),
+      exit: (dir) => ({ x: dir > 0 ? '-6%' : '6%', opacity: 0 }),
     }),
     []
   );
 
+  // Default cover so any ratio fills the broad frame; contain only if admin sets it
   const imageFitClass = slide?.image_fit === 'contain' ? 'object-contain' : 'object-cover';
+  const objectPos = slide?.object_position || 'center';
   const isClickable = !!(slide?.button_link || slide?.product_id);
 
   return (
     <div
-      className={`relative w-full overflow-hidden bg-neutral-100 group select-none ${frameClass}`}
+      className={`relative w-full overflow-hidden bg-zinc-200/80 group select-none ${frameClass}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
@@ -151,11 +150,11 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           className={`absolute inset-0 ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
           onClick={touchMoved ? undefined : handleBannerClick}
         >
-          <picture className="w-full h-full block">
+          <picture className="absolute inset-0 w-full h-full block">
             {slide?.mobile_image && (
               <source
                 media="(max-width: 767px)"
@@ -165,7 +164,8 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
             <img
               src={activeOptimizedUrl}
               alt={slide?.title || 'Hero Banner'}
-              className={`w-full h-full ${imageFitClass} object-center select-none scale-[1.01] group-hover:scale-[1.03] transition-transform duration-[1.4s] ease-out`}
+              className={`absolute inset-0 w-full h-full ${imageFitClass} select-none transition-transform duration-[1.2s] ease-out group-hover:scale-[1.02]`}
+              style={{ objectPosition: objectPos }}
               loading={current === 0 ? 'eager' : 'lazy'}
               fetchpriority={current === 0 ? 'high' : 'auto'}
               decoding="async"
@@ -180,9 +180,8 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
         </motion.div>
       </AnimatePresence>
 
-      {/* Soft bottom veil — keeps dots readable without a card overlay */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 sm:h-28 bg-gradient-to-t from-black/35 via-black/10 to-transparent z-[5]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 sm:h-20 bg-gradient-to-t from-black/30 via-black/8 to-transparent z-[5]"
         aria-hidden
       />
 
@@ -194,7 +193,7 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
               e.stopPropagation();
               prev();
             }}
-            className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 w-9 h-9 md:w-11 md:h-11 bg-white/90 hover:bg-white text-zinc-800 rounded-full flex items-center justify-center shadow-md transition-all opacity-0 group-hover:opacity-100 z-10 active:scale-95 hidden sm:flex"
+            className="absolute left-2.5 md:left-4 top-1/2 -translate-y-1/2 w-9 h-9 md:w-10 md:h-10 bg-white/95 hover:bg-white text-zinc-800 rounded-full flex items-center justify-center shadow-md transition-all opacity-0 group-hover:opacity-100 z-10 active:scale-95 hidden sm:flex"
             aria-label="Previous Slide"
           >
             <ChevronLeft size={20} strokeWidth={2.25} />
@@ -205,7 +204,7 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
               e.stopPropagation();
               next();
             }}
-            className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 w-9 h-9 md:w-11 md:h-11 bg-white/90 hover:bg-white text-zinc-800 rounded-full flex items-center justify-center shadow-md transition-all opacity-0 group-hover:opacity-100 z-10 active:scale-95 hidden sm:flex"
+            className="absolute right-2.5 md:right-4 top-1/2 -translate-y-1/2 w-9 h-9 md:w-10 md:h-10 bg-white/95 hover:bg-white text-zinc-800 rounded-full flex items-center justify-center shadow-md transition-all opacity-0 group-hover:opacity-100 z-10 active:scale-95 hidden sm:flex"
             aria-label="Next Slide"
           >
             <ChevronRight size={20} strokeWidth={2.25} />
@@ -214,7 +213,7 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
       )}
 
       {total > 1 && (
-        <div className="absolute bottom-3.5 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
+        <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -225,7 +224,7 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
               }}
               className={`transition-all duration-300 rounded-full ${
                 idx === current
-                  ? 'w-7 h-1.5 bg-white shadow-sm'
+                  ? 'w-6 h-1.5 bg-white shadow-sm'
                   : 'w-1.5 h-1.5 bg-white/55 hover:bg-white/85'
               }`}
               aria-label={`Go to slide ${idx + 1}`}

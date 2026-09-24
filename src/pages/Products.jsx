@@ -193,7 +193,7 @@ export default function Products() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="product-page min-h-screen bg-white" style={{ fontFamily: "'Noto Sans Bengali', 'Inter', system-ui, sans-serif" }}>
       <div className="border-b border-zinc-100 bg-white">
         <div className="w-full max-w-[1920px] mx-auto px-4 md:px-12 py-5 md:py-6">
           <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
