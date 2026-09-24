@@ -480,10 +480,14 @@ const UPLOAD_ID_TO_SUBCAT_STATIC = {
 
 const SUBCAT_ID_TO_STATIC = {
   'Stiched-Coton-Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
+  'Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
   Parshi: '/img/subcats/PARSHI.jpg',
+  Pparshi: '/img/subcats/PARSHI.jpg',
   Saree: '/img/subcats/SAREE.jpg',
   'Two-piece': '/img/subcats/WESTERN-2-PIECE.jpg',
   Kurti: '/img/subcats/KURTI.jpg',
+  'Kurti-&-Tops': '/img/subcats/KURTI.jpg',
+  'Kurti-Tops': '/img/subcats/KURTI.jpg',
   'Party-Three-Piece': '/img/subcats/Party-Three-Piece.jpg',
 };
 
@@ -498,6 +502,38 @@ app.get('/img/:id', async (c) => {
   if (UPLOAD_ID_TO_SUBCAT_STATIC[id]) {
     return c.redirect(UPLOAD_ID_TO_SUBCAT_STATIC[id], 302);
   }
+
+  // 0b. Persistent Hostinger uploads (uploads/api/img) — survives dist rebuild
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const baseDirs = [
+      path.resolve(process.cwd(), 'uploads', 'api', 'img'),
+      path.resolve(process.cwd(), 'dist', 'api', 'img'),
+      path.resolve(process.cwd(), 'public', 'api', 'img'),
+    ];
+    const names = hadExt
+      ? [rawId]
+      : [`${id}.webp`, `${id}.jpg`, `${id}.jpeg`, `${id}.png`];
+    for (const dir of baseDirs) {
+      for (const name of names) {
+        const file = path.join(dir, name);
+        if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
+        const buf = fs.readFileSync(file);
+        const ext = path.extname(file).toLowerCase();
+        const mimeType =
+          ext === '.png' ? 'image/png'
+          : ext === '.webp' ? 'image/webp'
+          : 'image/jpeg';
+        return new Response(buf, {
+          headers: {
+            'Content-Type': mimeType,
+            'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+          }
+        });
+      }
+    }
+  } catch (_) {}
 
   // 1. Try KV for ANY id (up-* uploads and legacy product-id keys)
   if (kv) {
@@ -2309,7 +2345,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       }
     }
 
-    // ── Hostinger Local Storage (since KV is not available) ──
+    // ── Hostinger Local Storage (persistent uploads/ — survives dist rebuild) ──
     const arrayBuffer = await file.arrayBuffer();
     const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
     const mimeType = file.type || 'image/jpeg';
@@ -2322,17 +2358,21 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       const fs = await import('fs');
       const path = await import('path');
       
+      // Primary: uploads/ outside dist so Hostinger redeploys don't wipe images
+      const persistentDir = path.resolve(process.cwd(), 'uploads', 'api', 'img');
       const publicImgDir = path.resolve(process.cwd(), 'public', 'api', 'img');
       const distImgDir = path.resolve(process.cwd(), 'dist', 'api', 'img');
       
-      if (!fs.existsSync(publicImgDir)) fs.mkdirSync(publicImgDir, { recursive: true });
-      if (!fs.existsSync(distImgDir)) fs.mkdirSync(distImgDir, { recursive: true });
+      for (const dir of [persistentDir, publicImgDir, distImgDir]) {
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      }
 
       const fileName = `${uploadId}.${ext}`;
       const buffer = Buffer.from(arrayBuffer);
       
-      fs.writeFileSync(path.join(publicImgDir, fileName), buffer);
-      fs.writeFileSync(path.join(distImgDir, fileName), buffer);
+      fs.writeFileSync(path.join(persistentDir, fileName), buffer);
+      try { fs.writeFileSync(path.join(publicImgDir, fileName), buffer); } catch (_) {}
+      try { fs.writeFileSync(path.join(distImgDir, fileName), buffer); } catch (_) {}
 
       return c.json({
         success: true,

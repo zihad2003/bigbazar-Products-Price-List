@@ -31,10 +31,14 @@ export const SEED_SUBCATEGORIES = {
  */
 export const SUBCAT_STATIC_IMAGES = {
   'Stiched-Coton-Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
+  'Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
   Parshi: '/img/subcats/PARSHI.jpg',
+  Pparshi: '/img/subcats/PARSHI.jpg',
   Saree: '/img/subcats/SAREE.jpg',
   'Two-piece': '/img/subcats/WESTERN-2-PIECE.jpg',
   Kurti: '/img/subcats/KURTI.jpg',
+  'Kurti-&-Tops': '/img/subcats/KURTI.jpg',
+  'Kurti-Tops': '/img/subcats/KURTI.jpg',
   'Party-Three-Piece': '/img/subcats/Party-Three-Piece.jpg',
 };
 
@@ -42,12 +46,18 @@ export const SUBCAT_STATIC_IMAGES = {
 export function resolveSubcategoryImage(sub) {
   if (!sub) return '';
   const staticUrl = SUBCAT_STATIC_IMAGES[sub.id];
-  const url = typeof sub.image_url === 'string' ? sub.image_url : '';
+  const url = typeof sub.image_url === 'string' ? sub.image_url.trim() : '';
   // Missing or known-broken upload CDN paths → use static file that exists on Hostinger
   if (staticUrl && (!url || url.includes('/api/img/up-') || url.includes('/api/settings-img/'))) {
     return staticUrl;
   }
   return url || staticUrl || '';
+}
+
+/** Static fallback only (for img onError when a live upload URL 404s). */
+export function subcategoryImageFallback(sub) {
+  if (!sub) return '';
+  return SUBCAT_STATIC_IMAGES[sub.id] || '';
 }
 
 /**

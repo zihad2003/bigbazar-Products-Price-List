@@ -51,7 +51,34 @@ app.use('/api/img/*', async (c, next) => {
     c.res.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
   }
 });
-app.use('/api/img/*', serveStatic({ root: './dist' }));
+// Persist uploads outside dist (survives redeploy). Fall through to API for redirects/404.
+app.use('/api/img/*', async (c, next) => {
+  const rel = c.req.path.replace(/^\/+/, ''); // api/img/foo.webp
+  const candidates = [
+    path.join(__dirname, 'uploads', rel),
+    path.join(__dirname, 'dist', rel),
+    path.join(__dirname, 'public', rel),
+  ];
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
+      const buf = fs.readFileSync(file);
+      const ext = path.extname(file).toLowerCase();
+      const type =
+        ext === '.png' ? 'image/png'
+        : ext === '.webp' ? 'image/webp'
+        : ext === '.gif' ? 'image/gif'
+        : 'image/jpeg';
+      return new Response(buf, {
+        headers: {
+          'Content-Type': type,
+          'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+        },
+      });
+    } catch (_) {}
+  }
+  await next();
+});
 app.use('/api/settings-img/*', async (c, next) => {
   await next();
   if (c.res && c.res.status >= 200 && c.res.status < 400) {

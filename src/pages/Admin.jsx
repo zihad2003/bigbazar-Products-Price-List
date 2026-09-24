@@ -21,7 +21,7 @@ import AdminUsers from '../components/admin/AdminUsers';
 import SuperadminPanel from '../components/admin/SuperadminPanel';
 import OrderDetailsPanel from '../components/admin/OrderDetailsPanel';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
-import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory } from '../data/categories';
+import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function Admin() {
@@ -1715,14 +1715,32 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 </h3>
               </div>
 
-              {getSubcategoriesForCategory(subcatCategory, subcategoriesData).map((sub, idx) => (
+              {getSubcategoriesForCategory(subcatCategory, subcategoriesData).map((sub, idx) => {
+                const thumbSrc = resolveSubcategoryImage(sub);
+                return (
                 <div key={sub.id} className="flex items-center gap-2.5 p-2.5 bg-[#121215] border border-white/10 rounded-lg hover:border-white/20 transition-colors">
                   <div className="w-9 h-9 rounded-md overflow-hidden bg-zinc-800 border border-white/10 shrink-0 flex items-center justify-center">
-                    {sub.image_url ? (
-                      <img src={sub.image_url} alt={sub.name_en} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs font-semibold text-zinc-500">{(sub.name_en || '?')[0]}</span>
-                    )}
+                    {thumbSrc ? (
+                      <img
+                        src={thumbSrc}
+                        alt={sub.name_en}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const fb = subcategoryImageFallback(sub);
+                          if (fb && e.currentTarget.dataset.fb !== '1') {
+                            e.currentTarget.dataset.fb = '1';
+                            e.currentTarget.src = fb;
+                            return;
+                          }
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <span className={`text-xs font-semibold text-zinc-500 ${thumbSrc ? 'hidden' : ''}`}>
+                      {(sub.name_en || '?')[0]}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-white truncate">{sub.name_en}</p>
@@ -1754,7 +1772,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     <Trash2 size={13} />
                   </button>
                 </div>
-              ))}
+              );
+              })}
 
               {getSubcategoriesForCategory(subcatCategory, subcategoriesData).length === 0 && (
                 <div className="text-center py-10 text-zinc-600">
@@ -1839,8 +1858,13 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     </label>
                   </div>
                   {subcatForm.image_url && (
-                    <div className="mt-2 w-10 h-10 rounded-full overflow-hidden border border-white/20">
-                      <img src={subcatForm.image_url} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="mt-2 w-10 h-10 rounded-full overflow-hidden border border-white/20 bg-zinc-800">
+                      <img
+                        src={resolveSubcategoryImage({ id: editingSubcat || subcatForm.id, image_url: subcatForm.image_url })}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.opacity = '0.3'; }}
+                      />
                     </div>
                   )}
                 </div>

@@ -50,16 +50,16 @@ const CHAT_COPY = {
     subtitle: 'শপিং সহকারী',
     welcome: 'আসসালামু আলাইকুম। Big Bazar শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি কোন ক্যাটাগরির কালেকশন দেখতে চান বা কী জানতে চান?',
     loginRequired: 'চ্যাট করতে লগইন করুন',
-    loginHint: 'আপনার অ্যাকাউন্ট দিয়ে চ্যাট চলবে — পরে আবার এলে আগের কথোপকথন থাকবে।',
+    loginHint: 'লগইন করলে আগের চ্যাট থাকবে।',
     loginBtn: 'লগইন করুন',
-    loginWelcome: 'ফিরে আসায় স্বাগতম',
-    loginSub: 'আপনার অ্যাকাউন্টে লগইন করুন',
+    loginWelcome: 'লগইন করুন',
+    loginSub: '',
     continueGoogle: 'Google দিয়ে চালিয়ে যান',
-    orEmail: 'অথবা ইমেইল / মোবাইল',
+    orEmail: 'অথবা',
     mobilePh: 'মোবাইল বা ইমেইল',
     passwordPh: 'পাসওয়ার্ড',
-    loginNow: 'লগইন করুন',
-    newHere: 'অ্যাকাউন্ট নেই? অ্যাকাউন্ট পেজে যান',
+    loginNow: 'লগইন',
+    newHere: 'নতুন? অ্যাকাউন্ট তৈরি',
     googleMissing: 'গুগল লগইন কনফিগার করা নেই',
     authError: 'চ্যাট করতে লগইন প্রয়োজন।',
     fallbackReply: 'আমি বুঝতে পেরেছি। আর কীভাবে সহায়তা করতে পারি?',
@@ -126,17 +126,17 @@ const CHAT_COPY = {
     fab: 'Shopping Help',
     subtitle: 'Shopping assistant',
     welcome: 'Welcome to the Big Bazar shopping assistant. Which collection would you like to browse, or what can I help with?',
-    loginRequired: 'Login required to chat',
-    loginHint: 'Sign in so your conversation continues on this account when you return.',
+    loginRequired: 'Login to chat',
+    loginHint: 'Sign in to keep your chat history.',
     loginBtn: 'Log in',
-    loginWelcome: 'Welcome Back',
-    loginSub: 'Login to your selective account',
+    loginWelcome: 'Sign in',
+    loginSub: '',
     continueGoogle: 'Continue with Google',
-    orEmail: 'Or email / mobile',
+    orEmail: 'or',
     mobilePh: 'Mobile or email',
     passwordPh: 'Password',
-    loginNow: 'Login Now',
-    newHere: 'New here? Open account page',
+    loginNow: 'Log in',
+    newHere: 'New? Create account',
     googleMissing: 'Google login is not configured',
     authError: 'Please log in to use the shopping assistant.',
     fallbackReply: 'Got it. How else can I help?',
@@ -915,76 +915,71 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
           {/* Messages Canvas - Strict Light Theme */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 chat-canvas-bg chat-scrollbar bg-[#f8fafc]">
             {!isLoggedIn ? (
-              <div className="h-full min-h-[260px] flex flex-col justify-center px-1 py-2">
-                <div className="w-full max-w-[320px] mx-auto bg-white border border-zinc-200/90 rounded-[1.75rem] shadow-sm p-5 space-y-5">
-                  <div className="space-y-1.5 text-left">
-                    <h1 className="text-xl font-black italic tracking-tighter leading-none">
-                      <span className="text-zinc-900">BIG</span>
-                      <span className="text-[#ce112d]">BAZAR</span>
-                    </h1>
-                    <h4 className="text-xl font-black text-zinc-900 tracking-tight pt-1">{c.loginWelcome}</h4>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{c.loginSub}</p>
-                    <p className="text-xs text-zinc-500 leading-relaxed">{c.loginHint}</p>
+              <div className="h-full min-h-[240px] flex flex-col justify-center px-2 py-4">
+                <div className="w-full max-w-[300px] mx-auto space-y-5">
+                  <div className="text-center space-y-1">
+                    <h4 className="text-base font-semibold text-zinc-900 tracking-tight">{c.loginWelcome}</h4>
+                    <p className="text-[12px] text-zinc-500 leading-relaxed">{c.loginHint}</p>
                   </div>
 
                   {authError && (
-                    <div className="p-2.5 bg-red-50 rounded-xl flex items-start gap-2 text-red-600 text-[11px] font-bold">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                    <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-[11px] font-medium flex items-start gap-2">
+                      <AlertCircle size={13} className="shrink-0 mt-0.5" />
                       <span>{typeof authError === 'object' ? (authError?.message || c.authError) : String(authError)}</span>
                     </div>
                   )}
 
-                  <form onSubmit={handleChatPasswordLogin} className="space-y-2.5">
+                  {/* Google first — primary path */}
+                  <div className="space-y-2">
+                    {googleClientId ? (
+                      <div ref={googleBtnRef} className="min-h-[40px] w-full flex justify-center overflow-hidden" />
+                    ) : (
+                      <p className="text-[11px] text-zinc-400 text-center py-2">{c.googleMissing}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-zinc-200/80" />
+                    <span className="text-[11px] text-zinc-400">{c.orEmail}</span>
+                    <div className="flex-1 h-px bg-zinc-200/80" />
+                  </div>
+
+                  <form onSubmit={handleChatPasswordLogin} className="space-y-2">
                     <div className="relative">
-                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300" size={15} />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
                       <input
                         type="text"
                         autoComplete="username"
                         placeholder={c.mobilePh}
                         value={authForm.identifier}
                         onChange={(e) => setAuthForm((prev) => ({ ...prev, identifier: e.target.value }))}
-                        className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/20 focus:bg-white rounded-2xl py-3.5 pl-10 pr-3 text-xs font-bold outline-none transition-all"
+                        className="w-full bg-white border border-zinc-200 focus:border-zinc-400 rounded-xl py-2.5 pl-9 pr-3 text-[13px] text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors"
                       />
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300" size={15} />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
                       <input
                         type="password"
                         autoComplete="current-password"
                         placeholder={c.passwordPh}
                         value={authForm.password}
                         onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className="w-full bg-zinc-50 border border-transparent focus:border-[#ce112d]/20 focus:bg-white rounded-2xl py-3.5 pl-10 pr-3 text-xs font-bold outline-none transition-all"
+                        className="w-full bg-white border border-zinc-200 focus:border-zinc-400 rounded-xl py-2.5 pl-9 pr-3 text-[13px] text-zinc-900 placeholder:text-zinc-400 outline-none transition-colors"
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={authBusy || !authForm.identifier.trim() || !authForm.password}
-                      className="w-full h-12 bg-[#ce112d] text-white rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-red-500/15"
+                      className="w-full h-10 bg-zinc-900 text-white rounded-xl text-[13px] font-medium flex items-center justify-center gap-1.5 hover:bg-zinc-800 active:scale-[0.99] transition-all disabled:opacity-40"
                     >
-                      {authBusy ? <Loader2 className="animate-spin" size={16} /> : (
+                      {authBusy ? <Loader2 className="animate-spin" size={15} /> : (
                         <>
                           <span>{c.loginNow}</span>
-                          <ArrowRight size={14} />
+                          <ArrowRight size={14} strokeWidth={2} />
                         </>
                       )}
                     </button>
                   </form>
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-px bg-zinc-100" />
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{c.orEmail}</span>
-                    <div className="flex-1 h-px bg-zinc-100" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider text-center">{c.continueGoogle}</p>
-                    {googleClientId ? (
-                      <div ref={googleBtnRef} className="min-h-[44px] w-full flex justify-center overflow-hidden" />
-                    ) : (
-                      <p className="text-xs text-zinc-500 text-center bg-zinc-50 rounded-xl py-3 px-2">{c.googleMissing}</p>
-                    )}
-                  </div>
 
                   <button
                     type="button"
@@ -992,7 +987,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
                       setIsOpen(false);
                       navigate('/account');
                     }}
-                    className="w-full text-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest hover:text-zinc-800 transition-colors"
+                    className="w-full text-center text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors"
                   >
                     {c.newHere}
                   </button>
