@@ -87,9 +87,9 @@ export const ProductCard = ({ product, onClick }) => {
           </div>
         )}
         
-        {/* Corner Ribbon Sale Badge */}
+        {/* Corner Ribbon Sale Badge — above sold-out overlay so % OFF stays readable */}
         {hasDiscount && (
-          <div className="absolute top-0 left-0">
+          <div className="absolute top-0 left-0 z-20">
             <div className="bg-[#ce112d] text-white text-[9px] md:text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-br-lg shadow-md">
               {discountPercent}% OFF
             </div>
@@ -97,8 +97,9 @@ export const ProductCard = ({ product, onClick }) => {
         )}
         
         {product.is_sold_out && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center p-6 text-center">
-            <span className="text-xs font-bold uppercase text-neutral-900 border-2 border-neutral-900 px-4 py-2 rounded-xl">
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 bg-white/35" />
+            <span className="relative text-[10px] md:text-xs font-black uppercase tracking-wider text-neutral-800 bg-white/95 px-3.5 py-1.5 rounded-lg shadow-md border border-neutral-200">
               {language === 'bn' ? 'স্টক নেই' : 'Sold Out'}
             </span>
           </div>

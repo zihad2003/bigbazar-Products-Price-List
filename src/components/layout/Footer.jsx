@@ -32,7 +32,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
     };
 
     return (
-        <footer className="pt-16 pb-28 lg:pb-12 border-t transition-all font-sans text-xs md:text-sm bg-white border-zinc-200 text-zinc-900">
+        <footer className="pt-16 pb-40 sm:pb-36 lg:pb-12 border-t transition-all font-sans text-xs md:text-sm bg-white border-zinc-200 text-zinc-900">
             <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12">
                 
                 {/* Main Links Area — 12 Column Layout */}
@@ -172,9 +172,34 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                 {/* Bottom Credits & Payment Badges */}
                 <div className="border-t border-zinc-200 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
                     
-                    {/* Copyright */}
-                    <div className="text-xs font-medium text-zinc-500 text-center md:text-left">
-                        {language === 'bn' ? '© ২০২৬ বিগ বাজার। সর্বস্বত্ব সংরক্ষিত।' : '© 2026 BIG BAZAR. All rights reserved.'}
+                    {/* Copyright + developer credit */}
+                    <div className="text-center md:text-left space-y-1.5">
+                        <div className="text-xs font-medium text-zinc-500">
+                            {language === 'bn' ? '© ২০২৬ বিগ বাজার। সর্বস্বত্ব সংরক্ষিত।' : '© 2026 BIG BAZAR. All rights reserved.'}
+                        </div>
+                        <a
+                            href={`https://wa.me/8801857045449?text=${encodeURIComponent(
+                                language === 'bn'
+                                    ? 'হ্যালো Zihad, onlinebigbazar.com দেখেছি। আমিও এরকম একটি ওয়েবসাইট বানাতে আগ্রহী।'
+                                    : "Hi Zihad, I saw onlinebigbazar.com and I'm interested in getting a similar website built."
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-[#ce112d] transition-colors"
+                            title={language === 'bn' ? 'ওয়েবসাইট বানাতে আগ্রহী? মেসেজ করুন' : 'Interested in a website? Message on WhatsApp'}
+                        >
+                            <span className="font-medium tracking-wide">
+                                {language === 'bn' ? 'ওয়েবসাইট তৈরি' : 'Website by'}
+                            </span>
+                            <span className="font-outfit text-[13px] italic font-semibold tracking-tight text-zinc-500 group-hover:text-[#ce112d] transition-colors underline decoration-zinc-300 underline-offset-2 group-hover:decoration-[#ce112d]/60">
+                                Zihad
+                            </span>
+                            <MessageCircle
+                                size={12}
+                                className="text-[#128C7E] opacity-70 group-hover:opacity-100 transition-opacity shrink-0"
+                                aria-hidden
+                            />
+                        </a>
                     </div>
 
                     {/* Payment methods */}

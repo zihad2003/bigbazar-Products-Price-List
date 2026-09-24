@@ -6,6 +6,36 @@ import {
   PieChart, CreditCard, AlertCircle, RotateCcw, ChevronDown, Layers, X
 } from 'lucide-react';
 
+/** Match OrderDetailsPanel status values (admin UI writes "Canceled") */
+const isCanceledStatus = (status) => status === 'Canceled' || status === 'Cancelled';
+const isDeliveredStatus = (status) => status === 'Delivered' || status === 'Completed';
+const isShippedStatus = (status) => status === 'Shipped';
+
+function getAdvanceAmount(order) {
+  const confirmed =
+    Boolean(order?.is_advance_paid) ||
+    order?.payment_status === 'Advance Paid' ||
+    order?.payment_status === 'Fully Paid';
+  if (!confirmed) return 0;
+  const charge = Number(order.delivery_charge) || 0;
+  if (order.is_exclusive_order) return 500;
+  if (order.delivery_area === 'mirsarai' && charge === 0) return 100;
+  return charge;
+}
+
+function getBalanceDue(order) {
+  const total = Number(order.total_amount) || 0;
+  if (order.payment_status === 'Fully Paid') return 0;
+  return Math.max(0, total - getAdvanceAmount(order));
+}
+
+function parseOrderQty(order) {
+  const direct = Number(order?.quantity);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const match = String(order?.product_name || '').match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
+  return match ? Number(match[1]) : 1;
+}
+
 export default function AdminReports({ orders = [], products = [], reviews = [] }) {
   const [activeReportTab, setActiveReportTab] = useState('monthly'); // 'monthly' | 'sales' | 'products' | 'customers' | 'financial'
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'last_3_months' | 'this_year'
@@ -52,11 +82,16 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     });
   }, [orders, timeFilter]);
 
+  // Non-canceled orders — used for revenue / advance / due
+  const revenueOrders = useMemo(
+    () => filteredOrders.filter(o => !isCanceledStatus(o.status)),
+    [filteredOrders]
+  );
+
   // Aggregate Month-Wise Data Report
   const monthlyDataReport = useMemo(() => {
     const monthsMap = {};
 
-    // Group valid orders by YYYY-MM
     filteredOrders.forEach(o => {
       const date = parseOrderDate(o.created_at);
       const year = date.getFullYear();
@@ -72,6 +107,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           monthIndex,
           totalOrders: 0,
           pendingOrders: 0,
+          shippedOrders: 0,
           deliveredOrders: 0,
           cancelledOrders: 0,
           totalRevenue: 0,
@@ -87,39 +123,38 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       const m = monthsMap[key];
       const totalAmt = Number(o.total_amount) || 0;
       const delCharge = Number(o.delivery_charge) || 0;
-
-      // Calculate advance payment logic matching shop calculations
-      const advance = o.is_advance_paid
-        ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && delCharge === 0 ? 100 : delCharge))
-        : 0;
-      const due = o.payment_status === 'Fully Paid' ? 0 : Math.max(0, totalAmt - advance);
+      const canceled = isCanceledStatus(o.status);
+      const advance = canceled ? 0 : getAdvanceAmount(o);
+      const due = canceled ? 0 : getBalanceDue(o);
 
       m.totalOrders += 1;
-      m.totalRevenue += totalAmt;
-      m.advancePaidTotal += advance;
-      m.balanceDueTotal += due;
-      m.deliveryChargesTotal += delCharge;
+      if (!canceled) {
+        m.totalRevenue += totalAmt;
+        m.advancePaidTotal += advance;
+        m.balanceDueTotal += due;
+        m.deliveryChargesTotal += delCharge;
+      }
       m.ordersList.push(o);
 
       if (o.status === 'Pending') m.pendingOrders += 1;
-      else if (o.status === 'Delivered' || o.status === 'Completed') m.deliveredOrders += 1;
-      else if (o.status === 'Cancelled') m.cancelledOrders += 1;
+      else if (isShippedStatus(o.status)) m.shippedOrders += 1;
+      else if (isDeliveredStatus(o.status)) m.deliveredOrders += 1;
+      else if (canceled) m.cancelledOrders += 1;
 
       if (o.delivery_area === 'mirsarai') m.mirsaraiOrdersCount += 1;
       else m.outsideOrdersCount += 1;
     });
 
-    // Convert map to sorted array (newest months first)
     const sorted = Object.values(monthsMap).sort((a, b) => b.key.localeCompare(a.key));
 
-    // Calculate averages & growth rates
     return sorted.map((m, index) => {
       const prevMonth = sorted[index + 1];
       const revenueGrowth = prevMonth && prevMonth.totalRevenue > 0
         ? (((m.totalRevenue - prevMonth.totalRevenue) / prevMonth.totalRevenue) * 100).toFixed(1)
         : null;
 
-      const avgOrderValue = m.totalOrders > 0 ? Math.round(m.totalRevenue / m.totalOrders) : 0;
+      const activeCount = m.totalOrders - m.cancelledOrders;
+      const avgOrderValue = activeCount > 0 ? Math.round(m.totalRevenue / activeCount) : 0;
 
       return {
         ...m,
@@ -129,51 +164,43 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     });
   }, [filteredOrders]);
 
-  // Currently selected month for deep dive modal/view
   const activeMonthDetail = useMemo(() => {
     if (!selectedMonthKey) return monthlyDataReport[0] || null;
     return monthlyDataReport.find(m => m.key === selectedMonthKey) || monthlyDataReport[0] || null;
   }, [monthlyDataReport, selectedMonthKey]);
 
-  // Overall Business Key Performance Indicators
   const overallKPIs = useMemo(() => {
-    const totalRev = filteredOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const totalRev = revenueOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
     const totalOrdersCount = filteredOrders.length;
-    const totalAdvance = filteredOrders.reduce((sum, o) => {
-      const charge = Number(o.delivery_charge) || 0;
-      return sum + (o.is_advance_paid
-        ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
-        : 0);
-    }, 0);
-    const totalDue = filteredOrders.reduce((sum, o) => {
-      const total = Number(o.total_amount) || 0;
-      const charge = Number(o.delivery_charge) || 0;
-      const advance = o.is_advance_paid
-        ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
-        : 0;
-      return sum + (o.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance));
-    }, 0);
-
-    const avgOrderVal = totalOrdersCount > 0 ? Math.round(totalRev / totalOrdersCount) : 0;
-    const deliveredCount = filteredOrders.filter(o => o.status === 'Delivered' || o.status === 'Completed').length;
-    const deliveryRate = totalOrdersCount > 0 ? Math.round((deliveredCount / totalOrdersCount) * 100) : 0;
+    const activeOrdersCount = revenueOrders.length;
+    const totalAdvance = revenueOrders.reduce((sum, o) => sum + getAdvanceAmount(o), 0);
+    const totalDue = revenueOrders.reduce((sum, o) => sum + getBalanceDue(o), 0);
+    const avgOrderVal = activeOrdersCount > 0 ? Math.round(totalRev / activeOrdersCount) : 0;
+    const deliveredCount = filteredOrders.filter(o => isDeliveredStatus(o.status)).length;
+    const shippedCount = filteredOrders.filter(o => isShippedStatus(o.status)).length;
+    const pendingCount = filteredOrders.filter(o => o.status === 'Pending').length;
+    const cancelledCount = filteredOrders.filter(o => isCanceledStatus(o.status)).length;
+    const deliveryRate = activeOrdersCount > 0 ? Math.round((deliveredCount / activeOrdersCount) * 100) : 0;
 
     return {
       totalRevenue: totalRev,
       totalOrders: totalOrdersCount,
+      activeOrders: activeOrdersCount,
       totalAdvance,
       totalDue,
       avgOrderValue: avgOrderVal,
       deliveredCount,
+      shippedCount,
+      pendingCount,
+      cancelledCount,
       deliveryRate
     };
-  }, [filteredOrders]);
+  }, [filteredOrders, revenueOrders]);
 
-  // Top Selling Products Breakdown
   const productPerformance = useMemo(() => {
     const prodMap = {};
 
-    filteredOrders.forEach(o => {
+    revenueOrders.forEach(o => {
       const name = o.product_name || 'Unknown Product';
       const pid = o.product_id || name;
 
@@ -187,42 +214,38 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
         };
       }
 
-      const qty = Number(o.quantity) || 1;
-      const amt = Number(o.total_amount) || 0;
-
-      prodMap[pid].totalQty += qty;
-      prodMap[pid].totalRevenue += amt;
+      prodMap[pid].totalQty += parseOrderQty(o);
+      prodMap[pid].totalRevenue += Number(o.total_amount) || 0;
       prodMap[pid].ordersCount += 1;
     });
 
     return Object.values(prodMap).sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [filteredOrders]);
+  }, [revenueOrders]);
 
-  // Delivery Area Breakdown
   const deliveryAreaStats = useMemo(() => {
     const areas = { mirsarai: { name: 'Mirsarai (Local)', count: 0, revenue: 0 }, outside: { name: 'Outside Mirsarai', count: 0, revenue: 0 } };
 
-    filteredOrders.forEach(o => {
+    revenueOrders.forEach(o => {
       const areaKey = o.delivery_area === 'mirsarai' ? 'mirsarai' : 'outside';
       areas[areaKey].count += 1;
-      areas[areaKey].revenue += (Number(o.total_amount) || 0);
+      areas[areaKey].revenue += Number(o.total_amount) || 0;
     });
 
     return areas;
-  }, [filteredOrders]);
+  }, [revenueOrders]);
 
-  // CSV Export Generator Function
   const exportToCSV = (type = 'monthly') => {
     let csvRows = [];
     let filename = `big_bazar_report_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
 
     if (type === 'monthly') {
-      csvRows.push(['Month-Year', 'Total Orders', 'Delivered Orders', 'Pending Orders', 'Cancelled Orders', 'Gross Revenue (BDT)', 'Advance Collected (BDT)', 'Outstanding Due (BDT)', 'Avg Order Value (BDT)']);
+      csvRows.push(['Month-Year', 'Total Orders', 'Delivered Orders', 'Shipped Orders', 'Pending Orders', 'Cancelled Orders', 'Gross Revenue (BDT)', 'Advance Collected (BDT)', 'Outstanding Due (BDT)', 'Avg Order Value (BDT)']);
       monthlyDataReport.forEach(m => {
         csvRows.push([
           `"${m.monthName}"`,
           m.totalOrders,
           m.deliveredOrders,
+          m.shippedOrders,
           m.pendingOrders,
           m.cancelledOrders,
           m.totalRevenue,
@@ -240,11 +263,8 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       csvRows.push(['Order ID', 'Date', 'Customer Name', 'Phone', 'Address', 'Area', 'Product', 'Total Amount', 'Advance Paid', 'Due Balance', 'Status']);
       filteredOrders.forEach(o => {
         const total = Number(o.total_amount) || 0;
-        const charge = Number(o.delivery_charge) || 0;
-        const advance = o.is_advance_paid
-          ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
-          : 0;
-        const due = o.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+        const advance = getAdvanceAmount(o);
+        const due = getBalanceDue(o);
 
         csvRows.push([
           `"#${o.id.toString().slice(-6).toUpperCase()}"`,
@@ -271,6 +291,11 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     link.click();
     document.body.removeChild(link);
   };
+
+  const headerExportType =
+    activeReportTab === 'products' ? 'products' :
+    activeReportTab === 'customers' ? 'orders' :
+    'monthly';
 
   return (
     <div className="space-y-5 pb-20 text-white font-sans">
@@ -312,7 +337,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           </div>
 
           <button
-            onClick={() => exportToCSV(activeReportTab === 'products' ? 'products' : 'monthly')}
+            onClick={() => exportToCSV(headerExportType)}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[#121215] border border-white/10 text-xs font-semibold text-zinc-400 hover:border-[#ce112d]/40 hover:text-white transition-colors"
             title="Download CSV Spreadsheet"
           >
@@ -334,7 +359,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       {/* KPI Stats Overview Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
-          { label: 'Gross Revenue', value: formatTaka(overallKPIs.totalRevenue), sub: `${overallKPIs.totalOrders} orders`, color: 'border-t-[#ce112d]', icon: <DollarSign size={14} className="text-[#ce112d]" /> },
+          { label: 'Gross Revenue', value: formatTaka(overallKPIs.totalRevenue), sub: `${overallKPIs.activeOrders} active / ${overallKPIs.totalOrders} total`, color: 'border-t-[#ce112d]', icon: <DollarSign size={14} className="text-[#ce112d]" /> },
           { label: 'Advance Collected', value: formatTaka(overallKPIs.totalAdvance), sub: 'bKash / Bank', color: 'border-t-emerald-500', icon: <CheckCircle2 size={14} className="text-emerald-400" /> },
           { label: 'Balance Due', value: formatTaka(overallKPIs.totalDue), sub: 'COD pending', color: 'border-t-amber-500', icon: <Clock size={14} className="text-amber-400" /> },
           { label: 'Avg Order Value', value: formatTaka(overallKPIs.avgOrderValue), sub: `${overallKPIs.deliveryRate}% fulfilled`, color: 'border-t-blue-500', icon: <TrendingUp size={14} className="text-blue-400" /> },
@@ -639,22 +664,22 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 <PieChart className="text-amber-400" size={20} />
               </div>
 
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-emerald-500 p-3 rounded-lg text-center">
                   <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Delivered</span>
                   <span className="text-lg font-semibold text-white">{overallKPIs.deliveredCount}</span>
                 </div>
+                <div className="bg-[#121215] border border-white/10 border-t-2 border-t-blue-500 p-3 rounded-lg text-center">
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Shipped</span>
+                  <span className="text-lg font-semibold text-white">{overallKPIs.shippedCount}</span>
+                </div>
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-amber-500 p-3 rounded-lg text-center">
                   <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Pending</span>
-                  <span className="text-lg font-semibold text-white">
-                    {filteredOrders.filter(o => o.status === 'Pending').length}
-                  </span>
+                  <span className="text-lg font-semibold text-white">{overallKPIs.pendingCount}</span>
                 </div>
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-red-500 p-3 rounded-lg text-center">
-                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Cancelled</span>
-                  <span className="text-lg font-semibold text-white">
-                    {filteredOrders.filter(o => o.status === 'Cancelled').length}
-                  </span>
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Canceled</span>
+                  <span className="text-lg font-semibold text-white">{overallKPIs.cancelledCount}</span>
                 </div>
               </div>
             </div>
@@ -738,11 +763,8 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               <tbody className="divide-y divide-white/5 text-xs font-semibold text-zinc-300">
                 {filteredOrders.slice(0, 20).map((o) => {
                   const total = Number(o.total_amount) || 0;
-                  const charge = Number(o.delivery_charge) || 0;
-                  const advance = o.is_advance_paid
-                    ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
-                    : 0;
-                  const due = o.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+                  const advance = getAdvanceAmount(o);
+                  const due = getBalanceDue(o);
 
                   return (
                     <tr key={o.id} className="hover:bg-white/[0.02] transition-colors">
@@ -755,10 +777,14 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                       <td className="py-3 px-4 text-right font-bold text-amber-400">{formatTaka(due)}</td>
                       <td className="py-3 px-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${
-                          o.status === 'Delivered' || o.status === 'Completed'
+                          isDeliveredStatus(o.status)
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : isShippedStatus(o.status)
+                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                             : o.status === 'Pending'
                             ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : isCanceledStatus(o.status)
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                             : 'bg-zinc-800 text-zinc-400'
                         }`}>
                           {o.status || 'Pending'}

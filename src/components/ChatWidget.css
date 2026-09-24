@@ -61,12 +61,10 @@
   }
 }
 
-/* Mobile: lift above the fixed bottom nav bar (h-14 ~56px) + safe-area padding
-   Bottom nav is ~56px tall + ~8px padding = ~80px from bottom.
-   We add extra clearance so the FAB doesn't touch the floating cart button. */
+/* Mobile: lift above bottom nav + floating cart so footer payment logos stay clear */
 @media (max-width: 640px) {
   .chat-widget-fab {
-    bottom: 88px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: auto;
     padding: 8px 14px;
@@ -74,7 +72,7 @@
 
   /* Product page: FAB stays low-right; sticky ORDER bar sits above it (~152px) */
   .chat-widget-fab--product {
-    bottom: 88px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: auto;
   }
