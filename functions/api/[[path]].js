@@ -19,6 +19,55 @@ import {
 } from './assistant-query.js';
 import { getVapidConfig, sendWebPushBatch } from './webPush.js';
 import { generateProductCopy } from './product-copy.js';
+import {
+  getSteadfastConfig,
+  normalizeBdPhone,
+  steadfastCreateOrder,
+  steadfastStatusByInvoice,
+  steadfastStatusByTracking,
+  steadfastGetBalance,
+} from './steadfast.js';
+
+async function ensureOrderSteadfastColumns(conn) {
+  for (const sql of [
+    'ALTER TABLE orders ADD COLUMN tracking_code VARCHAR(64) NULL',
+    'ALTER TABLE orders ADD COLUMN steadfast_consignment_id VARCHAR(64) NULL',
+    'ALTER TABLE orders ADD COLUMN steadfast_status VARCHAR(64) NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/duplicate column|already exists/i.test(msg)) {
+        /* ignore */
+      }
+    }
+  }
+}
+
+function orderCodAmount(order) {
+  const total =
+    typeof order.total_amount === 'string'
+      ? Number(String(order.total_amount).replace(/[^0-9.]/g, ''))
+      : Number(order.total_amount) || 0;
+  if (order.payment_status === 'Fully Paid') return 0;
+  const confirmed =
+    Boolean(order.is_advance_paid) ||
+    order.payment_status === 'Advance Paid' ||
+    order.payment_status === 'Fully Paid';
+  if (!confirmed) return Math.max(0, total);
+  const charge = parseFloat(order.delivery_charge) || 0;
+  let advance = charge;
+  if (order.is_exclusive_order) advance = 500;
+  else if (order.delivery_area === 'mirsarai' && charge === 0) advance = 100;
+  return Math.max(0, total - advance);
+}
+
+function orderInvoiceId(order) {
+  const raw = String(order.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (raw.length >= 4) return raw.slice(0, 40);
+  return `BB-${Date.now()}`;
+}
 
 async function sha256Hex(text) {
   const data = new TextEncoder().encode(String(text));
@@ -1771,6 +1820,137 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     await tx.rollback();
     console.error('Order update transaction error:', err);
     return c.json({ error: err.message }, 500);
+  }
+});
+
+// POST /orders/:id/steadfast — create Steadfast consignment + mark Shipped
+app.post('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const cfg = getSteadfastConfig(c.env);
+  if (!cfg.configured) {
+    return c.json({
+      error: 'Steadfast API keys missing. Set STEADFAST_API_KEY and STEADFAST_SECRET_KEY on the server.',
+    }, 503);
+  }
+
+  const conn = getDb(c.env);
+  await ensureOrderSteadfastColumns(conn);
+
+  const rows = await conn.execute('SELECT * FROM orders WHERE id = ? LIMIT 1', [id]);
+  const order = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+  if (!order) return c.json({ error: 'Order not found' }, 404);
+
+  if (order.tracking_code || order.steadfast_consignment_id) {
+    return c.json({
+      error: 'Already booked on Steadfast',
+      tracking_code: order.tracking_code,
+      consignment_id: order.steadfast_consignment_id,
+      steadfast_status: order.steadfast_status,
+    }, 409);
+  }
+
+  const phone = normalizeBdPhone(order.customer_phone);
+  if (phone.length !== 11 || !phone.startsWith('01')) {
+    return c.json({ error: `Invalid recipient phone (need 11-digit BD mobile). Got: ${order.customer_phone || 'empty'}` }, 400);
+  }
+
+  const address = String(order.customer_address || '').trim();
+  if (!address || address.length < 5) {
+    return c.json({ error: 'Customer address is required for courier booking' }, 400);
+  }
+
+  const name = String(order.customer_name || 'Customer').trim().slice(0, 100);
+  const invoice = orderInvoiceId(order);
+  const cod = orderCodAmount(order);
+  const itemDesc = String(order.product_name || 'Fashion items').slice(0, 200);
+  const note = [
+    order.delivery_area ? `Area: ${order.delivery_area}` : '',
+    order.size ? `Size: ${order.size}` : '',
+    order.color ? `Color: ${order.color}` : '',
+    order.customer_note ? String(order.customer_note).slice(0, 200) : '',
+  ]
+    .filter(Boolean)
+    .join(' | ')
+    .slice(0, 480);
+
+  try {
+    const data = await steadfastCreateOrder(c.env, {
+      invoice,
+      recipient_name: name,
+      recipient_phone: phone,
+      recipient_address: address.slice(0, 250),
+      cod_amount: Number(cod.toFixed(2)),
+      note: note || undefined,
+      item_description: itemDesc,
+      delivery_type: 0,
+    });
+
+    const consignment = data.consignment || data;
+    const tracking = consignment.tracking_code || null;
+    const consignmentId = consignment.consignment_id != null ? String(consignment.consignment_id) : null;
+    const sfStatus = consignment.status || 'in_review';
+
+    await conn.execute(
+      `UPDATE orders SET
+        tracking_code = ?,
+        steadfast_consignment_id = ?,
+        steadfast_status = ?,
+        status = CASE WHEN status = 'Pending' OR status IS NULL OR status = '' THEN 'Shipped' ELSE status END
+      WHERE id = ?`,
+      [tracking, consignmentId, sfStatus, id]
+    );
+
+    return c.json({
+      success: true,
+      tracking_code: tracking,
+      consignment_id: consignmentId,
+      steadfast_status: sfStatus,
+      invoice,
+      message: data.message || 'Consignment created',
+    });
+  } catch (err) {
+    console.error('Steadfast create error:', err?.message || err, err?.payload);
+    return c.json({ error: err.message || 'Steadfast booking failed', details: err.payload || null }, 502);
+  }
+});
+
+// GET /orders/:id/steadfast — refresh Steadfast status
+app.get('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const cfg = getSteadfastConfig(c.env);
+  if (!cfg.configured) return c.json({ error: 'Steadfast not configured' }, 503);
+
+  const conn = getDb(c.env);
+  await ensureOrderSteadfastColumns(conn);
+  const rows = await conn.execute('SELECT * FROM orders WHERE id = ? LIMIT 1', [id]);
+  const order = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+  if (!order) return c.json({ error: 'Order not found' }, 404);
+
+  try {
+    let data;
+    if (order.tracking_code) {
+      data = await steadfastStatusByTracking(c.env, order.tracking_code);
+    } else {
+      data = await steadfastStatusByInvoice(c.env, orderInvoiceId(order));
+    }
+    const consignment = data.consignment || data.delivery_status || data;
+    const sfStatus = consignment.status || consignment.delivery_status || null;
+    if (sfStatus) {
+      await conn.execute('UPDATE orders SET steadfast_status = ? WHERE id = ?', [String(sfStatus), id]);
+    }
+    return c.json({ success: true, data, steadfast_status: sfStatus, tracking_code: order.tracking_code });
+  } catch (err) {
+    return c.json({ error: err.message || 'Status check failed' }, 502);
+  }
+});
+
+// GET /admin/steadfast/balance
+app.get('/admin/steadfast/balance', requireAuth, requireAdmin, async (c) => {
+  try {
+    const data = await steadfastGetBalance(c.env);
+    return c.json({ success: true, data });
+  } catch (err) {
+    return c.json({ error: err.message || 'Balance check failed' }, 502);
   }
 });
 

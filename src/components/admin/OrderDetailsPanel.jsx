@@ -1,7 +1,9 @@
 import {
-  User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon,
+  User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon, Truck, RefreshCw, ExternalLink,
 } from 'lucide-react';
+import { useState } from 'react';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
+import { API_URL, getToken } from '../../api/client';
 
 function parseOrderLine(str) {
   const res = { name: str, size: null, color: null, sku: null, qty: 1 };
@@ -78,7 +80,11 @@ export default function OrderDetailsPanel({
   onTogglePayment,
   onUpdateStatus,
   onEditNote,
+  onOrderPatched,
 }) {
+  const [sfBusy, setSfBusy] = useState(false);
+  const [sfMsg, setSfMsg] = useState('');
+
   if (!order) return null;
 
   const ref = order.id.toString().slice(-6).toUpperCase();
@@ -87,6 +93,61 @@ export default function OrderDetailsPanel({
   const adv = advanceAmount(order);
   const due = balanceDue(order);
   const isModal = variant === 'modal';
+
+  const bookSteadfast = async () => {
+    if (!window.confirm(`Book Steadfast courier for #${ref}?\nCOD: ৳${due}`)) return;
+    setSfBusy(true);
+    setSfMsg('');
+    try {
+      const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+      const res = await fetch(`${base}/api/orders/${order.id}/steadfast`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSfMsg(data.error || 'Steadfast booking failed');
+        return;
+      }
+      setSfMsg(`Booked · ${data.tracking_code || 'OK'}`);
+      onOrderPatched?.({
+        ...order,
+        tracking_code: data.tracking_code,
+        steadfast_consignment_id: data.consignment_id,
+        steadfast_status: data.steadfast_status,
+        status: order.status === 'Pending' ? 'Shipped' : order.status,
+      });
+    } catch (err) {
+      setSfMsg(err.message || 'Network error');
+    } finally {
+      setSfBusy(false);
+    }
+  };
+
+  const refreshSteadfast = async () => {
+    setSfBusy(true);
+    setSfMsg('');
+    try {
+      const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+      const res = await fetch(`${base}/api/orders/${order.id}/steadfast`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSfMsg(data.error || 'Status check failed');
+        return;
+      }
+      setSfMsg(`Status: ${data.steadfast_status || 'updated'}`);
+      onOrderPatched?.({
+        ...order,
+        steadfast_status: data.steadfast_status || order.steadfast_status,
+      });
+    } catch (err) {
+      setSfMsg(err.message || 'Network error');
+    } finally {
+      setSfBusy(false);
+    }
+  };
 
   const findProduct = (item, idx) =>
     products.find((p) => p.id == order.product_id && idx === 0) ||
@@ -327,6 +388,56 @@ export default function OrderDetailsPanel({
             </button>
           </section>
         </div>
+
+        {/* Steadfast courier */}
+        <section className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Truck size={12} className="text-emerald-400" />
+              Steadfast Courier
+            </p>
+            {order.tracking_code && (
+              <a
+                href={`https://steadfast.com.bd/t/${order.tracking_code}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-emerald-400 hover:underline inline-flex items-center gap-1"
+              >
+                Track <ExternalLink size={10} />
+              </a>
+            )}
+          </div>
+
+          {order.tracking_code ? (
+            <div className="space-y-1.5 text-xs">
+              <p className="text-white font-mono font-semibold tracking-wide">{order.tracking_code}</p>
+              <p className="text-zinc-500">
+                Consignment: {order.steadfast_consignment_id || '—'}
+                {order.steadfast_status ? ` · ${order.steadfast_status}` : ''}
+              </p>
+              <button
+                type="button"
+                disabled={sfBusy}
+                onClick={refreshSteadfast}
+                className="h-9 px-3 rounded-md text-[11px] font-semibold bg-white/5 border border-white/10 text-zinc-300 hover:text-white inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw size={12} className={sfBusy ? 'animate-spin' : ''} />
+                Refresh status
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={sfBusy || order.status === 'Canceled' || order.status === 'Deleted'}
+              onClick={bookSteadfast}
+              className="w-full h-10 rounded-lg text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Truck size={14} />
+              {sfBusy ? 'Booking…' : `Book courier · COD ৳${due}`}
+            </button>
+          )}
+          {sfMsg && <p className="text-[11px] text-zinc-400 leading-snug">{sfMsg}</p>}
+        </section>
       </div>
 
       {isModal && (

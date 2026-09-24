@@ -100,6 +100,9 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `is_exclusive_order` TINYINT(1) DEFAULT 0,
   `payment_status` VARCHAR(50) DEFAULT 'Unpaid',
   `moderator_reference` VARCHAR(255),
+  `tracking_code` VARCHAR(64) NULL,
+  `steadfast_consignment_id` VARCHAR(64) NULL,
+  `steadfast_status` VARCHAR(64) NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

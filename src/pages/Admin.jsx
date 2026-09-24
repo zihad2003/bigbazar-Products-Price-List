@@ -487,6 +487,12 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     });
   };
 
+  const patchSelectedOrder = (patched) => {
+    if (!patched?.id) return;
+    setSelectedOrder(patched);
+    setOrders((prev) => prev.map((o) => (o.id === patched.id ? { ...o, ...patched } : o)));
+  };
+
   const updateOrderNote = async (id, currentNote) => {
     const newNote = prompt('অর্ডার নোট আপডেট করুন:', currentNote || '');
     if (newNote !== null) {
@@ -3499,6 +3505,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     onTogglePayment={togglePaymentStatus}
                     onUpdateStatus={updateOrderStatus}
                     onEditNote={updateOrderNote}
+                    onOrderPatched={patchSelectedOrder}
                   />
                 </div>
               </div>
@@ -3604,6 +3611,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     onTogglePayment={togglePaymentStatus}
                     onUpdateStatus={updateOrderStatus}
                     onEditNote={updateOrderNote}
+                    onOrderPatched={patchSelectedOrder}
                   />
                 )}
               </div>
