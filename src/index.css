@@ -159,7 +159,6 @@ html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   color: #ce112d !important;
   -webkit-text-fill-color: #ce112d;
 }
-}
 
 html {
   scroll-behavior: smooth;
