@@ -92,6 +92,20 @@ export async function steadfastStatusByTracking(env, trackingCode) {
   return data;
 }
 
+export async function steadfastStatusByCid(env, consignmentId) {
+  const cfg = getSteadfastConfig(env);
+  if (!cfg.configured) throw new Error('Steadfast is not configured');
+  const res = await fetch(
+    `${cfg.baseUrl}/status_by_cid/${encodeURIComponent(consignmentId)}`,
+    { headers: headers(cfg) }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || data.error || `Steadfast HTTP ${res.status}`);
+  }
+  return data;
+}
+
 export async function steadfastGetBalance(env) {
   const cfg = getSteadfastConfig(env);
   if (!cfg.configured) throw new Error('Steadfast is not configured');

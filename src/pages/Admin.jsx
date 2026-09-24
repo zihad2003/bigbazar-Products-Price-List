@@ -3570,10 +3570,10 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         key={o.id}
                         type="button"
                         onClick={() => setSelectedOrder(o)}
-                        className={`w-full text-left p-2.5 rounded-lg border transition-colors ${
+                        className={`admin-order-row w-full text-left p-2.5 rounded-lg border transition-colors ${
                           isSelected
-                            ? 'bg-[#1a1214] border-[#ce112d]/60'
-                            : 'bg-[#121215]/60 border-white/10 hover:border-white/20'
+                            ? 'admin-order-row--selected'
+                            : ''
                         }`}
                       >
                         <div className="flex gap-2.5">
@@ -3659,7 +3659,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       key={o.id}
                       type="button"
                       onClick={() => setSelectedOrder(o)}
-                      className="w-full text-left bg-[#121215] border border-white/10 rounded-lg p-2.5 hover:border-[#ce112d]/40 transition-colors"
+                      className={`admin-order-row w-full text-left border rounded-lg p-2.5 transition-colors ${
+                        selectedOrder?.id === o.id ? 'admin-order-row--selected' : ''
+                      }`}
                     >
                       <div className="flex gap-2.5">
                         <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 relative border border-white/10">

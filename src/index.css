@@ -978,6 +978,39 @@ html {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
 }
+/* Order list rows — light surfaces; selected = soft rose (not blackish) */
+.admin-order-row {
+  background-color: rgba(18, 18, 21, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.admin-order-row:hover {
+  background-color: rgba(206, 17, 45, 0.08);
+  border-color: rgba(206, 17, 45, 0.35);
+}
+.admin-order-row--selected,
+.admin-order-row--selected:hover {
+  background-color: rgba(206, 17, 45, 0.12);
+  border-color: #ce112d;
+  box-shadow: 0 1px 2px rgba(206, 17, 45, 0.12);
+}
+.admin-theme-light .admin-order-row {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+.admin-theme-light .admin-order-row:hover {
+  background-color: #fff5f6 !important;
+  border-color: rgba(206, 17, 45, 0.35) !important;
+}
+.admin-theme-light .admin-order-row--selected,
+.admin-theme-light .admin-order-row--selected:hover {
+  background-color: #fff1f2 !important;
+  border-color: #ce112d !important;
+  box-shadow: 0 1px 2px rgba(206, 17, 45, 0.12);
+}
+.admin-theme-light [class*="bg-[#1a1214]"] {
+  background-color: #fff1f2 !important;
+  border-color: #ce112d !important;
+}
 /* Load all secondary button */
 .admin-theme-light button[class*="bg-zinc-800"] {
   background-color: #f1f5f9 !important;

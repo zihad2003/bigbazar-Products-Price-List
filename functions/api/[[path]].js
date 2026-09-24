@@ -25,6 +25,7 @@ import {
   steadfastCreateOrder,
   steadfastStatusByInvoice,
   steadfastStatusByTracking,
+  steadfastStatusByCid,
   steadfastGetBalance,
 } from './steadfast.js';
 
@@ -1966,11 +1967,18 @@ app.get('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
     let data;
     if (order.tracking_code) {
       data = await steadfastStatusByTracking(c.env, order.tracking_code);
+    } else if (order.steadfast_consignment_id) {
+      data = await steadfastStatusByCid(c.env, order.steadfast_consignment_id);
     } else {
       data = await steadfastStatusByInvoice(c.env, orderInvoiceId(order));
     }
-    const consignment = data.consignment || data.delivery_status || data;
-    const sfStatus = consignment.status || consignment.delivery_status || null;
+    // Packzy status APIs return { status: 200, delivery_status: "delivered" }
+    // create_order returns { consignment: { status, tracking_code, ... } }
+    const sfStatus =
+      (typeof data?.delivery_status === 'string' && data.delivery_status) ||
+      data?.consignment?.delivery_status ||
+      data?.consignment?.status ||
+      null;
     if (sfStatus) {
       await conn.execute('UPDATE orders SET steadfast_status = ? WHERE id = ?', [String(sfStatus), id]);
     }
