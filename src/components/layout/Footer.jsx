@@ -178,22 +178,35 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                     </div>
 
                     {/* Payment methods */}
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                        <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2.5">
+                        <span className="text-[10px] font-black tracking-wider uppercase text-zinc-400 mr-1 w-full sm:w-auto text-center sm:text-left">
                             {language === 'bn' ? 'পেমেন্ট মাধ্যম:' : 'WE ACCEPT:'}
                         </span>
-                        
-                        <div className="bg-white border border-rose-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-rose-500 h-7 select-none shadow-sm">
-                            → BKASH
-                        </div>
-
-                        <div className="bg-white border border-orange-100 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-orange-600 h-7 select-none shadow-sm">
-                            Or- NAGAD
-                        </div>
-
-                        <div className="bg-white border border-zinc-200 rounded-lg py-1 px-3 flex items-center justify-center font-bold text-[9px] tracking-wide text-zinc-650 h-7 select-none shadow-sm">
+                        {[
+                            { src: '/img/payments/bkash.png', alt: 'bKash' },
+                            { src: '/img/payments/nagad.png', alt: 'Nagad' },
+                            { src: '/img/payments/bangla-qr.png', alt: 'Bangla QR', imgClass: 'h-7 w-auto' },
+                            { src: '/img/payments/dbbl.png', alt: 'Dutch-Bangla Bank', imgClass: 'h-7 w-auto max-w-[140px]' },
+                            { src: '/img/payments/visa.png', alt: 'Visa' },
+                            { src: '/img/payments/mastercard.png', alt: 'Mastercard' },
+                        ].map((p) => (
+                            <span
+                                key={p.alt}
+                                title={p.alt}
+                                className="inline-flex items-center justify-center h-10 px-2.5 rounded-lg border border-zinc-200 bg-white shadow-sm overflow-hidden"
+                            >
+                                <img
+                                    src={`${p.src}?v=7`}
+                                    alt={p.alt}
+                                    className={p.imgClass || 'h-6 w-auto max-w-[88px] object-contain'}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            </span>
+                        ))}
+                        <span className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-zinc-200 bg-white text-[10px] font-black tracking-wide text-zinc-700 shadow-sm select-none">
                             COD
-                        </div>
+                        </span>
                     </div>
                 </div>
 

@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Prevent OS / browser auto-dark (Android Chrome Force Dark, Safari)
+ * from washing brand red (#ce112d) into pink and inverting the light UI.
+ */
+:root {
+  color-scheme: only light;
+}
+html {
+  color-scheme: only light;
+  background-color: #ffffff;
+}
+body {
+  color-scheme: only light;
+  background-color: #ffffff;
+  /* Stop Chromium from inventing a dark palette for this page */
+  forced-color-adjust: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Brand red must stay exact — no auto-adjust / invert */
+.brand-logo,
+.brand-logo *,
+[class*="text-[#ce112d]"],
+[class*="bg-[#ce112d]"],
+[class*="border-[#ce112d]"],
+[class*="ring-[#ce112d]"],
+[class*="shadow-red"],
+[class*="from-[#ce112d]"],
+[class*="via-[#ce112d]"],
+[class*="to-[#ce112d]"] {
+  forced-color-adjust: none;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
 :root {
   font-family: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system, sans-serif;
   font-size: 16px; /* Standard accessible base (1rem = 16px, text-xs = 12px) */
@@ -117,6 +152,13 @@ html[lang="bn"] input:not(.brand-logo *):not(.brand-logo) {
   font-family: 'Outfit', 'Inter', sans-serif !important;
   font-style: italic !important;
   letter-spacing: -0.05em !important;
+  forced-color-adjust: none;
+}
+.brand-logo .text-\[\#ce112d\],
+.brand-logo span:first-child {
+  color: #ce112d !important;
+  -webkit-text-fill-color: #ce112d;
+}
 }
 
 html {
