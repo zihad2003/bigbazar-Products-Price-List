@@ -26,8 +26,8 @@ export const SEED_SUBCATEGORIES = {
 };
 
 /**
- * Hostinger already serves these static files at /img/subcats/*.jpg (200).
- * Prefer them when admin settings still point at missing /api/img/up-* uploads.
+ * Optional static files at /img/subcats/*.jpg (legacy Cloudflare-era assets).
+ * Used only when image_url is empty or known-lost upload ids 404.
  */
 export const SUBCAT_STATIC_IMAGES = {
   'Stiched-Coton-Three-Piece': '/img/subcats/STITCHED-COTTON-THREE-PIECE.jpg',
@@ -42,16 +42,13 @@ export const SUBCAT_STATIC_IMAGES = {
   'Party-Three-Piece': '/img/subcats/Party-Three-Piece.jpg',
 };
 
-/** Resolve a displayable subcategory image URL (static fallback for lost uploads). */
+/** Prefer admin image_url (DB-backed /api/img/up-*). Static only if missing. */
 export function resolveSubcategoryImage(sub) {
   if (!sub) return '';
   const staticUrl = SUBCAT_STATIC_IMAGES[sub.id];
   const url = typeof sub.image_url === 'string' ? sub.image_url.trim() : '';
-  // Missing or known-broken upload CDN paths → use static file that exists on Hostinger
-  if (staticUrl && (!url || url.includes('/api/img/up-') || url.includes('/api/settings-img/'))) {
-    return staticUrl;
-  }
-  return url || staticUrl || '';
+  if (url && !url.startsWith('data:')) return url;
+  return staticUrl || '';
 }
 
 /** Static fallback only (for img onError when a live upload URL 404s). */

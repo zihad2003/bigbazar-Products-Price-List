@@ -129,7 +129,15 @@ CREATE TABLE IF NOT EXISTS `messages` (
   INDEX idx_conversation (`conversation_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 10. Default Admin User (admin@bigbazar.com / admin)
+-- 10. Media Assets (uploaded images — permanent, survives redeploy)
+CREATE TABLE IF NOT EXISTS `media_assets` (
+  `id` VARCHAR(64) PRIMARY KEY,
+  `mime_type` VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+  `data` LONGBLOB NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 11. Default Admin User (admin@bigbazar.com / admin)
 INSERT IGNORE INTO `admin_users` (`email`, `password_hash`) 
 VALUES ('admin@bigbazar.com', '$2a$10$w8.1UuC.7k/0G7UfB2d2lOzf6dD4v2c0B4jE4x5wG7dK8.F9.b82m');
 

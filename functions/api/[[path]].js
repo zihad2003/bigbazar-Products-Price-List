@@ -46,6 +46,44 @@ async function ensureOrderSteadfastColumns(conn) {
   }
 }
 
+/** Permanent image store in MySQL — survives Hostinger redeploys (unlike dist/ disk). */
+async function ensureMediaAssetsTable(conn) {
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS media_assets (
+      id VARCHAR(64) PRIMARY KEY,
+      mime_type VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+      data LONGBLOB NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+}
+
+async function saveMediaAsset(conn, id, mimeType, buffer) {
+  await ensureMediaAssetsTable(conn);
+  await conn.execute(
+    `INSERT INTO media_assets (id, mime_type, data) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE mime_type = VALUES(mime_type), data = VALUES(data)`,
+    [id, mimeType || 'image/jpeg', buffer]
+  );
+}
+
+async function loadMediaAsset(conn, id) {
+  await ensureMediaAssetsTable(conn);
+  const rows = await conn.execute(
+    'SELECT mime_type, data FROM media_assets WHERE id = ? LIMIT 1',
+    [id]
+  );
+  const row = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+  if (!row?.data) return null;
+  let bytes = row.data;
+  if (bytes && typeof bytes === 'object' && bytes.type === 'Buffer' && Array.isArray(bytes.data)) {
+    bytes = Buffer.from(bytes.data);
+  } else if (!(bytes instanceof Uint8Array) && typeof Buffer !== 'undefined') {
+    bytes = Buffer.from(bytes);
+  }
+  return { mimeType: row.mime_type || 'image/jpeg', data: bytes };
+}
+
 function orderCodAmount(order) {
   const total =
     typeof order.total_amount === 'string'
@@ -499,12 +537,28 @@ app.get('/img/:id', async (c) => {
   const id = hadExt ? rawId.replace(IMG_EXT_RE, '') : rawId;
   const kv = c.env?.BIGBAZAR_CACHE;
 
-  // 0. Known subcategory uploads that never landed in KV/disk
+  // 0. MySQL media_assets — permanent store (Hostinger redeploy-safe)
+  try {
+    const conn = getDb(c.env);
+    const asset = await loadMediaAsset(conn, id);
+    if (asset) {
+      return new Response(asset.data, {
+        headers: {
+          'Content-Type': asset.mimeType,
+          'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('media_assets read:', err?.message || err);
+  }
+
+  // 0b. Known subcategory uploads that never landed in DB/disk → static files
   if (UPLOAD_ID_TO_SUBCAT_STATIC[id]) {
     return c.redirect(UPLOAD_ID_TO_SUBCAT_STATIC[id], 302);
   }
 
-  // 0b. Persistent Hostinger uploads (uploads/api/img) — survives dist rebuild
+  // 0c. Disk cache (uploads/ + dist/ + public/)
   try {
     const fs = await import('fs');
     const path = await import('path');
@@ -981,11 +1035,16 @@ function transformSettingsLite(settings) {
         transformed[cat] = list.map(s => {
           if (!s || typeof s !== 'object') return s;
           let image_url = s.image_url;
-          // Prefer static Hostinger files when upload CDN ids are missing
+          // Only remap empty / data: URLs to static. Keep real /api/img/up-* (now DB-backed).
           if (SUBCAT_ID_TO_STATIC[s.id]) {
             const url = typeof image_url === 'string' ? image_url : '';
-            if (!url || url.includes('/api/img/up-') || url.startsWith('data:')) {
+            if (!url || url.startsWith('data:')) {
               image_url = SUBCAT_ID_TO_STATIC[s.id];
+            } else if (url.includes('/api/img/up-')) {
+              const upId = url.split('/').pop()?.replace(/\.(jpe?g|png|webp)$/i, '');
+              if (upId && UPLOAD_ID_TO_SUBCAT_STATIC[upId]) {
+                image_url = UPLOAD_ID_TO_SUBCAT_STATIC[upId];
+              }
             }
           }
           if (typeof image_url === 'string' && image_url.startsWith('data:')) {
@@ -2353,7 +2412,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       }
     }
 
-    // ── Hostinger Local Storage (persistent uploads/ — survives dist rebuild) ──
+    // ── MySQL media_assets (permanent — survives Hostinger redeploy) ──
     const arrayBuffer = await file.arrayBuffer();
     const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
     const mimeType = file.type || 'image/jpeg';
@@ -2361,27 +2420,47 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       mimeType.includes('webp') ? 'webp'
       : mimeType.includes('png') ? 'png'
       : 'jpg';
-    
+    const buffer = Buffer.from(arrayBuffer);
+    const fileName = `${uploadId}.${ext}`;
+
+    try {
+      const conn = getDb(c.env);
+      await saveMediaAsset(conn, uploadId, mimeType, buffer);
+
+      // Best-effort disk cache (faster; not the source of truth)
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        for (const dir of [
+          path.resolve(process.cwd(), 'uploads', 'api', 'img'),
+          path.resolve(process.cwd(), 'public', 'api', 'img'),
+          path.resolve(process.cwd(), 'dist', 'api', 'img'),
+        ]) {
+          try {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, fileName), buffer);
+          } catch (_) {}
+        }
+      } catch (_) {}
+
+      return c.json({
+        success: true,
+        data: {
+          path: uploadId,
+          publicUrl: `/api/img/${fileName}`
+        }
+      });
+    } catch (dbErr) {
+      console.error('media_assets store error:', dbErr?.message || dbErr);
+    }
+
+    // ── Disk-only fallback if DB write failed ──
     try {
       const fs = await import('fs');
       const path = await import('path');
-      
-      // Primary: uploads/ outside dist so Hostinger redeploys don't wipe images
       const persistentDir = path.resolve(process.cwd(), 'uploads', 'api', 'img');
-      const publicImgDir = path.resolve(process.cwd(), 'public', 'api', 'img');
-      const distImgDir = path.resolve(process.cwd(), 'dist', 'api', 'img');
-      
-      for (const dir of [persistentDir, publicImgDir, distImgDir]) {
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      }
-
-      const fileName = `${uploadId}.${ext}`;
-      const buffer = Buffer.from(arrayBuffer);
-      
+      if (!fs.existsSync(persistentDir)) fs.mkdirSync(persistentDir, { recursive: true });
       fs.writeFileSync(path.join(persistentDir, fileName), buffer);
-      try { fs.writeFileSync(path.join(publicImgDir, fileName), buffer); } catch (_) {}
-      try { fs.writeFileSync(path.join(distImgDir, fileName), buffer); } catch (_) {}
-
       return c.json({
         success: true,
         data: {
