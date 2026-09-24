@@ -15,7 +15,9 @@ export const STORE = {
   email: 'infobigbazar01@gmail.com',
   mapsUrl: 'https://maps.app.goo.gl/nTyss67XVkuZRLwy9',
   address: 'জমিদার প্লাজা (২য় তলা), বারইয়ারহাট, মীরসরাই, চট্টগ্রাম',
+  addressEn: 'Jomidar Plaza (2nd Floor), Bariarhat, Mirsharai, Chattogram',
   hours: 'প্রতিদিন সকাল ৯:০০ – রাত ৯:০০',
+  hoursEn: 'Daily 9:00 AM – 9:00 PM',
 };
 
 export const btnBase =
