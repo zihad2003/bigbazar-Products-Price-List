@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { bigBazarApi } from '../api/client';
 import { setToken, API_URL, getToken, clearCustomerToken, clearAdminToken } from '../api/client';
 import {
@@ -29,6 +29,7 @@ export default function Admin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const adminGoogleBtnRef = useRef(null);
   const [adminTheme, setAdminTheme] = useState(() => {
     return localStorage.getItem('admin_theme') || 'light';
   });
@@ -76,6 +77,100 @@ export default function Admin() {
   const [rangeStart, setRangeStart] = useState('1');
   const [rangeEnd, setRangeEnd] = useState('200');
   const [deletingRangeProgress, setDeletingRangeProgress] = useState(null);
+
+  // Continue with Google — only emails previously added by superadmin can enter
+  useEffect(() => {
+    if (session) return;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    let cancelled = false;
+
+    const mountGoogle = () => {
+      if (cancelled || !adminGoogleBtnRef.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          setLoading(true);
+          try {
+            const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+            const res = await fetch(`${base}/api/auth/admin/google`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ credential: response.credential }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Google Login Denied',
+                message: data.error || 'This Google account is not authorized for admin.',
+                type: 'error',
+              });
+              return;
+            }
+            const token = data.session?.access_token || data.token;
+            if (!token) {
+              setAlertModal({
+                isOpen: true,
+                title: 'Login Incomplete',
+                message: 'Server did not return a session.',
+                type: 'error',
+              });
+              return;
+            }
+            setToken(token);
+            setSession(data.session || { access_token: token, user: data.user });
+          } catch (err) {
+            setAlertModal({
+              isOpen: true,
+              title: 'Login Error',
+              message: err.message || 'Unable to complete Google admin login.',
+              type: 'error',
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      adminGoogleBtnRef.current.innerHTML = '';
+      window.google.accounts.id.renderButton(adminGoogleBtnRef.current, {
+        theme: adminTheme === 'light' ? 'outline' : 'filled_black',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'pill',
+        width: Math.min(360, Math.max(260, (adminGoogleBtnRef.current.parentElement?.clientWidth || 320) - 8)),
+      });
+      try {
+        window.google.accounts.id.cancel();
+        window.google.accounts.id.disableAutoSelect();
+      } catch (_) {}
+    };
+
+    if (window.google?.accounts?.id) {
+      mountGoogle();
+      return () => { cancelled = true; };
+    }
+
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    if (existing) {
+      existing.addEventListener('load', mountGoogle);
+      return () => {
+        cancelled = true;
+        existing.removeEventListener('load', mountGoogle);
+      };
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = mountGoogle;
+    document.head.appendChild(script);
+    return () => { cancelled = true; };
+  }, [session, adminTheme]);
 
   // Confirm/Alert modals lock themselves; only lock for Admin-owned overlays here
   useBodyScrollLock(
@@ -1287,11 +1382,27 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         <div className="text-center space-y-2">
           <h2 className={`text-3xl font-bold tracking-tight uppercase ${adminTheme === 'light' ? 'text-slate-900' : 'text-white'}`}>Admin <span className="text-[#ce112d]">Login</span></h2>
           <p className={`text-sm font-medium ${adminTheme === 'light' ? 'text-slate-500' : 'text-zinc-500'}`}>
-            Enter your email & password to access the dashboard
+            Continue with Google (allowed accounts only) or use email &amp; password
           </p>
         </div>
 
-
+        <div className="space-y-3">
+          <p className={`text-[10px] font-bold uppercase tracking-wider text-center ${adminTheme === 'light' ? 'text-slate-400' : 'text-zinc-500'}`}>
+            Continue with Google
+          </p>
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+            <div ref={adminGoogleBtnRef} className="min-h-[44px] w-full flex justify-center" />
+          ) : (
+            <p className={`text-xs text-center rounded-xl py-3 px-2 ${adminTheme === 'light' ? 'bg-slate-50 text-slate-500' : 'bg-zinc-800 text-zinc-400'}`}>
+              Set VITE_GOOGLE_CLIENT_ID to enable Google admin login
+            </p>
+          )}
+          <div className="flex items-center gap-2 pt-1">
+            <div className={`flex-1 h-px ${adminTheme === 'light' ? 'bg-slate-200' : 'bg-white/10'}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${adminTheme === 'light' ? 'text-slate-400' : 'text-zinc-500'}`}>or email</span>
+            <div className={`flex-1 h-px ${adminTheme === 'light' ? 'bg-slate-200' : 'bg-white/10'}`} />
+          </div>
+        </div>
 
         <form onSubmit={async (e) => {
           e.preventDefault();

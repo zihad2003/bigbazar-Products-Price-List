@@ -2,105 +2,159 @@
  * media.js - Smart Image Loading Utility
  *
  * Strategy:
- * - Local uploads (localhost API) → serve directly, no proxy needed
- * - Trusted CDNs (Unsplash, Cloudinary, etc.) → serve directly
- * - Instagram / unknown external URLs → proxy via images.weserv.nl
- * - Supabase storage URLs → proxy via images.weserv.nl (handles CORS & ORB)
+ * - Local uploads (/api/img, /img) with size options → resize via images.weserv.nl
+ *   so product cards don't download full 900–1350px files for ~170px slots
+ * - Trusted CDNs → serve directly
+ * - Unknown external URLs → proxy via images.weserv.nl
+ * - Localhost / no window → same-origin path (no proxy)
  */
 
 import { API_URL as API_BASE } from '../api/client';
 
-// Domains that serve images fine without a proxy
 const TRUSTED_DOMAINS = [
-    'images.unsplash.com',
-    'unsplash.com',
-    'res.cloudinary.com',
-    'cloudinary.com',
-    'cdn.shopify.com',
-    'lh3.googleusercontent.com',
-    'googleusercontent.com',
-    'ik.imagekit.io',
-    'cdninstagram.com',
-    'fbcdn.net',
-    'facebook.com',
-    'fna.fbcdn.net',
-    'supabase.co',
-    'i.imgur.com',
-    'imgur.com',
+  'images.unsplash.com',
+  'unsplash.com',
+  'res.cloudinary.com',
+  'cloudinary.com',
+  'cdn.shopify.com',
+  'lh3.googleusercontent.com',
+  'googleusercontent.com',
+  'ik.imagekit.io',
+  'cdninstagram.com',
+  'fbcdn.net',
+  'facebook.com',
+  'fna.fbcdn.net',
+  'supabase.co',
+  'i.imgur.com',
+  'imgur.com',
 ];
 
 function isTrustedDomain(url) {
-    try {
-        const hostname = new URL(url).hostname;
-        return TRUSTED_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d));
-    } catch {
-        return false;
-    }
+  try {
+    const hostname = new URL(url).hostname;
+    return TRUSTED_DOMAINS.some((d) => hostname === d || hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
+function isLocalDevHost() {
+  if (typeof window === 'undefined') return true;
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
+}
+
+function siteOrigin() {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
+  }
+  return 'https://onlinebigbazar.com';
+}
+
+function buildWeservUrl(absoluteUrl, { w, h, q = 80, fit = 'cover' } = {}) {
+  let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(absoluteUrl)}`;
+  if (w) proxyUrl += `&w=${w}`;
+  if (h) proxyUrl += `&h=${h}`;
+  proxyUrl += `&q=${q}&fit=${fit}&output=webp&il&we`;
+  return proxyUrl;
+}
+
+function toAbsoluteLocal(path) {
+  const clean = path.startsWith('/') ? path : `/${path}`;
+  const base = (API_BASE || '').replace(/\/$/, '');
+  if (base && base !== '/' && /^https?:\/\//i.test(base)) {
+    return `${base}${clean}`;
+  }
+  return `${siteOrigin()}${clean}`;
+}
+
+function shouldResizeLocal(path, options) {
+  if (!options?.w && !options?.h) return false;
+  return (
+    path.startsWith('/api/img/') ||
+    path.startsWith('/img/') ||
+    path.startsWith('/api/settings-img/') ||
+    path.startsWith('/uploads/')
+  );
 }
 
 /**
  * Returns an optimized image URL.
- * @param {string} originalUrl - The image URL (local path, absolute URL, etc.)
+ * @param {string} originalUrl
  * @param {object} options - { w, h, q, fit }
  */
 export const getOptimizedUrl = (originalUrl, options = {}) => {
-    if (!originalUrl) return '';
+  if (!originalUrl) return '';
 
-    // Already optimized, data URI, or blob URL → return as-is
-    if (originalUrl.startsWith('data:') || originalUrl.startsWith('blob:') || originalUrl.includes('images.weserv.nl')) return originalUrl;
+  if (
+    originalUrl.startsWith('data:') ||
+    originalUrl.startsWith('blob:') ||
+    originalUrl.includes('images.weserv.nl')
+  ) {
+    return originalUrl;
+  }
 
-    // Root-relative paths: keep same-origin unless API_BASE is an absolute host
-    if (
-        originalUrl.startsWith('/') ||
-        originalUrl.startsWith('./') ||
-        originalUrl.startsWith('img/') ||
-        originalUrl.startsWith('api/') ||
-        originalUrl.startsWith('uploads/') ||
-        originalUrl.includes('localhost:')
-    ) {
-        if (originalUrl.includes('localhost:')) return originalUrl;
-        const cleanPath = originalUrl.startsWith('/') ? originalUrl : `/${originalUrl}`;
-        const base = (API_BASE || '').replace(/\/$/, '');
-        // Empty or "/" base → same-origin (/api proxied by Vite in local)
-        if (!base || base === '/') return cleanPath;
-        return `${base}${cleanPath}`;
+  // Root-relative / local API paths
+  if (
+    originalUrl.startsWith('/') ||
+    originalUrl.startsWith('./') ||
+    originalUrl.startsWith('img/') ||
+    originalUrl.startsWith('api/') ||
+    originalUrl.startsWith('uploads/') ||
+    originalUrl.includes('localhost:')
+  ) {
+    if (originalUrl.includes('localhost:')) return originalUrl;
+    const cleanPath = originalUrl.startsWith('/') ? originalUrl : `/${originalUrl}`;
+    const base = (API_BASE || '').replace(/\/$/, '');
+    const localUrl = !base || base === '/' ? cleanPath : `${base}${cleanPath}`;
+
+    // Production: resize local product/subcat images instead of shipping full files
+    if (shouldResizeLocal(cleanPath, options) && !isLocalDevHost()) {
+      return buildWeservUrl(toAbsoluteLocal(cleanPath), options);
     }
+    return localUrl;
+  }
 
-    // Normalize protocol for relative-protocol URLs
-    let url = originalUrl;
-    if (url.startsWith('//')) {
-        url = 'https:' + url;
-    } else if (!url.startsWith('http')) {
-        url = 'https://' + url;
+  let url = originalUrl;
+  if (url.startsWith('//')) {
+    url = 'https:' + url;
+  } else if (!url.startsWith('http')) {
+    url = 'https://' + url;
+  }
+
+  if (isTrustedDomain(url)) {
+    // Still resize when dimensions requested (Unsplash supports w= natively; others via weserv)
+    if ((options.w || options.h) && !url.includes('images.unsplash.com')) {
+      if (!isLocalDevHost()) return buildWeservUrl(url, options);
     }
-
-    // Trusted CDN domains → serve directly (no proxy needed, avoids ORB blocks)
-    if (isTrustedDomain(url)) {
+    if (url.includes('images.unsplash.com') && (options.w || options.h)) {
+      try {
+        const u = new URL(url);
+        if (options.w) u.searchParams.set('w', String(options.w));
+        if (options.h) u.searchParams.set('h', String(options.h));
+        u.searchParams.set('q', String(options.q || 80));
+        u.searchParams.set('fit', 'crop');
+        u.searchParams.set('auto', 'format');
+        return u.toString();
+      } catch {
         return url;
+      }
     }
+    return url;
+  }
 
-    // Instagram URLs are video embeds only — never treat them as product photos
-    if (url.includes('instagram.com') || url.includes('instagr.am')) {
-        return originalUrl;
-    }
+  if (url.includes('instagram.com') || url.includes('instagr.am')) {
+    return originalUrl;
+  }
 
-    // All other external URLs (Supabase storage, etc.)
-    // → route through images.weserv.nl for reliability and CORS handling
-    const { w, h, q = 80, fit = 'cover' } = options;
-    let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
-    if (w) proxyUrl += `&w=${w}`;
-    if (h) proxyUrl += `&h=${h}`;
-    proxyUrl += `&q=${q}&fit=${fit}&output=webp&il`;
-
-    return proxyUrl;
+  return buildWeservUrl(url, { q: 80, fit: 'cover', ...options });
 };
 
-/**
- * Reusable helper for common sizes
- */
 export const mediaSizes = {
-    thumbnail: { w: 300, h: 450, q: 75 },      // For product grid cards
-    banner: { w: 1920, q: 82 },                 // For PC/Tablet hero banners (crisp 1920x1080 & 1920x600)
-    bannerMobile: { w: 768, q: 80 },           // For Mobile hero banners (768x1024, 600x600, 420x400)
-    gallery: { w: 800, q: 75 }                  // For product modal gallery
+  thumbnail: { w: 360, h: 480, q: 72 }, // product grid (~170–220 CSS px @2x)
+  subcat: { w: 280, h: 360, q: 72 }, // homepage subcategory cards
+  subcatThumb: { w: 160, h: 160, q: 70 }, // tiny chips / icons
+  banner: { w: 1600, q: 78 },
+  bannerMobile: { w: 768, q: 76 },
+  gallery: { w: 800, q: 75 },
 };

@@ -59,16 +59,19 @@ export const ProductCard = ({ product, onClick }) => {
               alt={displayName}
               loading="lazy"
               decoding="async"
+              width={360}
+              height={480}
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 220px"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (staticFallback && !el.dataset.triedStatic) {
                   el.dataset.triedStatic = '1';
-                  el.src = staticFallback;
+                  el.src = getOptimizedUrl(staticFallback, mediaSizes.thumbnail);
                   return;
                 }
                 if (el.src.includes('images.weserv.nl') && sourceImage && !el.dataset.triedDirect) {
                   el.dataset.triedDirect = '1';
-                  el.src = sourceImage;
+                  el.src = sourceImage.startsWith('/') ? sourceImage : getOptimizedUrl(sourceImage);
                   return;
                 }
                 setImgFailed(true);

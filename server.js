@@ -45,12 +45,36 @@ app.get('/robots.txt', (c) => {
   });
 });
 
+app.use('/api/img/*', async (c, next) => {
+  await next();
+  if (c.res && c.res.status >= 200 && c.res.status < 400) {
+    c.res.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+});
 app.use('/api/img/*', serveStatic({ root: './dist' }));
+app.use('/api/settings-img/*', async (c, next) => {
+  await next();
+  if (c.res && c.res.status >= 200 && c.res.status < 400) {
+    c.res.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+});
 app.use('/api/settings-img/*', serveStatic({ root: './dist' }));
 
 app.route('/', apiApp);
 
+app.use('/assets/*', async (c, next) => {
+  await next();
+  if (c.res && c.res.status >= 200 && c.res.status < 400) {
+    c.res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+});
 app.use('/assets/*', serveStatic({ root: './dist' }));
+app.use('/img/*', async (c, next) => {
+  await next();
+  if (c.res && c.res.status >= 200 && c.res.status < 400) {
+    c.res.headers.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+});
 app.use('/b.jpg', serveStatic({ root: './dist' }));
 app.use('/favicon.ico', serveStatic({ root: './dist' }));
 app.use('/*', serveStatic({ root: './dist' }));

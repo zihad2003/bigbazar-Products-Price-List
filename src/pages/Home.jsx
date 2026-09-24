@@ -240,10 +240,11 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
               className="block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
             >
               <img
-                src={siteSettings.wedding_banner.image_url}
+                src={getOptimizedUrl(siteSettings.wedding_banner.image_url, mediaSizes.banner)}
                 alt="Collection Banner"
                 className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
                 loading="lazy"
+                decoding="async"
               />
             </Link>
           </section>
@@ -274,10 +275,13 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                     <div className="w-full aspect-[3/4] rounded-[1.35rem] sm:rounded-[1.6rem] md:rounded-[1.85rem] overflow-hidden bg-zinc-900 shadow-sm ring-1 ring-black/[0.06] group-hover:ring-[#ce112d]/40 group-hover:shadow-md transition-all duration-300">
                       {resolveSubcategoryImage(sub) ? (
                         <img
-                          src={resolveSubcategoryImage(sub)}
+                          src={getOptimizedUrl(resolveSubcategoryImage(sub), mediaSizes.subcat)}
                           alt={sub.name_en || ''}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
+                          decoding="async"
+                          width={280}
+                          height={360}
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center">

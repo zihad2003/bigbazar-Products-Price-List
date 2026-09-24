@@ -2346,6 +2346,119 @@ app.post('/auth/google', async (c) => {
   }
 });
 
+/** Ensure admin_users.google_id exists (Hostinger / older schemas). */
+async function ensureAdminGoogleIdColumn(conn) {
+  try {
+    await conn.execute(
+      'ALTER TABLE admin_users ADD COLUMN google_id VARCHAR(64) NULL UNIQUE'
+    );
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (!/duplicate column|already exists/i.test(msg)) {
+      // ignore — column may already exist
+    }
+  }
+}
+
+// POST /auth/admin/google — Continue with Google for admin panel (whitelist only)
+app.post('/auth/admin/google', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  if (!checkRateLimit(ip, 'admin-google-auth', 8, 60000)) {
+    return c.json({ error: 'Too many login attempts. Please try again later.' }, 429);
+  }
+
+  let body = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const { credential } = body;
+  if (!credential) return c.json({ error: 'Google credential is required' }, 400);
+
+  const googleClientId =
+    c.env?.GOOGLE_CLIENT_ID || (typeof process !== 'undefined' && process.env?.GOOGLE_CLIENT_ID);
+  if (!googleClientId) return c.json({ error: 'Google login is not configured' }, 500);
+
+  try {
+    const payload = await verifyGoogleIdToken(credential, googleClientId);
+    const googleId = String(payload.sub || '');
+    const email = String(payload.email || '').trim().toLowerCase();
+    if (!email || !googleId) {
+      return c.json({ error: 'Google account did not return a verified email' }, 401);
+    }
+
+    const conn = getDb(c.env);
+    await ensureAdminGoogleIdColumn(conn);
+
+    let rows = [];
+    try {
+      rows = await conn.execute(
+        'SELECT * FROM admin_users WHERE LOWER(email) = ? OR google_id = ? LIMIT 1',
+        [email, googleId]
+      );
+    } catch (dbErr) {
+      // Fallback if google_id column still missing
+      rows = await conn.execute(
+        'SELECT * FROM admin_users WHERE LOWER(email) = ? LIMIT 1',
+        [email]
+      );
+    }
+    const adminRows = Array.isArray(rows) ? rows : rows?.rows || [];
+    if (!adminRows.length) {
+      return c.json({
+        error: 'This Google account is not authorized for admin. Ask the superadmin to add your Google email first.',
+      }, 403);
+    }
+
+    const user = adminRows[0];
+    // Bind google_id on first successful Google login
+    if (googleId && !user.google_id) {
+      try {
+        await conn.execute('UPDATE admin_users SET google_id = ? WHERE id = ?', [googleId, user.id]);
+      } catch (_) {}
+    }
+
+    const role = resolveAdminRole(user, c.env);
+    if (role === 'superadmin' && user.role !== 'superadmin') {
+      try {
+        await conn.execute('UPDATE admin_users SET role = ? WHERE id = ?', ['superadmin', user.id]);
+      } catch (_) {}
+    }
+
+    const jwtSecret = getJwtSecret(c);
+    const token = await jwtSign(
+      { id: user.id, email: user.email, type: 'admin', role },
+      jwtSecret,
+      { expiresIn: '30d' }
+    );
+
+    return c.json({
+      session: {
+        access_token: token,
+        user: {
+          id: user.id,
+          name: 'Admin',
+          email: user.email,
+          type: 'admin',
+          role,
+        },
+      },
+      user: {
+        id: user.id,
+        name: 'Admin',
+        email: user.email,
+        type: 'admin',
+        role,
+      },
+    });
+  } catch (err) {
+    console.error('Admin Google auth error:', err.message);
+    return c.json({ error: 'Google admin login failed: ' + (err.message || 'unknown') }, 401);
+  }
+});
+
 // GET /account/me — Current logged-in customer profile
 app.get('/account/me', requireCustomerAuth, async (c) => {
   const customer = c.get('customer');
@@ -2505,25 +2618,47 @@ app.get('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
   const conn = getDb(c.env);
   try {
     const users = await conn.execute(
-      'SELECT id, email, role, created_at FROM admin_users ORDER BY created_at DESC'
+      'SELECT id, email, role, google_id, created_at FROM admin_users ORDER BY created_at DESC'
     );
     return c.json({ data: users || [] });
   } catch (err) {
-    return c.json({ error: err.message || 'Failed to load admins', data: [] }, 500);
+    // Older DB without google_id
+    try {
+      const users = await conn.execute(
+        'SELECT id, email, role, created_at FROM admin_users ORDER BY created_at DESC'
+      );
+      return c.json({ data: users || [] });
+    } catch (err2) {
+      return c.json({ error: err2.message || 'Failed to load admins', data: [] }, 500);
+    }
   }
 });
 
 app.post('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
   const conn = getDb(c.env);
   try {
-    const { email, password } = await c.req.json();
-    if (!email || !password) return c.json({ error: 'Email and Password required' }, 400);
+    await ensureAdminGoogleIdColumn(conn);
+    const { email, password, google_id } = await c.req.json();
+    if (!email || !password) return c.json({ error: 'Google email and Password required' }, 400);
 
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanGoogleId = google_id ? String(google_id).trim() : null;
     const hash = await bcrypt.hash(password, 10);
-    await conn.execute(
-      'INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)',
-      [email, hash, 'admin']
-    );
+    try {
+      await conn.execute(
+        'INSERT INTO admin_users (email, password_hash, role, google_id) VALUES (?, ?, ?, ?)',
+        [cleanEmail, hash, 'admin', cleanGoogleId]
+      );
+    } catch (insertErr) {
+      if (/Unknown column .*google_id/i.test(String(insertErr?.message || ''))) {
+        await conn.execute(
+          'INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)',
+          [cleanEmail, hash, 'admin']
+        );
+      } else {
+        throw insertErr;
+      }
+    }
     return c.json({ success: true });
   } catch (err) {
     return c.json({ error: err.message || 'Failed to add admin' }, 500);
