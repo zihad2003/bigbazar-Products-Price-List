@@ -7,7 +7,6 @@ export default function SuperadminPanel() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [googleId, setGoogleId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [flash, setFlash] = useState(null); // { type: 'ok' | 'err', text: string }
 
@@ -56,18 +55,13 @@ export default function SuperadminPanel() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          email,
-          password,
-          google_id: googleId.trim() || undefined,
-        })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (res.ok) {
-        showFlash('ok', 'Admin created — they can Continue with Google using this email');
+        showFlash('ok', 'Admin invited. They must sign in with Google once to verify this email before password login works.');
         setEmail('');
         setPassword('');
-        setGoogleId('');
         fetchManagers();
       } else {
         showFlash('err', data.error || 'Failed to create admin');
@@ -107,8 +101,9 @@ export default function SuperadminPanel() {
           Superadmin <span className="text-emerald-500">Panel</span>
         </h2>
         <p className="text-zinc-500 text-xs mt-0.5">
-          Add administrators by their <strong className="text-zinc-300">Google email</strong> + password.
-          Only these accounts can open /admin via Continue with Google — anyone else is blocked.
+          Add administrators by their <strong className="text-zinc-300">Google email</strong> and a backup password.
+          A new admin stays <strong className="text-amber-400">Pending</strong> until they sign in with that exact
+          Google account once. Password login only works after that.
         </p>
       </div>
 
@@ -148,17 +143,8 @@ export default function SuperadminPanel() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
-                  placeholder="Strong password"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-medium text-zinc-500 mb-1 block">Google ID (optional)</label>
-                <input
-                  type="text"
-                  value={googleId}
-                  onChange={e => setGoogleId(e.target.value)}
-                  className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-700 outline-none focus:border-emerald-500/50"
-                  placeholder="Auto-linked on first Google login"
+                  placeholder="At least 8 characters"
+                  minLength={8}
                 />
               </div>
               <button
@@ -192,9 +178,20 @@ export default function SuperadminPanel() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{m.email}</p>
-                        <p className="text-xs text-zinc-500 capitalize">
-                          {m.role}
-                          {m.google_id ? ' · Google linked' : ' · Google pending'}
+                        <p className="text-xs text-zinc-500 flex items-center gap-1.5 flex-wrap">
+                          <span className="capitalize">{m.role}</span>
+                          {m.email_verified_at ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                              Verified
+                            </span>
+                          ) : (
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25"
+                              title="Has not signed in with Google yet. Password login is blocked."
+                            >
+                              Pending verification
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

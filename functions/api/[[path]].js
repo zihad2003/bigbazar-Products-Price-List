@@ -753,6 +753,7 @@ app.post('/auth/login', async (c) => {
     const jwtSecret = getJwtSecret(c);
 
     const conn = getDb(c.env);
+    await ensureAdminGoogleIdColumn(conn);
 
     // Check Admin
     const adminEmail =
@@ -784,6 +785,18 @@ app.post('/auth/login', async (c) => {
         }, 500);
       }
       if (!valid) return c.json({ error: 'Incorrect password. Please try again.' }, 401);
+
+      // Password login only after the admin has proven they own the email via Google.
+      // Bootstrap superadmins (SUPERADMIN_EMAILS env) are exempt so the owner can't be locked out.
+      const isBootstrapSuperadmin = getSuperadminEmails(c.env).includes(
+        String(user.email || '').trim().toLowerCase()
+      );
+      if (!user.email_verified_at && !isBootstrapSuperadmin) {
+        return c.json({
+          error: 'Please verify your email first: use "Continue with Google" once with this Gmail. After that, password login will work.',
+          code: 'ADMIN_EMAIL_UNVERIFIED',
+        }, 403);
+      }
 
       const role = resolveAdminRole(user, c.env);
       // Persist bootstrap role so Superadmin panel / managers APIs keep working
@@ -892,28 +905,32 @@ app.get('/auth/session', requireAuth, async (c) => {
   let user = c.get('user');
   // Refresh admin role from DB / bootstrap list so Superadmin tab appears without stale JWT role
   if (user?.type === 'admin') {
+    let row = null;
     try {
       const conn = getDb(c.env);
+      await ensureAdminGoogleIdColumn(conn);
       if (user.id) {
         const rows = await conn.execute(
-          'SELECT email, role FROM admin_users WHERE id = ? LIMIT 1',
+          'SELECT email, role, email_verified_at FROM admin_users WHERE id = ? LIMIT 1',
           [user.id]
         );
-        const row = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
-        if (row) {
-          user = {
-            ...user,
-            email: row.email || user.email,
-            role: resolveAdminRole(row, c.env),
-          };
-        } else {
-          user = { ...user, role: resolveAdminRole(user, c.env) };
-        }
-      } else {
-        user = { ...user, role: resolveAdminRole(user, c.env) };
+        row = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
       }
     } catch (_) {
       user = { ...user, role: resolveAdminRole(user, c.env) };
+    }
+
+    if (row) {
+      // Removed or never-verified admins lose their old 30-day session on next load
+      const isBootstrapSuperadmin = getSuperadminEmails(c.env).includes(
+        String(row.email || '').trim().toLowerCase()
+      );
+      if (!row.email_verified_at && !isBootstrapSuperadmin) {
+        return c.json({ error: 'Admin email not verified', code: 'ADMIN_EMAIL_UNVERIFIED' }, 401);
+      }
+      user = { ...user, email: row.email || user.email, role: resolveAdminRole(row, c.env) };
+    } else if (user.id) {
+      return c.json({ error: 'Admin account no longer exists' }, 401);
     }
   }
   return c.json({
@@ -2653,18 +2670,25 @@ app.post('/auth/google', async (c) => {
   }
 });
 
-/** Ensure admin_users.google_id exists (Hostinger / older schemas). */
+let adminAuthColumnsReady = false;
+
+/**
+ * Ensure admin_users.google_id and email_verified_at exist (Hostinger / older schemas).
+ * email_verified_at is only ever set by a signed Google login, never by the superadmin form.
+ */
 async function ensureAdminGoogleIdColumn(conn) {
-  try {
-    await conn.execute(
-      'ALTER TABLE admin_users ADD COLUMN google_id VARCHAR(64) NULL UNIQUE'
-    );
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (!/duplicate column|already exists/i.test(msg)) {
-      // ignore — column may already exist
+  if (adminAuthColumnsReady) return;
+  for (const sql of [
+    'ALTER TABLE admin_users ADD COLUMN google_id VARCHAR(64) NULL UNIQUE',
+    'ALTER TABLE admin_users ADD COLUMN email_verified_at TIMESTAMP NULL DEFAULT NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (_) {
+      // column already exists
     }
   }
+  adminAuthColumnsReady = true;
 }
 
 // POST /auth/admin/google — Continue with Google for admin panel (whitelist only)
@@ -2692,39 +2716,42 @@ app.post('/auth/admin/google', async (c) => {
     const payload = await verifyGoogleIdToken(credential, googleClientId);
     const googleId = String(payload.sub || '');
     const email = String(payload.email || '').trim().toLowerCase();
-    if (!email || !googleId) {
-      return c.json({ error: 'Google account did not return a verified email' }, 401);
+    // Admin access is keyed off the email, so Google must explicitly vouch for it
+    const emailVerified = payload.email_verified === true || payload.email_verified === 'true';
+    if (!email || !googleId || !emailVerified) {
+      return c.json({ error: 'This Google account does not have a verified email address.' }, 401);
     }
 
     const conn = getDb(c.env);
     await ensureAdminGoogleIdColumn(conn);
 
-    let rows = [];
-    try {
-      rows = await conn.execute(
-        'SELECT * FROM admin_users WHERE LOWER(email) = ? OR google_id = ? LIMIT 1',
-        [email, googleId]
-      );
-    } catch (dbErr) {
-      // Fallback if google_id column still missing
-      rows = await conn.execute(
-        'SELECT * FROM admin_users WHERE LOWER(email) = ? LIMIT 1',
-        [email]
-      );
-    }
-    const adminRows = Array.isArray(rows) ? rows : rows?.rows || [];
-    if (!adminRows.length) {
-      return c.json({
-        error: 'This Google account is not authorized for admin. Ask the superadmin to add your Google email first.',
-      }, 403);
+    const toRows = (r) => (Array.isArray(r) ? r : r?.rows || []);
+    let user = toRows(
+      await conn.execute('SELECT * FROM admin_users WHERE google_id = ? LIMIT 1', [googleId])
+    )[0];
+
+    if (!user) {
+      user = toRows(
+        await conn.execute('SELECT * FROM admin_users WHERE LOWER(email) = ? LIMIT 1', [email])
+      )[0];
+      if (!user) {
+        return c.json({
+          error: 'This Google account is not authorized for admin. Ask the superadmin to add your Google email first.',
+        }, 403);
+      }
+      // Once verified, the admin is locked to that exact Google account
+      if (user.email_verified_at && user.google_id && user.google_id !== googleId) {
+        return c.json({
+          error: 'This admin email is already verified with a different Google account.',
+        }, 403);
+      }
     }
 
-    const user = adminRows[0];
-    // Bind google_id on first successful Google login
-    if (googleId && !user.google_id) {
-      try {
-        await conn.execute('UPDATE admin_users SET google_id = ? WHERE id = ?', [googleId, user.id]);
-      } catch (_) {}
+    if (!user.email_verified_at || user.google_id !== googleId) {
+      await conn.execute(
+        'UPDATE admin_users SET google_id = ?, email_verified_at = COALESCE(email_verified_at, CURRENT_TIMESTAMP) WHERE id = ?',
+        [googleId, user.id]
+      );
     }
 
     const role = resolveAdminRole(user, c.env);
@@ -2924,8 +2951,9 @@ async function ensureNotificationTables(conn) {
 app.get('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
   const conn = getDb(c.env);
   try {
+    await ensureAdminGoogleIdColumn(conn);
     const users = await conn.execute(
-      'SELECT id, email, role, google_id, created_at FROM admin_users ORDER BY created_at DESC'
+      'SELECT id, email, role, google_id, email_verified_at, created_at FROM admin_users ORDER BY created_at DESC'
     );
     return c.json({ data: users || [] });
   } catch (err) {
@@ -2945,26 +2973,28 @@ app.post('/admin/managers', requireAuth, requireSuperAdmin, async (c) => {
   const conn = getDb(c.env);
   try {
     await ensureAdminGoogleIdColumn(conn);
-    const { email, password, google_id } = await c.req.json();
+    // google_id is never accepted from the form: it is only bound by a signed Google login
+    const { email, password } = await c.req.json();
     if (!email || !password) return c.json({ error: 'Google email and Password required' }, 400);
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const cleanGoogleId = google_id ? String(google_id).trim() : null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return c.json({ error: 'Enter a valid Google email address' }, 400);
+    }
+    if (String(password).length < 8) {
+      return c.json({ error: 'Password must be at least 8 characters' }, 400);
+    }
     const hash = await bcrypt.hash(password, 10);
     try {
       await conn.execute(
-        'INSERT INTO admin_users (email, password_hash, role, google_id) VALUES (?, ?, ?, ?)',
-        [cleanEmail, hash, 'admin', cleanGoogleId]
+        'INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)',
+        [cleanEmail, hash, 'admin']
       );
     } catch (insertErr) {
-      if (/Unknown column .*google_id/i.test(String(insertErr?.message || ''))) {
-        await conn.execute(
-          'INSERT INTO admin_users (email, password_hash, role) VALUES (?, ?, ?)',
-          [cleanEmail, hash, 'admin']
-        );
-      } else {
-        throw insertErr;
+      if (/Duplicate entry/i.test(String(insertErr?.message || ''))) {
+        return c.json({ error: 'An admin with this email already exists' }, 400);
       }
+      throw insertErr;
     }
     return c.json({ success: true });
   } catch (err) {
