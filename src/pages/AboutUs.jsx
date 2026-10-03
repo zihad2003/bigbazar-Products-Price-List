@@ -84,7 +84,7 @@ export default function AboutUs() {
           className={`${btnBase} text-[#5C574F] hover:text-[#1F1D1B] px-0 gap-1.5 mb-10 md:mb-14 min-h-[44px]`}
         >
           <ArrowLeft size={16} strokeWidth={1.75} />
-          হোমে ফিরুন
+          {language === 'en' ? 'Back to home' : 'হোমে ফিরুন'}
         </Link>
 
         {/* 1. HERO */}

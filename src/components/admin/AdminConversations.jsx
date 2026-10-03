@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Clock, ShoppingBag, X, RefreshCw, ChevronRight, User, Trash2 } from 'lucide-react';
+import { MessageSquare, Users, Clock, ShoppingBag, X, RefreshCw, ChevronRight, User, Trash2, Phone, Mail } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
+
+const customerLabel = (conv) =>
+  conv?.user_name || conv?.user_phone || conv?.user_email || 'Unknown customer';
 
 export default function AdminConversations() {
   const [stats, setStats] = useState({ active_now: 0, today_total: 0 });
@@ -68,7 +71,7 @@ export default function AdminConversations() {
   const deleteConversation = async (conv, e) => {
     e?.stopPropagation?.();
     if (!conv?.id) return;
-    const label = conv.user_name || conv.user_email || conv.id.slice(0, 8);
+    const label = conv.user_name || conv.user_phone || conv.user_email || conv.id.slice(0, 8);
     if (!window.confirm(`Delete conversation for "${label}"?\nThis cannot be undone.`)) return;
 
     setDeletingId(conv.id);
@@ -177,12 +180,28 @@ export default function AdminConversations() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                       <User size={13} className="text-zinc-500" />
-                      {conv.user_name || conv.user_email || 'Customer'}
+                      {customerLabel(conv)}
                     </span>
-                    <span className="text-[10px] text-zinc-600 font-mono">
-                      UID: {conv.user_id ? String(conv.user_id).slice(0, 10) + '…' : '—'}
-                    </span>
-                    {conv.has_order && (
+                    {conv.user_phone && (
+                      <a
+                        href={`tel:${conv.user_phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] text-zinc-300 font-mono flex items-center gap-1 hover:text-[#ce112d]"
+                      >
+                        <Phone size={11} /> {conv.user_phone}
+                      </a>
+                    )}
+                    {conv.user_email && conv.user_name && (
+                      <span className="text-[11px] text-zinc-500 flex items-center gap-1">
+                        <Mail size={11} /> {conv.user_email}
+                      </span>
+                    )}
+                    {conv.login_type && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase bg-white/5 text-zinc-400 border border-white/10">
+                        {conv.login_type}
+                      </span>
+                    )}
+                    {Boolean(Number(conv.has_order)) && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                         <ShoppingBag size={10} /> Order Created
                       </span>
@@ -195,7 +214,9 @@ export default function AdminConversations() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 text-[11px] text-zinc-500">
-                  <span>{conv.message_count || 0} msgs</span>
+                  <span title="Customer messages / total">
+                    {conv.customer_message_count ?? 0} / {conv.message_count || 0} msgs
+                  </span>
                   <span>{formatDate(conv.updated_at)}</span>
                   <button
                     type="button"
@@ -225,10 +246,15 @@ export default function AdminConversations() {
               <div className="min-w-0">
                 <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                   <User size={15} className="text-[#ce112d]" />
-                  {selectedConversation.user_name || selectedConversation.user_email || 'Customer'}
+                  {customerLabel(selectedConversation)}
                 </h3>
                 <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
-                  User: {selectedConversation.user_id || '—'} • {formatDate(selectedConversation.updated_at)}
+                  {[
+                    selectedConversation.user_phone,
+                    selectedConversation.user_email,
+                    selectedConversation.order_id ? `Order #${String(selectedConversation.order_id).slice(-8).toUpperCase()}` : null,
+                    `Started ${formatDate(selectedConversation.created_at)}`,
+                  ].filter(Boolean).join(' • ')}
                 </p>
               </div>
 
@@ -262,6 +288,17 @@ export default function AdminConversations() {
               ) : (
                 messages.map(m => {
                   const isUser = m.role === 'user';
+                  if (m.role === 'system') {
+                    return (
+                      <div key={m.id} className="flex justify-center">
+                        <div className="max-w-[90%] px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] text-center">
+                          <ShoppingBag size={11} className="inline mr-1 -mt-0.5" />
+                          {m.content}
+                          <span className="block text-[10px] text-emerald-500/70 mt-0.5">{formatDate(m.created_at)}</span>
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={m.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}>
                       <span className="text-[10px] text-zinc-600 font-mono px-1">

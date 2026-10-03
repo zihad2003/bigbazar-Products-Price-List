@@ -3611,9 +3611,10 @@ RULES:
     replyText = faqReply || getSmartFallbackReply(lowerMsg, replyLang);
   }
 
-  // Persist conversation under logged-in user_id (continues same thread)
+  // Persist conversation under logged-in user_id (continues same thread).
+  // "Show more" paging (offset > 0) is a button tap, not a real customer message.
   const sessionId = String(body.session_id || '').trim() || `user-${userId}`;
-  try {
+  if (requestedOffset === 0) try {
     await persistAssistantTurn(conn, {
       sessionId,
       userId,
@@ -3641,40 +3642,74 @@ RULES:
   });
 });
 
-async function persistAssistantTurn(conn, { sessionId, userId, userMessage, replyText, meta }) {
-  if (!userId || !userMessage) return;
-
-  let convId = null;
+async function getOrCreateConversation(conn, userId, sessionId) {
   const byUser = await conn.execute(
     'SELECT id FROM conversations WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1',
     [userId]
   );
   if (byUser?.[0]?.id) {
-    convId = byUser[0].id;
+    const convId = byUser[0].id;
     await conn.execute(
       'UPDATE conversations SET updated_at = CURRENT_TIMESTAMP, session_id = COALESCE(?, session_id) WHERE id = ?',
       [sessionId || `user-${userId}`, convId]
     );
-  } else {
-    convId = crypto.randomUUID();
-    await conn.execute(
-      'INSERT INTO conversations (id, session_id, user_id) VALUES (?, ?, ?)',
-      [convId, sessionId || `user-${userId}`, userId]
-    );
+    return convId;
   }
-
-  const userMsgId = crypto.randomUUID();
-  const asstMsgId = crypto.randomUUID();
+  const convId = crypto.randomUUID();
   await conn.execute(
-    'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
-    [userMsgId, convId, 'user', userMessage, null]
-  );
-  await conn.execute(
-    'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
-    [asstMsgId, convId, 'assistant', replyText || '', meta ? JSON.stringify(meta) : null]
+    'INSERT INTO conversations (id, session_id, user_id) VALUES (?, ?, ?)',
+    [convId, sessionId || `user-${userId}`, userId]
   );
   return convId;
 }
+
+async function insertChatMessage(conn, convId, role, content, meta = null) {
+  await conn.execute(
+    'INSERT INTO messages (id, conversation_id, role, content, metadata) VALUES (?, ?, ?, ?, ?)',
+    [crypto.randomUUID(), convId, role, String(content || '').slice(0, 5000), meta ? JSON.stringify(meta) : null]
+  );
+}
+
+async function persistAssistantTurn(conn, { sessionId, userId, userMessage, replyText, meta }) {
+  if (!userId || !userMessage) return;
+  const convId = await getOrCreateConversation(conn, userId, sessionId);
+  await insertChatMessage(conn, convId, 'user', userMessage);
+  await insertChatMessage(conn, convId, 'assistant', replyText || '', meta);
+  return convId;
+}
+
+/**
+ * Record chat events that never hit /assistant (category taps, in-chat orders)
+ * so the admin transcript matches what the customer actually saw.
+ */
+app.post('/assistant/log', requireCustomerAuth, async (c) => {
+  const userId = c.get('customer')?.id;
+  if (!userId) return c.json({ error: 'Login required' }, 401);
+  const body = await c.req.json().catch(() => ({}));
+  const entries = Array.isArray(body.messages) ? body.messages.slice(0, 10) : [];
+  const orderId = body.order_id ? String(body.order_id).slice(0, 36) : null;
+  if (!entries.length && !orderId) return c.json({ success: true });
+
+  const conn = getDb(c.env);
+  try {
+    const convId = await getOrCreateConversation(conn, userId, String(body.session_id || '').trim());
+    for (const m of entries) {
+      const role = m?.role === 'assistant' ? 'assistant' : m?.role === 'system' ? 'system' : 'user';
+      const content = String(m?.content || '').trim();
+      if (content) await insertChatMessage(conn, convId, role, content, m?.meta || null);
+    }
+    if (orderId) {
+      await conn.execute(
+        'UPDATE conversations SET has_order = 1, order_id = ? WHERE id = ?',
+        [orderId, convId]
+      );
+    }
+    return c.json({ success: true, conversation_id: convId });
+  } catch (err) {
+    console.error('assistant log error:', err?.message || err);
+    return c.json({ error: 'Failed to log chat event' }, 500);
+  }
+});
 
 /** Load latest conversation history for the logged-in customer */
 app.get('/assistant/history', requireCustomerAuth, async (c) => {
@@ -3790,19 +3825,25 @@ app.get('/admin/conversations', requireAuth, requireAdmin, async (c) => {
   const { limit = 50 } = c.req.query();
   try {
     const sql = `
-      SELECT c.id, c.session_id, c.user_id, c.has_order, c.order_id, c.updated_at,
+      SELECT c.id, c.session_id, c.user_id, c.has_order, c.order_id, c.created_at, c.updated_at,
              (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
              (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
-             u.name as user_name, u.email as user_email
+             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id AND role = 'user') as customer_message_count,
+             COALESCE(NULLIF(cu.name, ''), NULLIF(u.name, '')) as user_name,
+             COALESCE(NULLIF(cu.email, ''), NULLIF(u.email, '')) as user_email,
+             COALESCE(NULLIF(cu.mobile, ''), NULLIF(u.phone, '')) as user_phone,
+             CASE WHEN cu.id IS NOT NULL THEN 'mobile' WHEN u.id IS NOT NULL THEN 'google' ELSE NULL END as login_type
       FROM conversations c
+      LEFT JOIN customers cu ON c.user_id = cu.id
       LEFT JOIN users u ON c.user_id = u.id
       ORDER BY c.updated_at DESC
       LIMIT ?
     `;
-    const rows = await conn.execute(sql, [parseInt(limit)]);
+    const rows = await conn.execute(sql, [Math.min(200, parseInt(limit) || 50)]);
     return c.json({ data: rows });
   } catch (err) {
-    return c.json({ data: [] });
+    console.error('admin conversations list error:', err?.message || err);
+    return c.json({ data: [], error: err?.message || 'Failed to load conversations' }, 500);
   }
 });
 

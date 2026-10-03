@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Reveal from './Reveal';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export { Reveal };
 
@@ -33,6 +34,7 @@ export const sans = bnFont;
  * Editorial page chrome matching About Us — warm paper bg, no outer card.
  */
 export default function EditorialShell({ title, intro, children, maxWidth = 'max-w-[720px]' }) {
+  const { language } = useLanguage();
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-[#1F1D1B]" style={sans}>
       <div className={`${maxWidth} mx-auto px-5 sm:px-8 pt-8 md:pt-12 pb-20 md:pb-28`}>
@@ -41,7 +43,7 @@ export default function EditorialShell({ title, intro, children, maxWidth = 'max
           className={`${btnBase} text-[#5C574F] hover:text-[#1F1D1B] px-0 gap-1.5 mb-10 md:mb-14`}
         >
           <ArrowLeft size={16} strokeWidth={1.75} />
-          হোমে ফিরুন
+          {language === 'en' ? 'Back to home' : 'হোমে ফিরুন'}
         </Link>
 
         <Reveal>

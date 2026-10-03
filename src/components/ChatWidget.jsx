@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  X, Send, ShoppingBag, Sparkles, ChevronRight, 
+  X, Send, ShoppingBag, Sparkles, ChevronRight, MessageCircle, 
   ShoppingCart, ExternalLink, RefreshCw, 
   ShieldCheck, CheckCircle, Package, ArrowRight, Tag, Layers,
   Phone, Copy, Check, Info, HelpCircle, Truck, RotateCcw,
@@ -46,7 +46,7 @@ const BKASH_NUMBER = '01857045449';
 
 const CHAT_COPY = {
   bn: {
-    fab: 'শপিং সহকারী',
+    fab: 'চ্যাট করুন',
     subtitle: 'শপিং সহকারী',
     welcome: 'আসসালামু আলাইকুম। Big Bazar শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি কোন ক্যাটাগরির কালেকশন দেখতে চান বা কী জানতে চান?',
     loginRequired: 'চ্যাট করতে লগইন করুন',
@@ -123,7 +123,7 @@ const CHAT_COPY = {
     typing: 'লিখছে',
   },
   en: {
-    fab: 'Shopping Help',
+    fab: 'Chat with us',
     subtitle: 'Shopping assistant',
     welcome: 'Welcome to the Big Bazar shopping assistant. Which collection would you like to browse, or what can I help with?',
     loginRequired: 'Login to chat',
@@ -279,6 +279,17 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
   const getAssistantEndpoint = () => {
     if (!API_URL || API_URL === '/') return '/api/assistant';
     return `${API_URL.replace(/\/$/, '')}/api/assistant`;
+  };
+
+  // Fire and forget: record client-side chat events in the admin transcript
+  const logChatEvent = (messages, extra = {}) => {
+    const token = getCustomerToken();
+    if (!token) return;
+    fetch(`${getAssistantEndpoint()}/log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ session_id: sessionId, messages, ...extra }),
+    }).catch(() => {});
   };
 
   const [sessionId, setSessionId] = useState(() => {
@@ -689,6 +700,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, userMsg, assistantMsg]);
+      logChatEvent([
+        { role: 'user', content: userMsg.content },
+        { role: 'assistant', content: assistantMsg.content },
+      ]);
     } else {
       const assistantMsg = {
         id: 'subcats-empty-' + Date.now(),
@@ -697,6 +712,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, userMsg, assistantMsg]);
+      logChatEvent([
+        { role: 'user', content: userMsg.content },
+        { role: 'assistant', content: assistantMsg.content },
+      ]);
     }
   };
 
@@ -828,6 +847,14 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
         };
 
         setMessages(prev => [...prev, successMessage]);
+        logChatEvent(
+          [{
+            role: 'system',
+            content: `Order placed #${String(confirmedId).slice(-8).toUpperCase()}: ${orderModalProduct.name} x${orderForm.quantity}, total ৳${totalAmount}, ${orderForm.name.trim()} (${cleanPhone})`,
+            meta: { order_id: confirmedId, product_id: orderModalProduct.id },
+          }],
+          { order_id: data.order_id || null }
+        );
         setOrderModalProduct(null);
         setOrderStep('details');
       } else {
@@ -850,10 +877,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
         <button
           onClick={handleFabClick}
           className={`chat-widget-fab bg-white text-zinc-900 px-4 py-3 sm:px-4.5 sm:py-3.5 rounded-full flex items-center gap-2.5 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300 border border-zinc-200${onProductPage ? ' chat-widget-fab--product' : ''}`}
-          aria-label="Open Big Bazar Shopping Assistant"
+          aria-label={c.fab}
         >
           <div className="w-7 h-7 rounded-full bg-[#ce112d] flex items-center justify-center text-white shrink-0">
-            <Sparkles size={14} />
+            <MessageCircle size={15} strokeWidth={2.25} />
           </div>
           <span className="text-xs font-bold text-zinc-900 leading-none">
             {c.fab}
