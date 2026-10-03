@@ -393,6 +393,122 @@ function getSuperadminEmails(env) {
     .filter(Boolean);
 }
 
+function escapeEmailHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+let smtpTransportPromise = null;
+
+/**
+ * Email the superadmin(s) about a new order over SMTP (Gmail App Password by default).
+ * Node only (Hostinger); on Cloudflare the dynamic nodemailer import fails and the email is skipped.
+ * Env: SMTP_USER + SMTP_PASS (required), SMTP_HOST / SMTP_PORT (default smtp.gmail.com:465),
+ * ORDER_NOTIFY_EMAILS (optional, comma separated, defaults to SUPERADMIN_EMAILS).
+ */
+async function sendOrderNotificationEmail(env, order) {
+  const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+  const smtpUser = readEnv('SMTP_USER');
+  const smtpPass = String(readEnv('SMTP_PASS')).replace(/\s+/g, '');
+  if (!smtpUser || !smtpPass) {
+    console.warn('Order email skipped: SMTP_USER / SMTP_PASS not set');
+    return;
+  }
+
+  const to = String(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(env).join(','))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!to.length) return;
+
+  if (!smtpTransportPromise) {
+    const port = parseInt(readEnv('SMTP_PORT') || '465', 10);
+    const moduleName = 'nodemailer';
+    smtpTransportPromise = import(/* @vite-ignore */ moduleName)
+      .then((mod) =>
+        (mod.default || mod).createTransport({
+          host: readEnv('SMTP_HOST') || 'smtp.gmail.com',
+          port,
+          secure: port === 465,
+          auth: { user: smtpUser, pass: smtpPass },
+        })
+      )
+      .catch((err) => {
+        smtpTransportPromise = null;
+        throw err;
+      });
+  }
+  const transport = await smtpTransportPromise;
+
+  const from = `Big Bazar Orders <${smtpUser}>`;
+  const siteOrigin = String(readEnv('PUBLIC_SITE_ORIGIN') || 'https://onlinebigbazar.com').replace(/\/$/, '');
+  const shortId = String(order.id).slice(-8).toUpperCase();
+  const taka = (n) => `৳${Math.round(Number(n) || 0).toLocaleString('en-US')}`;
+  const areaLabel = { mirsarai: 'Mirsarai (free)', chattogram: 'Chattogram', outside: 'Outside Chattogram' }[order.deliveryArea] || order.deliveryArea;
+
+  const lineText = (l) =>
+    `${l.name} x${l.qty}${l.color ? `, ${l.color}` : ''}${l.size ? `, ${l.size}` : ''} (${taka(l.unitPrice * l.qty)})`;
+
+  const rowsHtml = order.lines
+    .map(
+      (l) => `<tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee">${escapeEmailHtml(l.name)}${
+          l.color || l.size
+            ? `<div style="color:#777;font-size:12px">${escapeEmailHtml([l.color, l.size].filter(Boolean).join(' / '))}</div>`
+            : ''
+        }</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center">${l.qty}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">${taka(l.unitPrice * l.qty)}</td>
+      </tr>`
+    )
+    .join('');
+
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f1d1b">
+    <h2 style="color:#ce112d;margin:0 0 4px">New order #${shortId}</h2>
+    <p style="margin:0 0 16px;color:#555">Total <strong>${taka(order.total)}</strong> · Payment: ${escapeEmailHtml(order.paymentRef)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <tr><th style="text-align:left;padding-bottom:6px">Product</th><th style="padding-bottom:6px">Qty</th><th style="text-align:right;padding-bottom:6px">Price</th></tr>
+      ${rowsHtml}
+      <tr><td colspan="2" style="padding-top:8px">Delivery (${escapeEmailHtml(areaLabel)})</td><td style="padding-top:8px;text-align:right">${taka(order.deliveryCharge)}</td></tr>
+      <tr><td colspan="2" style="padding-top:4px"><strong>Total</strong></td><td style="padding-top:4px;text-align:right"><strong>${taka(order.total)}</strong></td></tr>
+    </table>
+    <h3 style="margin:20px 0 6px;font-size:15px">Customer</h3>
+    <p style="margin:0;line-height:1.6;font-size:14px">
+      ${escapeEmailHtml(order.customerName)}<br>
+      <a href="tel:${escapeEmailHtml(order.customerPhone)}">${escapeEmailHtml(order.customerPhone)}</a><br>
+      ${escapeEmailHtml(order.customerAddress)}
+      ${order.customerNote ? `<br><em style="color:#777">Note: ${escapeEmailHtml(order.customerNote)}</em>` : ''}
+    </p>
+    <p style="margin:24px 0 0"><a href="${siteOrigin}/admin" style="background:#ce112d;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open admin panel</a></p>
+  </div>`;
+
+  const text = [
+    `New order #${shortId}`,
+    `Total: ${taka(order.total)} | Payment: ${order.paymentRef}`,
+    '',
+    ...order.lines.map(lineText),
+    `Delivery (${areaLabel}): ${taka(order.deliveryCharge)}`,
+    '',
+    `Customer: ${order.customerName}`,
+    `Phone: ${order.customerPhone}`,
+    `Address: ${order.customerAddress}`,
+    order.customerNote ? `Note: ${order.customerNote}` : '',
+    '',
+    `Admin: ${siteOrigin}/admin`,
+  ].join('\n');
+
+  await transport.sendMail({
+    from,
+    to: to.join(', '),
+    subject: `New order ${taka(order.total)} from ${order.customerName || 'customer'} (#${shortId})`,
+    html,
+    text,
+  });
+}
+
 function resolveAdminRole(user, env) {
   const email = String(user?.email || '').trim().toLowerCase();
   if (email && getSuperadminEmails(env).includes(email)) return 'superadmin';
@@ -1631,6 +1747,7 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
         }];
 
     let calculatedSubtotal = 0;
+    const orderLines = [];
 
     for (const item of itemsToProcess) {
       // 1. Fetch product and lock row inside transaction
@@ -1661,6 +1778,13 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
       // Calculate true price of the product item
       const itemUnitPrice = parseFloat(product.price || 0);
       calculatedSubtotal += itemUnitPrice * requestedQty;
+      orderLines.push({
+        name: product.name,
+        qty: requestedQty,
+        unitPrice: itemUnitPrice,
+        color: item.selectedColor || null,
+        size: item.selectedSize || null,
+      });
 
       // Decrement stock
       let updatedGlobalStock = product.stock_count;
@@ -1761,6 +1885,27 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
     }
 
     await tx.commit();
+
+    // Never block or fail the customer's order because of email
+    const notifyJob = sendOrderNotificationEmail(c.env, {
+      id,
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      customerAddress: o.customer_address,
+      customerNote: o.customer_note,
+      deliveryArea: normalizedArea,
+      deliveryCharge: calculatedDeliveryCharge,
+      subtotal: calculatedSubtotal,
+      total: calculatedTotalAmount,
+      paymentRef: o.last_four_digits || 'COD',
+      lines: orderLines,
+    }).catch((err) => console.error('order email error:', err?.message || err));
+    try {
+      c.executionCtx.waitUntil(notifyJob);
+    } catch (_) {
+      // Node (Hostinger) has no executionCtx; the promise keeps running on its own
+    }
+
     await bumpCatalogVersion(c);
     runInBackground(c, () => prewarmCatalogCache(c));
     return c.json({ success: true, order_id: id, data: { id, order_id: id } });
