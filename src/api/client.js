@@ -512,8 +512,14 @@ class QueryBuilder {
                 cache: 'no-store',
                 body: JSON.stringify(item)
             });
-            const json = await res.json();
-            if (!res.ok) return { data: null, error: { message: json.error } };
+            const text = await res.text();
+            if (!text) {
+                return { data: null, error: { message: 'The server did not respond. Please try again.' } };
+            }
+            let json;
+            try { json = JSON.parse(text); }
+            catch { return { data: null, error: { message: 'The server sent an unreadable reply. Please try again.' } }; }
+            if (!res.ok) return { data: null, error: { message: json.error || json.detail || 'Order failed' } };
             results.push(typeof json.data !== 'undefined' ? json.data : json);
         }
         return { data: results.length === 1 ? results[0] : results, error: null };

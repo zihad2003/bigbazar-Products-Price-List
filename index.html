@@ -158,7 +158,8 @@
   <script>
     // If React never mounts (stale SW / broken asset), recover instead of spinning forever.
     (function () {
-      var BOOT_MS = 12000;
+      // Slow mobile data can take well over 12s for the first script download
+      var BOOT_MS = 25000;
       function stillBooting() {
         return !!document.getElementById('app-preloader');
       }
@@ -167,9 +168,10 @@
         if (!pre) return;
         pre.innerHTML =
           '<div style="max-width:320px;text-align:center;padding:24px;font-family:system-ui,sans-serif">' +
-          '<p style="font-size:14px;font-weight:700;color:#09090b;margin:0 0 8px">পেজ লোড হচ্ছে না</p>' +
-          '<p style="font-size:12px;color:#71717a;margin:0 0 16px;line-height:1.5">ক্যাশ ক্লিয়ার করে আবার চেষ্টা করুন।</p>' +
-          '<button id="bb-boot-reload" type="button" style="width:100%;padding:12px 16px;border:0;border-radius:14px;background:#ce112d;color:#fff;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer">Reload</button>' +
+          '<p style="font-size:14px;font-weight:700;color:#09090b;margin:0 0 6px">Taking longer than usual</p>' +
+          '<p style="font-size:13px;color:#71717a;margin:0 0 4px;line-height:1.5">Your connection may be slow. Please try again.</p>' +
+          '<p style="font-size:12px;color:#a1a1aa;margin:0 0 16px;line-height:1.5">পেজটি লোড হতে দেরি হচ্ছে। আবার চেষ্টা করুন।</p>' +
+          '<button id="bb-boot-reload" type="button" style="width:100%;padding:12px 16px;border:0;border-radius:14px;background:#ce112d;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Try again</button>' +
           '</div>';
         var btn = document.getElementById('bb-boot-reload');
         if (btn) {

@@ -1,20 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { bigBazarApi } from '../api/client';
+import { API_URL } from '../api/client';
+
+function orderFromCheckoutState(details) {
+    if (!details?.id || !Array.isArray(details.items)) return null;
+    const subtotal = Number(details.subtotal) || 0;
+    const deliveryCharge = Number(details.deliveryCharge) || 0;
+    const finalTotal = Number(details.finalTotal) || subtotal + deliveryCharge;
+    const ref = String(details.senderNumber || '').trim();
+    return {
+        id: details.id,
+        items: details.items.map((item) => ({
+            name: item.name,
+            selectedSize: item.selectedSize || null,
+            selectedColor: item.selectedColor || null,
+            quantity: Number(item.quantity) || 1,
+            price: Number(item.price) || 0,
+        })),
+        name: details.name,
+        phone: details.phone,
+        address: details.address,
+        upazila: details.upazila || '',
+        district: details.district || '',
+        subtotal,
+        deliveryCharge,
+        finalTotal,
+        isAdvancePaid: false,
+        isFullyPaid: false,
+        paymentPendingVerify: Boolean(ref),
+        paidAmount: 0,
+        dueOnDelivery: finalTotal,
+        lastFourDigits: ref ? `${details.paymentMethod === 'bkash' ? 'bKash' : 'Payment'}: ${ref}` : '',
+    };
+}
 
 export default function OrderConfirmation() {
     const { orderId } = useParams();
+    const location = useLocation();
     const { t, language } = useLanguage();
-    const [order, setOrder] = useState(null);
-    const [loading, setLoading] = useState(!!orderId);
+    const checkoutOrder = orderFromCheckoutState(location.state?.orderDetails);
+    const [order, setOrder] = useState(checkoutOrder);
+    const [loading, setLoading] = useState(!!orderId && !checkoutOrder);
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        if (!orderId) return;
+        if (!orderId || checkoutOrder) return;
         setLoading(true);
-        bigBazarApi.from('orders').select('*').eq('id', orderId).single()
+        const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+        // Public lookup by order ID; the admin orders list needs an admin login
+        fetch(`${base}/api/orders/track?query=${encodeURIComponent(orderId)}`, { cache: 'no-store' })
+            .then(async (res) => {
+                const json = await res.json().catch(() => ({}));
+                const rows = Array.isArray(json.data) ? json.data : [];
+                return { data: rows.find((r) => r.id === orderId) || null };
+            })
             .then(res => {
                 if (res && res.data) {
                     const dbOrder = res.data;
