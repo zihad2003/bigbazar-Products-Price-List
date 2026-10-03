@@ -28,15 +28,14 @@ const SEOHead = ({ title, description, image, productData }) => {
         : location.pathname;
     const canonicalUrl = `${origin}${canonicalPath}`;
 
-    const defaultTitle =
-      'বিগ বাজার বারইয়ারহাট | Big Bazar — ফ্যামিলি ফ্যাশন ও বিয়ের সাজনি';
+    const defaultTitle = 'Big Bazar Baraiyarhat | Family Fashion and Bridal Wear';
     const defaultDesc =
-      'বিগ বাজার — জমিদার প্লাজা (২য় তলা), বারইয়ারহাট, মীরসরাই, চট্টগ্রাম। ফিক্সড প্রাইস ফ্যামিলি ফ্যাশন, বিয়ের সাজনি, মীরসরাইতে ফ্রি হোম ডেলিভারি, সারাদেশে COD।';
+      'Family fashion and bridal wear at fixed prices. Visit Jomidar Plaza, Baraiyarhat, Mirsharai or order online with free Mirsharai delivery and COD nationwide.';
 
     let pageTitle = title || defaultTitle;
     let pageDesc = description || defaultDesc;
     let pageKeywords =
-      'বিগ বাজার, বারইয়ারহাট, মীরসরাই, বিয়ের সাজনি, অনলাইন শপিং, শাড়ি, থ্রি পিস, পাঞ্জাবি, ক্যাশ অন ডেলিভারি, Big Bazar Baraiyarhat';
+      'Big Bazar Baraiyarhat, Mirsharai shopping, Biyer Sajani, bridal wear, saree, three piece, panjabi, cash on delivery, বিগ বাজার, বারইয়ারহাট, মীরসরাই';
 
     if (!title && !description && location.pathname === '/products' && subcategory) {
       const meta = getSubcategoryMeta({ id: subcategory, name_en: subcategory.replace(/-/g, ' ') }, category);
@@ -46,29 +45,29 @@ const SEOHead = ({ title, description, image, productData }) => {
         pageKeywords = meta.keywords || pageKeywords;
       }
     } else if (!title && !description && location.pathname === '/products' && category && category !== 'All') {
-      pageTitle = `${category} কালেকশন কিনুন | বিগ বাজার বারইয়ারহাট`;
-      pageDesc = `${category} ফ্যাশন — বিগ বাজার বারইয়ারহাট, মীরসরাই। ফিক্সড প্রাইস, মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।`;
-      pageKeywords = `${category}, বিগ বাজার, বারইয়ারহাট, মীরসরাই, অনলাইন শপিং, ${pageKeywords}`;
+      pageTitle = `${category} Collection | Big Bazar Baraiyarhat`;
+      pageDesc = `Shop ${category} fashion at Big Bazar Baraiyarhat, Mirsharai. Fixed prices, free Mirsharai delivery and COD nationwide.`;
+      pageKeywords = `${category}, ${pageKeywords}`;
     } else if (!title && !description && location.pathname === '/about-us') {
-      pageTitle = 'আমাদের সম্পর্কে | বিগ বাজার বারইয়ারহাট — এক শোরুম, পুরো পরিবার';
+      pageTitle = 'About Us | Big Bazar Baraiyarhat';
       pageDesc =
-        'বিগ বাজার বারইয়ারহাট — জমিদার প্লাজা (২য় তলা)। ফিক্সড প্রাইস ফ্যামিলি ফ্যাশন, বিয়ের সাজনি, এক লক্ষ+ ফলোয়ারের আস্থা।';
+        'Big Bazar at Jomidar Plaza, Baraiyarhat. Fixed price family fashion and bridal wear, trusted by over 100K followers.';
     } else if (!title && location.pathname === '/contact-us') {
-      pageTitle = 'যোগাযোগ | বিগ বাজার বারইয়ারহাট — হেল্পলাইন ও WhatsApp';
-      pageDesc = 'অর্ডার ও স্টক সাপোর্ট: 01857045449 · WhatsApp 01824950082 · জমিদার প্লাজা, বারইয়ারহাট, মীরসরাই।';
+      pageTitle = 'Contact Us | Big Bazar Baraiyarhat';
+      pageDesc = 'Helpline 01857045449, WhatsApp 01824950082. Jomidar Plaza, Baraiyarhat, Mirsharai.';
     } else if (!title && location.pathname === '/store-locations') {
-      pageTitle = 'শোরুম লোকেশন | বিগ বাজার — জমিদার প্লাজা, বারইয়ারহাট';
-      pageDesc = 'ভিজিট করুন: জমিদার প্লাজা ২য় তলা, বারইয়ারহাট, মীরসরাই, চট্টগ্রাম। প্রতিদিন সকাল ৯টা – রাত ৯টা।';
+      pageTitle = 'Store Location | Big Bazar Baraiyarhat';
+      pageDesc = 'Visit us at 2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsharai, Chattogram. Open daily 9 AM to 9 PM.';
     }
 
     // ProductDetails may pass productData; otherwise leave defaults (ProductDetails also applies SEO)
     if (productData?.name) {
       const price = productData.price != null ? ` ৳${productData.price}` : '';
-      pageTitle = `${productData.name}${price} | বিগ বাজার বারইয়ারহাট`;
+      pageTitle = `${productData.name}${price} | Big Bazar Baraiyarhat`;
       pageDesc =
         productData.description ||
-        `${productData.name} — বিগ বাজার বারইয়ারহাট থেকে অনলাইন অর্ডার। মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।`;
-      pageKeywords = `${productData.name}, ${productData.category || ''}, ${productData.subcategory || ''}, বিগ বাজার, বারইয়ারহাট`;
+        `Buy ${productData.name} from Big Bazar Baraiyarhat. Free Mirsharai delivery and COD nationwide.`;
+      pageKeywords = `${productData.name}, ${productData.category || ''}, ${productData.subcategory || ''}, Big Bazar Baraiyarhat`;
     }
 
     const pageImage = image || productData?.images?.[0] || `${origin}/b.jpg`;
@@ -96,8 +95,8 @@ const SEOHead = ({ title, description, image, productData }) => {
     updateMeta('meta[property="og:image"]', 'content', pageImage);
     updateMeta('meta[property="og:url"]', 'content', canonicalUrl);
     updateMeta('meta[property="og:type"]', 'content', isProduct || productData ? 'product' : 'website');
-    updateMeta('meta[property="og:locale"]', 'content', 'bn_BD');
-    updateMeta('meta[property="og:locale:alternate"]', 'content', 'en_US');
+    updateMeta('meta[property="og:locale"]', 'content', 'en_US');
+    updateMeta('meta[property="og:locale:alternate"]', 'content', 'bn_BD');
     updateMeta('meta[property="og:site_name"]', 'content', 'Big Bazar Baraiyarhat');
     updateMeta('meta[name="twitter:card"]', 'content', 'summary_large_image');
     updateMeta('meta[name="twitter:title"]', 'content', pageTitle);
@@ -223,7 +222,7 @@ const SEOHead = ({ title, description, image, productData }) => {
       schemaGraph['@graph'].push({
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'হোম', item: origin },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: origin },
           ...(productData.category
             ? [{
                 '@type': 'ListItem',
@@ -247,14 +246,14 @@ const SEOHead = ({ title, description, image, productData }) => {
         name: pageTitle,
         description: pageDesc,
         url: canonicalUrl,
-        inLanguage: 'bn',
+        inLanguage: 'en',
         isPartOf: { '@id': `${origin}/#website` },
         about: { '@type': 'Thing', name: subcategory.replace(/-/g, ' ') },
       });
       schemaGraph['@graph'].push({
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'হোম', item: origin },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: origin },
           ...(category
             ? [{
                 '@type': 'ListItem',

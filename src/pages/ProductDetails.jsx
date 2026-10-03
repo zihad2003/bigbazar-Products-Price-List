@@ -163,7 +163,7 @@ export default function ProductDetails() {
                     image: product.images?.length
                         ? product.images
                         : [product.image_url || product.image].filter(Boolean),
-                    description: seo?.description || product.description || `${product.name} — বিগ বাজার বারইয়ারহাট`,
+                    description: seo?.description || product.description || `${product.name} | Big Bazar Baraiyarhat`,
                     sku: String(product.serial_no || product.id),
                     brand: { '@type': 'Brand', name: 'Big Bazar' },
                     category: product.subcategory

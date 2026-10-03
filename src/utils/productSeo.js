@@ -2,9 +2,7 @@
  * Shared SEO helpers for product + listing pages (Bangla-first ranking).
  */
 
-const STORE_BN = 'বিগ বাজার বারইয়ারহাট';
 const STORE_EN = 'Big Bazar Baraiyarhat';
-const PLACE_BN = 'মীরসরাই, চট্টগ্রাম';
 const PLACE_EN = 'Mirsharai, Chattogram';
 
 function stripHtml(text = '') {
@@ -32,17 +30,13 @@ export function buildProductSeo(product, { origin = '', language = 'bn' } = {}) 
   const priceBit = price != null && !Number.isNaN(price) ? `৳${Math.round(price)}` : '';
   const locBits = `${STORE_BN} | ${PLACE_BN}`;
 
-  const title =
-    language === 'bn'
-      ? `${name}${priceBit ? ` ${priceBit}` : ''} | ${STORE_BN} — অনলাইন অর্ডার`
-      : `${name}${priceBit ? ` ${priceBit}` : ''} | ${STORE_EN} — Buy Online`;
+  // Search snippets stay English regardless of UI language so titles read consistently
+  const title = `${name}${priceBit ? ` ${priceBit}` : ''} | ${STORE_EN}`;
 
   const rawDesc = stripHtml(product.description || '');
   const description = clip(
     rawDesc ||
-      (language === 'bn'
-        ? `${name}${cat ? ` — ${cat}` : ''}${sub ? ` / ${sub}` : ''}। ${STORE_BN}, ${PLACE_BN}-এ ফিক্সড প্রাইস। মীরসরাইতে ফ্রি ডেলিভারি, সারাদেশে COD।`
-        : `${name}${cat ? ` — ${cat}` : ''}${sub ? ` / ${sub}` : ''}. Fixed price at ${STORE_EN}, ${PLACE_EN}. Free Mirsharai delivery, COD nationwide.`)
+      `${name}${cat ? `, ${cat}` : ''}${sub ? ` / ${sub}` : ''}. Fixed price at ${STORE_EN}, ${PLACE_EN}. Free Mirsharai delivery and COD nationwide.`
   );
 
   const keywords = [

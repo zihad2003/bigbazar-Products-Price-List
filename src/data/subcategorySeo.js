@@ -451,10 +451,12 @@ export function getSubcategorySeo(sub, category = '') {
 export function getSubcategoryMeta(sub, category = '') {
   const seo = getSubcategorySeo(sub, category);
   if (!seo) return null;
-  // Bangla-first title for local search ranking
-  const title = `${seo.nameBn} (${seo.nameEn}) কিনুন | বিগ বাজার বারইয়ারহাট | অনলাইন অর্ডার`;
+  const title = `Buy ${seo.nameEn} Online | Big Bazar Baraiyarhat`;
   const description = clipBnEn(
-    `${seo.intro_bn} ${STORE.freeDeliveryBn}. ${STORE.codBn}. শোরুম: ${STORE.placeBn}.`,
+    String(seo.intro_en || '')
+      .replace(/\s*[—–]\s*/g, ', ')
+      .replace(/(\w)-(\w)/g, '$1 $2')
+      .replace(/\s*·\s*/g, ', '),
     160
   );
   const keywords = [
