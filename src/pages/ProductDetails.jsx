@@ -140,7 +140,12 @@ export default function ProductDetails() {
         if (!product) return;
 
         const origin = window.location.origin;
-        const seo = buildProductSeo(product, { origin, language });
+        let seo = null;
+        try {
+            seo = buildProductSeo(product, { origin, language });
+        } catch (err) {
+            console.error('Product SEO failed:', err);
+        }
         if (seo) {
             applyDocumentSeo({
                 title: seo.title,
@@ -371,13 +376,14 @@ export default function ProductDetails() {
 
     const formatSubcategoryName = (subId) => {
         if (!subId) return '';
-        if (subcategoriesData && product?.category && subcategoriesData[product.category]) {
-            const match = subcategoriesData[product.category].find(s => s.id?.toLowerCase() === subId.toLowerCase());
+        const subList = subcategoriesData?.[product?.category];
+        if (Array.isArray(subList)) {
+            const match = subList.find(s => s.id?.toLowerCase() === String(subId).toLowerCase());
             if (match && match.name_en) {
                 return match.name_en;
             }
         }
-        return subId.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return String(subId).replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     };
 
     return (

@@ -28,7 +28,6 @@ export function buildProductSeo(product, { origin = '', language = 'bn' } = {}) 
   const sub = product.subcategory || '';
   const price = product.price != null ? Number(product.price) : null;
   const priceBit = price != null && !Number.isNaN(price) ? `৳${Math.round(price)}` : '';
-  const locBits = `${STORE_BN} | ${PLACE_BN}`;
 
   // Search snippets stay English regardless of UI language so titles read consistently
   const title = `${name}${priceBit ? ` ${priceBit}` : ''} | ${STORE_EN}`;

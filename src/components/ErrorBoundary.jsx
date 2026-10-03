@@ -1,8 +1,8 @@
 import React from 'react';
 
-const STORE_TITLE = 'Big Bazar | Baraiyarhat — Complete Family Fashion & Lifestyle Destination';
+const STORE_TITLE = 'Big Bazar Baraiyarhat | Family Fashion and Bridal Wear';
 const STORE_DESC =
-  'Located on the 2nd Floor of Jomidar Plaza in Baraiyarhat, Mirsharai, Chattogram, Big Bazar is the premier fixed-price family shopping destination. Home of signature bridal section Biyer Sajani (বিয়ের সাজনি), kids wear, modest fashion, gents wear, and home decor. Free Home Delivery within Mirsharai Upazila.';
+  'Family fashion and bridal wear at fixed prices. Visit Jomidar Plaza, Baraiyarhat, Mirsharai or order online with free Mirsharai delivery and COD nationwide.';
 
 function setMeta(name, content, attr = 'name') {
   try {
@@ -76,40 +76,31 @@ class ErrorBoundary extends React.Component {
             </div>
 
             <div className="space-y-2.5">
-              <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-zinc-900 italic">
-                সাময়িক <span className="text-[#ce112d]">ত্রুটি হয়েছে</span>
+              <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">
+                Something went wrong
               </h1>
-              <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                সংযোগ বা ক্যাশের কারণে সমস্যাটি হয়েছে। নিচের বাটনে চাপ দিয়ে পেজটি রিফ্রেশ করুন।
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                We couldn&apos;t load this page. Please refresh and try again.
+              </p>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                পেজটি লোড হয়নি। রিফ্রেশ করে আবার চেষ্টা করুন।
               </p>
             </div>
 
             <div className="flex flex-col gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  try {
-                    localStorage.removeItem('bb_site_settings_cache');
-                    sessionStorage.clear();
-                  } catch (e) {}
-                  window.location.href = '/?refresh=' + Date.now();
-                }}
-                className="w-full py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-red-600/20 active:scale-95 transition-all cursor-pointer"
+                onClick={() => window.location.reload()}
+                className="w-full py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-sm font-semibold rounded-2xl shadow-lg shadow-red-600/20 active:scale-95 transition-all cursor-pointer"
               >
-                পেজ রিফ্রেশ করুন (Refresh Page)
+                Refresh
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  try {
-                    localStorage.removeItem('bb_site_settings_cache');
-                    sessionStorage.clear();
-                  } catch (e) {}
-                  window.location.href = '/';
-                }}
-                className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold uppercase tracking-wider rounded-2xl transition-all border border-zinc-200 cursor-pointer"
+                onClick={() => { window.location.href = '/'; }}
+                className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-sm font-semibold rounded-2xl transition-all border border-zinc-200 cursor-pointer"
               >
-                হোমপেজে ফিরে যান (Return Home)
+                Back to homepage
               </button>
             </div>
           </div>
