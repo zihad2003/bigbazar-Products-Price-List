@@ -1,7 +1,8 @@
 import {
   User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon, Truck, RefreshCw, ExternalLink,
+  ShieldCheck, ShieldAlert, ShieldX,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { API_URL, getToken } from '../../api/client';
 
@@ -57,6 +58,122 @@ function paymentRef(order) {
     return { label: `${method} ref`, value: ref };
   }
   return { label: 'Sender / ref', value: raw };
+}
+
+function describeDevice(ua) {
+  if (!ua) return null;
+  const os = /iPhone|iPad/i.test(ua) ? 'iPhone'
+    : /Android/i.test(ua) ? 'Android'
+    : /Windows/i.test(ua) ? 'Windows PC'
+    : /Macintosh/i.test(ua) ? 'Mac'
+    : /Linux/i.test(ua) ? 'Linux'
+    : 'Unknown device';
+  const app = /FBAN|FBAV|FB_IAB/i.test(ua) ? 'Facebook app'
+    : /Instagram/i.test(ua) ? 'Instagram app'
+    : /Messenger/i.test(ua) ? 'Messenger'
+    : /Edg\//i.test(ua) ? 'Edge'
+    : /OPR\/|Opera/i.test(ua) ? 'Opera'
+    : /SamsungBrowser/i.test(ua) ? 'Samsung Internet'
+    : /Chrome\//i.test(ua) ? 'Chrome'
+    : /Safari\//i.test(ua) ? 'Safari'
+    : /Firefox\//i.test(ua) ? 'Firefox'
+    : null;
+  return app ? `${os} · ${app}` : os;
+}
+
+const RISK_UI = {
+  low: { label: 'Looks real', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
+  medium: { label: 'Check before shipping', Icon: ShieldAlert, cls: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-400' },
+  high: { label: 'Likely fake', Icon: ShieldX, cls: 'border-red-500/30 bg-red-500/10 text-red-400' },
+};
+
+function FraudCheck({ orderId }) {
+  const [state, setState] = useState({ loading: true, data: null, error: '' });
+
+  useEffect(() => {
+    let alive = true;
+    setState({ loading: true, data: null, error: '' });
+    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+    fetch(`${base}/api/orders/${orderId}/risk`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (!res.ok) setState({ loading: false, data: null, error: data.error || 'Fraud check failed' });
+        else setState({ loading: false, data, error: '' });
+      })
+      .catch((err) => alive && setState({ loading: false, data: null, error: err.message || 'Network error' }));
+    return () => { alive = false; };
+  }, [orderId]);
+
+  if (state.loading) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 text-[11px] text-zinc-500">
+        Checking order…
+      </section>
+    );
+  }
+  if (state.error) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 text-[11px] text-zinc-500">
+        {state.error}
+      </section>
+    );
+  }
+
+  const d = state.data;
+  const ui = RISK_UI[d.level] || RISK_UI.low;
+  const location = d.geo
+    ? [d.geo.city, d.geo.region, d.geo.country].filter(Boolean).join(', ')
+    : null;
+  const device = describeDevice(d.user_agent);
+
+  return (
+    <section className={`rounded-lg border p-3.5 space-y-2.5 ${ui.cls}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold flex items-center gap-2">
+          <ui.Icon size={16} /> {ui.label}
+        </p>
+        <span className="text-[10px] font-medium text-zinc-400">
+          {d.history.total > 0
+            ? `${d.history.total} past order${d.history.total > 1 ? 's' : ''} · ${d.history.delivered} delivered · ${d.history.canceled} canceled`
+            : 'New customer'}
+        </span>
+      </div>
+
+      {d.tracked ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+          <div className="rounded-md bg-black/30 border border-white/10 p-2">
+            <p className="text-zinc-500 text-[10px]">IP location (approx.)</p>
+            <p className="text-white font-medium truncate">{location || 'Unknown'}</p>
+          </div>
+          <div className="rounded-md bg-black/30 border border-white/10 p-2">
+            <p className="text-zinc-500 text-[10px]">Network</p>
+            <p className="text-white font-medium truncate" title={d.ip || ''}>{d.geo?.org || d.ip || 'Unknown'}</p>
+          </div>
+          <div className="rounded-md bg-black/30 border border-white/10 p-2">
+            <p className="text-zinc-500 text-[10px]">Device</p>
+            <p className="text-white font-medium truncate">{device || 'Unknown'}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[11px] text-zinc-500">IP and device were not recorded for this order (placed before tracking started).</p>
+      )}
+
+      {(d.reasons.length > 0 || d.positives.length > 0) && (
+        <ul className="space-y-1 text-[11px] leading-snug">
+          {d.reasons.map((r) => (
+            <li key={r} className="flex gap-1.5 text-red-300"><span>•</span>{r}</li>
+          ))}
+          {d.positives.map((r) => (
+            <li key={r} className="flex gap-1.5 text-green-300"><span>•</span>{r}</li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[10px] text-zinc-500">
+        Mobile data IPs often show Dhaka or Chattogram even for local customers. Call before shipping if unsure.
+      </p>
+    </section>
+  );
 }
 
 const STATUS_BTN = {
@@ -197,6 +314,8 @@ export default function OrderDetailsPanel({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
+        <FraudCheck orderId={order.id} />
+
         {/* Customer + Delivery */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 space-y-3">

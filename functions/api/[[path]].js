@@ -46,6 +46,174 @@ async function ensureOrderSteadfastColumns(conn) {
   }
 }
 
+let orderRiskColumnsReady = false;
+async function ensureOrderRiskColumns(conn) {
+  if (orderRiskColumnsReady) return;
+  for (const sql of [
+    'ALTER TABLE orders ADD COLUMN customer_ip VARCHAR(64) NULL',
+    'ALTER TABLE orders ADD COLUMN user_agent VARCHAR(255) NULL',
+    'ALTER TABLE orders ADD COLUMN ip_geo TEXT NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (_) {
+      /* column already exists */
+    }
+  }
+  orderRiskColumnsReady = true;
+}
+
+/** Real visitor IP behind Cloudflare, Hostinger CDN or a plain Node socket. */
+function getClientIp(c) {
+  const fromHeader =
+    c.req.header('CF-Connecting-IP') ||
+    c.req.header('True-Client-IP') ||
+    c.req.header('X-Real-IP') ||
+    String(c.req.header('X-Forwarded-For') || '').split(',')[0];
+  const raw = String(fromHeader || c.env?.incoming?.socket?.remoteAddress || '').trim();
+  return raw.replace(/^::ffff:/, '') || '127.0.0.1';
+}
+
+function isPrivateIp(ip) {
+  return !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc|fd|fe80)/i.test(ip);
+}
+
+const HOSTING_ORG_PATTERN =
+  /amazon|aws|google cloud|google llc|microsoft|azure|digitalocean|linode|akamai|ovh|hetzner|vultr|contabo|oracle|alibaba|tencent|cloudflare|m247|datacamp|hosting|vpn|proxy|server|data ?center/i;
+
+/** Approximate IP location via ipinfo.io (optional IPINFO_TOKEN raises the free limit). */
+async function lookupIpGeo(env, ip) {
+  if (isPrivateIp(ip)) return null;
+  const token = env?.IPINFO_TOKEN || (typeof process !== 'undefined' && process.env?.IPINFO_TOKEN) || '';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const url = `https://ipinfo.io/${encodeURIComponent(ip)}/json${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const res = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    if (d.bogon) return null;
+    const org = String(d.org || '').replace(/^AS\d+\s*/, '');
+    return {
+      city: d.city || null,
+      region: d.region || null,
+      country: d.country || null,
+      org: org || null,
+      hosting: HOSTING_ORG_PATTERN.test(org),
+    };
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseIpGeo(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+/**
+ * Score how likely an order is fake using IP, device and the phone's past orders.
+ * Returns { level: 'low'|'medium'|'high', score, reasons[], positives[], history, ipOrders24h }.
+ */
+async function computeOrderRisk(conn, order) {
+  const reasons = [];
+  const positives = [];
+  let score = 0;
+
+  const phone = normalizeBdPhone(order.customer_phone);
+  const phoneValid = /^01[3-9]\d{8}$/.test(phone);
+  if (!phoneValid) {
+    score += 40;
+    reasons.push('Phone number is not a valid Bangladesh mobile number');
+  }
+
+  const name = String(order.customer_name || '').trim();
+  if (name.length < 3 || /\d/.test(name) || /^(.)\1+$/i.test(name.replace(/\s/g, ''))) {
+    score += 15;
+    reasons.push('Name looks unusual (too short, has numbers or repeated letters)');
+  }
+
+  const address = String(order.customer_address || '').trim();
+  if (address.length < 12) {
+    score += 15;
+    reasons.push('Address is very short or incomplete');
+  }
+
+  const history = { total: 0, delivered: 0, canceled: 0, last24h: 0 };
+  if (phoneValid) {
+    const last10 = phone.slice(-10);
+    const rows = await conn.execute(
+      `SELECT status, created_at FROM orders
+       WHERE id <> ? AND RIGHT(REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '+', ''), 10) = ?`,
+      [order.id, last10]
+    );
+    const now = Date.now();
+    for (const r of rows || []) {
+      history.total += 1;
+      const st = String(r.status || '').toLowerCase();
+      if (st === 'delivered') history.delivered += 1;
+      if (st === 'canceled' || st === 'cancelled') history.canceled += 1;
+      if (now - new Date(r.created_at).getTime() < 86400000) history.last24h += 1;
+    }
+    if (history.delivered > 0) {
+      score -= 30;
+      positives.push(`Phone has ${history.delivered} delivered order${history.delivered > 1 ? 's' : ''} before`);
+    }
+    if (history.canceled > 0) {
+      score += history.delivered === 0 ? 35 : 15;
+      reasons.push(`Phone has ${history.canceled} canceled order${history.canceled > 1 ? 's' : ''} before`);
+    }
+    if (history.last24h >= 2) {
+      score += 20;
+      reasons.push(`${history.last24h} other orders from this phone in the last 24 hours`);
+    }
+    if (history.total === 0) positives.push('First order from this phone');
+  }
+
+  let ipOrders24h = 0;
+  let ipPhones7d = 0;
+  if (order.customer_ip && !isPrivateIp(order.customer_ip)) {
+    const ipRows = await conn.execute(
+      `SELECT customer_phone, created_at FROM orders
+       WHERE id <> ? AND customer_ip = ? AND created_at >= (NOW() - INTERVAL 7 DAY)`,
+      [order.id, order.customer_ip]
+    );
+    const phones = new Set();
+    const now = Date.now();
+    for (const r of ipRows || []) {
+      phones.add(normalizeBdPhone(r.customer_phone));
+      if (now - new Date(r.created_at).getTime() < 86400000) ipOrders24h += 1;
+    }
+    phones.delete(phone);
+    ipPhones7d = phones.size;
+    if (ipOrders24h >= 3) {
+      score += 20;
+      reasons.push(`${ipOrders24h} other orders from the same IP in the last 24 hours`);
+    }
+    if (ipPhones7d >= 2) {
+      score += 25;
+      reasons.push(`Same IP used ${ipPhones7d} different phone numbers this week`);
+    }
+  }
+
+  const geo = parseIpGeo(order.ip_geo);
+  if (geo?.country && geo.country !== 'BD') {
+    score += 40;
+    reasons.push(`Order placed from outside Bangladesh (${geo.country})`);
+  }
+  if (geo?.hosting) {
+    score += 25;
+    reasons.push(`IP belongs to a VPN, proxy or hosting network (${geo.org})`);
+  }
+  if (geo?.country === 'BD' && !geo.hosting) positives.push(`Bangladesh network (${geo.org || 'local ISP'})`);
+
+  const level = score >= 50 ? 'high' : score >= 20 ? 'medium' : 'low';
+  return { level, score: Math.max(0, score), reasons, positives, history, ipOrders24h, ipPhones7d };
+}
+
 /** Permanent image store in MySQL — survives Hostinger redeploys (unlike dist/ disk). */
 async function ensureMediaAssetsTable(conn) {
   await conn.execute(`
@@ -231,7 +399,7 @@ async function runInBackground(c, promiseFn) {
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   const kv = c.env?.BIGBAZAR_CACHE;
   if (!kv) {
     return checkRateLimit(ip, endpoint, limit, windowMs);
@@ -466,9 +634,29 @@ async function sendOrderNotificationEmail(env, order) {
     )
     .join('');
 
+  const RISK_STYLE = {
+    low: { label: 'Looks real', color: '#15803d', bg: '#dcfce7' },
+    medium: { label: 'Check before shipping', color: '#a16207', bg: '#fef9c3' },
+    high: { label: 'Likely fake', color: '#b91c1c', bg: '#fee2e2' },
+  };
+  const risk = order.risk;
+  const riskStyle = risk ? RISK_STYLE[risk.level] : null;
+  const geoLine = order.geo
+    ? [order.geo.city, order.geo.region, order.geo.country].filter(Boolean).join(', ') + (order.geo.org ? ` (${order.geo.org})` : '')
+    : 'Unknown';
+  const riskNotes = risk ? [...risk.reasons, ...risk.positives] : [];
+  const riskHtml = riskStyle
+    ? `<div style="margin:0 0 16px;padding:10px 12px;border-radius:8px;background:${riskStyle.bg};color:${riskStyle.color};font-size:13px">
+        <strong>Fraud check: ${riskStyle.label}</strong>
+        <div style="margin-top:4px;color:#444">IP location (approx.): ${escapeEmailHtml(geoLine)}</div>
+        ${riskNotes.length ? `<ul style="margin:6px 0 0;padding-left:18px;color:#444">${riskNotes.map((r) => `<li>${escapeEmailHtml(r)}</li>`).join('')}</ul>` : ''}
+      </div>`
+    : '';
+
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f1d1b">
     <h2 style="color:#ce112d;margin:0 0 4px">New order #${shortId}</h2>
     <p style="margin:0 0 16px;color:#555">Total <strong>${taka(order.total)}</strong> · Payment: ${escapeEmailHtml(order.paymentRef)}</p>
+    ${riskHtml}
     <table style="width:100%;border-collapse:collapse;font-size:14px">
       <tr><th style="text-align:left;padding-bottom:6px">Product</th><th style="padding-bottom:6px">Qty</th><th style="text-align:right;padding-bottom:6px">Price</th></tr>
       ${rowsHtml}
@@ -488,6 +676,8 @@ async function sendOrderNotificationEmail(env, order) {
   const text = [
     `New order #${shortId}`,
     `Total: ${taka(order.total)} | Payment: ${order.paymentRef}`,
+    riskStyle ? `Fraud check: ${riskStyle.label} | IP location (approx.): ${geoLine}` : '',
+    ...riskNotes.map((r) => `- ${r}`),
     '',
     ...order.lines.map(lineText),
     `Delivery (${areaLabel}): ${taka(order.deliveryCharge)}`,
@@ -503,7 +693,7 @@ async function sendOrderNotificationEmail(env, order) {
   await transport.sendMail({
     from,
     to: to.join(', '),
-    subject: `New order ${taka(order.total)} from ${order.customerName || 'customer'} (#${shortId})`,
+    subject: `${risk?.level === 'high' ? '[Likely fake] ' : ''}New order ${taka(order.total)} from ${order.customerName || 'customer'} (#${shortId})`,
     html,
     text,
   });
@@ -1343,7 +1533,7 @@ app.get('/products/subcategory-counts', async (c) => {
 });
 
 app.get('/products', async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'products', 150, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
@@ -1525,7 +1715,7 @@ app.get('/products', async (c) => {
 });
 
 app.get('/products/:id', async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'product_details', 100, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
@@ -1733,6 +1923,10 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
     return c.json({ error: 'Product ID is required' }, 400);
   }
 
+  const clientIp = getClientIp(c);
+  const userAgent = String(c.req.header('User-Agent') || '').slice(0, 255) || null;
+  await ensureOrderRiskColumns(conn);
+
   const tx = await conn.begin();
   try {
     // Fallback when clients omit items[]: honor quantity from payload (never hardcode 1)
@@ -1886,20 +2080,48 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
     await tx.commit();
 
-    // Never block or fail the customer's order because of email
-    const notifyJob = sendOrderNotificationEmail(c.env, {
-      id,
-      customerName: o.customer_name,
-      customerPhone: o.customer_phone,
-      customerAddress: o.customer_address,
-      customerNote: o.customer_note,
-      deliveryArea: normalizedArea,
-      deliveryCharge: calculatedDeliveryCharge,
-      subtotal: calculatedSubtotal,
-      total: calculatedTotalAmount,
-      paymentRef: o.last_four_digits || 'COD',
-      lines: orderLines,
-    }).catch((err) => console.error('order email error:', err?.message || err));
+    // Never block or fail the customer's order because of geo lookup or email
+    const notifyJob = (async () => {
+      const geo = await lookupIpGeo(c.env, clientIp);
+      try {
+        await conn.execute(
+          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
+          [clientIp, userAgent, geo ? JSON.stringify(geo) : null, id]
+        );
+      } catch (err) {
+        console.error('order signals save error:', err?.message || err);
+      }
+
+      let risk = null;
+      try {
+        risk = await computeOrderRisk(conn, {
+          id,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          customer_address: o.customer_address,
+          customer_ip: clientIp,
+          ip_geo: geo,
+        });
+      } catch (err) {
+        console.error('order risk error:', err?.message || err);
+      }
+
+      await sendOrderNotificationEmail(c.env, {
+        id,
+        customerName: o.customer_name,
+        customerPhone: o.customer_phone,
+        customerAddress: o.customer_address,
+        customerNote: o.customer_note,
+        deliveryArea: normalizedArea,
+        deliveryCharge: calculatedDeliveryCharge,
+        subtotal: calculatedSubtotal,
+        total: calculatedTotalAmount,
+        paymentRef: o.last_four_digits || 'COD',
+        lines: orderLines,
+        geo,
+        risk,
+      });
+    })().catch((err) => console.error('order email error:', err?.message || err));
     try {
       c.executionCtx.waitUntil(notifyJob);
     } catch (_) {
@@ -2079,6 +2301,35 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     console.error('Order update transaction error:', err);
     return c.json({ error: err.message }, 500);
   }
+});
+
+// GET /orders/:id/risk — fake order check (IP location, device, phone history)
+app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const conn = getDb(c.env);
+  await ensureOrderRiskColumns(conn);
+  const rows = await conn.execute('SELECT * FROM orders WHERE id = ? LIMIT 1', [id]);
+  const order = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+  if (!order) return c.json({ error: 'Order not found' }, 404);
+
+  let geo = parseIpGeo(order.ip_geo);
+  if (!geo && order.customer_ip && !isPrivateIp(order.customer_ip)) {
+    geo = await lookupIpGeo(c.env, order.customer_ip);
+    if (geo) {
+      try {
+        await conn.execute('UPDATE orders SET ip_geo = ? WHERE id = ?', [JSON.stringify(geo), id]);
+      } catch (_) {}
+    }
+  }
+
+  const risk = await computeOrderRisk(conn, { ...order, ip_geo: geo });
+  return c.json({
+    ...risk,
+    ip: order.customer_ip || null,
+    user_agent: order.user_agent || null,
+    geo,
+    tracked: Boolean(order.customer_ip),
+  });
 });
 
 // POST /orders/:id/steadfast — create Steadfast consignment + mark Shipped
@@ -2539,9 +2790,9 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       try {
         const timestamp = Math.floor(Date.now() / 1000).toString();
         const folder = 'bigbazar';
-        const eager = 'q_auto,f_auto,w_1600,c_limit';
-
-        const paramsToSign = `eager=${eager}&folder=${folder}&timestamp=${timestamp}`;
+        // Keep the uploaded master as-is (already compressed in admin). Display sizes
+        // are requested later via Cloudinary URL transforms — not a second crush here.
+        const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
         const signature = await sha1Hex(paramsToSign + apiSecret);
 
         const formData = new FormData();
@@ -2550,7 +2801,6 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
         formData.append('timestamp', timestamp);
         formData.append('signature', signature);
         formData.append('folder', folder);
-        formData.append('eager', eager);
 
         const cloudRes = await fetch(
           `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -2559,7 +2809,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
 
         if (cloudRes.ok) {
           const result = await cloudRes.json();
-          const publicUrl = result.eager?.[0]?.secure_url || result.secure_url;
+          const publicUrl = result.secure_url;
           return c.json({
             success: true,
             data: {
@@ -2755,7 +3005,7 @@ async function verifyGoogleIdToken(idToken, googleClientId) {
 
 // POST /auth/google — "Continue with Google" login
 app.post('/auth/google', async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'google-auth', 10, 60000)) {
     return c.json({ error: 'Too many login attempts. Please try again later.' }, 429);
   }
@@ -2838,7 +3088,7 @@ async function ensureAdminGoogleIdColumn(conn) {
 
 // POST /auth/admin/google — Continue with Google for admin panel (whitelist only)
 app.post('/auth/admin/google', async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'admin-google-auth', 8, 60000)) {
     return c.json({ error: 'Too many login attempts. Please try again later.' }, 429);
   }
@@ -3539,7 +3789,7 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
 
 // POST /api/assistant — AI Shopping Assistant (login required; continues by user_id)
 app.post('/assistant', requireCustomerAuth, async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'assistant', 30, 60000)) {
     return c.json({
       reply: 'আপনি খুব বেশি মেসেজ পাঠাচ্ছেন। ১ মিনিট পর আবার চেষ্টা করুন।',
@@ -3945,7 +4195,7 @@ app.delete('/admin/conversations/:id', requireAuth, requireAdmin, async (c) => {
 
 // Admin Conversation Dashboard APIs (Part 3b)
 app.post('/admin/product-copy', requireAuth, requireAdmin, async (c) => {
-  const ip = c.req.header('CF-Connecting-IP') || '127.0.0.1';
+  const ip = getClientIp(c);
   if (!checkRateLimit(ip, 'product-copy', 20, 60000)) {
     return c.json({ error: 'Too many copy requests. Try again in a minute.' }, 429);
   }

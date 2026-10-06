@@ -2,20 +2,20 @@
  * imageCompressor.js
  * Client-side Canvas compression before upload.
  *
- * Product photos → WebP (high quality, no aggressive crush)
- * Banner / slider / subcategory thumbnails → JPEG (unchanged)
+ * Goal: smaller files without a visible quality drop.
+ * WebP at ~0.88 looks sharper than JPEG at 0.85 and is usually 30–50% smaller.
+ * We keep a high-resolution master; the storefront requests display sizes from the CDN.
  */
 
 export const COMPRESS_PRESETS = {
-  // Products: WebP, near-original quality, generous max size
-  product:       { maxW: 2000, maxH: 2500, quality: 0.92, format: 'webp' },
-  gallery:       { maxW: 1600, maxH: 2000, quality: 0.90, format: 'webp' },
-  color:         { maxW: 1200, maxH: 1500, quality: 0.90, format: 'webp' },
-  // Banners / subcategory — keep JPEG as requested
-  banner:        { maxW: 1920, maxH: 1080, quality: 0.85, format: 'jpeg' },
-  slider:        { maxW: 1920, maxH: 1080, quality: 0.85, format: 'jpeg' },
-  slider_mobile: { maxW: 1080, maxH: 1080, quality: 0.85, format: 'jpeg' },
-  thumbnail:     { maxW: 400,  maxH: 400,  quality: 0.80, format: 'jpeg' },
+  product:       { maxW: 1800, maxH: 2250, quality: 0.88, format: 'webp' },
+  gallery:       { maxW: 1600, maxH: 2000, quality: 0.88, format: 'webp' },
+  color:         { maxW: 1200, maxH: 1500, quality: 0.88, format: 'webp' },
+  banner:        { maxW: 1920, maxH: 1080, quality: 0.88, format: 'webp' },
+  slider:        { maxW: 1920, maxH: 1080, quality: 0.88, format: 'webp' },
+  slider_mobile: { maxW: 1080, maxH: 1350, quality: 0.88, format: 'webp' },
+  subcat:        { maxW: 900,  maxH: 1200, quality: 0.88, format: 'webp' },
+  thumbnail:     { maxW: 480,  maxH: 480,  quality: 0.84, format: 'webp' },
 };
 
 async function decodeImageFile(file) {
@@ -99,10 +99,10 @@ function supportsWebP() {
  */
 export async function compressImage(file, options = {}) {
   const {
-    maxW = 1080,
-    maxH = 1350,
-    quality = 0.82,
-    format = 'jpeg',
+    maxW = 1600,
+    maxH = 2000,
+    quality = 0.88,
+    format = 'webp',
   } = options;
 
   const isImage = (file.type && file.type.startsWith('image/')) ||
@@ -131,8 +131,9 @@ export async function compressImage(file, options = {}) {
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-    // WebP keeps alpha; JPEG needs white fill for transparent PNGs
     if (!wantWebp) {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
@@ -150,7 +151,6 @@ export async function compressImage(file, options = {}) {
       return file;
     }
 
-    // Prefer compressed only if smaller OR we converted format; never inflate tiny originals badly
     if (blob.size > file.size * 1.15 && file.type === mime) {
       return file;
     }

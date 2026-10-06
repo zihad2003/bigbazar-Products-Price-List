@@ -51,12 +51,38 @@ function siteOrigin() {
   return 'https://onlinebigbazar.com';
 }
 
-function buildWeservUrl(absoluteUrl, { w, h, q = 80, fit = 'cover' } = {}) {
+function buildWeservUrl(absoluteUrl, { w, h, q = 84, fit = 'cover' } = {}) {
   let proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(absoluteUrl)}`;
   if (w) proxyUrl += `&w=${w}`;
   if (h) proxyUrl += `&h=${h}`;
   proxyUrl += `&q=${q}&fit=${fit}&output=webp&il&we`;
   return proxyUrl;
+}
+
+function isCloudinaryUrl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'res.cloudinary.com' || host.endsWith('.cloudinary.com');
+  } catch {
+    return false;
+  }
+}
+
+/** One high-quality resize from Cloudinary itself — skip weserv so photos are not compressed twice. */
+function buildCloudinaryUrl(url, { w, h, q = 84, fit = 'cover' } = {}) {
+  const marker = '/image/upload/';
+  const i = url.indexOf(marker);
+  if (i < 0) return url;
+  const rest = url.slice(i + marker.length);
+  const parts = rest.split('/').filter(Boolean);
+  const isTransform = (seg) =>
+    /^(q_|f_|w_|h_|c_|e_|dpr_|fl_|g_)/.test(seg) || (seg.includes(',') && !seg.includes('.'));
+  const cleaned = parts[0] && isTransform(parts[0]) ? parts.slice(1) : parts;
+  const t = ['f_auto', `q_${q}`];
+  if (w) t.push(`w_${w}`);
+  if (h) t.push(`h_${h}`);
+  t.push(fit === 'cover' ? 'c_fill,g_auto' : 'c_limit');
+  return `${url.slice(0, i + marker.length)}${t.join(',')}/${cleaned.join('/')}`;
 }
 
 function toAbsoluteLocal(path) {
@@ -123,6 +149,9 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
   }
 
   if (isTrustedDomain(url)) {
+    if ((options.w || options.h) && isCloudinaryUrl(url)) {
+      return buildCloudinaryUrl(url, options);
+    }
     // Still resize when dimensions requested (Unsplash supports w= natively; others via weserv)
     if ((options.w || options.h) && !url.includes('images.unsplash.com')) {
       if (!isLocalDevHost()) return buildWeservUrl(url, options);
@@ -151,10 +180,10 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
 };
 
 export const mediaSizes = {
-  thumbnail: { w: 360, h: 480, q: 72 }, // product grid (~170–220 CSS px @2x)
-  subcat: { w: 280, h: 360, q: 72 }, // homepage subcategory cards
-  subcatThumb: { w: 160, h: 160, q: 70 }, // tiny chips / icons
-  banner: { w: 1600, q: 78 },
-  bannerMobile: { w: 768, q: 76 },
-  gallery: { w: 800, q: 75 },
+  thumbnail: { w: 400, h: 533, q: 82 },
+  subcat: { w: 560, h: 720, q: 84 },
+  subcatThumb: { w: 240, h: 240, q: 82 },
+  banner: { w: 1920, q: 85 },
+  bannerMobile: { w: 1080, q: 84 },
+  gallery: { w: 1200, q: 84 },
 };

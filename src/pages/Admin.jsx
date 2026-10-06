@@ -1834,7 +1834,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                           if (!file) return;
                           try {
                             setLoading(true);
-                            const compressed = await compressImage(file, COMPRESS_PRESETS.thumbnail);
+                            const compressed = await compressImage(file, COMPRESS_PRESETS.subcat);
                             const { data, error } = await bigBazarApi.storage.from('products').upload(`subcategory-${Date.now()}.webp`, compressed);
                             if (error) {
                               setAlertModal({ isOpen: true, title: 'Upload Failed', message: error.message || 'Image upload failed', type: 'error' });
