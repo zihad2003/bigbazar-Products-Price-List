@@ -652,12 +652,12 @@ export default function Checkout() {
         </div>
 
         {advancePrompt && (
-            <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" role="dialog" aria-modal="true">
-                <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="fixed inset-0 z-[2600] bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+                <div className="w-full max-w-md max-h-[min(88dvh,640px)] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl space-y-4">
                     <p className="text-[11px] font-black uppercase tracking-widest text-[#ce112d]">
                         {language === 'bn' ? 'অর্ডার কনফার্মেশন' : 'Order confirmation'}
                     </p>
-                    <h3 className="text-lg font-black text-neutral-900 leading-snug">
+                    <h3 className="text-base font-black text-neutral-900 leading-snug">
                         {advancePrompt === 'again'
                             ? (language === 'bn'
                                 ? `অর্ডার কনফার্ম হবে না। আগে ${bKashNumber} নম্বরে ৳${advanceAmount} সেন্ড মানি করুন।`
@@ -666,11 +666,11 @@ export default function Checkout() {
                                 ? `আপনি কি অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ ৳${advanceAmount} এই নম্বরে পাঠিয়েছেন?`
                                 : `Have you sent the delivery charge ৳${advanceAmount} to this number for order confirmation?`)}
                     </h3>
-                    <button type="button" onClick={handleCopyNumber} className="w-full flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-                        <span className="text-lg font-black tracking-widest text-[#ce112d]">{bKashNumber}</span>
-                        <span className="text-[11px] font-bold text-neutral-500">{copied ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}</span>
+                    <button type="button" onClick={handleCopyNumber} className="w-full flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                        <span className="text-base font-black tracking-wider text-[#ce112d] min-w-0">{bKashNumber}</span>
+                        <span className="shrink-0 text-[11px] font-bold text-neutral-500">{copied ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}</span>
                     </button>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                         <button
                             type="button"
                             onClick={() => {
@@ -678,14 +678,14 @@ export default function Checkout() {
                                 setAdvancePrompt(null);
                                 handleConfirmOrder();
                             }}
-                            className="py-3 rounded-2xl bg-[#ce112d] text-white text-sm font-black"
+                            className="w-full py-3.5 rounded-2xl bg-[#ce112d] text-white text-sm font-black"
                         >
                             {language === 'bn' ? 'হ্যাঁ, পাঠিয়েছি' : 'Yes, I sent it'}
                         </button>
                         <button
                             type="button"
                             onClick={() => setAdvancePrompt('again')}
-                            className="py-3 rounded-2xl border border-neutral-200 text-sm font-black text-neutral-700"
+                            className="w-full py-3.5 rounded-2xl border border-neutral-200 text-sm font-black text-neutral-700"
                         >
                             {language === 'bn' ? 'না' : 'No'}
                         </button>
