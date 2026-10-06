@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, ChevronDown, Package, QrCode } from 'lucide-react';
-import { bigBazarApi } from '../api/client';
+import { bigBazarApi, API_URL, getCustomerToken } from '../api/client';
 import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import BanglaQRPayment from '../components/BanglaQRPayment';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
@@ -46,6 +47,7 @@ export default function Checkout() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { cartItems, cartTotal, clearCart } = useCart();
+    const { user, isLoggedIn, updatePhone } = useAuth();
 
     const productIdQuery = searchParams.get('product');
     const colorQuery = searchParams.get('color') || '';
@@ -123,12 +125,66 @@ export default function Checkout() {
     const isConfirmationFee = !isExclusiveOrder && deliveryCharge === 0 && advanceAmount > 0;
 
     const checkoutTrackedRef = useRef(false);
+    const advanceOkRef = useRef(false);
+    const [advancePrompt, setAdvancePrompt] = useState(null);
     useEffect(() => {
         if (!checkoutTrackedRef.current && items.length > 0) {
             checkoutTrackedRef.current = true;
             trackInitiateCheckout(items, subtotal);
         }
     }, [items, subtotal]);
+
+    const detailsFilled = useRef(false);
+    useEffect(() => {
+        if (!isLoggedIn || detailsFilled.current) return undefined;
+        detailsFilled.current = true;
+        const tidyPhone = (raw) => {
+            let d = String(raw || '').replace(/\D/g, '');
+            if (d.startsWith('880') && d.length >= 13) d = `0${d.slice(3)}`;
+            else if (d.startsWith('88') && d.length === 13) d = `0${d.slice(2)}`;
+            return d;
+        };
+        const token = getCustomerToken();
+        (async () => {
+            let name = user?.name || '';
+            let phone = tidyPhone(user?.phone || '');
+            let address = '';
+            let district = '';
+            let upazila = '';
+            try {
+                const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+                const res = await fetch(`${base}/api/account/orders?limit=5`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                const json = await res.json().catch(() => ({}));
+                const last = (Array.isArray(json.data) ? json.data : []).find((o) => o?.customer_address || o?.customer_name);
+                if (last) {
+                    name = last.customer_name || name;
+                    phone = tidyPhone(last.customer_phone) || phone;
+                    const [street, loc] = String(last.customer_address || '').split('|').map((s) => s.trim());
+                    address = street || '';
+                    const bits = String(loc || '').split(',').map((s) => s.trim()).filter(Boolean);
+                    if (bits.length >= 2) {
+                        upazila = bits[0];
+                        district = bits[bits.length - 1];
+                    } else if (bits.length === 1) {
+                        district = bits[0];
+                    }
+                }
+            } catch (_) {}
+            const districtOk = allDistricts.includes(district) ? district : '';
+            const upazilaOk = districtOk === CHATTOGRAM_DISTRICT && chattogramUpazilas.includes(upazila) ? upazila : '';
+            setFormData((prev) => ({
+                ...prev,
+                name: prev.name || name,
+                phone: prev.phone || phone,
+                address: prev.address || address,
+                district: prev.district || districtOk,
+                upazila: prev.upazila || upazilaOk,
+            }));
+        })();
+        return undefined;
+    }, [isLoggedIn, user]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -184,6 +240,11 @@ export default function Checkout() {
             const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
                           (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
             setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${advanceAmount} ${prefix} and enter sender number.`);
+            return;
+        }
+
+        if (advanceAmount > 0 && !advanceOkRef.current) {
+            setAdvancePrompt('ask');
             return;
         }
 
@@ -264,7 +325,9 @@ export default function Checkout() {
 
             const newOrderId = insertedData?.order_id || insertedData?.id || (Array.isArray(insertedData) ? (insertedData[0]?.order_id || insertedData[0]?.id) : null) || `ORD-${Date.now().toString().slice(-6)}`;
             trackPurchase(newOrderId, items, finalTotal);
-            // Navigate to dedicated confirmation route
+            if (isLoggedIn && formData.phone && !user?.phone) {
+                updatePhone(formData.phone).catch(() => {});
+            }
             navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {
             const errorMsg = err?.message || (language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
@@ -288,6 +351,7 @@ export default function Checkout() {
     }
 
     return (
+        <>
         <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
             <Link to="/" className="inline-flex items-center gap-2 mb-6 md:mb-8 text-xs font-black uppercase tracking-widest text-neutral-500 hover:text-neutral-900 transition-colors">
                 <ArrowLeft size={16} />
@@ -586,5 +650,54 @@ export default function Checkout() {
                 </div>
             </div>
         </div>
+
+        {advancePrompt && (
+            <div className="fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-4" role="dialog" aria-modal="true">
+                <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-[#ce112d]">
+                        {language === 'bn' ? 'অর্ডার কনফার্মেশন' : 'Order confirmation'}
+                    </p>
+                    <h3 className="text-lg font-black text-neutral-900 leading-snug">
+                        {advancePrompt === 'again'
+                            ? (language === 'bn'
+                                ? `অর্ডার কনফার্ম হবে না। আগে ${bKashNumber} নম্বরে ৳${advanceAmount} সেন্ড মানি করুন।`
+                                : `This order will not be confirmed until you send ৳${advanceAmount} to ${bKashNumber}.`)
+                            : (language === 'bn'
+                                ? `আপনি কি অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ ৳${advanceAmount} এই নম্বরে পাঠিয়েছেন?`
+                                : `Have you sent the delivery charge ৳${advanceAmount} to this number for order confirmation?`)}
+                    </h3>
+                    <button type="button" onClick={handleCopyNumber} className="w-full flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                        <span className="text-lg font-black tracking-widest text-[#ce112d]">{bKashNumber}</span>
+                        <span className="text-[11px] font-bold text-neutral-500">{copied ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}</span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                advanceOkRef.current = true;
+                                setAdvancePrompt(null);
+                                handleConfirmOrder();
+                            }}
+                            className="py-3 rounded-2xl bg-[#ce112d] text-white text-sm font-black"
+                        >
+                            {language === 'bn' ? 'হ্যাঁ, পাঠিয়েছি' : 'Yes, I sent it'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAdvancePrompt('again')}
+                            className="py-3 rounded-2xl border border-neutral-200 text-sm font-black text-neutral-700"
+                        >
+                            {language === 'bn' ? 'না' : 'No'}
+                        </button>
+                    </div>
+                    {advancePrompt === 'again' && (
+                        <button type="button" onClick={() => setAdvancePrompt(null)} className="w-full text-xs font-bold text-neutral-500 underline">
+                            {language === 'bn' ? 'টাকা পাঠিয়ে আবার অর্ডার করব' : 'I will send the money, then order again'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        )}
+        </>
     );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getSubcategoryMeta } from '../data/subcategorySeo';
+import { offerShippingDetails } from '../utils/productSeo';
 
 /**
  * Client-Side SPA Head & Metadata Manager.
@@ -36,18 +37,19 @@ const SEOHead = ({ title, description, image, productData }) => {
     let pageDesc = description || defaultDesc;
     let pageKeywords =
       'Big Bazar Baraiyarhat, Mirsharai shopping, Biyer Sajani, bridal wear, saree, three piece, panjabi, cash on delivery, বিগ বাজার, বারইয়ারহাট, মীরসরাই';
+    let subMeta = null;
+    if (location.pathname === '/products' && subcategory) {
+      subMeta = getSubcategoryMeta({ id: subcategory, name_en: subcategory.replace(/-/g, ' ') }, category);
+    }
 
-    if (!title && !description && location.pathname === '/products' && subcategory) {
-      const meta = getSubcategoryMeta({ id: subcategory, name_en: subcategory.replace(/-/g, ' ') }, category);
-      if (meta) {
-        pageTitle = meta.title;
-        pageDesc = meta.description;
-        pageKeywords = meta.keywords || pageKeywords;
-      }
+    if (!title && !description && subMeta) {
+      pageTitle = subMeta.title;
+      pageDesc = subMeta.description;
+      pageKeywords = subMeta.keywords || pageKeywords;
     } else if (!title && !description && location.pathname === '/products' && category && category !== 'All') {
-      pageTitle = `${category} Collection | Big Bazar Baraiyarhat`;
-      pageDesc = `Shop ${category} fashion at Big Bazar Baraiyarhat, Mirsharai. Fixed prices, free Mirsharai delivery and COD nationwide.`;
-      pageKeywords = `${category}, ${pageKeywords}`;
+      pageTitle = `${category} Fashion | Big Bazar Baraiyarhat`;
+      pageDesc = `Shop ${category} fashion in Baraiyarhat. Mirsarai delivery in 1 to 2 days, Chattogram in 1 to 2 days, nationwide in 2 to 5 days. Fixed prices and cash on delivery.`;
+      pageKeywords = `${category}, Mirsarai delivery, ${pageKeywords}`;
     } else if (!title && !description && location.pathname === '/about-us') {
       pageTitle = 'About Us | Big Bazar Baraiyarhat';
       pageDesc =
@@ -66,7 +68,7 @@ const SEOHead = ({ title, description, image, productData }) => {
       pageTitle = `${productData.name}${price} | Big Bazar Baraiyarhat`;
       pageDesc =
         productData.description ||
-        `Buy ${productData.name} from Big Bazar Baraiyarhat. Free Mirsharai delivery and COD nationwide.`;
+        `Buy ${productData.name} from Big Bazar Baraiyarhat. Mirsarai delivery in 1 to 2 days and COD nationwide.`;
       pageKeywords = `${productData.name}, ${productData.category || ''}, ${productData.subcategory || ''}, Big Bazar Baraiyarhat`;
     }
 
@@ -217,6 +219,7 @@ const SEOHead = ({ title, description, image, productData }) => {
             : 'https://schema.org/InStock',
           itemCondition: 'https://schema.org/NewCondition',
           seller: { '@id': `${origin}/#organization` },
+          shippingDetails: offerShippingDetails(),
         },
       });
       schemaGraph['@graph'].push({
@@ -270,6 +273,18 @@ const SEOHead = ({ title, description, image, productData }) => {
           },
         ],
       });
+      const faqs = subMeta?.seo?.faq || [];
+      if (faqs.length) {
+        schemaGraph['@graph'].push({
+          '@type': 'FAQPage',
+          '@id': `${canonicalUrl}#faq`,
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.q_en,
+            acceptedAnswer: { '@type': 'Answer', text: f.a_en },
+          })),
+        });
+      }
     }
 
     scriptTag.textContent = JSON.stringify(schemaGraph);

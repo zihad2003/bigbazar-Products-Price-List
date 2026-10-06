@@ -60,6 +60,7 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [shotBusy, setShotBusy] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Delete' });
   const [siteTheme, setSiteTheme] = useState('dark');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -458,6 +459,48 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     setOrders(data || []);
     setLoading(false);
   };
+
+  const seenOrderIds = useRef(null);
+  useEffect(() => {
+    if (!session) return undefined;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const { data } = await bigBazarApi
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (stopped) return;
+        const list = Array.isArray(data) ? data : [];
+        if (!seenOrderIds.current) {
+          seenOrderIds.current = new Set(list.map((o) => o.id));
+          return;
+        }
+        const fresh = list.filter((o) => o?.id && !seenOrderIds.current.has(o.id));
+        fresh.forEach((o) => seenOrderIds.current.add(o.id));
+        if (!fresh.length) return;
+        setOrders((prev) => {
+          const ids = new Set(prev.map((p) => p.id));
+          return [...fresh.filter((f) => !ids.has(f.id)), ...prev];
+        });
+        const first = fresh[0];
+        const body = `${first.customer_name || 'Customer'} · ৳${Math.round(Number(first.total_amount) || 0)}`;
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          try { new Notification('New order on Big Bazar', { body }); } catch (_) {}
+        }
+      } catch (_) {}
+    };
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+    const timer = setInterval(poll, 40000);
+    poll();
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [session]);
 
   const fetchReviews = async () => {
     const { data } = await bigBazarApi
@@ -3459,7 +3502,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                   Orders <span className="text-[#ce112d]">Details</span>
                 </h2>
                 <span className="text-[11px] font-medium text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-md border border-white/10">
-                  {orders.filter(o => o && o.status !== 'Deleted').length} active
+                  {orders.filter(o => o && o.status !== 'Deleted' && o.status !== 'Canceled' && o.status !== 'Cancelled').length} open
                 </span>
               </div>
               <button
@@ -3473,29 +3516,40 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
 
             {/* Compact stats */}
             {(() => {
-              const live = orders.filter(o => o && o.status !== 'Deleted');
-              const revenue = live.reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0);
-              const advance = orders.filter(o => o && o.is_advance_paid).reduce((acc, o) => {
+              const isCanceled = (s) => s === 'Canceled' || s === 'Cancelled';
+              const listed = orders.filter(o => o && o.status !== 'Deleted');
+              const open = listed.filter(o => !isCanceled(o.status));
+              const advanceOf = (o) => {
+                const confirmed =
+                  Boolean(o.is_advance_paid) ||
+                  o.payment_status === 'Advance Paid' ||
+                  o.payment_status === 'Fully Paid';
+                if (!confirmed) return 0;
                 const charge = parseFloat(o.delivery_charge) || 0;
-                return acc + (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge));
-              }, 0);
-              const due = live.filter(o => o.payment_status !== 'Fully Paid').reduce((acc, o) => {
+                if (o.is_exclusive_order) return 500;
+                if (o.delivery_area === 'mirsarai' && charge === 0) return 100;
+                return charge;
+              };
+              const revenue = open.reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0);
+              const advance = open.reduce((acc, o) => acc + advanceOf(o), 0);
+              const due = open.reduce((acc, o) => {
+                if (o.payment_status === 'Fully Paid') return acc;
                 const totalAmount = parseFloat(o.total_amount) || 0;
-                const charge = parseFloat(o.delivery_charge) || 0;
-                const adv = o.is_advance_paid ? (o.is_exclusive_order ? 500 : (o.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge)) : 0;
-                return acc + (totalAmount - adv);
+                return acc + Math.max(0, totalAmount - advanceOf(o));
               }, 0);
-              const pending = orders.filter(o => o && o.status === 'Pending').length;
-              const done = orders.filter(o => o && o.status === 'Delivered').length;
+              const pending = open.filter(o => o.status === 'Pending').length;
+              const shipped = open.filter(o => o.status === 'Shipped').length;
+              const done = open.filter(o => o.status === 'Delivered').length;
               const cards = [
                 { label: 'Revenue', value: `৳${revenue.toLocaleString()}`, color: 'border-t-green-500', icon: <ShoppingBag size={14} className="text-green-500" /> },
                 { label: 'Advance', value: `৳${advance.toLocaleString()}`, color: 'border-t-purple-500', icon: <ShieldCheck size={14} className="text-purple-500" /> },
                 { label: 'Due', value: `৳${due.toLocaleString()}`, color: 'border-t-[#ce112d]', icon: <span className="text-[#ce112d] text-xs font-bold">৳</span> },
                 { label: 'Pending', value: pending, color: 'border-t-yellow-500', icon: <Clock size={14} className="text-yellow-500" /> },
+                { label: 'Shipped', value: shipped, color: 'border-t-sky-500', icon: <Truck size={14} className="text-sky-500" /> },
                 { label: 'Done', value: done, color: 'border-t-emerald-500', icon: <CheckCircle2 size={14} className="text-emerald-500" /> },
               ];
               return (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   {cards.map((c) => (
                     <div key={c.label} className={`rounded-lg border border-white/10 bg-[#121215] border-t-2 ${c.color} px-3 py-2.5 flex items-center justify-between gap-2`}>
                       <div className="min-w-0">
@@ -3788,59 +3842,102 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             </div>
 
             {/* Admin upload — shows on homepage featured strip */}
-            <form
-              className="rounded-lg border border-white/10 bg-[#121215] p-4 space-y-3"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                const payload = {
-                  customer_name: String(fd.get('customer_name') || '').trim() || 'Customer',
-                  rating: parseInt(fd.get('rating'), 10) || 5,
-                  comment: String(fd.get('comment') || '').trim(),
-                  product_name: String(fd.get('product_name') || '').trim() || null,
-                };
-                if (!payload.comment) {
-                  setAlertModal({ isOpen: true, title: 'Missing', message: 'Comment is required', type: 'error' });
-                  return;
-                }
-                try {
-                  const token = getToken();
-                  const endpoint = (!API_URL || API_URL === '/')
-                    ? '/api/admin/reviews'
-                    : `${API_URL.replace(/\/$/, '')}/api/admin/reviews`;
-                  const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    body: JSON.stringify(payload),
-                  });
-                  const json = await res.json().catch(() => ({}));
-                  if (!res.ok) throw new Error(json.error || 'Failed');
-                  e.currentTarget.reset();
-                  await fetchReviews();
-                  setAlertModal({ isOpen: true, title: 'Saved', message: 'Review added — it will show on the homepage.', type: 'success' });
-                } catch (err) {
-                  setAlertModal({ isOpen: true, title: 'Error', message: err.message || 'Could not save', type: 'error' });
-                }
-              }}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Add homepage / store review</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <input name="customer_name" placeholder="Customer name" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40" />
-                <select name="rating" defaultValue="5" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none">
-                  {[5, 4, 3, 2, 1].map((n) => (
-                    <option key={n} value={n}>{n} stars</option>
-                  ))}
-                </select>
-                <input name="product_name" placeholder="Product (optional)" className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40" />
+            <div className="rounded-lg border border-white/10 bg-[#121215] p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Homepage screenshots</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Upload the chat photo. It appears on the landing page. No name or text.</p>
+                </div>
+                <label className={`inline-flex items-center h-9 px-3 rounded-lg bg-[#ce112d] text-white text-[11px] font-semibold cursor-pointer ${shotBusy ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {shotBusy ? 'Uploading…' : 'Add images'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = [...(e.target.files || [])];
+                      e.target.value = '';
+                      if (!files.length) return;
+                      setShotBusy(true);
+                      const token = getToken();
+                      const apiBase = (!API_URL || API_URL === '/') ? '' : API_URL.replace(/\/$/, '');
+                      let saved = 0;
+                      let failed = '';
+                      for (const file of files) {
+                        try {
+                          const up = new FormData();
+                          up.append('file', file);
+                          const upRes = await fetch(`${apiBase}/api/upload`, {
+                            method: 'POST',
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            body: up,
+                          });
+                          const upJson = await upRes.json().catch(() => ({}));
+                          if (!upRes.ok || !upJson?.data?.publicUrl) throw new Error(upJson.error || 'Upload failed');
+                          const res = await fetch(`${apiBase}/api/admin/reviews`, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                            },
+                            body: JSON.stringify({
+                              rating: 5,
+                              comment: '',
+                              customer_name: '',
+                              image_url: upJson.data.publicUrl,
+                            }),
+                          });
+                          const json = await res.json().catch(() => ({}));
+                          if (!res.ok) throw new Error(json.error || 'Could not save');
+                          saved += 1;
+                        } catch (err) {
+                          failed = err.message || 'Upload failed';
+                        }
+                      }
+                      await fetchReviews();
+                      setShotBusy(false);
+                      setAlertModal({
+                        isOpen: true,
+                        title: failed && !saved ? 'Error' : 'Saved',
+                        message: failed && !saved ? failed : `${saved} screenshot${saved === 1 ? '' : 's'} on the homepage.`,
+                        type: failed && !saved ? 'error' : 'success',
+                      });
+                    }}
+                  />
+                </label>
               </div>
-              <textarea name="comment" required rows={3} placeholder="Review text..." className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#ce112d]/40 resize-none" />
-              <button type="submit" className="px-4 py-2 rounded-lg bg-[#ce112d] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#b00e26]">
-                Publish review
-              </button>
-            </form>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {reviews.filter((r) => r.image_url).length === 0 && (
+                  <p className="text-[12px] text-zinc-500 py-6">No screenshots yet.</p>
+                )}
+                {reviews.filter((r) => r.image_url).map((r) => (
+                  <div key={r.id} className="relative shrink-0 w-[88px]">
+                    <img src={r.image_url} alt="" className="w-[88px] h-[140px] object-cover object-top rounded-lg border border-white/10" />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 h-5 px-1.5 rounded bg-black/70 text-[10px] text-white"
+                      onClick={async () => {
+                        try {
+                          const token = getToken();
+                          const apiBase = (!API_URL || API_URL === '/') ? '' : API_URL.replace(/\/$/, '');
+                          const res = await fetch(`${apiBase}/api/admin/reviews/${r.id}`, {
+                            method: 'DELETE',
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          if (!res.ok) throw new Error('Delete failed');
+                          await fetchReviews();
+                        } catch (err) {
+                          setAlertModal({ isOpen: true, title: 'Error', message: err.message, type: 'error' });
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
               {(() => {
@@ -3916,6 +4013,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         </button>
                       </div>
                     </div>
+                    {r.image_url && (
+                      <img src={r.image_url} alt="" className="w-full h-36 object-cover object-top rounded-md border border-white/10" />
+                    )}
                     {r.comment && (
                       <p className="text-[12px] text-zinc-300 leading-relaxed line-clamp-3">"{r.comment}"</p>
                     )}

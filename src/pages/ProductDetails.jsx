@@ -661,17 +661,22 @@ export default function ProductDetails() {
                                 </div>
 
                                 {/* Local Delivery & Assurance Highlight Banner */}
-                                <div className="p-3.5 bg-gradient-to-r from-[#ce112d]/5 via-red-50/40 to-neutral-50 rounded-2xl border border-red-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-[#ce112d] text-white flex items-center justify-center shrink-0 shadow-md shadow-red-900/20">
-                                            <Truck size={18} strokeWidth={2.5} />
+                                <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 text-xs">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200 text-[#ce112d] flex items-center justify-center shrink-0">
+                                            <Truck size={16} strokeWidth={2.5} />
                                         </div>
-                                        <div>
-                                            <p className="font-black text-neutral-900 uppercase text-[10px] tracking-tight">
-                                                {language === 'bn' ? 'মীরসরাই উপজেলায় হোম ডেলিভারি সম্পূর্ণ ফ্রি!' : 'Free Home Delivery in Mirsharai'}
+                                        <div className="min-w-0 space-y-1">
+                                            <p className="font-semibold text-neutral-900 text-[12px]">
+                                                {language === 'bn' ? 'ডেলিভারি সময়' : 'Delivery time'}
                                             </p>
-                                            <p className="text-[9px] text-neutral-500 font-medium leading-tight">
-                                                {language === 'bn' ? 'ক্যাশ অন ডেলিভারি সুবিধা চট্টগ্রাম ও সারা বাংলাদেশে' : 'Cash on Delivery Available Countrywide'}
+                                            <p className="text-[12px] text-neutral-800 leading-snug">
+                                                {language === 'bn' ? 'মীরসরাই ১–২ দিন, ফ্রি' : 'Mirsarai, 1 to 2 days, free'}
+                                            </p>
+                                            <p className="text-[11px] text-neutral-500 leading-snug">
+                                                {language === 'bn'
+                                                    ? 'চট্টগ্রাম ১–২ দিন · সারা দেশ ২–৫ দিন'
+                                                    : 'Chattogram 1 to 2 days · nationwide 2 to 5 days'}
                                             </p>
                                         </div>
                                     </div>
@@ -693,7 +698,7 @@ export default function ProductDetails() {
                     <Reveal>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-neutral-100">
                         {[
-                            { icon: Truck, label: language === 'bn' ? 'ডেলিভারি' : 'Delivery', desc: language === 'bn' ? 'দ্রুত হোম ডেলিভারি' : 'Fast Shipping' },
+                            { icon: Truck, label: language === 'bn' ? 'ডেলিভারি' : 'Delivery', desc: language === 'bn' ? 'মীরসরাই ১–২ দিন' : 'Mirsarai in 1 to 2 days' },
                             { icon: Award, label: language === 'bn' ? 'কোয়ালিটি' : 'Quality', desc: language === 'bn' ? 'সেরা ফেব্রিক গ্যারান্টি' : 'Guaranteed Quality' },
                             { icon: CreditCard, label: language === 'bn' ? 'নিরাপদ' : 'Safe', desc: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery' },
                             { icon: Zap, label: language === 'bn' ? 'সাপোর্ট' : 'Support', desc: language === 'bn' ? 'মেসেঞ্জার সহায়তা' : '24/7 Live Care' }

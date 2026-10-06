@@ -41,8 +41,8 @@ export const FAQ_KB = {
   },
   payment: {
     keywords: ["bkash", "nagad", "rocket", "payment", "pay", "cash", "cod", "advance", "taka", "পেমেন্ট", "বিকাশ", "নগদ", "অগ্রিম", "টাকা"],
-    answer_bn: "পেমেন্ট পদ্ধতি:\n• ক্যাশ অন ডেলিভারি (COD): সারা দেশে পণ্য হাতে পেয়ে বাকি মূল্য পরিশোধের সুবিধা।\n• অগ্রিম পেমেন্ট: অর্ডার কনফার্মেশনের জন্য ডেলিভারি চার্জ বিকাশ বা নগদ নম্বরে (01857045449) সেন্ড মানি করতে হয়।",
-    answer_en: "Payment Methods: Cash on Delivery (COD) nationwide with advance delivery charge confirmation via bKash/Nagad (01857045449)."
+    answer_bn: "অর্ডার তখনই কনফার্ম হয় যখন ডেলিভারি চার্জ 01857045449 নম্বরে সেন্ড মানি পৌঁছায়। শুধু ওয়েবসাইটে অর্ডার দিলে সেটা অপেক্ষমাণ থাকে। বাকি টাকা পণ্য হাতে পেয়ে দিতে পারবেন।\n• মীরসরাই: কনফার্মেশন ফি ১০০ টাকা।\n• চট্টগ্রাম: ১০০ টাকা।\n• সারা দেশ: ১৫০ টাকা।",
+    answer_en: "An order is confirmed only after the delivery charge reaches bKash/Nagad 01857045449. Placing it on the website alone keeps it pending. Pay the rest when the parcel arrives. Mirsarai confirmation fee ৳100, Chattogram ৳100, rest of Bangladesh ৳150."
   },
   size_chart: {
     keywords: ["size", "measurement", "fit", "small", "medium", "large", "xl", "xxl", "free size", "inch", "সাইজ", "মেজারমেন্ট"],
@@ -58,6 +58,16 @@ export const FAQ_KB = {
     keywords: ["order", "korbo", "how to", "kivabe", "confirm", "checkout", "buy", "অর্ডার", "কিভাবে করব", "কেনাকাটা"],
     answer_bn: "অর্ডার করার নিয়ম:\n১. চ্যাটবটে সরাসরি প্রোডাক্ট কার্ডের নিচে 'অর্ডার করুন' বাটনে চাপুন।\n২. অথবা ওয়েবসাইটে সাইজ ও কালার সিলেক্ট করে আপনার নাম, মোবাইল ও ঠিকানা পূরণ করে ডেলিভারি চার্জ অগ্রিম পাঠিয়ে কনফার্ম করুন।",
     answer_en: "How to Order: Click 'Order Now' directly in this chat assistant or on the website, provide your shipping details and send the advance delivery charge."
+  },
+  order_track: {
+    keywords: ["track", "order koi", "order status", "kothay order", "confirm hoyeche", "confirm hoise", "কনফার্ম", "অর্ডার কোথায়", "ট্র্যাক", "অর্ডার স্ট্যাটাস"],
+    answer_bn: "অর্ডার কনফার্ম হয় ডেলিভারি চার্জ 01857045449 নম্বরে পৌঁছানোর পর। কনফার্ম হলে আমরা এসএমএস দিই এবং কুরিয়ারে বুক করি। স্ট্যাটাস জানতে ওয়েবসাইটের ট্র্যাক পেজে আপনার মোবাইল নম্বর দিন, অথবা 01857045449 নম্বরে কল করুন।",
+    answer_en: "Your order is confirmed after the delivery charge reaches 01857045449. We then SMS you and book the courier. Track it on the website with your mobile number, or call 01857045449."
+  },
+  returns: {
+    keywords: ["return", "exchange", "change", "vul size", "size vul", "ফেরত", "বদল", "এক্সচেঞ্জ", "সাইজ ভুল", "মানায় না"],
+    answer_bn: "সাইজ বা পণ্য না মানায় ২৪ ঘণ্টার মধ্যে 01857045449 নম্বরে জানালে আমরা এক্সচেঞ্জ দেখি। পণ্য অব্যবহৃত, ট্যাগসহ থাকতে হবে। ডেলিভারি চার্জ ফেরত হয় না।",
+    answer_en: "If the size or item does not fit, message 01857045449 within 24 hours. Exchange is possible when the item is unused with tags. The delivery charge is not refunded."
   },
   greetings: {
     keywords: ["kemon", "kemon achen", "kemon acho", "valobashi", "valo", "halo", "hello", "hi", "salam", "আসসালামু", "সালাম", "কেমন আছেন", "হ্যালো"],

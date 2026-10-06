@@ -106,6 +106,40 @@ export async function steadfastStatusByCid(env, consignmentId) {
   return data;
 }
 
+/**
+ * Customer delivery history across Steadfast merchants.
+ * GET /fraud_check/{phone} → total_parcels, total_delivered, total_cancelled.
+ */
+export async function steadfastFraudCheck(env, phone) {
+  const cfg = getSteadfastConfig(env);
+  if (!cfg.configured) return { configured: false };
+  const normalized = normalizeBdPhone(phone);
+  if (!/^01[3-9]\d{8}$/.test(normalized)) {
+    return { configured: true, error: 'Invalid phone' };
+  }
+  const res = await fetch(`${cfg.baseUrl}/fraud_check/${encodeURIComponent(normalized)}`, {
+    headers: headers(cfg),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { configured: true, error: data.message || data.error || `Steadfast HTTP ${res.status}` };
+  }
+  const parcels = Number(data.total_parcels ?? data.Total_parcels) || 0;
+  const delivered = Number(data.total_delivered) || 0;
+  const cancelled = Number(data.total_cancelled) || 0;
+  const reports = Array.isArray(data.total_fraud_reports) ? data.total_fraud_reports.length : Number(data.total_fraud_reports) || 0;
+  const finished = delivered + cancelled;
+  return {
+    configured: true,
+    phone: normalized,
+    total: parcels,
+    delivered,
+    cancelled,
+    fraudReports: reports,
+    successRate: finished > 0 ? Math.round((delivered / finished) * 100) : null,
+  };
+}
+
 export async function steadfastGetBalance(env) {
   const cfg = getSteadfastConfig(env);
   if (!cfg.configured) throw new Error('Steadfast is not configured');

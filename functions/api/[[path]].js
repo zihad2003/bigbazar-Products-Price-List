@@ -27,6 +27,7 @@ import {
   steadfastStatusByTracking,
   steadfastStatusByCid,
   steadfastGetBalance,
+  steadfastFraudCheck,
 } from './steadfast.js';
 
 async function ensureOrderSteadfastColumns(conn) {
@@ -114,9 +115,31 @@ function parseIpGeo(raw) {
   try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
+function streetAddress(raw) {
+  const full = String(raw || '').trim();
+  const street = full.split('|')[0].trim();
+  return street || full;
+}
+
+/** Keyboard smash / junk like "R3uutr" or "asdfgh". */
+function looksGibberish(text) {
+  const t = String(text || '').trim();
+  if (!t) return true;
+  const compact = t.replace(/[\s,.\-/]/g, '');
+  if (/[A-Za-z][0-9]|[0-9][A-Za-z]/.test(compact)) return true;
+  if (/(.)\1{3,}/i.test(compact)) return true;
+  if (/^[asdfghjklqwertyuiopzxcvbnm]+$/i.test(compact) && compact.length >= 5) return true;
+  const letters = (compact.match(/[A-Za-z\u0980-\u09FF]/g) || []).length;
+  const digits = (compact.match(/\d/g) || []).length;
+  if (letters >= 4 && digits >= 1 && compact.length <= 10) return true;
+  const vowels = (compact.match(/[aeiou\u0985-\u0994\u09BE-\u09CC]/gi) || []).length;
+  if (letters >= 6 && vowels <= 1) return true;
+  return false;
+}
+
 /**
- * Score how likely an order is fake using IP, device and the phone's past orders.
- * Returns { level: 'low'|'medium'|'high', score, reasons[], positives[], history, ipOrders24h }.
+ * Score how likely an order is fake using form details, IP, device and phone history.
+ * Never call a new unverified order "real" just because nothing matched.
  */
 async function computeOrderRisk(conn, order) {
   const reasons = [];
@@ -126,20 +149,34 @@ async function computeOrderRisk(conn, order) {
   const phone = normalizeBdPhone(order.customer_phone);
   const phoneValid = /^01[3-9]\d{8}$/.test(phone);
   if (!phoneValid) {
-    score += 40;
+    score += 45;
     reasons.push('Phone number is not a valid Bangladesh mobile number');
   }
 
   const name = String(order.customer_name || '').trim();
-  if (name.length < 3 || /\d/.test(name) || /^(.)\1+$/i.test(name.replace(/\s/g, ''))) {
-    score += 15;
-    reasons.push('Name looks unusual (too short, has numbers or repeated letters)');
+  const nameLetters = name.replace(/[^A-Za-z\u0980-\u09FF\s]/g, '').trim();
+  if (nameLetters.length < 4) {
+    score += 25;
+    reasons.push('Name is too short or missing');
+  }
+  if (/\d/.test(name) || /[:;@#$%^*_=+{}[\]|\\<>]/.test(name)) {
+    score += 25;
+    reasons.push('Name contains numbers or unusual symbols');
+  }
+  if (looksGibberish(name.replace(/^(md|mst|mrs|mr|miss)\.?\s*/i, ''))) {
+    score += 20;
+    reasons.push('Name looks typed at random');
   }
 
-  const address = String(order.customer_address || '').trim();
-  if (address.length < 12) {
-    score += 15;
-    reasons.push('Address is very short or incomplete');
+  const street = streetAddress(order.customer_address);
+  const streetWords = street.split(/[\s,]+/).filter((w) => w.length > 1);
+  if (street.length < 10 || streetWords.length < 2) {
+    score += 30;
+    reasons.push('Address is too short or incomplete (need road / area, not one word)');
+  }
+  if (looksGibberish(street)) {
+    score += 35;
+    reasons.push('Address looks fake or randomly typed');
   }
 
   const history = { total: 0, delivered: 0, canceled: 0, last24h: 0 };
@@ -159,23 +196,27 @@ async function computeOrderRisk(conn, order) {
       if (now - new Date(r.created_at).getTime() < 86400000) history.last24h += 1;
     }
     if (history.delivered > 0) {
-      score -= 30;
+      score -= 25;
       positives.push(`Phone has ${history.delivered} delivered order${history.delivered > 1 ? 's' : ''} before`);
     }
     if (history.canceled > 0) {
-      score += history.delivered === 0 ? 35 : 15;
+      score += history.delivered === 0 ? 40 : 18;
       reasons.push(`Phone has ${history.canceled} canceled order${history.canceled > 1 ? 's' : ''} before`);
     }
     if (history.last24h >= 2) {
-      score += 20;
+      score += 25;
       reasons.push(`${history.last24h} other orders from this phone in the last 24 hours`);
     }
-    if (history.total === 0) positives.push('First order from this phone');
+    if (history.total === 0) {
+      score += 10;
+      reasons.push('First order from this phone — not proven yet');
+    }
   }
 
+  const hasIp = Boolean(order.customer_ip && !isPrivateIp(order.customer_ip));
   let ipOrders24h = 0;
   let ipPhones7d = 0;
-  if (order.customer_ip && !isPrivateIp(order.customer_ip)) {
+  if (hasIp) {
     const ipRows = await conn.execute(
       `SELECT customer_phone, created_at FROM orders
        WHERE id <> ? AND customer_ip = ? AND created_at >= (NOW() - INTERVAL 7 DAY)`,
@@ -190,28 +231,34 @@ async function computeOrderRisk(conn, order) {
     phones.delete(phone);
     ipPhones7d = phones.size;
     if (ipOrders24h >= 3) {
-      score += 20;
+      score += 25;
       reasons.push(`${ipOrders24h} other orders from the same IP in the last 24 hours`);
     }
     if (ipPhones7d >= 2) {
-      score += 25;
+      score += 30;
       reasons.push(`Same IP used ${ipPhones7d} different phone numbers this week`);
     }
+  } else {
+    score += 20;
+    reasons.push('No IP or device was recorded, so this order cannot be verified');
   }
 
   const geo = parseIpGeo(order.ip_geo);
   if (geo?.country && geo.country !== 'BD') {
-    score += 40;
+    score += 45;
     reasons.push(`Order placed from outside Bangladesh (${geo.country})`);
   }
   if (geo?.hosting) {
-    score += 25;
+    score += 30;
     reasons.push(`IP belongs to a VPN, proxy or hosting network (${geo.org})`);
   }
   if (geo?.country === 'BD' && !geo.hosting) positives.push(`Bangladesh network (${geo.org || 'local ISP'})`);
 
-  const level = score >= 50 ? 'high' : score >= 20 ? 'medium' : 'low';
-  return { level, score: Math.max(0, score), reasons, positives, history, ipOrders24h, ipPhones7d };
+  score = Math.max(0, score);
+  if (!hasIp && history.delivered === 0 && score < 20) score = 20;
+
+  const level = score >= 45 ? 'high' : score >= 20 ? 'medium' : 'low';
+  return { level, score, reasons, positives, history, ipOrders24h, ipPhones7d, hasIp };
 }
 
 /** Permanent image store in MySQL — survives Hostinger redeploys (unlike dist/ disk). */
@@ -569,12 +616,96 @@ function escapeEmailHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-let smtpTransportPromise = null;
+let smtpModulePromise = null;
+
+async function loadNodemailer() {
+  if (!smtpModulePromise) {
+    const moduleName = 'nodemailer';
+    smtpModulePromise = import(/* @vite-ignore */ moduleName)
+      .then((mod) => mod.default || mod)
+      .catch((err) => {
+        smtpModulePromise = null;
+        throw err;
+      });
+  }
+  return smtpModulePromise;
+}
+
+/** Hostinger often blocks port 465. Try the configured port, then 587, then 465. */
+async function deliverSmtpMail(readEnv, smtpUser, smtpPass, mail) {
+  const nodemailer = await loadNodemailer();
+  const host = readEnv('SMTP_HOST') || 'smtp.gmail.com';
+  const preferred = parseInt(readEnv('SMTP_PORT') || '587', 10);
+  const ports = [...new Set([preferred, 587, 465])];
+  let lastErr;
+  for (const port of ports) {
+    const transport = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      requireTLS: port !== 465,
+      auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+    });
+    try {
+      await transport.sendMail(mail);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.error(`order email failed on port ${port}:`, err?.message || err);
+      try { transport.close(); } catch (_) {}
+    }
+  }
+  throw lastErr;
+}
+
+function toBdMsisdn(phone) {
+  const d = String(phone || '').replace(/\D/g, '');
+  if (d.startsWith('880') && d.length === 13) return d;
+  if (d.startsWith('01') && d.length === 11) return `88${d}`;
+  return '';
+}
+
+/**
+ * SMS the customer when admin marks the advance as received (order confirmed).
+ * SSL Wireless: set SMS_API_TOKEN + SMS_SID on the server. Optional SMS_API_URL.
+ */
+async function sendOrderConfirmedSms(env, order) {
+  const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+  const token = readEnv('SMS_API_TOKEN');
+  const sid = readEnv('SMS_SID');
+  if (!token || !sid) {
+    console.warn('Order SMS skipped: set SMS_API_TOKEN and SMS_SID');
+    return;
+  }
+  const msisdn = toBdMsisdn(order.customer_phone);
+  if (!msisdn) return;
+  const shortId = String(order.id || '').slice(-6).toUpperCase();
+  const sms = `Big Bazar: Apnar order #${shortId} confirm hoyeche. Delivery charge pawa geche. Dhonyobad. Helpline 01857045449`;
+  const url = readEnv('SMS_API_URL') || 'https://smsplus.sslwireless.com/api/v3/send-sms';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_token: token,
+      sid,
+      msisdn,
+      sms,
+      csms_id: `bb${shortId}${Date.now().toString().slice(-6)}`,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`SMS ${res.status} ${text.slice(0, 180)}`);
+  }
+}
 
 /**
  * Email the superadmin(s) about a new order over SMTP (Gmail App Password by default).
  * Node only (Hostinger); on Cloudflare the dynamic nodemailer import fails and the email is skipped.
- * Env: SMTP_USER + SMTP_PASS (required), SMTP_HOST / SMTP_PORT (default smtp.gmail.com:465),
+ * Env: SMTP_USER + SMTP_PASS (required), SMTP_HOST / SMTP_PORT (default smtp.gmail.com:587),
  * ORDER_NOTIFY_EMAILS (optional, comma separated, defaults to SUPERADMIN_EMAILS).
  */
 async function sendOrderNotificationEmail(env, order) {
@@ -591,25 +722,6 @@ async function sendOrderNotificationEmail(env, order) {
     .map((s) => s.trim())
     .filter(Boolean);
   if (!to.length) return;
-
-  if (!smtpTransportPromise) {
-    const port = parseInt(readEnv('SMTP_PORT') || '465', 10);
-    const moduleName = 'nodemailer';
-    smtpTransportPromise = import(/* @vite-ignore */ moduleName)
-      .then((mod) =>
-        (mod.default || mod).createTransport({
-          host: readEnv('SMTP_HOST') || 'smtp.gmail.com',
-          port,
-          secure: port === 465,
-          auth: { user: smtpUser, pass: smtpPass },
-        })
-      )
-      .catch((err) => {
-        smtpTransportPromise = null;
-        throw err;
-      });
-  }
-  const transport = await smtpTransportPromise;
 
   const from = `Big Bazar Orders <${smtpUser}>`;
   const siteOrigin = String(readEnv('PUBLIC_SITE_ORIGIN') || 'https://onlinebigbazar.com').replace(/\/$/, '');
@@ -635,7 +747,7 @@ async function sendOrderNotificationEmail(env, order) {
     .join('');
 
   const RISK_STYLE = {
-    low: { label: 'Looks real', color: '#15803d', bg: '#dcfce7' },
+    low: { label: 'Looks okay', color: '#15803d', bg: '#dcfce7' },
     medium: { label: 'Check before shipping', color: '#a16207', bg: '#fef9c3' },
     high: { label: 'Likely fake', color: '#b91c1c', bg: '#fee2e2' },
   };
@@ -690,7 +802,7 @@ async function sendOrderNotificationEmail(env, order) {
     `Admin: ${siteOrigin}/admin`,
   ].join('\n');
 
-  await transport.sendMail({
+  await deliverSmtpMail(readEnv, smtpUser, smtpPass, {
     from,
     to: to.join(', '),
     subject: `${risk?.level === 'high' ? '[Likely fake] ' : ''}New order ${taka(order.total)} from ${order.customerName || 'customer'} (#${shortId})`,
@@ -2265,8 +2377,9 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     const currentOrder = currentOrders[0];
 
     // 2. Restore stock when moving to Cancelled OR Deleted (trash), if not already restored
-    const stockAlreadyRestored = currentOrder.status === 'Cancelled' || currentOrder.status === 'Deleted';
-    const isTransitioningToCancelled = o.status === 'Cancelled' && !stockAlreadyRestored;
+    const isCancelStatus = (s) => s === 'Cancelled' || s === 'Canceled';
+    const stockAlreadyRestored = isCancelStatus(currentOrder.status) || currentOrder.status === 'Deleted';
+    const isTransitioningToCancelled = isCancelStatus(o.status) && !stockAlreadyRestored;
     const isTransitioningToDeleted = o.status === 'Deleted' && !stockAlreadyRestored;
     if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await restoreOrderStock(tx, currentOrder);
@@ -2294,6 +2407,15 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await bumpCatalogVersion(c);
       runInBackground(c, () => prewarmCatalogCache(c));
+    }
+    const wasAdvancePaid = Boolean(currentOrder.is_advance_paid);
+    const nowAdvancePaid = o.is_advance_paid !== undefined ? Boolean(o.is_advance_paid) : wasAdvancePaid;
+    if (!wasAdvancePaid && nowAdvancePaid) {
+      runInBackground(c, () =>
+        sendOrderConfirmedSms(c.env, currentOrder).catch((err) =>
+          console.error('order sms error:', err?.message || err)
+        )
+      );
     }
     return c.json({ success: true });
   } catch (err) {
@@ -2323,12 +2445,19 @@ app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
   }
 
   const risk = await computeOrderRisk(conn, { ...order, ip_geo: geo });
+  let courier = null;
+  try {
+    courier = await steadfastFraudCheck(c.env, order.customer_phone);
+  } catch (err) {
+    courier = { configured: true, error: err?.message || 'Courier check failed' };
+  }
   return c.json({
     ...risk,
     ip: order.customer_ip || null,
     user_agent: order.user_agent || null,
     geo,
     tracked: Boolean(order.customer_ip),
+    courier,
   });
 });
 
@@ -2556,6 +2685,12 @@ app.get('/orders/track', async (c) => {
 // ============================================
 // REVIEWS
 // ============================================
+async function ensureReviewImageColumn(conn) {
+  try {
+    await conn.execute('ALTER TABLE reviews ADD COLUMN image_url VARCHAR(500) NULL');
+  } catch (_) {}
+}
+
 app.get('/reviews', async (c) => {
   const pid = c.req.query('product_id') || '';
   const featured = c.req.query('featured') === '1' || c.req.query('home') === '1';
@@ -2567,12 +2702,18 @@ app.get('/reviews', async (c) => {
   }
 
   const conn = getDb(c.env);
+  await ensureReviewImageColumn(conn);
   let res;
   if (featured) {
-    // Home strip: high-rated public feedback (with or without product)
-    res = await conn.execute(
-      'SELECT * FROM reviews WHERE rating >= 4 ORDER BY created_at DESC LIMIT 24'
-    );
+    try {
+      res = await conn.execute(
+        "SELECT * FROM reviews WHERE rating >= 4 AND image_url IS NOT NULL AND image_url <> '' ORDER BY created_at DESC LIMIT 24"
+      );
+    } catch (_) {
+      res = await conn.execute(
+        'SELECT * FROM reviews WHERE rating >= 4 ORDER BY created_at DESC LIMIT 24'
+      );
+    }
   } else if (pid) {
     res = await conn.execute(
       'SELECT * FROM reviews WHERE product_id = ? ORDER BY created_at DESC',
@@ -2618,14 +2759,19 @@ app.post('/admin/reviews', requireAuth, requireAdmin, async (c) => {
   const rating = Math.min(5, Math.max(1, parseInt(r.rating, 10) || 5));
   const comment = String(r.comment || '').trim().slice(0, 1000);
   const customerName = String(r.customer_name || 'Customer').trim().slice(0, 80);
-  if (!comment) return c.json({ error: 'Comment is required' }, 400);
+  const imageUrl = String(r.image_url || '').trim().slice(0, 500);
+  if (!comment && !imageUrl) return c.json({ error: 'Comment or screenshot is required' }, 400);
   const conn = getDb(c.env);
+  await ensureReviewImageColumn(conn);
   const id = crypto.randomUUID();
   await conn.execute(
-    'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, rating, comment, customerName, r.product_id || null, r.product_name || null]
+    'INSERT INTO reviews (id, rating, comment, customer_name, product_id, product_name, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, rating, comment || null, customerName, r.product_id || null, r.product_name || null, imageUrl || null]
   );
   await kvDelete(c, 'cache:reviews');
+  try {
+    for (const k of ['cache:reviews:all:all', 'cache:reviews:all:feat']) await kvDelete(c, k);
+  } catch (_) {}
   return c.json({ success: true, id });
 });
 

@@ -408,7 +408,7 @@ function buildGeneric(nameEn, nameBn, category) {
     h2_bn: `${labelBn} কালেকশন — Big Bazar ${STORE.placeBn}`,
     h2_en: `${labelEn} Collection — Big Bazar ${STORE.place}`,
     intro_bn: `Big Bazar-এ ${labelBn} এর ফিক্সড-প্রাইস কালেকশন। শোরুমে দেখে কিনুন অথবা onlinebigbazar.com-এ অর্ডার করুন — ${STORE.freeDeliveryBn}।`,
-    intro_en: `Shop ${labelEn} at fixed prices from Big Bazar. Visit our showroom or order on onlinebigbazar.com — ${STORE.freeDeliveryEn}.`,
+    intro_en: `Shop ${labelEn} at fixed prices from Big Bazar in Baraiyarhat. Mirsarai delivery in 1 to 2 days, Chattogram in 1 to 2 days, and nationwide in 2 to 5 days. ${STORE.freeDeliveryEn}.`,
     bullets_bn: [
       `${cat} ক্যাটাগরিতে নির্বাচিত ${labelBn}`,
       'ফিক্সড প্রাইস · স্বচ্ছ দাম',
@@ -452,12 +452,13 @@ export function getSubcategoryMeta(sub, category = '') {
   const seo = getSubcategorySeo(sub, category);
   if (!seo) return null;
   const title = `Buy ${seo.nameEn} Online | Big Bazar Baraiyarhat`;
+  const cleanedIntro = String(seo.intro_en || '')
+    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/(\w)-(\w)/g, '$1 $2')
+    .replace(/\s*·\s*/g, ', ');
   const description = clipBnEn(
-    String(seo.intro_en || '')
-      .replace(/\s*[—–]\s*/g, ', ')
-      .replace(/(\w)-(\w)/g, '$1 $2')
-      .replace(/\s*·\s*/g, ', '),
-    160
+    `Mirsarai delivery in 1 to 2 days. ${cleanedIntro}`,
+    165
   );
   const keywords = [
     seo.keywords,

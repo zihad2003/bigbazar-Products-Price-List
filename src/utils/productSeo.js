@@ -18,6 +18,31 @@ function clip(text, max = 155) {
   return `${t.slice(0, max - 1).trim()}…`;
 }
 
+function shippingWindow(minDays, maxDays, regionName, rate) {
+  return {
+    '@type': 'OfferShippingDetails',
+    shippingRate: { '@type': 'MonetaryAmount', value: String(rate), currency: 'BDT' },
+    shippingDestination: {
+      '@type': 'DefinedRegion',
+      addressCountry: 'BD',
+      addressRegion: regionName,
+    },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
+      transitTime: { '@type': 'QuantitativeValue', minValue: minDays, maxValue: maxDays, unitCode: 'DAY' },
+    },
+  };
+}
+
+export function offerShippingDetails() {
+  return [
+    shippingWindow(1, 2, 'Mirsharai', 0),
+    shippingWindow(1, 2, 'Chattogram', 100),
+    shippingWindow(2, 5, 'Bangladesh', 150),
+  ];
+}
+
 /**
  * Build bilingual product title, description, keywords, and JSON-LD pieces.
  */
@@ -35,7 +60,7 @@ export function buildProductSeo(product, { origin = '', language = 'bn' } = {}) 
   const rawDesc = stripHtml(product.description || '');
   const description = clip(
     rawDesc ||
-      `${name}${cat ? `, ${cat}` : ''}${sub ? ` / ${sub}` : ''}. Fixed price at ${STORE_EN}, ${PLACE_EN}. Free Mirsharai delivery and COD nationwide.`
+      `${name}${cat ? `, ${cat}` : ''}${sub ? ` / ${sub}` : ''}. Fixed price at ${STORE_EN}, ${PLACE_EN}. Mirsarai delivery in 1 to 2 days and COD nationwide.`
   );
 
   const keywords = [
@@ -84,6 +109,7 @@ export function buildProductSeo(product, { origin = '', language = 'bn' } = {}) 
         name: STORE_EN,
         url: origin || 'https://onlinebigbazar.com',
       },
+      shippingDetails: offerShippingDetails(),
     },
   };
 

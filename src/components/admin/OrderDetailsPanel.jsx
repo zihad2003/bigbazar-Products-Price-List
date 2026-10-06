@@ -82,7 +82,7 @@ function describeDevice(ua) {
 }
 
 const RISK_UI = {
-  low: { label: 'Looks real', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
+  low: { label: 'Looks okay', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
   medium: { label: 'Check before shipping', Icon: ShieldAlert, cls: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-400' },
   high: { label: 'Likely fake', Icon: ShieldX, cls: 'border-red-500/30 bg-red-500/10 text-red-400' },
 };
@@ -159,6 +159,22 @@ function FraudCheck({ orderId }) {
         <p className="text-[11px] text-zinc-500">IP and device were not recorded for this order (placed before tracking started).</p>
       )}
 
+      {(d.courier?.configured && !d.courier.error && d.courier.total > 0) && (
+        <p className="text-[11px] text-white">
+          Steadfast history: {d.courier.delivered} delivered, {d.courier.cancelled} canceled, out of {d.courier.total}
+          {d.courier.successRate != null ? ` (${d.courier.successRate}% success)` : ''}.
+        </p>
+      )}
+      {d.courier?.configured && !d.courier.error && d.courier.total === 0 && (
+        <p className="text-[11px] text-zinc-400">Steadfast has no earlier parcels for this phone.</p>
+      )}
+      {d.courier && !d.courier.configured && (
+        <p className="text-[11px] text-zinc-500">Steadfast keys are not set, so courier history is unavailable.</p>
+      )}
+      {d.courier?.error && (
+        <p className="text-[11px] text-zinc-500">Steadfast check: {d.courier.error}</p>
+      )}
+
       {(d.reasons.length > 0 || d.positives.length > 0) && (
         <ul className="space-y-1 text-[11px] leading-snug">
           {d.reasons.map((r) => (
@@ -170,7 +186,7 @@ function FraudCheck({ orderId }) {
         </ul>
       )}
       <p className="text-[10px] text-zinc-500">
-        Mobile data IPs often show Dhaka or Chattogram even for local customers. Call before shipping if unsure.
+        This is a warning score, not proof. Call the customer before shipping if anything looks off.
       </p>
     </section>
   );
