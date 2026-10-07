@@ -121,20 +121,65 @@ function streetAddress(raw) {
   return street || full;
 }
 
-/** Keyboard smash / junk like "R3uutr" or "asdfgh". */
+function isAddressWord(word) {
+  return /^(house|holding|road|rd|lane|vill|village|para|bazar|bazaar|ward|block|flat|floor|plot|sector|area|thana|upazila|post|office|বাড়ি|বাড়ি|রোড|লেন|পাড়া|পাড়া|বাজার|ওয়ার্ড|হোল্ডিং|গ্রাম|মহল্লা|সদর|উপজেলা)$/i.test(String(word || ''));
+}
+
+function isHouseNumber(word) {
+  return /^[0-9০-৯]+([/-][0-9০-৯A-Za-z]+)?$/.test(word) || /^[0-9০-৯]+[a-zA-Z]$/.test(word);
+}
+
+/** Junk token like "R3uutr" or "asdfgh". House numbers and road names are not junk. */
+function junkToken(raw) {
+  const original = String(raw || '');
+  const letters = original.replace(/[^A-Za-z\u0980-\u09FF]/g, '');
+  if (letters.length < 4) return false;
+  const mixed = /[A-Za-z][0-9]|[0-9][A-Za-z]/.test(original);
+  if (mixed && letters.length <= 12) return true;
+  if (/(.)\1{3,}/i.test(letters)) return true;
+  if (/^(asdfghjkl|qwertyuiop|zxcvbnm)+$/i.test(letters)) return true;
+  const vowels = (letters.match(/[aeiouAEIOU\u0985-\u0994\u09BE-\u09CC]/g) || []).length;
+  if (/^[A-Za-z]+$/.test(letters) && letters.length >= 6 && vowels === 0) return true;
+  return false;
+}
+
 function looksGibberish(text) {
   const t = String(text || '').trim();
   if (!t) return true;
-  const compact = t.replace(/[\s,.\-/]/g, '');
-  if (/[A-Za-z][0-9]|[0-9][A-Za-z]/.test(compact)) return true;
-  if (/(.)\1{3,}/i.test(compact)) return true;
-  if (/^[asdfghjklqwertyuiopzxcvbnm]+$/i.test(compact) && compact.length >= 5) return true;
-  const letters = (compact.match(/[A-Za-z\u0980-\u09FF]/g) || []).length;
-  const digits = (compact.match(/\d/g) || []).length;
-  if (letters >= 4 && digits >= 1 && compact.length <= 10) return true;
-  const vowels = (compact.match(/[aeiou\u0985-\u0994\u09BE-\u09CC]/gi) || []).length;
-  if (letters >= 6 && vowels <= 1) return true;
-  return false;
+  const words = t.split(/[\s,.\-/#]+/).filter(Boolean);
+  const content = words.filter((w) => !isAddressWord(w) && !isHouseNumber(w));
+  if (!content.length) return t.replace(/[^A-Za-z\u0980-\u09FF]/g, '').length < 3;
+  return content.some(junkToken);
+}
+
+function applyCourierHistory(score, reasons, positives, courier, history) {
+  if (!courier?.configured || courier.error) return { score, proven: history.delivered > 0 };
+  const delivered = courier.delivered || 0;
+  const cancelled = courier.cancelled || 0;
+  const finished = delivered + cancelled;
+  const rate = courier.successRate;
+  const proven = history.delivered > 0 || (delivered >= 2 && rate != null && rate >= 75);
+  if ((courier.fraudReports || 0) > 0) {
+    score += 40;
+    reasons.push(`Steadfast has ${courier.fraudReports} fraud report${courier.fraudReports > 1 ? 's' : ''} on this phone`);
+  }
+  if (finished >= 2 && rate != null && rate < 50) {
+    score += 45;
+    reasons.push(`Steadfast success is only ${rate}% (${delivered} delivered, ${cancelled} canceled)`);
+  } else if (cancelled >= 3 && delivered === 0) {
+    score += 45;
+    reasons.push(`Steadfast: ${cancelled} canceled and none delivered`);
+  } else if (delivered >= 2 && rate != null && rate >= 75) {
+    score -= 40;
+    positives.push(`Steadfast: ${delivered} delivered, ${rate}% success`);
+  } else if (delivered >= 1 && rate != null && rate >= 60) {
+    score -= 20;
+    positives.push(`Steadfast: ${delivered} delivered, ${rate}% success`);
+  } else if ((courier.total || 0) === 0 && history.delivered === 0) {
+    score += 15;
+    reasons.push('No earlier Steadfast delivery for this phone');
+  }
+  return { score, proven };
 }
 
 /**
@@ -170,8 +215,8 @@ async function computeOrderRisk(conn, order) {
 
   const street = streetAddress(order.customer_address);
   const streetWords = street.split(/[\s,]+/).filter((w) => w.length > 1);
-  if (street.length < 10 || streetWords.length < 2) {
-    score += 30;
+  if (street.length < 8 || streetWords.length < 2) {
+    score += 18;
     reasons.push('Address is too short or incomplete (need road / area, not one word)');
   }
   if (looksGibberish(street)) {
@@ -239,7 +284,7 @@ async function computeOrderRisk(conn, order) {
       reasons.push(`Same IP used ${ipPhones7d} different phone numbers this week`);
     }
   } else {
-    score += 20;
+    score += 8;
     reasons.push('No IP or device was recorded, so this order cannot be verified');
   }
 
@@ -254,8 +299,15 @@ async function computeOrderRisk(conn, order) {
   }
   if (geo?.country === 'BD' && !geo.hosting) positives.push(`Bangladesh network (${geo.org || 'local ISP'})`);
 
+  const courierResult = applyCourierHistory(score, reasons, positives, order.courier, history);
+  score = courierResult.score;
   score = Math.max(0, score);
-  if (!hasIp && history.delivered === 0 && score < 20) score = 20;
+
+  const hardFake = reasons.some((r) =>
+    /invalid|outside Bangladesh|VPN|fraud report|success is only|none delivered|randomly typed|looks fake/.test(r)
+  );
+  if (courierResult.proven && score >= 45 && !hardFake) score = 30;
+  if (!courierResult.proven && score < 20) score = 20;
 
   const level = score >= 45 ? 'high' : score >= 20 ? 'medium' : 'low';
   return { level, score, reasons, positives, history, ipOrders24h, ipPhones7d, hasIp };
@@ -747,7 +799,7 @@ async function sendOrderNotificationEmail(env, order) {
     .join('');
 
   const RISK_STYLE = {
-    low: { label: 'Looks okay', color: '#15803d', bg: '#dcfce7' },
+    low: { label: 'Has delivery history', color: '#15803d', bg: '#dcfce7' },
     medium: { label: 'Check before shipping', color: '#a16207', bg: '#fef9c3' },
     high: { label: 'Likely fake', color: '#b91c1c', bg: '#fee2e2' },
   };
@@ -2206,6 +2258,8 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
       let risk = null;
       try {
+        let courier = null;
+        try { courier = await steadfastFraudCheck(c.env, o.customer_phone); } catch (_) {}
         risk = await computeOrderRisk(conn, {
           id,
           customer_name: o.customer_name,
@@ -2213,6 +2267,7 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
           customer_address: o.customer_address,
           customer_ip: clientIp,
           ip_geo: geo,
+          courier,
         });
       } catch (err) {
         console.error('order risk error:', err?.message || err);
@@ -2444,13 +2499,13 @@ app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
     }
   }
 
-  const risk = await computeOrderRisk(conn, { ...order, ip_geo: geo });
   let courier = null;
   try {
     courier = await steadfastFraudCheck(c.env, order.customer_phone);
   } catch (err) {
     courier = { configured: true, error: err?.message || 'Courier check failed' };
   }
+  const risk = await computeOrderRisk(conn, { ...order, ip_geo: geo, courier });
   return c.json({
     ...risk,
     ip: order.customer_ip || null,

@@ -124,10 +124,12 @@ export async function steadfastFraudCheck(env, phone) {
   if (!res.ok) {
     return { configured: true, error: data.message || data.error || `Steadfast HTTP ${res.status}` };
   }
-  const parcels = Number(data.total_parcels ?? data.Total_parcels) || 0;
-  const delivered = Number(data.total_delivered) || 0;
-  const cancelled = Number(data.total_cancelled) || 0;
-  const reports = Array.isArray(data.total_fraud_reports) ? data.total_fraud_reports.length : Number(data.total_fraud_reports) || 0;
+  const body = data?.data && typeof data.data === 'object' ? { ...data, ...data.data } : data;
+  const parcels = Number(body.total_parcels ?? body.Total_parcels) || 0;
+  const delivered = Number(body.total_delivered ?? body.total_delivered_parcels) || 0;
+  const cancelled = Number(body.total_cancelled ?? body.total_cancelled_parcels) || 0;
+  const reportsRaw = body.total_fraud_reports ?? body.fraud_reports;
+  const reports = Array.isArray(reportsRaw) ? reportsRaw.length : Number(reportsRaw) || 0;
   const finished = delivered + cancelled;
   return {
     configured: true,

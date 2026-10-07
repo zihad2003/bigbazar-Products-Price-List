@@ -82,7 +82,7 @@ function describeDevice(ua) {
 }
 
 const RISK_UI = {
-  low: { label: 'Looks okay', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
+  low: { label: 'Has delivery history', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
   medium: { label: 'Check before shipping', Icon: ShieldAlert, cls: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-400' },
   high: { label: 'Likely fake', Icon: ShieldX, cls: 'border-red-500/30 bg-red-500/10 text-red-400' },
 };
