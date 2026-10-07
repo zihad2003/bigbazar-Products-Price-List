@@ -83,7 +83,7 @@ function describeDevice(ua) {
 
 const RISK_UI = {
   low: { label: 'Has delivery history', Icon: ShieldCheck, cls: 'border-green-500/25 bg-green-500/10 text-green-400' },
-  medium: { label: 'Check before shipping', Icon: ShieldAlert, cls: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-400' },
+  medium: { label: 'New customer', Icon: ShieldAlert, cls: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-400' },
   high: { label: 'Likely fake', Icon: ShieldX, cls: 'border-red-500/30 bg-red-500/10 text-red-400' },
 };
 
@@ -122,9 +122,12 @@ function FraudCheck({ orderId }) {
 
   const d = state.data;
   const ui = RISK_UI[d.level] || RISK_UI.low;
-  const location = d.geo
-    ? [d.geo.city, d.geo.region, d.geo.country].filter(Boolean).join(', ')
-    : null;
+  const ipArea = d.geo?.upazila
+    ? `${d.geo.upazila}, ${d.geo.district}`
+    : d.geo?.district || [d.geo?.city, d.geo?.region, d.geo?.country].filter(Boolean).join(', ');
+  const orderArea = d.place?.upazila
+    ? `${d.place.upazila}, ${d.place.district}`
+    : d.place?.district || null;
   const device = describeDevice(d.user_agent);
 
   return (
@@ -143,8 +146,9 @@ function FraudCheck({ orderId }) {
       {d.tracked ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
-            <p className="text-zinc-500 text-[10px]">IP location (approx.)</p>
-            <p className="text-white font-medium truncate">{location || 'Unknown'}</p>
+            <p className="text-zinc-500 text-[10px]">IP upazila / district</p>
+            <p className="text-white font-medium truncate">{ipArea || 'Unknown'}</p>
+            {orderArea && <p className="text-zinc-500 truncate">Order: {orderArea}</p>}
           </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">Network</p>

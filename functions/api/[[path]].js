@@ -29,6 +29,7 @@ import {
   steadfastGetBalance,
   steadfastFraudCheck,
 } from './steadfast.js';
+import { resolveBdPlace, withBdPlace, orderPlace } from './bd-places.js';
 
 async function ensureOrderSteadfastColumns(conn) {
   for (const sql of [
@@ -64,15 +65,21 @@ async function ensureOrderRiskColumns(conn) {
   orderRiskColumnsReady = true;
 }
 
-/** Real visitor IP behind Cloudflare, Hostinger CDN or a plain Node socket. */
+/** Real visitor IP. Prefer the customer in X-Forwarded-For, not the Hostinger edge. */
 function getClientIp(c) {
-  const fromHeader =
-    c.req.header('CF-Connecting-IP') ||
-    c.req.header('True-Client-IP') ||
-    c.req.header('X-Real-IP') ||
-    String(c.req.header('X-Forwarded-For') || '').split(',')[0];
-  const raw = String(fromHeader || c.env?.incoming?.socket?.remoteAddress || '').trim();
-  return raw.replace(/^::ffff:/, '') || '127.0.0.1';
+  const candidates = [];
+  const push = (value) => {
+    for (const part of String(value || '').split(',')) {
+      const ip = part.trim().replace(/^::ffff:/, '');
+      if (ip) candidates.push(ip);
+    }
+  };
+  push(c.req.header('CF-Connecting-IP'));
+  push(c.req.header('True-Client-IP'));
+  push(c.req.header('X-Forwarded-For'));
+  push(c.req.header('X-Real-IP'));
+  push(c.env?.incoming?.socket?.remoteAddress);
+  return candidates.find((ip) => !isPrivateIp(ip)) || candidates[0] || '127.0.0.1';
 }
 
 function isPrivateIp(ip) {
@@ -80,7 +87,7 @@ function isPrivateIp(ip) {
 }
 
 const HOSTING_ORG_PATTERN =
-  /amazon|aws|google cloud|google llc|microsoft|azure|digitalocean|linode|akamai|ovh|hetzner|vultr|contabo|oracle|alibaba|tencent|cloudflare|m247|datacamp|hosting|vpn|proxy|server|data ?center/i;
+  /amazon|aws|google cloud|google llc|microsoft|azure|digitalocean|linode|akamai|ovh|hetzner|vultr|contabo|oracle|alibaba|tencent|cloudflare|hostinger|hcdn|m247|datacamp|vpn|proxy|data ?center/i;
 
 /** Approximate IP location via ipinfo.io (optional IPINFO_TOKEN raises the free limit). */
 async function lookupIpGeo(env, ip) {
@@ -95,12 +102,15 @@ async function lookupIpGeo(env, ip) {
     const d = await res.json();
     if (d.bogon) return null;
     const org = String(d.org || '').replace(/^AS\d+\s*/, '');
+    const place = resolveBdPlace(d.city, d.region);
     return {
       city: d.city || null,
       region: d.region || null,
       country: d.country || null,
       org: org || null,
       hosting: HOSTING_ORG_PATTERN.test(org),
+      district: place.district,
+      upazila: place.upazila,
     };
   } catch (_) {
     return null;
@@ -176,7 +186,6 @@ function applyCourierHistory(score, reasons, positives, courier, history) {
     score -= 20;
     positives.push(`Steadfast: ${delivered} delivered, ${rate}% success`);
   } else if ((courier.total || 0) === 0 && history.delivered === 0) {
-    score += 15;
     reasons.push('No earlier Steadfast delivery for this phone');
   }
   return { score, proven };
@@ -194,7 +203,7 @@ async function computeOrderRisk(conn, order) {
   const phone = normalizeBdPhone(order.customer_phone);
   const phoneValid = /^01[3-9]\d{8}$/.test(phone);
   if (!phoneValid) {
-    score += 45;
+    score += 50;
     reasons.push('Phone number is not a valid Bangladesh mobile number');
   }
 
@@ -216,11 +225,10 @@ async function computeOrderRisk(conn, order) {
   const street = streetAddress(order.customer_address);
   const streetWords = street.split(/[\s,]+/).filter((w) => w.length > 1);
   if (street.length < 8 || streetWords.length < 2) {
-    score += 18;
-    reasons.push('Address is too short or incomplete (need road / area, not one word)');
+    reasons.push('Address is short. Ask for the road or area before shipping');
   }
   if (looksGibberish(street)) {
-    score += 35;
+    score += 40;
     reasons.push('Address looks fake or randomly typed');
   }
 
@@ -253,8 +261,7 @@ async function computeOrderRisk(conn, order) {
       reasons.push(`${history.last24h} other orders from this phone in the last 24 hours`);
     }
     if (history.total === 0) {
-      score += 10;
-      reasons.push('First order from this phone — not proven yet');
+      reasons.push('First order from this phone');
     }
   }
 
@@ -275,41 +282,57 @@ async function computeOrderRisk(conn, order) {
     }
     phones.delete(phone);
     ipPhones7d = phones.size;
-    if (ipOrders24h >= 3) {
-      score += 25;
-      reasons.push(`${ipOrders24h} other orders from the same IP in the last 24 hours`);
-    }
-    if (ipPhones7d >= 2) {
-      score += 30;
-      reasons.push(`Same IP used ${ipPhones7d} different phone numbers this week`);
-    }
   } else {
-    score += 8;
-    reasons.push('No IP or device was recorded, so this order cannot be verified');
+    reasons.push('No IP or device was recorded');
   }
 
-  const geo = parseIpGeo(order.ip_geo);
-  if (geo?.country && geo.country !== 'BD') {
-    score += 45;
-    reasons.push(`Order placed from outside Bangladesh (${geo.country})`);
+  const geo = withBdPlace(parseIpGeo(order.ip_geo));
+  const country = String(geo?.country || '').toUpperCase();
+  const inBd = country === 'BD' || country === 'BANGLADESH';
+  const trustIp = hasIp && inBd && !geo?.hosting;
+  if (trustIp && ipOrders24h >= 3) {
+    score += 25;
+    reasons.push(`${ipOrders24h} other orders from the same IP in the last 24 hours`);
+  }
+  if (trustIp && ipPhones7d >= 2) {
+    score += 30;
+    reasons.push(`Same IP used ${ipPhones7d} different phone numbers this week`);
+  }
+  if (geo?.country && !inBd && !geo.hosting) {
+    score += 20;
+    reasons.push(`IP location is outside Bangladesh (${geo.country})`);
   }
   if (geo?.hosting) {
-    score += 30;
-    reasons.push(`IP belongs to a VPN, proxy or hosting network (${geo.org})`);
+    reasons.push(`IP is a network or CDN (${geo.org}), not proof the customer is abroad`);
   }
-  if (geo?.country === 'BD' && !geo.hosting) positives.push(`Bangladesh network (${geo.org || 'local ISP'})`);
+  if (inBd && !geo?.hosting) positives.push(`Bangladesh network (${geo.org || 'local ISP'})`);
+
+  const claimed = orderPlace(order.customer_address);
+  if (trustIp && geo?.district && claimed.district) {
+    const sameDistrict = geo.district === claimed.district;
+    const sameUpazila = geo.upazila && claimed.upazila && geo.upazila === claimed.upazila;
+    if (sameUpazila) {
+      positives.push(`IP upazila matches the order (${geo.upazila}, ${geo.district})`);
+    } else if (sameDistrict && geo.upazila && claimed.upazila) {
+      reasons.push(`IP upazila is ${geo.upazila}, order says ${claimed.upazila}`);
+    } else if (sameDistrict) {
+      positives.push(`IP district matches the order (${geo.district})`);
+    } else {
+      score += 15;
+      reasons.push(`IP district is ${geo.district}, order says ${claimed.district}`);
+    }
+  }
 
   const courierResult = applyCourierHistory(score, reasons, positives, order.courier, history);
   score = courierResult.score;
   score = Math.max(0, score);
 
   const hardFake = reasons.some((r) =>
-    /invalid|outside Bangladesh|VPN|fraud report|success is only|none delivered|randomly typed|looks fake/.test(r)
+    /not a valid Bangladesh|fraud report|success is only|none delivered|randomly typed|looks fake/.test(r)
   );
-  if (courierResult.proven && score >= 45 && !hardFake) score = 30;
-  if (!courierResult.proven && score < 20) score = 20;
+  if (courierResult.proven && !hardFake) score = Math.min(score, 15);
 
-  const level = score >= 45 ? 'high' : score >= 20 ? 'medium' : 'low';
+  const level = hardFake || score >= 50 ? 'high' : courierResult.proven ? 'low' : 'medium';
   return { level, score, reasons, positives, history, ipOrders24h, ipPhones7d, hasIp };
 }
 
@@ -800,7 +823,7 @@ async function sendOrderNotificationEmail(env, order) {
 
   const RISK_STYLE = {
     low: { label: 'Has delivery history', color: '#15803d', bg: '#dcfce7' },
-    medium: { label: 'Check before shipping', color: '#a16207', bg: '#fef9c3' },
+    medium: { label: 'New customer', color: '#a16207', bg: '#fef9c3' },
     high: { label: 'Likely fake', color: '#b91c1c', bg: '#fee2e2' },
   };
   const risk = order.risk;
@@ -2505,12 +2528,14 @@ app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
   } catch (err) {
     courier = { configured: true, error: err?.message || 'Courier check failed' };
   }
-  const risk = await computeOrderRisk(conn, { ...order, ip_geo: geo, courier });
+  const placed = withBdPlace(geo);
+  const risk = await computeOrderRisk(conn, { ...order, ip_geo: placed, courier });
   return c.json({
     ...risk,
     ip: order.customer_ip || null,
     user_agent: order.user_agent || null,
-    geo,
+    geo: placed,
+    place: orderPlace(order.customer_address),
     tracked: Boolean(order.customer_ip),
     courier,
   });
