@@ -185,7 +185,7 @@ function PublicLayout() {
       </header>
 
       {/* Main Content — pt must match fixed header (nav h-14/md:h-20 + optional ticker ~36px) */}
-      <main className={`flex-grow ${isTopTickerActive ? 'pt-[5.75rem] md:pt-[7.25rem]' : 'pt-14 md:pt-20'} pb-24 lg:pb-0`}>
+      <main className={`flex-grow ${isTopTickerActive ? 'pt-[5.75rem] md:pt-[7.25rem]' : 'pt-14 md:pt-20'} pb-32 lg:pb-0`}>
         <Suspense fallback={<PageLoadingFallback />}>
           {isStaticPage ? (
             <StaticPage path={location.pathname} />

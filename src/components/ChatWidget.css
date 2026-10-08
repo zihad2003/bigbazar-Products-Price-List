@@ -61,18 +61,21 @@
   }
 }
 
-/* Mobile: lift above bottom nav + floating cart so footer payment logos stay clear */
+/* Mobile: icon only, sitting above the raised cart and clear of the banner. */
 @media (max-width: 640px) {
   .chat-widget-fab {
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: auto;
-    padding: 8px 14px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
   }
 
-  /* Product page: FAB stays low-right; sticky ORDER bar sits above it (~152px) */
   .chat-widget-fab--product {
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
     right: 12px;
     left: auto;
   }

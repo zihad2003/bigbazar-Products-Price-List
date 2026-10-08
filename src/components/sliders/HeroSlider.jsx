@@ -5,15 +5,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 
 /**
- * Broader hero frame — mobile-first so banners feel wide (not tall portrait),
- * and object-cover keeps any admin upload filling the frame cleanly.
- *
- * Mobile  ~16:10 — wider first view for phone shoppers
- * Tablet  16:9
- * Desktop ~2.2:1 cinematic, capped height
+ * Banner frame matches the uploaded 16:9 photos.
+ * A wider desktop crop was cutting heads and the slogan.
  */
 const FRAME_CLASS = {
-  auto: 'aspect-[16/10] sm:aspect-[16/9] lg:aspect-[11/5] max-h-[52vh] sm:max-h-[56vh] lg:max-h-[520px]',
+  auto: 'aspect-[16/10] sm:aspect-[16/9] lg:aspect-[16/9] max-h-[52vh] sm:max-h-[56vh] lg:max-h-[680px]',
   slim: 'aspect-[2/1] sm:aspect-[21/9] max-h-[42vh] lg:max-h-[400px]',
   fullscreen: 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[16/9] max-h-[70vh] lg:max-h-[620px]',
 };
@@ -224,8 +220,8 @@ export default function HeroSlider({ slides = [], aspectMode = 'auto' }) {
               }}
               className={`transition-all duration-300 rounded-full ${
                 idx === current
-                  ? 'w-6 h-1.5 bg-white shadow-sm'
-                  : 'w-1.5 h-1.5 bg-white/55 hover:bg-white/85'
+                  ? 'w-7 h-2 bg-white shadow-sm'
+                  : 'w-2 h-2 bg-white/70 hover:bg-white'
               }`}
               aria-label={`Go to slide ${idx + 1}`}
               aria-current={idx === current ? 'true' : undefined}

@@ -389,8 +389,8 @@ export default function ProductDetails() {
     return (
         <div className="product-page max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-12 bg-white" style={bnFont}>
             {/* Breadcrumbs */}
-            <div className="mb-6 flex items-center justify-between text-xs text-neutral-500 font-bold tracking-wide">
-                <div className="flex flex-wrap items-center gap-2">
+            <div className="mb-4 flex items-center gap-3 text-xs text-neutral-500 font-bold tracking-wide">
+                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                     <Link to="/" className="hover:text-neutral-900 transition-colors">
                         Home
                     </Link>
@@ -417,7 +417,7 @@ export default function ProductDetails() {
                             <span>/</span>
                         </>
                     )}
-                    <span className="text-[#ce112d] font-bold max-w-[200px] sm:max-w-[300px] md:max-w-[400px] truncate capitalize">
+                    <span className="text-[#ce112d] font-bold min-w-0 truncate capitalize">
                         {product.name}
                     </span>
                 </div>
@@ -607,7 +607,7 @@ export default function ProductDetails() {
                             <div className="flex flex-col gap-4">
                                 {/* Quantity Picker */}
                                 <div className="flex items-center justify-between p-2.5 bg-neutral-50 rounded-xl border border-neutral-100">
-                                    <p className="pl-3 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                    <p className="pl-3 text-sm font-semibold text-neutral-700">
                                         {language === 'bn' ? 'পরিমাণ' : 'Quantity'}
                                     </p>
                                     <div className="flex items-center gap-5 pr-2">
@@ -741,7 +741,7 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="fixed bottom-[152px] right-3 sm:bottom-6 sm:right-6 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[290px] sm:max-w-sm"
+                        className="fixed bottom-[176px] right-3 sm:bottom-6 sm:right-6 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-zinc-900 max-w-[290px] sm:max-w-sm"
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-9 h-10 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200 relative">
@@ -849,7 +849,7 @@ export default function ProductDetails() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="lg:hidden fixed bottom-[152px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900 max-w-[calc(100vw-7.5rem)]"
+                        className="lg:hidden fixed bottom-[176px] right-3 z-[1010] bg-white/95 backdrop-blur-xl border border-zinc-200/90 rounded-2xl p-2 shadow-xl flex items-center gap-2.5 text-zinc-900 max-w-[calc(100vw-7.5rem)]"
                     >
                         <div className="w-10 h-11 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-zinc-200">
                             <img

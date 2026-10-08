@@ -882,7 +882,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
           <div className="w-7 h-7 rounded-full bg-[#ce112d] flex items-center justify-center text-white shrink-0">
             <MessageCircle size={15} strokeWidth={2.25} />
           </div>
-          <span className="text-xs font-bold text-zinc-900 leading-none">
+          <span className="hidden sm:inline text-xs font-bold text-zinc-900 leading-none">
             {c.fab}
           </span>
         </button>

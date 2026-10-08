@@ -67,7 +67,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
     <div className="flex flex-col gap-3 md:gap-4">
       {/* Main Image */}
       <div 
-        className="relative w-full aspect-[4/5] md:aspect-[3/4] lg:aspect-[4/5] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm cursor-zoom-in group border border-neutral-100"
+        className="relative w-full aspect-[4/5] max-h-[50vh] md:max-h-none md:aspect-[3/4] lg:aspect-[4/5] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm cursor-zoom-in group border border-neutral-100"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -130,7 +130,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
                 key={i}
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setCurrentIndex(i); }}
-                className={`h-1.5 rounded-full transition-all ${i === currentIndex ? 'w-6 bg-[#ce112d]' : 'w-1.5 bg-white/70 hover:bg-white'}`}
+                className={`h-2 rounded-full transition-all ${i === currentIndex ? 'w-7 bg-[#ce112d]' : 'w-2 bg-white/80 hover:bg-white'}`}
                 aria-label={`Go to slide ${i + 1}`}
               />
             ))}
