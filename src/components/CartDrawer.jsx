@@ -150,7 +150,7 @@ export default function CartDrawer({ isOpen, onClose }) {
 
                         {/* Footer */}
                         {cartItems.length > 0 && (
-                            <div className="p-6 border-t space-y-4 border-neutral-100 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/20">
+                            <div className="p-6 border-t space-y-4 border-neutral-100 dark:border-white/5">
                                 <div className="flex justify-between items-baseline mb-2">
                                     <span className={`text-[9px] font-black uppercase text-neutral-400 ${language === 'bn' ? '' : 'tracking-[0.25em]'}`}>
                                         {t('subtotal')}

@@ -210,7 +210,7 @@ const QUICK_INFO_TOPICS = [
   { id: 'location', bn: 'শোরুম লোকেশন ও সময়', en: 'Showroom location', icon: <Store size={14} className="text-zinc-600" />, query: 'showroom location' }
 ];
 
-export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
+export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToCart } = useCart();
@@ -875,6 +875,8 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
       setIsLoading(false);
     }
   };
+
+  if (hidden) return null;
 
   return (
     <>

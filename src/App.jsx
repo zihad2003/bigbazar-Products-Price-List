@@ -225,7 +225,7 @@ function PublicLayout() {
       />
 
       {!isCheckoutPage && !isConfirmationPage && (
-        <ChatWidget onOpenAuth={() => openModal(setIsAuthOpen)} />
+        <ChatWidget hidden={isCartOpen} onOpenAuth={() => openModal(setIsAuthOpen)} />
       )}
 
     </div>
