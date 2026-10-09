@@ -5,6 +5,7 @@ import {
 import { useEffect, useState } from 'react';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { API_URL, getToken } from '../../api/client';
+import { orderTotal, paymentConfirmed, receivedAdvance, suggestedAdvance } from '../../utils/orderMoney';
 
 function parseOrderLine(str) {
   const res = { name: str, size: null, color: null, sku: null, qty: 1 };
@@ -18,26 +19,6 @@ function parseOrderLine(str) {
   if (qtyMatch) res.qty = qtyMatch[1];
   res.name = str.split('(')[0].trim();
   return res;
-}
-
-function advanceAmount(order) {
-  const confirmed =
-    Boolean(order?.is_advance_paid) ||
-    order?.payment_status === 'Advance Paid' ||
-    order?.payment_status === 'Fully Paid';
-  if (!confirmed) return 0;
-  const charge = parseFloat(order.delivery_charge) || 0;
-  if (order.is_exclusive_order) return 500;
-  if (order.delivery_area === 'mirsarai' && charge === 0) return 100;
-  return charge;
-}
-
-function balanceDue(order) {
-  const total = typeof order.total_amount === 'string'
-    ? Number(order.total_amount.replace(/[^0-9.]/g, ''))
-    : Number(order.total_amount) || 0;
-  if (order.payment_status === 'Fully Paid') return 0;
-  return Math.max(0, total - advanceAmount(order));
 }
 
 function hasCustomerPaymentClaim(order) {
@@ -198,6 +179,7 @@ function FraudCheck({ orderId }) {
 
 const STATUS_BTN = {
   Pending: 'bg-yellow-500 border-yellow-500 text-black',
+  Confirmed: 'bg-emerald-600 border-emerald-600 text-white',
   Shipped: 'bg-blue-500 border-blue-500 text-white',
   Delivered: 'bg-green-500 border-green-500 text-white',
   Canceled: 'bg-red-500 border-red-500 text-white',
@@ -215,20 +197,36 @@ export default function OrderDetailsPanel({
   onCopy,
   onDelete,
   onTogglePayment,
+  onRecordAdvance,
   onUpdateStatus,
   onEditNote,
   onOrderPatched,
 }) {
   const [sfBusy, setSfBusy] = useState(false);
   const [sfMsg, setSfMsg] = useState('');
+  const [advanceInput, setAdvanceInput] = useState('');
+  const [savingAdvance, setSavingAdvance] = useState(false);
+
+  useEffect(() => {
+    if (!order) return;
+    const stored = order.advance_paid_amount;
+    const start = stored !== null && stored !== undefined && stored !== ''
+      ? stored
+      : suggestedAdvance(order);
+    setAdvanceInput(String(start));
+  }, [order?.id, order?.advance_paid_amount, order?.delivery_charge, order?.delivery_area, order?.is_exclusive_order]);
 
   if (!order) return null;
 
   const ref = order.id.toString().slice(-6).toUpperCase();
   const items = (order.product_name || '').split(' + ').map(parseOrderLine);
   const pay = paymentRef(order);
-  const adv = advanceAmount(order);
-  const due = balanceDue(order);
+  const adv = receivedAdvance(order);
+  const typedAdvance = Number(advanceInput);
+  const shownAdvance = Number.isFinite(typedAdvance) && typedAdvance >= 0 ? Math.round(typedAdvance) : adv;
+  const due = Math.max(0, orderTotal(order) - shownAdvance);
+  const suggested = suggestedAdvance(order);
+  const paid = paymentConfirmed(order);
   const isModal = variant === 'modal';
 
   const bookSteadfast = async () => {
@@ -445,7 +443,7 @@ export default function OrderDetailsPanel({
               { label: 'Product', value: `৳${Number(order.product_price || 0).toLocaleString()}` },
               { label: 'Delivery', value: `৳${parseFloat(order.delivery_charge) || 0}` },
               { label: pay.label, value: pay.value, accent: true },
-              { label: 'Advance', value: `৳${adv}`, accent: true },
+              { label: 'Advance', value: `৳${shownAdvance}`, accent: true },
             ].map((cell) => (
               <div key={cell.label} className={`rounded-md border p-2.5 ${cell.accent ? 'border-[#ce112d]/25 bg-[#ce112d]/5' : 'border-white/10 bg-black/20'}`}>
                 <p className="text-[10px] text-zinc-500 mb-0.5 truncate">{cell.label}</p>
@@ -460,31 +458,50 @@ export default function OrderDetailsPanel({
               <p className="text-2xl font-bold text-white tracking-tight">৳{due.toLocaleString()}</p>
               {hasCustomerPaymentClaim(order) && (
                 <p className="text-[10px] text-white/80 mt-1">
-                  Customer sent payment ref — confirm below after verifying
+                  Customer sent a payment ref. Check it, then confirm the amount.
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+            <div className="flex flex-col gap-1.5 w-full sm:w-56">
+              <label className="text-[10px] text-white/70" htmlFor={`advance-${order.id}`}>
+                Amount received
+              </label>
+              <input
+                id={`advance-${order.id}`}
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={advanceInput}
+                onChange={(e) => setAdvanceInput(e.target.value)}
+                className="h-9 rounded-md bg-white text-neutral-900 px-3 text-sm font-semibold outline-none"
+              />
+              <p className="text-[10px] text-white/70">Usual for this order: ৳{suggested}. Type what arrived.</p>
               <button
                 type="button"
-                onClick={() => onTogglePayment?.(order, 'Advance Paid')}
-                className={`h-9 px-4 rounded-md text-[11px] font-semibold transition-colors ${
-                  order.is_advance_paid || order.payment_status === 'Advance Paid' || order.payment_status === 'Fully Paid'
-                    ? 'bg-white text-[#ce112d]'
-                    : 'bg-black/25 text-white/80 border border-white/15'
-                }`}
+                disabled={savingAdvance}
+                onClick={async () => {
+                  const n = Number(advanceInput);
+                  if (!Number.isFinite(n) || n <= 0) return;
+                  setSavingAdvance(true);
+                  try {
+                    await onRecordAdvance?.(order, Math.round(n));
+                  } finally {
+                    setSavingAdvance(false);
+                  }
+                }}
+                className="h-9 px-4 rounded-md text-[11px] font-semibold bg-white text-[#ce112d] disabled:opacity-60"
               >
-                {order.is_advance_paid || order.payment_status === 'Advance Paid' || order.payment_status === 'Fully Paid'
-                  ? 'Advance paid'
-                  : 'Mark advance'}
+                {savingAdvance ? 'Saving…' : paid ? 'Update amount' : 'Confirm order'}
               </button>
-              <button
-                type="button"
-                onClick={() => onTogglePayment?.(order, 'Fully Paid')}
-                className={`h-9 px-4 rounded-md text-[11px] font-semibold transition-colors ${order.payment_status === 'Fully Paid' ? 'bg-white text-[#ce112d]' : 'bg-black/25 text-white/80 border border-white/15'}`}
-              >
-                {order.payment_status === 'Fully Paid' ? 'Fully paid' : 'Mark fully paid'}
-              </button>
+              {paid && (
+                <button
+                  type="button"
+                  onClick={() => onTogglePayment?.(order, 'Unpaid')}
+                  className="h-8 text-[10px] font-semibold text-white/80 underline"
+                >
+                  Undo payment
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -494,7 +511,7 @@ export default function OrderDetailsPanel({
           <section className="space-y-2">
             <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Status</p>
             <div className="grid grid-cols-2 gap-1.5">
-              {['Pending', 'Shipped', 'Delivered', 'Canceled'].map((status) => {
+              {['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Canceled'].map((status) => {
                 const active = order.status === status;
                 return (
                   <button

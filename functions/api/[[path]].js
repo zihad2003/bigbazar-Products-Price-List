@@ -48,6 +48,17 @@ async function ensureOrderSteadfastColumns(conn) {
   }
 }
 
+let orderPaymentColumnsReady = false;
+async function ensureOrderPaymentColumns(conn) {
+  if (orderPaymentColumnsReady) return;
+  try {
+    await conn.execute('ALTER TABLE orders ADD COLUMN advance_paid_amount DECIMAL(10,2) NULL');
+  } catch (_) {
+    /* column already exists */
+  }
+  orderPaymentColumnsReady = true;
+}
+
 let orderRiskColumnsReady = false;
 async function ensureOrderRiskColumns(conn) {
   if (orderRiskColumnsReady) return;
@@ -385,10 +396,16 @@ function orderCodAmount(order) {
     order.payment_status === 'Advance Paid' ||
     order.payment_status === 'Fully Paid';
   if (!confirmed) return Math.max(0, total);
-  const charge = parseFloat(order.delivery_charge) || 0;
-  let advance = charge;
-  if (order.is_exclusive_order) advance = 500;
-  else if (order.delivery_area === 'mirsarai' && charge === 0) advance = 100;
+  const stored = order.advance_paid_amount;
+  let advance;
+  if (stored !== null && stored !== undefined && stored !== '' && Number.isFinite(Number(stored))) {
+    advance = Math.max(0, Number(stored));
+  } else {
+    const charge = parseFloat(order.delivery_charge) || 0;
+    advance = charge;
+    if (order.is_exclusive_order) advance = 500;
+    else if (order.delivery_area === 'mirsarai' && charge === 0) advance = 100;
+  }
   return Math.max(0, total - advance);
 }
 
@@ -2080,6 +2097,7 @@ app.delete('/products/:id', requireAuth, requireAdmin, async (c) => {
 app.get('/orders', requireAuth, requireAdmin, async (c) => {
   const { status, search, page = 0, limit = 20, ascending = 'false' } = c.req.query();
   const conn = getDb(c.env);
+  await ensureOrderPaymentColumns(conn);
   let sql = 'SELECT * FROM orders WHERE 1=1';
   const params = [];
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -2443,6 +2461,20 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const o = await c.req.json();
   const id = c.req.param('id');
   const conn = getDb(c.env);
+  await ensureOrderPaymentColumns(conn);
+
+  let advancePaidAmount;
+  if (o.advance_paid_amount !== undefined) {
+    if (o.advance_paid_amount === null || o.advance_paid_amount === '') {
+      advancePaidAmount = null;
+    } else {
+      const n = Number(o.advance_paid_amount);
+      if (!Number.isFinite(n) || n < 0 || n > 10000000) {
+        return c.json({ error: 'Advance amount is not valid' }, 400);
+      }
+      advancePaidAmount = Math.round(n);
+    }
+  }
 
   const tx = await conn.begin();
   try {
@@ -2471,7 +2503,8 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined,
       payment_status: o.payment_status,
       delivery_charge: o.delivery_charge,
-      total_amount: o.total_amount
+      total_amount: o.total_amount,
+      advance_paid_amount: advancePaidAmount,
     };
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }

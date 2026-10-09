@@ -23,6 +23,7 @@ import OrderDetailsPanel from '../components/admin/OrderDetailsPanel';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { balanceDue, orderTotal, receivedAdvance } from '../utils/orderMoney';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -194,12 +195,9 @@ export default function Admin() {
 
   const copyFullOrderDetails = (order) => {
     if (!order) return;
-    const charge = parseFloat(order.delivery_charge) || 0;
-    const advance = order.is_advance_paid
-      ? (order.is_exclusive_order ? 500 : (order.delivery_area === 'mirsarai' && charge === 0 ? 100 : charge))
-      : 0;
-    const total = Number(order.total_amount) || 0;
-    const due = order.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+    const advance = receivedAdvance(order);
+    const total = orderTotal(order);
+    const due = balanceDue(order);
 
     const text = `BIG BAZAR ORDER DETAILS
 ━━━━━━━━━━━━━━━━━━━━
@@ -566,13 +564,26 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       else if (current === 'Advance Paid') nextStatus = 'Unpaid';
       else nextStatus = 'Advance Paid';
     } else if (targetStatus === 'Fully Paid') {
-      // Not fully → Fully; Fully → Advance (keep advance, don't wipe to Unpaid)
       nextStatus = current === 'Fully Paid' ? 'Advance Paid' : 'Fully Paid';
+    } else if (targetStatus === 'Unpaid') {
+      nextStatus = 'Unpaid';
     } else {
       nextStatus = targetStatus;
     }
 
     const nextAdvance = nextStatus !== 'Unpaid';
+    const total = orderTotal(order);
+    const patch = {
+      payment_status: nextStatus,
+      is_advance_paid: nextAdvance,
+    };
+    if (nextStatus === 'Unpaid') {
+      patch.advance_paid_amount = null;
+      if (order.status === 'Confirmed') patch.status = 'Pending';
+    } else if (nextStatus === 'Fully Paid') {
+      patch.advance_paid_amount = total;
+      if (!order.status || order.status === 'Pending') patch.status = 'Confirmed';
+    }
 
     setConfirmation({
       isOpen: true,
@@ -582,10 +593,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       onConfirm: async () => {
         const { error } = await bigBazarApi
           .from('orders')
-          .update({
-            payment_status: nextStatus,
-            is_advance_paid: nextAdvance
-          })
+          .update(patch)
           .eq('id', order.id);
 
         if (error) {
@@ -606,11 +614,31 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
         } else {
           fetchOrders();
           if (selectedOrder?.id === order.id) {
-            setSelectedOrder({ ...selectedOrder, payment_status: nextStatus, is_advance_paid: nextAdvance });
+            setSelectedOrder({ ...selectedOrder, ...patch });
           }
         }
       }
     });
+  };
+
+  const recordAdvance = async (order, amount) => {
+    const paid = Math.max(0, Math.round(Number(amount) || 0));
+    const total = orderTotal(order);
+    const fully = total > 0 && paid >= total;
+    const patch = {
+      advance_paid_amount: paid,
+      is_advance_paid: 1,
+      payment_status: fully ? 'Fully Paid' : 'Advance Paid',
+    };
+    if (!order.status || order.status === 'Pending') patch.status = 'Confirmed';
+    const { error } = await bigBazarApi.from('orders').update(patch).eq('id', order.id);
+    if (error) {
+      setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+      return;
+    }
+    fetchOrders();
+    if (selectedOrder?.id === order.id) setSelectedOrder({ ...selectedOrder, ...patch });
+    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...patch } : o)));
   };
 
   const toggleAdvancePayment = async (id, currentStatus) => {
@@ -3519,24 +3547,9 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               const isCanceled = (s) => s === 'Canceled' || s === 'Cancelled';
               const listed = orders.filter(o => o && o.status !== 'Deleted');
               const open = listed.filter(o => !isCanceled(o.status));
-              const advanceOf = (o) => {
-                const confirmed =
-                  Boolean(o.is_advance_paid) ||
-                  o.payment_status === 'Advance Paid' ||
-                  o.payment_status === 'Fully Paid';
-                if (!confirmed) return 0;
-                const charge = parseFloat(o.delivery_charge) || 0;
-                if (o.is_exclusive_order) return 500;
-                if (o.delivery_area === 'mirsarai' && charge === 0) return 100;
-                return charge;
-              };
-              const revenue = open.reduce((acc, o) => acc + (parseFloat(o.total_amount) || 0), 0);
-              const advance = open.reduce((acc, o) => acc + advanceOf(o), 0);
-              const due = open.reduce((acc, o) => {
-                if (o.payment_status === 'Fully Paid') return acc;
-                const totalAmount = parseFloat(o.total_amount) || 0;
-                return acc + Math.max(0, totalAmount - advanceOf(o));
-              }, 0);
+              const revenue = open.reduce((acc, o) => acc + orderTotal(o), 0);
+              const advance = open.reduce((acc, o) => acc + receivedAdvance(o), 0);
+              const due = open.reduce((acc, o) => acc + balanceDue(o), 0);
               const pending = open.filter(o => o.status === 'Pending').length;
               const shipped = open.filter(o => o.status === 'Shipped').length;
               const done = open.filter(o => o.status === 'Delivered').length;
@@ -3581,6 +3594,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     onCopy={copyToClipboard}
                     onDelete={(id) => { deleteOrder(id); setSelectedOrder(null); }}
                     onTogglePayment={togglePaymentStatus}
+                    onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
@@ -3644,6 +3658,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                 <p className="text-[10px] text-zinc-500">{new Date(o.created_at).toLocaleDateString()}</p>
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${
                                   o.status === 'Pending' ? 'bg-yellow-500/15 text-yellow-400' :
+                                  o.status === 'Confirmed' ? 'bg-emerald-500/15 text-emerald-400' :
                                   o.status === 'Shipped' ? 'bg-blue-500/15 text-blue-400' :
                                   o.status === 'Delivered' ? 'bg-green-500/15 text-green-400' :
                                   'bg-red-500/15 text-red-400'
@@ -3687,6 +3702,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                     onCopy={copyToClipboard}
                     onDelete={deleteOrder}
                     onTogglePayment={togglePaymentStatus}
+                    onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
@@ -3726,6 +3742,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                             <p className="text-[12px] font-semibold text-white truncate">{o.customer_name}</p>
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase shrink-0 ${
                               o.status === 'Pending' ? 'bg-yellow-500/15 text-yellow-400' :
+                              o.status === 'Confirmed' ? 'bg-emerald-500/15 text-emerald-400' :
                               o.status === 'Shipped' ? 'bg-blue-500/15 text-blue-400' :
                               o.status === 'Delivered' ? 'bg-green-500/15 text-green-400' :
                               'bg-red-500/15 text-red-400'

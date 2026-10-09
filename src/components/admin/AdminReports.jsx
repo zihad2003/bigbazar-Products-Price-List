@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { balanceDue, receivedAdvance } from '../../utils/orderMoney';
 import {
   BarChart3, Calendar, Download, Printer, TrendingUp, DollarSign,
   ShoppingBag, Package, Users, CheckCircle2, Clock, XCircle, Truck,
@@ -12,21 +13,11 @@ const isDeliveredStatus = (status) => status === 'Delivered' || status === 'Comp
 const isShippedStatus = (status) => status === 'Shipped';
 
 function getAdvanceAmount(order) {
-  const confirmed =
-    Boolean(order?.is_advance_paid) ||
-    order?.payment_status === 'Advance Paid' ||
-    order?.payment_status === 'Fully Paid';
-  if (!confirmed) return 0;
-  const charge = Number(order.delivery_charge) || 0;
-  if (order.is_exclusive_order) return 500;
-  if (order.delivery_area === 'mirsarai' && charge === 0) return 100;
-  return charge;
+  return receivedAdvance(order);
 }
 
 function getBalanceDue(order) {
-  const total = Number(order.total_amount) || 0;
-  if (order.payment_status === 'Fully Paid') return 0;
-  return Math.max(0, total - getAdvanceAmount(order));
+  return balanceDue(order);
 }
 
 function parseOrderQty(order) {
