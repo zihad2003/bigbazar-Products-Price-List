@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star, AlertTriangle, Search, QrCode } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
-import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../../data/bdLocations';
+import { allDistricts, formatLocation, getDeliveryInfo, localityName, placeLabel } from '../../data/bdLocations';
+import { localityOptionList, localityPrompt } from '../LocalityOptions';
+import PlaceSelect from '../PlaceSelect';
 import { useLanguage } from '../../contexts/LanguageContext';
 import BanglaQRPayment from '../BanglaQRPayment';
 
@@ -36,13 +38,11 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
 
     const bKashNumber = "01857045449";
 
-    // Only show upazila dropdown for Chattogram district
-    const needsUpazila = formData.district === CHATTOGRAM_DISTRICT;
-    const isLocationComplete = formData.district && (!needsUpazila || formData.upazila);
+    const needsLocality = Boolean(formData.district);
+    const areaReady = Boolean(formData.district && formData.upazila);
 
-    // Auto-calculate delivery info
-    const deliveryInfo = isLocationComplete
-        ? getDeliveryInfo(formData.district, formData.upazila)
+    const deliveryInfo = areaReady
+        ? getDeliveryInfo(formData.district, localityName(formData.upazila))
         : null;
 
     const deliveryCharge = deliveryInfo?.charge ?? 0;
@@ -93,8 +93,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
             setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
             return;
         }
-        if (needsUpazila && !formData.upazila) {
-            setError(language === 'bn' ? "অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "Please select your upazila.");
+        if (needsLocality && !formData.upazila) {
+            setError(language === 'bn' ? "অনুগ্রহ করে উপজেলা বা থানা নির্বাচন করুন।" : "Please select an upazila or thana.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
@@ -121,9 +121,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
         setIsSubmitting(true);
         setError('');
 
-        const locationStr = formData.upazila
-            ? `${formData.upazila}, ${formData.district}`
-            : formData.district;
+        const locationStr = formatLocation(formData.district, formData.upazila);
 
         try {
             // Safe price parsing
@@ -422,13 +420,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                             <div className="relative">
                                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
                                 <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
-                                    className="w-full border rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
-                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
-                            </div>
-                            <div className="relative">
-                                <Home className="absolute left-3.5 top-3" size={16} style={{ color: 'var(--text-muted)' }} />
-                                <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
-                                    className="w-full border rounded-xl py-3 pl-10 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                    className="w-full border rounded-xl py-3 pl-10 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
                                     style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </div>
                         </div>
@@ -440,47 +432,46 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                 <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
                             </h4>
 
-                            {/* District + Upazila in a row */}
-                            <div className={`grid gap-2 ${needsUpazila ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                                {/* District */}
-                                <div className="relative">
-                                    <select
-                                        value={formData.district}
-                                        onChange={(e) => {
-                                            setFormData(prev => ({ ...prev, district: e.target.value, upazila: '' }));
-                                            if (error) setError('');
-                                        }}
-                                        className="w-full border rounded-xl py-3 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: formData.district ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                                    >
-                                        <option value="">{language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}</option>
-                                        {allDistricts.map(d => (
-                                            <option key={d} value={d} className="text-neutral-900 bg-white">{d}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                                </div>
+                            <div className="space-y-3">
+                                <PlaceSelect
+                                    value={formData.district}
+                                    onChange={(district) => {
+                                        setFormData(prev => ({ ...prev, district, upazila: '' }));
+                                        if (error) setError('');
+                                    }}
+                                    placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
+                                    options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
+                                    className="w-full border rounded-xl py-3 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left"
+                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                />
+                                <PlaceSelect
+                                    value={formData.upazila}
+                                    disabled={!formData.district}
+                                    onChange={(upazila) => {
+                                        setFormData(prev => ({ ...prev, upazila }));
+                                        if (error) setError('');
+                                    }}
+                                    placeholder={localityPrompt(formData.district, language)}
+                                    options={localityOptionList(formData.district, language)}
+                                    className="w-full border rounded-xl py-3 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left disabled:cursor-not-allowed"
+                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                />
+                            </div>
 
-                                {/* Upazila — only for Chattogram */}
-                                {needsUpazila && (
-                                    <div className="relative">
-                                        <select
-                                            value={formData.upazila}
-                                            onChange={(e) => {
-                                                setFormData(prev => ({ ...prev, upazila: e.target.value }));
-                                                if (error) setError('');
-                                            }}
-                                            className="w-full border rounded-xl py-3 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: formData.upazila ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                                        >
-                                            <option value="">{language === 'bn' ? 'উপজেলা নির্বাচন করুন' : 'Select Upazila'}</option>
-                                            {chattogramUpazilas.map(u => (
-                                                <option key={u} value={u} className="text-neutral-900 bg-white">{u}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                                    </div>
-                                )}
+                            {formData.district && formData.upazila && (
+                                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)' }}>
+                                    <MapPin size={14} className="shrink-0" style={{ color: 'var(--text-muted)' }} />
+                                    <span className="text-sm font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>
+                                        {formatLocation(formData.district, formData.upazila, language)}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="relative">
+                                <Home className="absolute left-3.5 top-3" size={16} style={{ color: 'var(--text-muted)' }} />
+                                <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
+                                    className="w-full border rounded-xl py-3 pl-10 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all resize-none"
+                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </div>
 
                             {/* Auto-detected delivery charge badge */}

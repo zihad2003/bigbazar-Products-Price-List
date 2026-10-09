@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, ChevronDown, Package, QrCode } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, Package, QrCode } from 'lucide-react';
 import { bigBazarApi, API_URL, getCustomerToken } from '../api/client';
-import { allDistricts, chattogramUpazilas, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
+import { allDistricts, formatLocation, getDeliveryInfo, localityName, matchLocality, placeLabel } from '../data/bdLocations';
+import { localityOptionList, localityPrompt } from '../components/LocalityOptions';
+import PlaceSelect from '../components/PlaceSelect';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -111,11 +113,11 @@ export default function Checkout() {
         ? (singleProduct ? parseFloat(singleProduct.price) * qtyQuery : 0)
         : cartTotal;
 
-    const needsUpazila = formData.district === CHATTOGRAM_DISTRICT;
-    const isLocationComplete = formData.district && (!needsUpazila || formData.upazila);
+    const needsLocality = Boolean(formData.district);
+    const areaReady = Boolean(formData.district && formData.upazila);
 
-    const deliveryInfo = isLocationComplete
-        ? getDeliveryInfo(formData.district, formData.upazila)
+    const deliveryInfo = areaReady
+        ? getDeliveryInfo(formData.district, localityName(formData.upazila))
         : null;
 
     const deliveryCharge = deliveryInfo?.charge ?? 0;
@@ -173,7 +175,7 @@ export default function Checkout() {
                 }
             } catch (_) {}
             const districtOk = allDistricts.includes(district) ? district : '';
-            const upazilaOk = districtOk === CHATTOGRAM_DISTRICT && chattogramUpazilas.includes(upazila) ? upazila : '';
+            const upazilaOk = matchLocality(districtOk, upazila);
             setFormData((prev) => ({
                 ...prev,
                 name: prev.name || name,
@@ -224,8 +226,8 @@ export default function Checkout() {
             setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
             return;
         }
-        if (needsUpazila && !formData.upazila) {
-            setError(language === 'bn' ? "অনুগ্রহ করে আপনার উপজেলা নির্বাচন করুন।" : "Please select your upazila.");
+        if (needsLocality && !formData.upazila) {
+            setError(language === 'bn' ? "অনুগ্রহ করে উপজেলা বা থানা নির্বাচন করুন।" : "Please select an upazila or thana.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
@@ -251,9 +253,7 @@ export default function Checkout() {
         setIsSubmitting(true);
         setError('');
 
-        const locationStr = formData.upazila
-            ? `${formData.upazila}, ${formData.district}`
-            : formData.district;
+        const locationStr = formatLocation(formData.district, formData.upazila);
 
         try {
             const isSingleItem = items.length === 1;
@@ -307,7 +307,7 @@ export default function Checkout() {
                     // Advance/Fully Paid is confirmed by admin only — send payment ref via last_four_digits
                     is_advance_paid: 0,
                     payment_status: 'Unpaid',
-                    customer_note: (formData.note ? `${formData.note} | Cart Items: ${combinedName}` : `Cart Items: ${combinedName}`).substring(0, 500),
+                    customer_note: String(formData.note || '').trim().slice(0, 500) || null,
                     items: items.map(item => ({
                         id: item.id,
                         quantity: item.quantity,
@@ -391,17 +391,12 @@ export default function Checkout() {
                         <div className="relative">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                             <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
                         </div>
                         <div className="relative">
                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                             <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
-                        </div>
-                        <div className="relative">
-                            <Home className="absolute left-4 top-4 text-neutral-400" size={16} />
-                            <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all resize-none bg-white" />
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
                         </div>
                     </div>
 
@@ -411,26 +406,30 @@ export default function Checkout() {
                             <MapPin size={13} className="text-neutral-400" />
                             <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
                         </h4>
-                        <div className={`grid gap-3 ${needsUpazila ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                            <div className="relative">
-                                <select value={formData.district} onChange={(e) => setFormData(p => ({ ...p, district: e.target.value, upazila: '' }))}
-                                    className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer bg-white">
-                                    <option value="">{language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}</option>
-                                    {allDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400" />
-                            </div>
-                            {needsUpazila && (
-                                <div className="relative">
-                                    <select value={formData.upazila} onChange={(e) => setFormData(p => ({ ...p, upazila: e.target.value }))}
-                                        className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-sm focus:border-[#ce112d] outline-none transition-all appearance-none cursor-pointer bg-white">
-                                        <option value="">{language === 'bn' ? 'উপজেলা নির্বাচন করুন' : 'Select Upazila'}</option>
-                                        {chattogramUpazilas.map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400" />
-                                </div>
-                            )}
+                        <div className="space-y-3">
+                            <PlaceSelect
+                                value={formData.district}
+                                onChange={(district) => setFormData(p => ({ ...p, district, upazila: '' }))}
+                                placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
+                                options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left"
+                            />
+                            <PlaceSelect
+                                value={formData.upazila}
+                                disabled={!formData.district}
+                                onChange={(upazila) => setFormData(p => ({ ...p, upazila }))}
+                                placeholder={localityPrompt(formData.district, language)}
+                                options={localityOptionList(formData.district, language)}
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left disabled:cursor-not-allowed disabled:text-neutral-400"
+                            />
                         </div>
+
+                        {formData.district && formData.upazila && (
+                            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white border border-neutral-200">
+                                <MapPin size={14} className="text-neutral-500 shrink-0" />
+                                <span className="text-sm font-semibold text-neutral-800 leading-snug">{formatLocation(formData.district, formData.upazila, language)}</span>
+                            </div>
+                        )}
 
                         {deliveryInfo && (
                             <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#ce112d]/5 border border-[#ce112d]/10">
@@ -439,9 +438,15 @@ export default function Checkout() {
                             </div>
                         )}
 
+                        <div className="relative">
+                            <Home className="absolute left-4 top-4 text-neutral-400" size={16} />
+                            <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all resize-none bg-white" />
+                        </div>
+
                         <div className="pt-2">
                             <input type="text" name="note" placeholder={language === 'bn' ? "বিশেষ নোট (ঐচ্ছিক)" : "Special Note (Optional)"} value={formData.note} onChange={handleInputChange}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 px-4 text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 px-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
                         </div>
                     </div>
                 </div>
@@ -533,7 +538,7 @@ export default function Checkout() {
                             </div>
                             <div className="flex justify-between text-xs font-bold text-neutral-500">
                                 <span>{t('delivery_charge')}</span>
-                                <span>{deliveryCharge > 0 ? `৳${deliveryCharge}` : (language === 'bn' ? 'ফ্রি' : 'Free')}</span>
+                                <span>{!areaReady ? '—' : (deliveryCharge > 0 ? `৳${deliveryCharge}` : (language === 'bn' ? 'ফ্রি' : 'Free'))}</span>
                             </div>
 
                             {/* Advance payment deduction if applicable */}

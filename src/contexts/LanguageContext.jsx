@@ -43,7 +43,7 @@ const translations = {
         confirm_order: 'অর্ডার কনফার্ম করুন',
         placeholder_name: 'আপনার নাম...',
         placeholder_phone: 'ফোন নাম্বার...',
-        placeholder_address: 'বাসা নং, রোড নং, এলাকা...',
+        placeholder_address: 'বাসা, রোড, মাহল্লা',
 
         // Tracking
         track_order: 'অর্ডার ট্র্যাক করুন',
@@ -100,7 +100,7 @@ const translations = {
         confirm_order: 'Confirm Order',
         placeholder_name: 'Your name...',
         placeholder_phone: 'Phone number...',
-        placeholder_address: 'House, Road, Area...',
+        placeholder_address: 'House, road, area',
 
         // Tracking
         track_order: 'Track Order',

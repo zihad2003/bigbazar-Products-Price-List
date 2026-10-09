@@ -409,6 +409,13 @@ function orderCodAmount(order) {
   return Math.max(0, total - advance);
 }
 
+/** Drop the cart dump that checkout used to append after the customer's own words. */
+function customerNoteText(raw) {
+  const text = String(raw || '').replace(/\s*\|\s*Cart Items:[\s\S]*$/i, '').trim();
+  if (!text || /^cart items:/i.test(text)) return '';
+  return text;
+}
+
 function orderInvoiceId(order) {
   const raw = String(order.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
   if (raw.length >= 4) return raw.slice(0, 40);
@@ -2319,7 +2326,7 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
         customerName: o.customer_name,
         customerPhone: o.customer_phone,
         customerAddress: o.customer_address,
-        customerNote: o.customer_note,
+        customerNote: customerNoteText(o.customer_note),
         deliveryArea: normalizedArea,
         deliveryCharge: calculatedDeliveryCharge,
         subtotal: calculatedSubtotal,
@@ -2618,7 +2625,7 @@ app.post('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
     order.delivery_area ? `Area: ${order.delivery_area}` : '',
     order.size ? `Size: ${order.size}` : '',
     order.color ? `Color: ${order.color}` : '',
-    order.customer_note ? String(order.customer_note).slice(0, 200) : '',
+    customerNoteText(order.customer_note).slice(0, 200),
   ]
     .filter(Boolean)
     .join(' | ')
@@ -4495,12 +4502,14 @@ app.get('/admin/conversations/stats', requireAuth, requireAdmin, async (c) => {
       "SELECT COUNT(*) as today_total FROM conversations WHERE DATE(created_at) = ?",
       [todayStr]
     );
+    const totalRes = await conn.execute('SELECT COUNT(*) as total FROM conversations');
     return c.json({
       active_now: activeRes[0]?.active_now || 0,
-      today_total: todayRes[0]?.today_total || 0
+      today_total: todayRes[0]?.today_total || 0,
+      total: Number(totalRes[0]?.total) || 0
     });
   } catch (err) {
-    return c.json({ active_now: 0, today_total: 0 });
+    return c.json({ active_now: 0, today_total: 0, total: 0 });
   }
 });
 

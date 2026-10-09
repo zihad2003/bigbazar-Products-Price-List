@@ -14,7 +14,9 @@ import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { API_URL, getCustomerToken, bigBazarApi } from '../api/client';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useAuth } from '../contexts/AuthContext';
-import { allDistricts, chattogramUpazilas, FREE_UPAZILA, CHATTOGRAM_DISTRICT, getDeliveryInfo } from '../data/bdLocations';
+import { allDistricts, formatLocation, FREE_UPAZILA, CHATTOGRAM_DISTRICT, getDeliveryInfo, localityName, placeLabel } from '../data/bdLocations';
+import { localityOptionList, localityPrompt } from './LocalityOptions';
+import PlaceSelect from './PlaceSelect';
 import { TOP_CATEGORIES, getSubcategoriesForCategory } from '../data/categories';
 import './ChatWidget.css';
 
@@ -83,7 +85,7 @@ const CHAT_COPY = {
     namePh: 'আপনার পুরো নাম *',
     phonePh: 'মোবাইল নম্বর (১১ ডিজিট) *',
     upazilaPh: 'উপজেলা / থানা',
-    addressPh: 'বিস্তারিত ঠিকানা (বাসা/রোড/এলাকা) *',
+    addressPh: 'বাসা, রোড, মাহল্লা *',
     productPrice: 'পণ্য মূল্য:',
     deliveryCharge: 'ডেলিভারি চার্জ:',
     freeDelivery: '৳০ (ফ্রি)',
@@ -160,7 +162,7 @@ const CHAT_COPY = {
     namePh: 'Full name *',
     phonePh: 'Mobile (11 digits) *',
     upazilaPh: 'Upazila / Thana',
-    addressPh: 'Full address (house/road/area) *',
+    addressPh: 'House, road, area *',
     productPrice: 'Subtotal:',
     deliveryCharge: 'Delivery:',
     freeDelivery: '৳0 (Free)',
@@ -239,7 +241,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
     name: '',
     phone: '',
     district: CHATTOGRAM_DISTRICT,
-    upazila: FREE_UPAZILA,
+    upazila: `u:${FREE_UPAZILA}`,
     address: '',
     size: '',
     color: '',
@@ -492,7 +494,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
 
   // Align with Checkout: charge + advance (Mirsarai confirmation fee)
   const calculateDelivery = (district, upazila) => {
-    const info = getDeliveryInfo(district, upazila);
+    const info = getDeliveryInfo(district, localityName(upazila));
     const copy = CHAT_COPY[language] || CHAT_COPY.bn;
     const note =
       info.area === 'mirsarai' ? copy.deliveryFree :
@@ -738,7 +740,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
       name: '',
       phone: '',
       district: CHATTOGRAM_DISTRICT,
-      upazila: FREE_UPAZILA,
+      upazila: `u:${FREE_UPAZILA}`,
       address: '',
       size: initialSize,
       color: initialColor,
@@ -763,6 +765,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
     }
     if (!orderForm.address.trim()) {
       setOrderError(c.errAddress);
+      return;
+    }
+    if (!orderForm.upazila) {
+      setOrderError('উপজেলা বা থানা নির্বাচন করুন।');
       return;
     }
     if (orderStep === 'payment') {
@@ -798,7 +804,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
       product_price: productPrice,
       customer_name: orderForm.name.trim(),
       customer_phone: cleanPhone,
-      customer_address: `${orderForm.address.trim()}, ${orderForm.upazila}, ${orderForm.district}`,
+      customer_address: `${orderForm.address.trim()} | ${formatLocation(orderForm.district, orderForm.upazila)}`,
       customer_note: orderForm.notes || `Chat order · advance ৳${advanceAmount} via bKash`,
       delivery_area: deliveryInfo.area || 'outside',
       delivery_charge: deliveryInfo.charge,
@@ -1402,7 +1408,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
                     placeholder={c.namePh}
                     value={orderForm.name}
                     onChange={e => setOrderForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
                   />
                   
                   <input
@@ -1410,54 +1416,41 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth }) {
                     placeholder={c.phonePh}
                     value={orderForm.phone}
                     onChange={e => setOrderForm(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
                   />
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
+                  <div className="space-y-2">
+                    <PlaceSelect
                       value={orderForm.district}
-                      onChange={e => {
-                        const newDist = e.target.value;
-                        setOrderForm(prev => ({
-                          ...prev,
-                          district: newDist,
-                          upazila: newDist === CHATTOGRAM_DISTRICT ? FREE_UPAZILA : 'সদর'
-                        }));
-                      }}
-                      className="w-full px-2 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                    >
-                      {allDistricts.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
-
-                    {orderForm.district === CHATTOGRAM_DISTRICT ? (
-                      <select
-                        value={orderForm.upazila}
-                        onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
-                        className="w-full px-2 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                      >
-                        {chattogramUpazilas.map(u => (
-                          <option key={u} value={u}>{u}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder={c.upazilaPh}
-                        value={orderForm.upazila}
-                        onChange={e => setOrderForm(prev => ({ ...prev, upazila: e.target.value }))}
-                        className="w-full px-2.5 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d]"
-                      />
-                    )}
+                      onChange={(district) => setOrderForm(prev => ({ ...prev, district, upazila: '' }))}
+                      placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
+                      options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium text-left"
+                    />
+                    <PlaceSelect
+                      value={orderForm.upazila}
+                      onChange={(upazila) => setOrderForm(prev => ({ ...prev, upazila }))}
+                      placeholder={localityPrompt(orderForm.district, language)}
+                      options={localityOptionList(orderForm.district, language)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium text-left"
+                    />
                   </div>
+
+                  {orderForm.district && orderForm.upazila && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-zinc-200">
+                      <MapPin size={13} className="text-zinc-500 shrink-0" />
+                      <span className="text-xs font-semibold text-zinc-800 leading-snug">
+                        {formatLocation(orderForm.district, orderForm.upazila, language)}
+                      </span>
+                    </div>
+                  )}
 
                   <textarea
                     rows={2}
                     placeholder={c.addressPh}
                     value={orderForm.address}
                     onChange={e => setOrderForm(prev => ({ ...prev, address: e.target.value }))}
-                    className="w-full px-3 py-2 bg-slate-50 border border-zinc-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#ce112d] resize-none"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d] resize-none"
                   />
                 </div>
                 )}

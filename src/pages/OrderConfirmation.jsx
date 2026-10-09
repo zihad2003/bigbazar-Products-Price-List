@@ -287,7 +287,7 @@ export default function OrderConfirmation() {
                         <div className="flex items-start gap-2.5">
                             <MapPin size={14} className="text-zinc-400 shrink-0 mt-0.5" />
                             <span className="text-zinc-600 leading-relaxed">
-                                {order.address} {order.district ? `| ${order.upazila ? `${order.upazila}, ` : ''}${order.district}` : ''}
+                                {order.address}{order.district ? ` · ${order.upazila ? `${order.upazila}, ` : ''}${order.district}` : ''}
                             </span>
                         </div>
                     </div>

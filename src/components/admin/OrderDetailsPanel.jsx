@@ -3,22 +3,44 @@ import {
   ShieldCheck, ShieldAlert, ShieldX,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { API_URL, getToken } from '../../api/client';
 import { orderTotal, paymentConfirmed, receivedAdvance, suggestedAdvance } from '../../utils/orderMoney';
+import { splitOrderAddress } from '../../data/bdLocations';
 
 function parseOrderLine(str) {
-  const res = { name: str, size: null, color: null, sku: null, qty: 1 };
+  const res = { name: str, size: null, color: null, sku: null, pid: null, qty: 1 };
   const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
   const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
   const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
+  const pidMatch = str.match(/\(PID:\s*([^)]+)\)/i);
   const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
   if (colorMatch) res.color = colorMatch[1].trim();
   if (sizeMatch) res.size = sizeMatch[1].trim();
   if (skuMatch) res.sku = skuMatch[1].trim();
+  if (pidMatch) res.pid = pidMatch[1].trim();
   if (qtyMatch) res.qty = qtyMatch[1];
   res.name = str.split('(')[0].trim();
   return res;
+}
+
+function productPhotos(product) {
+  const list = [];
+  const push = (url) => {
+    if (url && !list.includes(url)) list.push(url);
+  };
+  if (Array.isArray(product?.images)) product.images.forEach(push);
+  else if (typeof product?.images === 'string') {
+    try {
+      const parsed = JSON.parse(product.images);
+      if (Array.isArray(parsed)) parsed.forEach(push);
+    } catch {
+      push(product.images);
+    }
+  }
+  push(product?.image_url);
+  return list;
 }
 
 function hasCustomerPaymentClaim(order) {
@@ -29,6 +51,19 @@ function hasCustomerPaymentClaim(order) {
     order?.payment_status === 'Advance Paid' ||
     order?.payment_status === 'Fully Paid';
   return !confirmed;
+}
+
+export function orderItemNames(productName) {
+  return String(productName || '')
+    .split(' + ')
+    .map((part) => part.split('(')[0].trim())
+    .filter(Boolean);
+}
+
+export function customerNoteText(raw) {
+  const text = String(raw || '').replace(/\s*\|\s*Cart Items:[\s\S]*$/i, '').trim();
+  if (!text || /^cart items:/i.test(text)) return '';
+  return text;
 }
 
 function paymentRef(order) {
@@ -206,6 +241,7 @@ export default function OrderDetailsPanel({
   const [sfMsg, setSfMsg] = useState('');
   const [advanceInput, setAdvanceInput] = useState('');
   const [savingAdvance, setSavingAdvance] = useState(false);
+  const [photo, setPhoto] = useState(null);
 
   useEffect(() => {
     if (!order) return;
@@ -214,7 +250,26 @@ export default function OrderDetailsPanel({
       ? stored
       : suggestedAdvance(order);
     setAdvanceInput(String(start));
+    setPhoto(null);
   }, [order?.id, order?.advance_paid_amount, order?.delivery_charge, order?.delivery_area, order?.is_exclusive_order]);
+
+  useEffect(() => {
+    if (!photo) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setPhoto(null);
+      if (e.key === 'ArrowRight' && photo.images.length > 1) {
+        setPhoto((current) => ({ ...current, index: (current.index + 1) % current.images.length }));
+      }
+      if (e.key === 'ArrowLeft' && photo.images.length > 1) {
+        setPhoto((current) => ({
+          ...current,
+          index: (current.index - 1 + current.images.length) % current.images.length,
+        }));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [photo]);
 
   if (!order) return null;
 
@@ -224,9 +279,12 @@ export default function OrderDetailsPanel({
   const adv = receivedAdvance(order);
   const typedAdvance = Number(advanceInput);
   const shownAdvance = Number.isFinite(typedAdvance) && typedAdvance >= 0 ? Math.round(typedAdvance) : adv;
-  const due = Math.max(0, orderTotal(order) - shownAdvance);
+  const total = orderTotal(order);
+  const due = Math.max(0, total - shownAdvance);
   const suggested = suggestedAdvance(order);
   const paid = paymentConfirmed(order);
+  const noteText = customerNoteText(order.customer_note);
+  const addressParts = splitOrderAddress(order.customer_address);
   const isModal = variant === 'modal';
 
   const bookSteadfast = async () => {
@@ -285,6 +343,7 @@ export default function OrderDetailsPanel({
   };
 
   const findProduct = (item, idx) =>
+    products.find((p) => item.pid && p.id == item.pid) ||
     products.find((p) => p.id == order.product_id && idx === 0) ||
     products.find((p) => item.sku && (p.platform_id == item.sku || p.serial_no == item.sku)) ||
     products.find((p) => p.name === item.name) ||
@@ -356,17 +415,6 @@ export default function OrderDetailsPanel({
                 )}
               </div>
             </div>
-            {pay.value !== 'COD' && (
-              <div>
-                <p className="text-[10px] text-zinc-500 mb-0.5">{pay.label}</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-[#ce112d] flex-1 truncate">{pay.value}</p>
-                  <button type="button" onClick={() => onCopy?.(pay.value, 'Payment ref')} className="w-8 h-8 rounded-md bg-[#ce112d]/10 text-[#ce112d] border border-[#ce112d]/20 flex items-center justify-center">
-                    <Copy size={12} />
-                  </button>
-                </div>
-              </div>
-            )}
           </section>
 
           <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 space-y-3">
@@ -376,7 +424,7 @@ export default function OrderDetailsPanel({
               </div>
               <button
                 type="button"
-                onClick={() => onCopy?.(order.customer_address, 'Address')}
+                onClick={() => onCopy?.([addressParts.street, addressParts.selected].filter(Boolean).join(', '), 'Address')}
                 className="text-[10px] font-medium text-[#ce112d] hover:underline flex items-center gap-1"
               >
                 <Copy size={11} /> Copy
@@ -388,9 +436,15 @@ export default function OrderDetailsPanel({
                 {order.delivery_area || '—'}
               </span>
             </div>
+            {addressParts.selected && (
+              <div>
+                <p className="text-[10px] text-zinc-500 mb-0.5">Upazila / Thana</p>
+                <p className="text-sm font-semibold text-white leading-relaxed">{addressParts.selected}</p>
+              </div>
+            )}
             <div>
               <p className="text-[10px] text-zinc-500 mb-0.5">Address</p>
-              <p className="text-sm text-zinc-300 leading-relaxed">{order.customer_address || '—'}</p>
+              <p className="text-sm text-zinc-300 leading-relaxed">{addressParts.street || '—'}</p>
             </div>
           </section>
         </div>
@@ -404,15 +458,33 @@ export default function OrderDetailsPanel({
           <div className="p-3 space-y-2.5">
             {items.map((item, idx) => {
               const p = findProduct(item, idx);
-              const thumb = getOptimizedUrl(p?.image_url || p?.images?.[0], mediaSizes.thumbnail);
+              const photos = productPhotos(p);
+              const thumb = getOptimizedUrl(photos[0], mediaSizes.thumbnail);
+              const openPhoto = () => {
+                if (!photos.length) return;
+                setPhoto({ name: item.name, images: photos, index: 0 });
+              };
               return (
                 <div key={idx} className="flex gap-3 items-start">
-                  <div className="w-14 h-[4.5rem] rounded-md overflow-hidden border border-white/10 bg-black shrink-0 flex items-center justify-center relative">
+                  <button
+                    type="button"
+                    onClick={openPhoto}
+                    disabled={!photos.length}
+                    className="w-14 h-[4.5rem] rounded-md overflow-hidden border border-white/10 bg-black shrink-0 flex items-center justify-center relative disabled:cursor-default"
+                    aria-label={photos.length ? `View ${item.name}` : item.name}
+                  >
                     {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={18} className="text-zinc-700" />}
                     <span className="absolute top-0.5 left-0.5 text-[8px] font-bold bg-black/70 text-zinc-400 px-1 rounded">#{p?.serial_no || idx + 1}</span>
-                  </div>
+                  </button>
                   <div className="flex-1 min-w-0 space-y-1.5">
-                    <h4 className="text-sm font-semibold text-white leading-snug">{item.name}</h4>
+                    <button
+                      type="button"
+                      onClick={openPhoto}
+                      disabled={!photos.length}
+                      className="text-left disabled:cursor-default"
+                    >
+                      <h4 className="text-sm font-semibold text-white leading-snug hover:text-[#ce112d]">{item.name}</h4>
+                    </button>
                     <div className="flex flex-wrap gap-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">
                         Size: <strong className="text-white">{item.size || order.size || '—'}</strong>
@@ -442,27 +514,44 @@ export default function OrderDetailsPanel({
             {[
               { label: 'Product', value: `৳${Number(order.product_price || 0).toLocaleString()}` },
               { label: 'Delivery', value: `৳${parseFloat(order.delivery_charge) || 0}` },
-              { label: pay.label, value: pay.value, accent: true },
+              { label: 'Total', value: `৳${total.toLocaleString()}`, accent: true },
               { label: 'Advance', value: `৳${shownAdvance}`, accent: true },
             ].map((cell) => (
-              <div key={cell.label} className={`rounded-md border p-2.5 ${cell.accent ? 'border-[#ce112d]/25 bg-[#ce112d]/5' : 'border-white/10 bg-black/20'}`}>
+              <div key={cell.label} className={`rounded-md border p-2.5 min-w-0 ${cell.accent ? 'border-[#ce112d]/25 bg-[#ce112d]/5' : 'border-white/10 bg-black/20'}`}>
                 <p className="text-[10px] text-zinc-500 mb-0.5 truncate">{cell.label}</p>
-                <p className={`text-sm font-semibold truncate ${cell.accent ? 'text-[#ce112d]' : 'text-white'}`}>{cell.value}</p>
+                <p className={`text-sm font-semibold whitespace-nowrap ${cell.accent ? 'text-[#ce112d]' : 'text-white'}`}>{cell.value}</p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-lg bg-[#ce112d] px-3.5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
+          <div className="rounded-lg bg-[#ce112d] p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 items-center">
+            <div className="min-w-0">
               <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Due on delivery</p>
-              <p className="text-2xl font-bold text-white tracking-tight">৳{due.toLocaleString()}</p>
+              <p className="mt-1 text-[1.75rem] leading-none font-bold text-white whitespace-nowrap">৳{due.toLocaleString()}</p>
+              <p className="text-[11px] text-white/80 mt-2">Total ৳{total.toLocaleString()}</p>
+              <div className="mt-3 pt-3 border-t border-white/25 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">{pay.label}</p>
+                  <p className="text-sm font-semibold text-white truncate">{pay.value}</p>
+                </div>
+                {pay.value !== 'COD' && (
+                  <button
+                    type="button"
+                    onClick={() => onCopy?.(pay.value, 'Payment ref')}
+                    className="shrink-0 w-8 h-8 rounded-md bg-white/15 text-white flex items-center justify-center"
+                    aria-label="Copy payment reference"
+                  >
+                    <Copy size={12} />
+                  </button>
+                )}
+              </div>
               {hasCustomerPaymentClaim(order) && (
                 <p className="text-[10px] text-white/80 mt-1">
                   Customer sent a payment ref. Check it, then confirm the amount.
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-1.5 w-full sm:w-56">
+            <div className="flex flex-col gap-2 min-w-0">
               <label className="text-[10px] text-white/70" htmlFor={`advance-${order.id}`}>
                 Amount received
               </label>
@@ -473,9 +562,9 @@ export default function OrderDetailsPanel({
                 inputMode="numeric"
                 value={advanceInput}
                 onChange={(e) => setAdvanceInput(e.target.value)}
-                className="h-9 rounded-md bg-white text-neutral-900 px-3 text-sm font-semibold outline-none"
+                className="h-10 w-full rounded-md bg-white text-neutral-900 px-3 text-sm font-semibold outline-none"
               />
-              <p className="text-[10px] text-white/70">Usual for this order: ৳{suggested}. Type what arrived.</p>
+              <p className="text-[10px] text-white/75 leading-snug">Usual for this order: ৳{suggested}. Type what arrived.</p>
               <button
                 type="button"
                 disabled={savingAdvance}
@@ -489,7 +578,7 @@ export default function OrderDetailsPanel({
                     setSavingAdvance(false);
                   }
                 }}
-                className="h-9 px-4 rounded-md text-[11px] font-semibold bg-white text-[#ce112d] disabled:opacity-60"
+                className="h-10 w-full rounded-md text-[12px] font-semibold bg-white text-[#ce112d] disabled:opacity-60"
               >
                 {savingAdvance ? 'Saving…' : paid ? 'Update amount' : 'Confirm order'}
               </button>
@@ -534,11 +623,11 @@ export default function OrderDetailsPanel({
             <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Note</p>
             <button
               type="button"
-              onClick={() => onEditNote?.(order.id, order.customer_note)}
+              onClick={() => onEditNote?.(order.id, noteText)}
               className="w-full text-left rounded-lg border border-white/10 bg-black/30 p-3 min-h-[5.5rem] hover:border-[#ce112d]/30 transition-colors"
             >
-              <p className={`text-sm leading-relaxed ${order.customer_note ? 'text-zinc-300' : 'text-zinc-600'}`}>
-                {order.customer_note || 'Add an internal note…'}
+              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${noteText ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                {noteText || 'Add an internal note…'}
               </p>
               <p className="text-[10px] text-[#ce112d] mt-2 font-medium">Edit note</p>
             </button>
@@ -595,6 +684,59 @@ export default function OrderDetailsPanel({
           {sfMsg && <p className="text-[11px] text-zinc-400 leading-snug">{sfMsg}</p>}
         </section>
       </div>
+
+      {photo && createPortal(
+        <div
+          className="fixed inset-0 z-[1400] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setPhoto(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={photo.name}
+        >
+          <button
+            type="button"
+            onClick={() => setPhoto(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center"
+            aria-label="Close photo"
+          >
+            <X size={18} />
+          </button>
+          <div className="max-w-3xl w-full flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={getOptimizedUrl(photo.images[photo.index], mediaSizes.gallery)}
+              alt={photo.name}
+              className="max-h-[78vh] w-auto max-w-full object-contain rounded-lg"
+            />
+            <p className="text-sm text-white text-center">{photo.name}</p>
+            {photo.images.length > 1 && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPhoto((current) => ({
+                    ...current,
+                    index: (current.index - 1 + current.images.length) % current.images.length,
+                  }))}
+                  className="h-9 px-3 rounded-md bg-white/10 text-white text-xs font-semibold"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-zinc-400">{photo.index + 1} / {photo.images.length}</span>
+                <button
+                  type="button"
+                  onClick={() => setPhoto((current) => ({
+                    ...current,
+                    index: (current.index + 1) % current.images.length,
+                  }))}
+                  className="h-9 px-3 rounded-md bg-white/10 text-white text-xs font-semibold"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {isModal && (
         <div className="shrink-0 p-4 border-t border-white/10 bg-black/40 md:hidden">

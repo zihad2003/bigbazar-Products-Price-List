@@ -19,7 +19,8 @@ import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
 import AdminUsers from '../components/admin/AdminUsers';
 import SuperadminPanel from '../components/admin/SuperadminPanel';
-import OrderDetailsPanel from '../components/admin/OrderDetailsPanel';
+import OrderDetailsPanel, { customerNoteText, orderItemNames } from '../components/admin/OrderDetailsPanel';
+import { splitOrderAddress } from '../data/bdLocations';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -61,6 +62,7 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [navCounts, setNavCounts] = useState({ users: null, conversations: null });
   const [shotBusy, setShotBusy] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Delete' });
   const [siteTheme, setSiteTheme] = useState('dark');
@@ -205,7 +207,8 @@ Order Ref: #${order.id.toString().slice(-6).toUpperCase()}
 Date: ${new Date(order.created_at).toLocaleDateString()}
 Customer: ${order.customer_name || 'N/A'}
 Phone: ${order.customer_phone || 'N/A'}
-Address: ${order.customer_address || 'N/A'}
+Address: ${splitOrderAddress(order.customer_address).street || 'N/A'}
+Place: ${splitOrderAddress(order.customer_address).selected || 'N/A'}
 Area: ${order.delivery_area || 'N/A'}
 ━━━━━━━━━━━━━━━━━━━━
 Product(s): ${order.product_name || 'N/A'}
@@ -213,7 +216,7 @@ ${order.size ? `Size: ${order.size}\n` : ''}${order.color ? `Color: ${order.colo
 Advance Paid: ৳${advance.toLocaleString()}
 Balance Due: ৳${due.toLocaleString()}
 Payment Ref: ${order.last_four_digits || 'COD'}
-${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
+${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.customer_note)}` : ''}`.trim();
 
     copyToClipboard(text, "Order Details");
   };
@@ -301,6 +304,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
     fetchOrders();
     fetchReviews();
     fetchSiteSettings();
+    fetchNavCounts();
   }, [session?.access_token, session?.user?.id]);
 
   const fetchProducts = async (pageToFetch = 0, append = false) => {
@@ -507,6 +511,40 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       .order('created_at', { ascending: false })
       .limit(100);
     setReviews(data || []);
+  };
+
+  const fetchNavCounts = async () => {
+    const token = getToken();
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const [usersRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/users`, { headers }),
+        fetch(`${API_URL}/api/admin/conversations/stats`, { headers }),
+      ]);
+      let users = 0;
+      if (usersRes.ok) {
+        const data = await usersRes.json();
+        users = Number(data.count) || 0;
+      }
+      let conversations = null;
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        if (data.total != null && data.total !== '') conversations = Number(data.total) || 0;
+      }
+      if (conversations == null) {
+        const listRes = await fetch(`${API_URL}/api/admin/conversations?limit=200`, { headers });
+        if (listRes.ok) {
+          const data = await listRes.json();
+          conversations = Array.isArray(data.data) ? data.data.length : 0;
+        } else {
+          conversations = 0;
+        }
+      }
+      setNavCounts({ users, conversations });
+    } catch {
+      setNavCounts({ users: 0, conversations: 0 });
+    }
   };
 
   const updateOrderStatus = async (id, status) => {
@@ -1310,7 +1348,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
       o.color || '',
       o.last_four_digits,
       o.status,
-      `"${(o.customer_note || '').replace(/"/g, '""')}"`
+      `"${customerNoteText(o.customer_note).replace(/"/g, '""')}"`
     ]);
 
     const csvContent = [
@@ -1647,16 +1685,16 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
             {[
               { id: 'pending-items', icon: <Package size={18} />, label: 'Pending Items', count: orders.filter(o => o && o.status === 'Pending').length },
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
-              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics' },
-              { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations' },
-              { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users' },
+              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics', count: orders.filter(o => o && o.status !== 'Deleted').length },
+              { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations', count: navCounts.conversations },
+              { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users', count: navCounts.users },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
               { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
               { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
               { id: 'soldout', icon: <AlertCircle size={18} />, label: 'Sold Out', count: products.filter(p => p && p.is_sold_out).length },
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
-              { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories' },
+              { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories', count: Object.values(mergeWithDynamic(subcategoriesData)).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0) },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
               ...(session?.user?.role === 'superadmin' ? [{ id: 'superadmin', icon: <Shield size={18} />, label: 'Superadmin' }] : []),
             ].map(tab => (
@@ -1686,7 +1724,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               >
                 <div className={`${activeTab === tab.id ? 'text-white' : adminTheme === 'light' ? 'text-slate-400' : 'text-zinc-500'}`}>{tab.icon}</div>
                 <span className="font-semibold text-xs tracking-normal">{tab.label}</span>
-                {tab.count > 0 && (
+                {typeof tab.count === 'number' && (
                   <span className={`ml-auto text-[10px] min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 font-bold ${
                     activeTab === tab.id ? 'bg-white/20 text-white' : adminTheme === 'light' ? 'bg-slate-100 text-slate-500' : 'bg-zinc-900 text-zinc-400'
                   }`}>{tab.count}</span>
@@ -1715,6 +1753,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
               fetchProducts();
               fetchOrders();
               fetchReviews();
+              fetchNavCounts();
             }}
             disabled={loading}
             className={`w-full flex items-center gap-3 p-4 transition-all rounded-2xl text-xs font-semibold ${
@@ -3482,22 +3521,41 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       <span className="font-semibold text-yellow-500">#{order.id.toString().slice(-6).toUpperCase()}</span>
                     </div>
                     <div className="flex gap-2.5">
-                      <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 border border-white/10 flex items-center justify-center">
-                        {(() => {
-                          const product = products.find(p => p.id == order.product_id);
-                          const thumb = getOptimizedUrl(product?.image_url || product?.images?.[0], mediaSizes.thumbnail);
-                          return thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ShoppingBag size={16} className="text-zinc-700" />;
-                        })()}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <h4 className="text-[12px] font-semibold text-white leading-snug line-clamp-2">{order.product_name}</h4>
-                        <div className="flex flex-wrap gap-1">
-                          {order.size && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">SZ: {order.size}</span>}
-                          {order.color && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">COL: {order.color}</span>}
-                        </div>
-                        <p className="text-[11px] text-[#ce112d] font-medium truncate">{order.customer_name}</p>
-                        <p className="text-[11px] text-zinc-500 truncate">{order.customer_phone}</p>
-                      </div>
+                      {(() => {
+                        const itemNames = orderItemNames(order.product_name);
+                        const product = products.find(p => p.id == order.product_id);
+                        const thumb = getOptimizedUrl(product?.image_url || product?.images?.[0], mediaSizes.thumbnail);
+                        return (
+                          <>
+                            <div className="relative w-12 h-14 shrink-0">
+                              <div className="w-full h-full bg-black rounded-md overflow-hidden border border-white/10 flex items-center justify-center">
+                                {thumb ? <img src={thumb} className="w-full h-full object-cover" alt="" /> : <ShoppingBag size={16} className="text-zinc-700" />}
+                              </div>
+                              {itemNames.length > 1 && (
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ce112d] text-white text-[9px] font-bold flex items-center justify-center border border-black">
+                                  {itemNames.length}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <h4 className="text-[12px] font-semibold text-white leading-snug truncate">{itemNames[0] || order.product_name}</h4>
+                                {itemNames.length > 1 && (
+                                  <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#ce112d]/15 text-[#ce112d] border border-[#ce112d]/30">
+                                    +{itemNames.length - 1}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {order.size && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">SZ: {order.size}</span>}
+                                {order.color && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">COL: {order.color}</span>}
+                              </div>
+                              <p className="text-[11px] text-[#ce112d] font-medium truncate">{order.customer_name}</p>
+                              <p className="text-[11px] text-zinc-500 truncate">{order.customer_phone}</p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="grid grid-cols-3 gap-1.5 pt-1">
                       <a href={`tel:${order.customer_phone}`} onClick={e => e.stopPropagation()} className="h-9 flex items-center justify-center bg-blue-500 text-white rounded-lg text-[10px] font-semibold">Call</a>
@@ -3624,7 +3682,8 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
                       : parseFloat(o.total_amount);
 
-                    const firstItemName = (o.product_name || '').split('(')[0]?.trim();
+                    const itemNames = orderItemNames(o.product_name);
+                    const firstItemName = itemNames[0] || '';
                     const firstItemSku = (o.product_name || '').match(/\(SKU:\s*([^)]*)\)/i)?.[1]?.trim();
                     const targetProduct =
                       products.find(p => p.id == o.product_id) ||
@@ -3645,11 +3704,18 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                         }`}
                       >
                         <div className="flex gap-2.5">
-                          <div className="w-12 h-14 rounded-md overflow-hidden shrink-0 border border-white/10 bg-black flex items-center justify-center">
-                            {thumb ? (
-                              <img src={thumb} className="w-full h-full object-cover" alt="" />
-                            ) : (
-                              <ShoppingBag size={16} className="text-zinc-700" />
+                          <div className="relative w-12 h-14 shrink-0">
+                            <div className="w-full h-full rounded-md overflow-hidden border border-white/10 bg-black flex items-center justify-center">
+                              {thumb ? (
+                                <img src={thumb} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                <ShoppingBag size={16} className="text-zinc-700" />
+                              )}
+                            </div>
+                            {itemNames.length > 1 && (
+                              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ce112d] text-white text-[9px] font-bold flex items-center justify-center border border-black">
+                                {itemNames.length}
+                              </span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
@@ -3664,9 +3730,16 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                                   'bg-red-500/15 text-red-400'
                                 }`}>{o.status}</span>
                               </div>
-                              <p className="text-[12px] font-semibold text-white truncate leading-snug">
-                                {firstItemName || 'Custom Order'}
-                              </p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-[12px] font-semibold text-white truncate leading-snug">
+                                  {firstItemName || 'Custom Order'}
+                                </p>
+                                {itemNames.length > 1 && (
+                                  <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#ce112d]/15 text-[#ce112d] border border-[#ce112d]/30">
+                                    +{itemNames.length - 1}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-zinc-500 truncate mt-0.5">{o.customer_name}</p>
                             </div>
                             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-white/5">
@@ -3720,6 +3793,7 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                 return orders.filter(o => o && o.status !== 'Deleted').map(o => {
                   const product = productMap[o.product_id];
                   let productThumb = product?.image_url || product?.images?.[0];
+                  const itemNames = orderItemNames(o.product_name);
                   const amount = typeof o.total_amount === 'string'
                     ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
                     : parseFloat(o.total_amount);
@@ -3734,8 +3808,15 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                       }`}
                     >
                       <div className="flex gap-2.5">
-                        <div className="w-12 h-14 bg-black rounded-md overflow-hidden shrink-0 relative border border-white/10">
-                          {productThumb && <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt="" />}
+                        <div className="relative w-12 h-14 shrink-0">
+                          <div className="w-full h-full bg-black rounded-md overflow-hidden border border-white/10">
+                            {productThumb && <img src={getOptimizedUrl(productThumb, mediaSizes.thumbnail)} className="w-full h-full object-cover" alt="" />}
+                          </div>
+                          {itemNames.length > 1 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ce112d] text-white text-[9px] font-bold flex items-center justify-center border border-black">
+                              {itemNames.length}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div className="flex justify-between items-start gap-2">
@@ -3748,7 +3829,14 @@ ${order.customer_note ? `Note: ${order.customer_note}` : ''}`.trim();
                               'bg-red-500/15 text-red-400'
                             }`}>{o.status}</span>
                           </div>
-                          <p className="text-[11px] text-zinc-500 truncate">{(o.product_name || '').split('(')[0]?.trim()}</p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-[11px] text-zinc-500 truncate">{itemNames[0]}</p>
+                            {itemNames.length > 1 && (
+                              <span className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#ce112d]/15 text-[#ce112d] border border-[#ce112d]/30">
+                                +{itemNames.length - 1}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center justify-between mt-1">
                             <p className="text-[12px] font-semibold text-[#ce112d]">৳{(amount || 0).toLocaleString()}</p>
                             <p className="text-[10px] text-zinc-500 uppercase">{o.delivery_area}</p>
