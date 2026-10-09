@@ -8,7 +8,8 @@ export default function BanglaQRPayment({
   paymentOption,
   setPaymentOption,
   senderNumber,
-  onSenderNumberChange
+  onSenderNumberChange,
+  inputClassName = '',
 }) {
   const { language } = useLanguage();
   const [copiedNumber, setCopiedNumber] = useState(false);
@@ -169,7 +170,7 @@ export default function BanglaQRPayment({
         placeholder={language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম / ট্রানজেকশন আইডি" : "Sender account name / Txn ID"}
         value={senderNumber}
         onChange={onSenderNumberChange}
-        className="w-full border border-neutral-200 rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold"
+        className={`w-full border border-neutral-200 rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold ${inputClassName}`}
       />
     </div>
   );

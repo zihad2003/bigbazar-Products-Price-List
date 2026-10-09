@@ -326,9 +326,10 @@ export default function ProductDetails() {
         if (hasValidColors && !selectedColor) { setValidationError('color'); scrollToOptions(); return; }
         if (hasValidSizes && !selectedSize) { setValidationError('size'); scrollToOptions(); return; }
         setValidationError('');
-        addToCart({ ...product, price }, selectedColor, selectedSize, quantity);
-        trackAddToCart({ ...product, price }, quantity);
-        navigate('/checkout');
+        const params = new URLSearchParams({ product: String(product.id), qty: String(quantity) });
+        if (selectedColor) params.set('color', selectedColor);
+        if (selectedSize) params.set('size', selectedSize);
+        navigate(`/checkout?${params.toString()}`);
     };
 
     const handleMessengerOrder = () => {
@@ -430,7 +431,7 @@ export default function ProductDetails() {
             {/* Main Product Layout */}
             <div className="flex flex-col md:flex-row gap-6 lg:gap-12">
                 {/* Media Column - Gallery */}
-                <div className="w-full md:w-[50%] lg:w-[48%]">
+                <div className="w-full max-w-[440px] mx-auto md:mx-0 md:max-w-none md:w-[400px] lg:w-[440px] shrink-0">
                     <div className="relative">
                         <ProductGallery images={images} activeImageIndex={activeImageIndex} />
 
@@ -456,13 +457,13 @@ export default function ProductDetails() {
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#ce112d]">
                             {product.category || 'Clothing'}
                         </span>
-                        <h1 className="product-title text-2xl md:text-4xl lg:text-5xl font-black text-neutral-900 leading-tight tracking-tight" style={bnFont}>
+                        <h1 className="product-title text-xl md:text-2xl font-bold text-neutral-900 leading-snug tracking-tight" style={bnFont}>
                             {product.name}
                         </h1>
-                        <div className="flex flex-wrap items-baseline gap-3 pt-1">
-                            <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>
+                        <div className="flex flex-wrap items-baseline gap-2 pt-0.5">
+                            <span className="text-xl md:text-2xl font-bold text-[#ce112d] whitespace-nowrap">৳{price}</span>
                             {hasDiscount && (
-                                <span className="text-sm sm:text-base md:text-lg lg:text-xl text-neutral-400 line-through font-semibold whitespace-nowrap">৳{originalPrice}</span>
+                                <span className="text-sm md:text-base text-neutral-400 line-through font-medium whitespace-nowrap">৳{originalPrice}</span>
                             )}
                         </div>
                     </div>

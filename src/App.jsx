@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, useNavigationType, Link } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -63,11 +63,23 @@ const NotFound = () => (
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
+  const navType = useNavigationType();
   useEffect(() => {
-    window.scrollTo(0, 0);
-    // Track every SPA view (path + query) so GA sees each page
+    // Back/forward keeps the previous place. A new page or product opens at the top.
+    if (navType === 'POP') {
+      trackPageview(`${pathname}${search || ''}`);
+      return undefined;
+    }
+    const goTop = () => {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+    goTop();
+    const frame = requestAnimationFrame(goTop);
     trackPageview(`${pathname}${search || ''}`);
-  }, [pathname, search]);
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, search, navType]);
   return null;
 }
 

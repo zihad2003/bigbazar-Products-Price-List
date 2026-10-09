@@ -57,7 +57,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
 
   if (!images || images.length === 0) {
     return (
-      <div className="aspect-[4/5] bg-neutral-100 rounded-[24px] md:rounded-[32px] flex items-center justify-center">
+      <div className="aspect-[4/5] max-h-[520px] bg-neutral-100 rounded-[24px] md:rounded-[32px] flex items-center justify-center">
         <span className="text-neutral-400 text-sm">No images available</span>
       </div>
     );
@@ -67,7 +67,7 @@ const ProductGallery = ({ images, activeImageIndex = 0 }) => {
     <div className="flex flex-col gap-3 md:gap-4">
       {/* Main Image */}
       <div 
-        className="relative w-full aspect-[4/5] max-h-[50vh] md:max-h-none md:aspect-[3/4] lg:aspect-[4/5] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm cursor-zoom-in group border border-neutral-100"
+        className="relative w-full aspect-[4/5] max-h-[460px] sm:max-h-[500px] lg:max-h-[520px] bg-neutral-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm cursor-zoom-in group border border-neutral-100"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

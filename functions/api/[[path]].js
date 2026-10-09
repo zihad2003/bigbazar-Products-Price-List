@@ -2823,6 +2823,170 @@ app.get('/admin/steadfast/police-stations', requireAuth, requireSuperAdmin, asyn
   }
 });
 
+function dhakaDay(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Dhaka',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+function addDhakaDays(iso, days) {
+  const next = new Date(`${iso}T12:00:00+06:00`).getTime() + days * 86400000;
+  return dhakaDay(new Date(next));
+}
+
+function steadfastBucket(order) {
+  const courier = String(order.steadfast_status || '').toLowerCase();
+  if (courier.includes('return')) return 'returned';
+  if (courier.includes('cancel')) return 'cancelled';
+  if (courier.includes('deliver')) return 'delivered';
+  if (order.status === 'Delivered' || order.status === 'Completed') return 'delivered';
+  if (order.status === 'Canceled' || order.status === 'Cancelled') return 'cancelled';
+  return 'inTransit';
+}
+
+function steadfastOrderMoney(order) {
+  const canceled = order.status === 'Canceled' || order.status === 'Cancelled' || steadfastBucket(order) === 'cancelled';
+  const total = Number(String(order.total_amount ?? '').replace(/[^0-9.]/g, '')) || 0;
+  const charge = Number(order.delivery_charge) || 0;
+  if (canceled) return { cod: 0, charge, advance: 0, due: 0 };
+  const confirmed = Boolean(order.is_advance_paid)
+    || order.payment_status === 'Advance Paid'
+    || order.payment_status === 'Fully Paid';
+  let advance = 0;
+  if (confirmed) {
+    const raw = order.advance_paid_amount;
+    if (raw !== null && raw !== undefined && raw !== '' && Number.isFinite(Number(raw))) {
+      advance = Math.max(0, Number(raw));
+    } else if (order.is_exclusive_order) {
+      advance = 500;
+    } else if (order.delivery_area === 'mirsarai' && charge === 0) {
+      advance = 100;
+    } else {
+      advance = charge;
+    }
+  }
+  const due = order.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+  return { cod: total, charge, advance, due };
+}
+
+function blankSteadfastTotals() {
+  return { parcels: 0, delivered: 0, inTransit: 0, cancelled: 0, returned: 0, cod: 0, deliveryCharge: 0, advance: 0, due: 0 };
+}
+
+function addSteadfastParcel(bucket, order) {
+  const money = steadfastOrderMoney(order);
+  bucket.parcels += 1;
+  bucket[steadfastBucket(order)] += 1;
+  bucket.cod = Math.round((bucket.cod + money.cod) * 100) / 100;
+  bucket.deliveryCharge = Math.round((bucket.deliveryCharge + money.charge) * 100) / 100;
+  bucket.advance = Math.round((bucket.advance + money.advance) * 100) / 100;
+  bucket.due = Math.round((bucket.due + money.due) * 100) / 100;
+}
+
+function periodLabel(key, grain) {
+  if (grain === 'year') return key;
+  const [year, month, day] = key.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day || 1));
+  if (grain === 'month') {
+    return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+// GET /admin/steadfast/report?range=daily|monthly|yearly|custom&from=&to=
+app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => {
+  const range = String(c.req.query('range') || 'daily');
+  const today = dhakaDay(new Date());
+  let from = `${today.slice(0, 7)}-01`;
+  let to = today;
+  let grain = 'day';
+  if (range === 'monthly') {
+    from = `${today.slice(0, 4)}-01-01`;
+    grain = 'month';
+  } else if (range === 'yearly') {
+    from = '2020-01-01';
+    grain = 'year';
+  } else if (range === 'custom') {
+    from = String(c.req.query('from') || '').slice(0, 10);
+    to = String(c.req.query('to') || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
+      return c.json({ error: 'Choose a valid from and to date' }, 400);
+    }
+    const span = Math.round((new Date(`${to}T12:00:00+06:00`) - new Date(`${from}T12:00:00+06:00`)) / 86400000);
+    if (span > 800) return c.json({ error: 'Custom range can be at most 800 days' }, 400);
+    grain = span > 62 ? 'month' : 'day';
+  } else if (range !== 'daily') {
+    return c.json({ error: 'Unknown report range' }, 400);
+  }
+
+  const conn = getDb(c.env);
+  try {
+    await ensureOrderSteadfastColumns(conn);
+    await ensureOrderPaymentColumns(conn);
+    const rows = await conn.execute(
+      `SELECT created_at, total_amount, delivery_charge, status, steadfast_status,
+              advance_paid_amount, is_advance_paid, payment_status, is_exclusive_order, delivery_area
+       FROM orders
+       WHERE (status IS NULL OR status <> 'Deleted')
+         AND (
+           (tracking_code IS NOT NULL AND tracking_code <> '')
+           OR (steadfast_consignment_id IS NOT NULL AND steadfast_consignment_id <> '')
+         )`
+    );
+    const grouped = new Map();
+    const touch = (key) => {
+      if (!grouped.has(key)) grouped.set(key, blankSteadfastTotals());
+      return grouped.get(key);
+    };
+    if (grain === 'day') {
+      let cursor = from;
+      let guard = 0;
+      while (cursor <= to && guard < 900) {
+        touch(cursor);
+        cursor = addDhakaDays(cursor, 1);
+        guard += 1;
+      }
+    } else if (grain === 'month' && range === 'monthly') {
+      const year = today.slice(0, 4);
+      const lastMonth = Number(today.slice(5, 7));
+      for (let month = 1; month <= lastMonth; month += 1) {
+        touch(`${year}-${String(month).padStart(2, '0')}`);
+      }
+    }
+
+    for (const order of rows || []) {
+      const day = dhakaDay(order.created_at);
+      if (!day || day < from || day > to) continue;
+      const key = grain === 'year' ? day.slice(0, 4) : grain === 'month' ? day.slice(0, 7) : day;
+      addSteadfastParcel(touch(key), order);
+    }
+
+    const list = [...grouped.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([key, totals]) => ({ key, label: periodLabel(key, grain), ...totals }));
+    const totals = blankSteadfastTotals();
+    for (const row of list) {
+      totals.parcels += row.parcels;
+      totals.delivered += row.delivered;
+      totals.inTransit += row.inTransit;
+      totals.cancelled += row.cancelled;
+      totals.returned += row.returned;
+      totals.cod = Math.round((totals.cod + row.cod) * 100) / 100;
+      totals.deliveryCharge = Math.round((totals.deliveryCharge + row.deliveryCharge) * 100) / 100;
+      totals.advance = Math.round((totals.advance + row.advance) * 100) / 100;
+      totals.due = Math.round((totals.due + row.due) * 100) / 100;
+    }
+    return c.json({ success: true, range, grain, from, to, totals, rows: list });
+  } catch (err) {
+    return c.json({ error: err.message || 'Could not build the Steadfast report' }, 500);
+  }
+});
+
 // POST /admin/steadfast/pickup
 app.post('/admin/steadfast/pickup', requireAuth, requireSuperAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));

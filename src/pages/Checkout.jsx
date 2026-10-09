@@ -59,7 +59,9 @@ export default function Checkout() {
     const [singleProduct, setSingleProduct] = useState(null);
     const [loadingProduct, setLoadingProduct] = useState(false);
     const [error, setError] = useState('');
+    const [fieldError, setFieldError] = useState('');
     const errorRef = useRef(null);
+    const fieldRefs = useRef({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [copied, setCopied] = useState(false);
     const [paymentOption, setPaymentOption] = useState('advance');
@@ -190,13 +192,40 @@ export default function Checkout() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        if (name === 'senderNumber' || name === 'phone') {
+        const digitsOnly = name === 'phone' || (name === 'senderNumber' && formData.paymentMethod !== 'bangla_qr');
+        if (digitsOnly) {
             setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9+]/g, '') }));
-            return;
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
         }
-        setFormData(prev => ({ ...prev, [name]: value }));
         if (error) setError('');
+        if (fieldError) setFieldError('');
     };
+
+    const markField = (name) => (node) => {
+        fieldRefs.current[name] = node;
+    };
+
+    const showFieldError = (name, message) => {
+        setFieldError(name);
+        setError(message);
+        requestAnimationFrame(() => {
+            const node = fieldRefs.current[name];
+            if (!node) return;
+            const top = node.getBoundingClientRect().top + window.scrollY - 96;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            const focusable = node.matches?.('input, textarea, button')
+                ? node
+                : node.querySelector('input, textarea, button');
+            focusable?.focus?.({ preventScroll: true });
+        });
+    };
+
+    useEffect(() => {
+        if (error && !fieldError) {
+            errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [error, fieldError]);
 
     const handleCopyNumber = () => {
         navigator.clipboard.writeText(bKashNumber);
@@ -211,37 +240,55 @@ export default function Checkout() {
 
     const handleConfirmOrder = async () => {
         if (items.length === 0) {
+            setFieldError('');
             setError(language === 'bn' ? "আপনার ব্যাগটি খালি আছে। কিছু পণ্য ব্যাগে যুক্ত করুন।" : "Your shopping bag is empty. Please add items to proceed.");
             return;
         }
-        if (!formData.name || !formData.phone || !formData.address) {
-            setError(language === 'bn' ? "অনুগ্রহ করে সব তথ্য পূরণ করুন (নাম, ফোন, ঠিকানা)।" : "Please fill in all info (Name, Phone, Address).");
+        if (!String(formData.name || '').trim()) {
+            showFieldError('name', language === 'bn' ? "আপনার নাম লিখুন।" : "Please enter your name.");
+            return;
+        }
+        if (!String(formData.phone || '').trim()) {
+            showFieldError('phone', language === 'bn' ? "মোবাইল নম্বর লিখুন।" : "Please enter your phone number.");
             return;
         }
         if (!validateBDNumber(formData.phone)) {
-            setError(language === 'bn' ? "সটীক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
+            showFieldError('phone', language === 'bn' ? "সটীক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
             return;
         }
         if (!formData.district) {
-            setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
+            showFieldError('district', language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
             return;
         }
         if (needsLocality && !formData.upazila) {
-            setError(language === 'bn' ? "অনুগ্রহ করে উপজেলা বা থানা নির্বাচন করুন।" : "Please select an upazila or thana.");
+            showFieldError('upazila', language === 'bn' ? "অনুগ্রহ করে উপজেলা বা থানা নির্বাচন করুন।" : "Please select an upazila or thana.");
+            return;
+        }
+        if (!String(formData.address || '').trim()) {
+            showFieldError('address', language === 'bn' ? "বাসা, রোড, মহল্লার ঠিকানা লিখুন।" : "Please enter your house address.");
             return;
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
-            setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
+            showFieldError('senderNumber', language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
             return;
         }
-        if (formData.paymentMethod === 'bangla_qr' && !formData.senderNumber) {
-            setError(language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম অথবা ট্রানজেকশন আইডি দিন।" : "Please enter the sender account name or transaction ID.");
+        if (formData.paymentMethod === 'bangla_qr' && !String(formData.senderNumber || '').trim()) {
+            showFieldError('senderNumber', language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম অথবা ট্রানজেকশন আইডি দিন।" : "Please enter the sender account name or transaction ID.");
             return;
         }
         if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
             const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
                           (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
-            setError(language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${advanceAmount} ${prefix} and enter sender number.`);
+            showFieldError('senderNumber', language === 'bn' ? `${prefix} ৳${advanceAmount} বিকাশে পাঠিয়ে প্রেরকের নম্বরটি দিন।` : `Please send ৳${advanceAmount} ${prefix} and enter sender number.`);
+            return;
+        }
+        if ((formData.paymentMethod === 'bkash' || (formData.paymentMethod === 'cod' && advanceAmount > 0)) && formData.senderNumber && !validateBDNumber(formData.senderNumber)) {
+            showFieldError('senderNumber', language === 'bn' ? "প্রেরকের সঠিক মোবাইল নম্বর দিন।" : "Please enter a valid sender mobile number.");
+            return;
+        }
+
+        if (!deliveryInfo) {
+            showFieldError('upazila', language === 'bn' ? "অনুগ্রহ করে উপজেলা বা থানা নির্বাচন করুন।" : "Please select an upazila or thana.");
             return;
         }
 
@@ -252,6 +299,7 @@ export default function Checkout() {
 
         setIsSubmitting(true);
         setError('');
+        setFieldError('');
 
         const locationStr = formatLocation(formData.district, formData.upazila);
 
@@ -331,6 +379,7 @@ export default function Checkout() {
             navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {
             const errorMsg = err?.message || (language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
+            setFieldError('');
             setError(errorMsg);
             console.error("Order submission Error:", err);
         } finally {
@@ -375,7 +424,7 @@ export default function Checkout() {
                         </div>
                     </div>
 
-                    {error && (
+                    {error && !fieldError && (
                         <div ref={errorRef} className="p-4 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center gap-3 text-[#ce112d] text-xs font-bold">
                             <AlertCircle size={16} className="shrink-0" />
                             <span>{typeof error === 'object' ? (error?.message || JSON.stringify(error)) : String(error)}</span>
@@ -388,15 +437,17 @@ export default function Checkout() {
                             <User size={13} className="text-neutral-400" />
                             <span>{language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}</span>
                         </h4>
-                        <div className="relative">
+                        <div className="relative" ref={markField('name')}>
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                             <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
+                                className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'name' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                            {fieldError === 'name' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
                         </div>
-                        <div className="relative">
+                        <div className="relative" ref={markField('phone')}>
                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
                             <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
+                                className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'phone' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                            {fieldError === 'phone' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
                         </div>
                     </div>
 
@@ -407,21 +458,35 @@ export default function Checkout() {
                             <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
                         </h4>
                         <div className="space-y-3">
+                            <div ref={markField('district')}>
                             <PlaceSelect
                                 value={formData.district}
-                                onChange={(district) => setFormData(p => ({ ...p, district, upazila: '' }))}
+                                onChange={(district) => {
+                                    setFormData(p => ({ ...p, district, upazila: '' }));
+                                    setError('');
+                                    setFieldError('');
+                                }}
                                 placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
                                 options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left"
+                                className={`w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left ${fieldError === 'district' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`}
                             />
+                            {fieldError === 'district' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                            </div>
+                            <div ref={markField('upazila')}>
                             <PlaceSelect
                                 value={formData.upazila}
                                 disabled={!formData.district}
-                                onChange={(upazila) => setFormData(p => ({ ...p, upazila }))}
+                                onChange={(upazila) => {
+                                    setFormData(p => ({ ...p, upazila }));
+                                    setError('');
+                                    setFieldError('');
+                                }}
                                 placeholder={localityPrompt(formData.district, language)}
                                 options={localityOptionList(formData.district, language)}
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left disabled:cursor-not-allowed disabled:text-neutral-400"
+                                className={`w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer bg-white text-left disabled:cursor-not-allowed disabled:text-neutral-400 ${fieldError === 'upazila' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`}
                             />
+                            {fieldError === 'upazila' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                            </div>
                         </div>
 
                         {formData.district && formData.upazila && (
@@ -438,10 +503,11 @@ export default function Checkout() {
                             </div>
                         )}
 
-                        <div className="relative">
+                        <div className="relative" ref={markField('address')}>
                             <Home className="absolute left-4 top-4 text-neutral-400" size={16} />
                             <textarea name="address" placeholder={t('placeholder_address')} value={formData.address} onChange={handleInputChange} rows="2"
-                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all resize-none bg-white" />
+                                className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all resize-none bg-white ${fieldError === 'address' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                            {fieldError === 'address' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
                         </div>
 
                         <div className="pt-2">
@@ -611,6 +677,7 @@ export default function Checkout() {
                         </div>
 
                         {formData.paymentMethod === 'bangla_qr' && (
+                            <div ref={markField('senderNumber')}>
                             <BanglaQRPayment
                                 advanceAmount={advanceAmount}
                                 finalTotal={finalTotal}
@@ -618,11 +685,16 @@ export default function Checkout() {
                                 setPaymentOption={setPaymentOption}
                                 senderNumber={formData.senderNumber}
                                 onSenderNumberChange={handleInputChange}
+                                inputClassName={fieldError === 'senderNumber' ? '!border-[#ce112d] ring-2 ring-[#ce112d]/25' : ''}
                             />
+                            {fieldError === 'senderNumber' && formData.paymentMethod === 'bangla_qr' && (
+                                <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>
+                            )}
+                            </div>
                         )}
 
                         {formData.paymentMethod !== 'bangla_qr' && needsAdvancePayment && (
-                            <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-3">
+                            <div ref={markField('senderNumber')} className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-2xl p-4 space-y-3">
                                 <p className="text-[11px] leading-relaxed font-bold text-neutral-600">
                                     {formData.paymentMethod === 'cod'
                                         ? <>{isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম পেমেন্ট' : 'Advance Payment') : (isConfirmationFee ? (language === 'bn' ? 'কনফার্মেশন ফি' : 'Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'))} <strong className="text-[#ce112d]">৳{advanceAmount}</strong> {language === 'bn' ? `বিকাশে সেন্ড মানি করুন। বাকি ৳${finalTotal - advanceAmount} হাতে পেয়ে দিবেন।` : `Send money via bKash. Pay due ৳${finalTotal - advanceAmount} on delivery.`}</>
@@ -635,7 +707,8 @@ export default function Checkout() {
                                     </button>
                                 </div>
                                 <input type="tel" name="senderNumber" placeholder={language === 'bn' ? "বিকাশ নম্বর (যেখান থেকে টাকা পাঠিয়েছেন)" : "Sender bKash number"} value={formData.senderNumber} onChange={handleInputChange}
-                                    className="w-full border border-neutral-200 rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold" />
+                                    className={`w-full border rounded-xl py-2.5 px-4 text-xs focus:border-[#ce112d] outline-none bg-white font-bold ${fieldError === 'senderNumber' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                                {fieldError === 'senderNumber' && <p className="text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
                             </div>
                         )}
                     </div>

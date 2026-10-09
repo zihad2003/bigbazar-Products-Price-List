@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Truck, RefreshCw, Search, Wallet, RotateCcw, Package } from 'lucide-react';
+import { Truck, RefreshCw, Search, Wallet, RotateCcw, Package, BarChart3 } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 
 const TABS = [
+  { id: 'report', label: 'Report' },
   { id: 'balance', label: 'Balance' },
   { id: 'track', label: 'Track' },
   { id: 'returns', label: 'Returns' },
@@ -27,7 +28,7 @@ async function sfFetch(path, options = {}) {
       : `Invalid server response (${res.status}).`);
   }
   if (res.status === 404) {
-    throw new Error('Returns and payouts are not on the live server yet. Deploy this update, then refresh.');
+    throw new Error('This Steadfast tool is not on the live server yet. Deploy this update, then refresh.');
   }
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
@@ -48,7 +49,8 @@ function rowId(item, index) {
 }
 
 export default function AdminSteadfast() {
-  const [tab, setTab] = useState('balance');
+  const [tab, setTab] = useState('report');
+  const [reportNonce, setReportNonce] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -232,12 +234,13 @@ export default function AdminSteadfast() {
             Steadfast <span className="text-[#ce112d]">Courier</span>
           </h2>
           <p className="text-zinc-500 text-xs mt-0.5">
-            Balance, tracking, returns, payouts, and pickup. Parcel booking stays on each order.
+            Reports, balance, tracking, returns, payouts, and pickup. Parcel booking stays on each order.
           </p>
         </div>
         <button
           type="button"
           onClick={() => {
+            if (tab === 'report') setReportNonce((n) => n + 1);
             if (tab === 'balance') loadBalance();
             if (tab === 'returns') loadReturns(returnPage);
             if (tab === 'payouts') loadPayouts(payoutPage);
@@ -269,6 +272,8 @@ export default function AdminSteadfast() {
 
       {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
       {notice && <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">{notice}</div>}
+
+      {tab === 'report' && <SteadfastReport nonce={reportNonce} />}
 
       {tab === 'balance' && (
         <div className="rounded-lg border border-white/10 bg-[#121215] border-t-2 border-t-[#ce112d] px-4 py-4 max-w-sm">
@@ -490,6 +495,173 @@ export default function AdminSteadfast() {
           </button>
         </form>
       )}
+    </div>
+  );
+}
+
+const REPORT_RANGES = [
+  { id: 'daily', label: 'Daily' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'yearly', label: 'Yearly' },
+  { id: 'custom', label: 'Custom' },
+];
+
+const REPORT_CARDS = [
+  { key: 'parcels', label: 'Parcels' },
+  { key: 'delivered', label: 'Delivered' },
+  { key: 'inTransit', label: 'In transit' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'returned', label: 'Returned' },
+  { key: 'cod', label: 'COD', money: true },
+  { key: 'deliveryCharge', label: 'Delivery charge', money: true },
+  { key: 'advance', label: 'Advance', money: true },
+  { key: 'due', label: 'Due', money: true },
+];
+
+function taka(amount) {
+  return `৳${(Number(amount) || 0).toLocaleString('en-BD')}`;
+}
+
+function SteadfastReport({ nonce }) {
+  const [range, setRange] = useState('daily');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async (nextRange = range, nextFrom = from, nextTo = to) => {
+    if (nextRange === 'custom' && (!nextFrom || !nextTo)) return;
+    setLoading(true);
+    setError('');
+    const query = new URLSearchParams({ range: nextRange });
+    if (nextRange === 'custom') {
+      query.set('from', nextFrom);
+      query.set('to', nextTo);
+    }
+    try {
+      const data = await sfFetch(`/admin/steadfast/report?${query.toString()}`);
+      setReport(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (range !== 'custom') load(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range, nonce]);
+
+  const totals = report?.totals;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {REPORT_RANGES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setRange(item.id)}
+            className={`h-9 px-3 rounded-lg text-xs font-semibold border ${
+              range === item.id
+                ? 'bg-white text-black border-white'
+                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+        {range === 'custom' && (
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              load('custom', from, to);
+            }}
+          >
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 px-2 rounded-lg bg-[#121215] border border-white/10 text-xs text-white" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 px-2 rounded-lg bg-[#121215] border border-white/10 text-xs text-white" />
+            <button type="submit" className="h-9 px-3 rounded-lg bg-[#ce112d] text-white text-xs font-semibold">Show</button>
+          </form>
+        )}
+      </div>
+
+      <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+        <BarChart3 size={12} />
+        Parcels booked from this website. App-only entries are not included.
+        {report ? ` ${report.from} – ${report.to}.` : ''}
+      </p>
+      {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+
+      {totals && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {REPORT_CARDS.map((card) => (
+            <div key={card.key} className="rounded-lg border border-white/10 bg-[#121215] px-3 py-2.5">
+              <p className="text-[10px] text-zinc-500">{card.label}</p>
+              <p className="text-lg font-semibold text-white tabular-nums mt-0.5">
+                {card.money ? taka(totals[card.key]) : totals[card.key]}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-xl border border-white/10 overflow-x-auto bg-[#121215]">
+        {!report?.rows?.length ? (
+          <p className="p-6 text-sm text-zinc-500 text-center">
+            {loading ? 'Loading…' : range === 'custom' && !report ? 'Choose a start and end date.' : 'No booked parcels in this period.'}
+          </p>
+        ) : (
+          <table className="w-full text-left text-xs min-w-[760px]">
+            <thead>
+              <tr className="border-b border-white/10 text-zinc-500">
+                <th className="px-3 py-2">Period</th>
+                <th className="px-3 py-2">Parcels</th>
+                <th className="px-3 py-2">Delivered</th>
+                <th className="px-3 py-2">In transit</th>
+                <th className="px-3 py-2">Cancelled</th>
+                <th className="px-3 py-2">Returned</th>
+                <th className="px-3 py-2">COD</th>
+                <th className="px-3 py-2">Charge</th>
+                <th className="px-3 py-2">Advance</th>
+                <th className="px-3 py-2">Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.rows.map((row) => (
+                <tr key={row.key} className="border-b border-white/[0.04] text-zinc-200">
+                  <td className="px-3 py-2">{row.label}</td>
+                  <td className="px-3 py-2">{row.parcels}</td>
+                  <td className="px-3 py-2">{row.delivered}</td>
+                  <td className="px-3 py-2">{row.inTransit}</td>
+                  <td className="px-3 py-2">{row.cancelled}</td>
+                  <td className="px-3 py-2">{row.returned}</td>
+                  <td className="px-3 py-2">{taka(row.cod)}</td>
+                  <td className="px-3 py-2">{taka(row.deliveryCharge)}</td>
+                  <td className="px-3 py-2">{taka(row.advance)}</td>
+                  <td className="px-3 py-2">{taka(row.due)}</td>
+                </tr>
+              ))}
+              {totals && (
+                <tr className="text-white font-semibold">
+                  <td className="px-3 py-2">Total</td>
+                  <td className="px-3 py-2">{totals.parcels}</td>
+                  <td className="px-3 py-2">{totals.delivered}</td>
+                  <td className="px-3 py-2">{totals.inTransit}</td>
+                  <td className="px-3 py-2">{totals.cancelled}</td>
+                  <td className="px-3 py-2">{totals.returned}</td>
+                  <td className="px-3 py-2">{taka(totals.cod)}</td>
+                  <td className="px-3 py-2">{taka(totals.deliveryCharge)}</td>
+                  <td className="px-3 py-2">{taka(totals.advance)}</td>
+                  <td className="px-3 py-2">{taka(totals.due)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
