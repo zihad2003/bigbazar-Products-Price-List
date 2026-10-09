@@ -18,6 +18,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import AdminReports from '../components/admin/AdminReports';
 import AdminConversations from '../components/admin/AdminConversations';
 import AdminUsers from '../components/admin/AdminUsers';
+import AdminSteadfast from '../components/admin/AdminSteadfast';
 import SuperadminPanel from '../components/admin/SuperadminPanel';
 import OrderDetailsPanel, { customerNoteText, orderItemNames } from '../components/admin/OrderDetailsPanel';
 import { splitOrderAddress } from '../data/bdLocations';
@@ -1696,7 +1697,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
               { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories', count: Object.values(mergeWithDynamic(subcategoriesData)).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0) },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
-              ...(session?.user?.role === 'superadmin' ? [{ id: 'superadmin', icon: <Shield size={18} />, label: 'Superadmin' }] : []),
+              ...(session?.user?.role === 'superadmin' ? [
+                { id: 'steadfast', icon: <Truck size={18} />, label: 'Steadfast' },
+                { id: 'superadmin', icon: <Shield size={18} />, label: 'Superadmin' },
+              ] : []),
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1785,6 +1789,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       <main className={`flex-1 p-4 md:p-12 overflow-y-auto no-scrollbar ${adminTheme === 'light' ? 'bg-slate-50' : 'bg-[#0a0a0c]'}`}>
         {activeTab === 'reports' ? (
           <AdminReports orders={orders} products={products} reviews={reviews} />
+        ) : activeTab === 'steadfast' && session?.user?.role === 'superadmin' ? (
+          <AdminSteadfast />
         ) : activeTab === 'conversations' ? (
           <AdminConversations />
         ) : activeTab === 'users' ? (

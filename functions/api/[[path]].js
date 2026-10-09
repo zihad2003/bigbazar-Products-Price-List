@@ -28,6 +28,15 @@ import {
   steadfastStatusByCid,
   steadfastGetBalance,
   steadfastFraudCheck,
+  steadfastList,
+  steadfastPayments,
+  steadfastPayment,
+  steadfastReturnRequests,
+  steadfastCreateReturn,
+  steadfastPoliceStations,
+  steadfastCreatePickup,
+  steadfastTrackingByInvoice,
+  steadfastReturnStatusByCid,
 } from './steadfast.js';
 import { resolveBdPlace, withBdPlace, orderPlace } from './bd-places.js';
 
@@ -2709,13 +2718,130 @@ app.get('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
   }
 });
 
+function steadfastFail(c, err, fallback) {
+  const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 502;
+  return c.json({ error: err?.message || fallback }, status);
+}
+
 // GET /admin/steadfast/balance
-app.get('/admin/steadfast/balance', requireAuth, requireAdmin, async (c) => {
+app.get('/admin/steadfast/balance', requireAuth, requireSuperAdmin, async (c) => {
   try {
     const data = await steadfastGetBalance(c.env);
     return c.json({ success: true, data });
   } catch (err) {
-    return c.json({ error: err.message || 'Balance check failed' }, 502);
+    return steadfastFail(c, err, 'Balance check failed');
+  }
+});
+
+// GET /admin/steadfast/payments?page=1
+app.get('/admin/steadfast/payments', requireAuth, requireSuperAdmin, async (c) => {
+  const page = Math.max(1, parseInt(c.req.query('page'), 10) || 1);
+  try {
+    const data = await steadfastPayments(c.env, page);
+    return c.json({ success: true, page, items: steadfastList(data), data });
+  } catch (err) {
+    return steadfastFail(c, err, 'Could not load payouts');
+  }
+});
+
+// GET /admin/steadfast/payments/:id
+app.get('/admin/steadfast/payments/:id', requireAuth, requireSuperAdmin, async (c) => {
+  try {
+    const data = await steadfastPayment(c.env, c.req.param('id'));
+    return c.json({ success: true, data });
+  } catch (err) {
+    return steadfastFail(c, err, 'Could not load payout');
+  }
+});
+
+// GET /admin/steadfast/returns?page=1
+app.get('/admin/steadfast/returns', requireAuth, requireSuperAdmin, async (c) => {
+  const page = Math.max(1, parseInt(c.req.query('page'), 10) || 1);
+  try {
+    const data = await steadfastReturnRequests(c.env, page);
+    return c.json({ success: true, page, items: steadfastList(data), data });
+  } catch (err) {
+    return steadfastFail(c, err, 'Could not load return requests');
+  }
+});
+
+// POST /admin/steadfast/returns
+app.post('/admin/steadfast/returns', requireAuth, requireSuperAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const target = {};
+  if (body.consignment_id) target.consignment_id = body.consignment_id;
+  else if (body.tracking_code) target.tracking_code = String(body.tracking_code).trim();
+  else if (body.invoice) target.invoice = String(body.invoice).trim();
+  if (!Object.keys(target).length) {
+    return c.json({ error: 'Provide a consignment id, tracking code, or invoice' }, 400);
+  }
+  try {
+    const data = await steadfastCreateReturn(c.env, target, body.reason);
+    return c.json({ success: true, data });
+  } catch (err) {
+    return steadfastFail(c, err, 'Return request failed');
+  }
+});
+
+// GET /admin/steadfast/track?invoice=&tracking=&cid=
+app.get('/admin/steadfast/track', requireAuth, requireSuperAdmin, async (c) => {
+  const invoice = String(c.req.query('invoice') || '').trim();
+  const tracking = String(c.req.query('tracking') || '').trim();
+  const cid = String(c.req.query('cid') || '').trim();
+  if (!invoice && !tracking && !cid) {
+    return c.json({ error: 'Provide an invoice, tracking code, or consignment id' }, 400);
+  }
+  try {
+    let status;
+    let returnStatus = null;
+    let timeline = [];
+    if (cid) {
+      status = await steadfastStatusByCid(c.env, cid);
+      try { returnStatus = await steadfastReturnStatusByCid(c.env, cid); } catch (_) {}
+    } else if (tracking) {
+      status = await steadfastStatusByTracking(c.env, tracking);
+    } else {
+      status = await steadfastStatusByInvoice(c.env, invoice);
+      try {
+        const steps = await steadfastTrackingByInvoice(c.env, invoice);
+        timeline = steadfastList(steps);
+      } catch (_) {}
+    }
+    return c.json({ success: true, status, returnStatus, timeline });
+  } catch (err) {
+    return steadfastFail(c, err, 'Tracking lookup failed');
+  }
+});
+
+// GET /admin/steadfast/police-stations
+app.get('/admin/steadfast/police-stations', requireAuth, requireSuperAdmin, async (c) => {
+  try {
+    const data = await steadfastPoliceStations(c.env);
+    return c.json({ success: true, items: steadfastList(data) });
+  } catch (err) {
+    return steadfastFail(c, err, 'Could not load thanas');
+  }
+});
+
+// POST /admin/steadfast/pickup
+app.post('/admin/steadfast/pickup', requireAuth, requireSuperAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const payload = {
+    address_id: Number(body.address_id),
+    police_station_id: Number(body.police_station_id),
+    address: String(body.address || '').trim().slice(0, 255),
+    contact_number: normalizeBdPhone(body.contact_number),
+    note: String(body.note || '').trim().slice(0, 500),
+    estim_qty: Math.max(1, parseInt(body.estim_qty, 10) || 1),
+  };
+  if (!payload.address_id || !payload.police_station_id || !payload.address || !/^01[3-9]\d{8}$/.test(payload.contact_number)) {
+    return c.json({ error: 'Address ID, thana, address, and a valid mobile number are required' }, 400);
+  }
+  try {
+    const data = await steadfastCreatePickup(c.env, payload);
+    return c.json({ success: true, data });
+  } catch (err) {
+    return steadfastFail(c, err, 'Pickup request failed');
   }
 });
 

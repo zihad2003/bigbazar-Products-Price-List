@@ -142,13 +142,74 @@ export async function steadfastFraudCheck(env, phone) {
   };
 }
 
-export async function steadfastGetBalance(env) {
+async function steadfastRequest(env, path, { method = 'GET', body } = {}) {
   const cfg = getSteadfastConfig(env);
-  if (!cfg.configured) throw new Error('Steadfast is not configured');
-  const res = await fetch(`${cfg.baseUrl}/get_balance`, { headers: headers(cfg) });
+  if (!cfg.configured) {
+    const err = new Error('Steadfast is not configured');
+    err.status = 503;
+    throw err;
+  }
+  const res = await fetch(`${cfg.baseUrl}${path}`, {
+    method,
+    headers: headers(cfg),
+    body: body ? JSON.stringify(body) : undefined,
+  });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || data.error || `Steadfast HTTP ${res.status}`);
+  const bodyStatus = Number(data?.status);
+  if (!res.ok || (Number.isFinite(bodyStatus) && bodyStatus >= 400)) {
+    const err = new Error(data.message || data.error || `Steadfast HTTP ${res.status}`);
+    err.status = res.status || bodyStatus || 502;
+    err.payload = data;
+    throw err;
   }
   return data;
+}
+
+export function steadfastList(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.data)) return data.data.data;
+  for (const key of ['items', 'payments', 'return_requests', 'police_stations', 'trackings']) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  return [];
+}
+
+export async function steadfastGetBalance(env) {
+  return steadfastRequest(env, '/get_balance');
+}
+
+export async function steadfastPayments(env, page = 1) {
+  return steadfastRequest(env, `/payments?page=${encodeURIComponent(page)}`);
+}
+
+export async function steadfastPayment(env, paymentId) {
+  const id = String(paymentId || '').replace(/\D/g, '');
+  return steadfastRequest(env, `/payments/${encodeURIComponent(id)}`);
+}
+
+export async function steadfastReturnRequests(env, page = 1) {
+  return steadfastRequest(env, `/get_return_requests?page=${encodeURIComponent(page)}`);
+}
+
+export async function steadfastCreateReturn(env, target, reason) {
+  const body = { ...target };
+  if (reason) body.reason = String(reason).slice(0, 500);
+  return steadfastRequest(env, '/create_return_request', { method: 'POST', body });
+}
+
+export async function steadfastPoliceStations(env) {
+  return steadfastRequest(env, '/police_stations');
+}
+
+export async function steadfastCreatePickup(env, payload) {
+  return steadfastRequest(env, '/create_pickup_request', { method: 'POST', body: payload });
+}
+
+export async function steadfastTrackingByInvoice(env, invoice) {
+  return steadfastRequest(env, `/trackings_by_invoice/${encodeURIComponent(invoice)}`);
+}
+
+export async function steadfastReturnStatusByCid(env, consignmentId) {
+  return steadfastRequest(env, `/status_with_return_status_by_cid/${encodeURIComponent(consignmentId)}`);
 }
