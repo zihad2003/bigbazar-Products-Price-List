@@ -2088,131 +2088,111 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
             </div>
           </div>
         ) : activeTab === 'settings' ? (
-          <div className="max-w-4xl space-y-6 pb-16">
-            <div className="flex items-center justify-between gap-3">
+          <div className="w-full max-w-[1120px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4 items-start pb-24">
+            <div className="lg:col-span-2 order-1 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-white tracking-tight">
                   System <span className="text-[#ce112d]">Settings</span>
                 </h2>
-                <p className="text-[11px] text-zinc-500 mt-1">Banners, ticker, and site options</p>
+                <p className="text-xs text-zinc-500 mt-1">Banners, ticker, and site options</p>
               </div>
               <button type="button" onClick={fetchSiteSettings} className="w-9 h-9 inline-flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-zinc-400">
                 <RotateCcw size={14} />
               </button>
             </div>
 
-            <div className="space-y-5 pt-4 border-t border-white/10">
-              <div className="flex items-start justify-between gap-3">
+            <section className="lg:col-span-2 order-2 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-semibold text-white">Home slider</h3>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">Desktop & mobile banners</p>
+                  <h3 className="text-sm font-semibold text-white">Home slider</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Desktop and mobile banners</p>
                 </div>
-                <div className="px-2.5 py-1 bg-zinc-900 border border-white/10 rounded-md text-[10px] font-medium text-zinc-400">
+                <span className="h-7 px-2.5 inline-flex items-center rounded-md bg-black/40 border border-white/10 text-[11px] font-medium text-zinc-400">
                   {siteSettings.main_slides?.length || 0} slides
-                </div>
+                </span>
               </div>
 
               {/* Recommended Dimensions Guide */}
-              <div className="bg-[#151518] border border-white/10 rounded-lg p-3 text-xs space-y-2.5">
-                <div className="flex items-center gap-2 text-white font-semibold text-xs">
-                  <Sparkles size={14} className="text-[#ce112d]" />
-                  <span>Banner size guide (editorial frame)</span>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-zinc-500">Upload size</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { icon: <Monitor size={14} className="text-[#ce112d]" />, title: 'Desktop', size: '1920×800', note: '2.4:1' },
+                      { icon: <Tablet size={14} className="text-[#ce112d]" />, title: 'Tablet', size: '1600×900', note: '16:9' },
+                      { icon: <Smartphone size={14} className="text-[#ce112d]" />, title: 'Mobile', size: '1080×864', note: '5:4' },
+                    ].map(item => (
+                      <div key={item.title} className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
+                        <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-300">
+                          {item.icon}
+                          <span>{item.title}</span>
+                        </div>
+                        <p className="mt-1 text-xs font-medium text-white leading-tight">{item.size}</p>
+                        <p className="text-[11px] text-zinc-500">{item.note}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
-                  <div className="bg-black/50 border border-white/5 rounded-lg p-2.5 space-y-1">
-                    <div className="flex items-center gap-1.5 text-zinc-300 font-semibold text-[10px] uppercase">
-                      <Monitor size={13} className="text-[#ce112d]" />
-                      <span>Desktop / Laptop</span>
-                    </div>
-                    <p className="text-white font-mono font-semibold text-xs">1920 × 800 px <span className="text-zinc-500 font-normal">(2.4:1)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Cinematic fashion banner — best first impression</p>
-                  </div>
-                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
-                      <Tablet size={14} className="text-[#ce112d]" />
-                      <span>Tablet View</span>
-                    </div>
-                    <p className="text-white font-mono font-bold text-xs">1600 × 900 px <span className="text-zinc-500 font-normal">(16:9)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">iPad & mid-size tablets</p>
-                  </div>
-                  <div className="bg-black/50 border border-white/5 rounded-xl p-3 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
-                      <Smartphone size={14} className="text-[#ce112d]" />
-                      <span>Mobile View</span>
-                    </div>
-                    <p className="text-white font-mono font-bold text-xs">1080 × 864 px <span className="text-zinc-500 font-normal">(5:4)</span></p>
-                    <p className="text-zinc-400 text-[10px] leading-tight">Optional separate mobile banner for sharper crop</p>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-zinc-500">On-site frame</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'auto', label: 'Editorial', desc: '5:4 to 2.4:1' },
+                      { id: 'slim', label: 'Slim', desc: '16:9 / 16:5' },
+                      { id: 'fullscreen', label: 'Tall', desc: '3:4 and 16:9' },
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSiteSettings({ ...siteSettings, slider_aspect: m.id })}
+                        className={`rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                          (siteSettings.slider_aspect || 'auto') === m.id
+                            ? 'bg-[#ce112d] border-[#ce112d] text-white'
+                            : 'bg-black/30 text-zinc-300 hover:text-white border-white/10'
+                        }`}
+                      >
+                        <span className="block text-[11px] font-semibold leading-tight">{m.label}</span>
+                        <span className={`block text-[11px] mt-1 leading-tight ${(siteSettings.slider_aspect || 'auto') === m.id ? 'text-white/80' : 'text-zinc-500'}`}>{m.desc}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Slider Ratio Mode Setting */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#121215] border border-white/10 rounded-2xl">
-                <div>
-                  <span className="text-xs font-bold text-white uppercase tracking-wider block">Slider Display Ratio Mode</span>
-                  <span className="text-[11px] text-zinc-400">Locked frames — same proportion on every slide</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    { id: 'auto', label: 'Editorial (recommended)', desc: '5:4 → 16:9 → 2.4:1' },
-                    { id: 'slim', label: 'Slim strip', desc: '16:9 / 16:5' },
-                    { id: 'fullscreen', label: 'Tall / 16:9', desc: '3:4 mobile, 16:9 desktop' },
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setSiteSettings({ ...siteSettings, slider_aspect: m.id })}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                        (siteSettings.slider_aspect || 'auto') === m.id
-                          ? 'bg-[#ce112d] text-white shadow-lg shadow-red-900/30'
-                          : 'bg-black/40 text-zinc-400 hover:text-white border border-white/5'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {siteSettings.main_slides?.map((slide, i) => (
-                  <div key={slide.id || i} className="bg-[#121215] border border-[#1d1d21] rounded-[24px] overflow-hidden shadow-2xl group relative">
-                    {/* Desktop Banner Display */}
-                    <div className="relative aspect-[16/9] bg-black">
-                      <img src={slide.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-transparent to-transparent opacity-60" />
+                  <div key={slide.id || i} className="bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                    <div className="relative aspect-[12/5] bg-black">
+                      <img src={slide.image} className="w-full h-full object-cover" alt="" />
                       <button
                         type="button"
                         onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
-                        className="absolute top-4 right-4 p-3 bg-black/60 text-white rounded-2xl hover:bg-[#ce112d] transition-all shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
-                        title="Delete Entire Slide"
+                        className="absolute top-2 right-2 w-7 h-7 inline-flex items-center justify-center bg-black/75 text-white rounded-md hover:bg-[#ce112d] transition-colors"
+                        title="Delete slide"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={13} />
                       </button>
-                      <div className="absolute top-4 left-4 flex items-center gap-2">
-                        <span className="px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase border border-white/10 italic">
-                          SLIDE {i + 1}
-                        </span>
-                        <span className="px-2 py-1 bg-[#ce112d]/80 backdrop-blur-md rounded-lg text-[9px] font-bold text-white uppercase flex items-center gap-1">
-                          <Monitor size={11} /> Desktop
+                      <div className="absolute top-2 left-2">
+                        <span className="h-7 px-2 inline-flex items-center bg-black/75 rounded-md text-[11px] font-medium text-white">
+                          Slide {i + 1}{slide.width && slide.height ? ` · ${slide.width}×${slide.height}` : ''}
                         </span>
                       </div>
-                      {slide.width && slide.height && (
-                        <div className="absolute bottom-4 right-4 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded text-[9px] font-mono text-zinc-400">
-                          {slide.width} × {slide.height}
-                        </div>
-                      )}
                     </div>
 
-                    <div className="p-4 space-y-3">
-                      {/* Mobile Banner Upload/Preview Section */}
-                      <div className="bg-black/40 border border-white/5 rounded-xl p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-zinc-300 font-bold uppercase text-[10px]">
-                            <Smartphone size={13} className="text-[#ce112d]" />
-                            <span>Mobile Banner (768×1024 / 600×600 / 420×400)</span>
-                          </div>
-                          {slide.mobile_image && (
+                    <div className="p-3 space-y-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-1.5 text-zinc-400 text-xs shrink-0 w-[88px]">
+                          <Smartphone size={13} className="text-[#ce112d]" />
+                          <span>Mobile</span>
+                        </div>
+                        {slide.mobile_image ? (
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="w-14 aspect-[5/4] rounded-md overflow-hidden border border-white/10 bg-black shrink-0">
+                              <img src={slide.mobile_image} className="w-full h-full object-cover" alt="Mobile banner" />
+                            </div>
+                            <span className="text-[11px] text-zinc-500 truncate">
+                              {slide.mobile_width && slide.mobile_height ? `${slide.mobile_width} × ${slide.mobile_height}` : 'Phone crop is on'}
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
@@ -2223,31 +2203,15 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                                 delete updated[i].mobile_height;
                                 setSiteSettings({ ...siteSettings, main_slides: updated });
                               }}
-                              className="text-[9px] text-red-400 hover:text-red-300 font-bold uppercase"
+                              className="ml-auto text-[11px] text-zinc-500 hover:text-[#ce112d]"
                             >
-                              Remove Mobile
+                              Remove
                             </button>
-                          )}
-                        </div>
-
-                        {slide.mobile_image ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-black shrink-0 relative">
-                              <img src={slide.mobile_image} className="w-full h-full object-cover" alt="Mobile Banner" />
-                            </div>
-                            <div className="text-[10px] text-zinc-400">
-                              <span className="text-emerald-400 font-bold block">✓ Mobile Version Active</span>
-                              {slide.mobile_width && slide.mobile_height ? (
-                                <span className="font-mono text-zinc-500">{slide.mobile_width} × {slide.mobile_height} px</span>
-                              ) : (
-                                <span>Shown automatically on phone screens</span>
-                              )}
-                            </div>
                           </div>
                         ) : (
-                          <label className="flex items-center justify-center gap-2 p-2.5 rounded-lg border border-dashed border-white/15 hover:border-[#ce112d]/40 bg-black/30 hover:bg-[#ce112d]/5 cursor-pointer transition-all">
-                            <Smartphone size={13} className="text-[#ce112d]" />
-                            <span className="text-[10px] font-bold text-zinc-400 hover:text-white uppercase">+ Upload Mobile Banner</span>
+                          <label className="flex-1 flex items-center justify-center gap-2 h-9 rounded-lg border border-dashed border-white/15 hover:border-[#ce112d]/40 bg-black/20 cursor-pointer text-zinc-400 hover:text-white">
+                            <Plus size={13} className="text-[#ce112d]" />
+                            <span className="text-[11px] font-medium">Add phone image</span>
                             <input
                               type="file"
                               className="hidden"
@@ -2260,22 +2224,20 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       </div>
 
                       <div>
-                        <label className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-1.5 block">
-                          Destination Link <span className="text-zinc-700 normal-case font-normal">(where clicking the banner goes)</span>
-                        </label>
+                        <label className="text-xs font-medium text-zinc-500 mb-1.5 block">Destination link</label>
                         <input
                           value={slide.button_link || slide.product_id || ''}
-                          placeholder="https://... or /products?category=... or product ID"
+                          placeholder="/products or a full link"
                           onChange={e => {
                             const updated = [...siteSettings.main_slides];
                             updated[i] = { ...slide, button_link: e.target.value, product_id: e.target.value };
                             setSiteSettings({ ...siteSettings, main_slides: updated });
                           }}
-                          className="w-full bg-black/60 border border-white/10 h-10 px-3 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all font-mono"
+                          className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
                         />
                       </div>
-                      <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                        <span className="text-[9px] font-black uppercase text-zinc-600">Image Fit</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-zinc-500">Image fit</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -2283,7 +2245,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                             updated[i] = { ...slide, image_fit: slide.image_fit === 'contain' ? 'cover' : 'contain' };
                             setSiteSettings({ ...siteSettings, main_slides: updated });
                           }}
-                          className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase border transition-all ${slide.image_fit === 'contain'
+                          className={`h-7 px-2.5 rounded-md text-[11px] font-semibold border ${slide.image_fit === 'contain'
                             ? 'bg-zinc-800 border-white/20 text-white'
                             : 'bg-[#ce112d]/20 border-[#ce112d]/40 text-[#ce112d]'
                           }`}
@@ -2294,35 +2256,23 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     </div>
                   </div>
                 ))}
-                <label className={`flex flex-col items-center justify-center gap-4 aspect-[16/9] rounded-[24px] border-2 border-dashed transition-all text-zinc-600 group ${loading && uploadStatus !== 'idle'
+              <label className={`md:col-span-2 flex items-center justify-center gap-2 h-11 rounded-xl border border-dashed transition-colors text-zinc-400 ${loading && uploadStatus !== 'idle'
                     ? 'border-[#ce112d]/50 bg-[#ce112d]/5 cursor-not-allowed'
-                    : 'border-[#1d1d21] cursor-pointer bg-[#121215]/30 hover:bg-[#121215]/50 hover:border-[#ce112d]/30 hover:text-white'
+                    : 'border-white/15 cursor-pointer bg-black/20 hover:border-[#ce112d]/40 hover:text-white'
                   }`}>
-                  <div className="w-16 h-16 rounded-full bg-[#121215] flex items-center justify-center border border-white/5 shadow-2xl group-hover:scale-110 transition-transform">
+                  {loading && uploadStatus !== 'idle'
+                    ? <div className="w-4 h-4 border-2 border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
+                    : <Plus size={16} className="text-[#ce112d]" />}
+                  <span className="text-xs font-semibold">
                     {loading && uploadStatus !== 'idle'
-                      ? <div className="w-7 h-7 border-[3px] border-[#ce112d]/30 border-t-[#ce112d] rounded-full animate-spin" />
-                      : <Plus size={24} className="text-[#ce112d]" />}
-                  </div>
-                  <div className="text-center">
-                    {loading && uploadStatus !== 'idle' ? (
-                      <>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ce112d] animate-pulse">
-                          {uploadStatus === 'compressing' ? 'Compressing...' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
-                        </span>
-                        <p className="text-[9px] text-zinc-700 mt-1 uppercase font-bold">Please wait, do not close</p>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Upload Desktop Slides</span>
-                        <p className="text-[9px] text-zinc-500 mt-1 font-bold">1920×1080 or 1920×600</p>
-                      </>
-                    )}
-                  </div>
+                      ? (uploadStatus === 'compressing' ? 'Compressing...' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`)
+                      : 'Add a desktop slide · 1920×800'}
+                  </span>
                   <input type="file" className="hidden" accept="image/*" multiple disabled={loading} onChange={e => handleFileUpload(e, 'slider')} />
                 </label>
               </div>
 
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end pt-3 border-t border-white/10">
                 <button
                   type="button"
                   disabled={loading}
@@ -2334,31 +2284,23 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     else setAlertModal({ isOpen: true, title: 'Live!', message: "Slider Engine & Display Settings Updated Successfully.", type: 'success' });
                     setLoading(false);
                   }}
-                  className="flex items-center gap-3 bg-[#ce112d] px-12 h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl shadow-red-900/40 active:scale-95 transition-all disabled:opacity-50 text-white relative overflow-hidden group"
+                  className="inline-flex items-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Processing...' : 'Deploy Slider'}</span>
+                  {loading ? <RotateCcw size={15} className="animate-spin" /> : <Save size={15} />}
+                  <span>{loading ? 'Saving...' : 'Save slider'}</span>
                 </button>
               </div>
-            </div>
+            </section>
 
-            <div className="space-y-8 pt-12 border-t border-white/5">
-              <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">Announcement <span className="text-[#ce112d]">Banner</span></h3>
-                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Manage the notification banner on home page (বিজ্ঞপ্তির ব্যানার পরিবর্তন করুন)</p>
-              </div>
-
-              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-8">
-                {/* Enable/Disable Toggle */}
-                <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${siteSettings.announcement?.enabled ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
-                      <MessageSquare size={18} />
+            <section className="lg:col-span-2 order-5 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${siteSettings.announcement?.enabled ? 'bg-[#ce112d] text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                      <MessageSquare size={16} />
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-white uppercase tracking-wider">Show Announcement</p>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Toggle visibility on home page</p>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-white">Announcement</h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">Notice on the home page</p>
                     </div>
                   </div>
                   <button
@@ -2367,16 +2309,18 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, enabled: !siteSettings.announcement?.enabled }
                     })}
-                    className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
+                    className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${siteSettings.announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-700'}`}
+                    aria-label={siteSettings.announcement?.enabled ? 'Turn announcement off' : 'Turn announcement on'}
                   >
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.announcement?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    <div className={`w-5 h-5 bg-white rounded-full transition-transform ${siteSettings.announcement?.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
 
                 {/* Bangla Content */}
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em] px-1 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#ce112d]" /> Bangla Content (বাংলা ভাষা)
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#ce112d]" /> Bangla
                   </label>
                   <input
                     value={siteSettings.announcement?.title_bn || ''}
@@ -2385,17 +2329,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, title_bn: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                    className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
                   />
                   <textarea
                     value={siteSettings.announcement?.message_bn || ''}
                     placeholder="বিজ্ঞপ্তির বিস্তারিত বার্তা"
-                    rows={4}
+                    rows={3}
                     onChange={e => setSiteSettings({
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, message_bn: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 p-4 rounded-xl text-sm font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all resize-none"
+                    className="w-full bg-black/40 border border-white/10 p-3 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50 resize-none"
                   />
                   <input
                     value={siteSettings.announcement?.footer_bn || ''}
@@ -2404,14 +2348,13 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, footer_bn: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-zinc-400 placeholder:text-zinc-700 outline-none focus:border-white/10 transition-all"
+                    className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-white/20"
                   />
                 </div>
 
-                {/* English Content */}
-                <div className="space-y-4 pt-4 border-t border-white/5">
-                  <label className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em] px-1 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> English Content
+                <div className="space-y-2">
+                  <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> English
                   </label>
                   <input
                     value={siteSettings.announcement?.title_en || ''}
@@ -2420,17 +2363,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, title_en: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                    className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
                   />
                   <textarea
                     value={siteSettings.announcement?.message_en || ''}
                     placeholder="Announcement detailed message"
-                    rows={4}
+                    rows={3}
                     onChange={e => setSiteSettings({
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, message_en: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 p-4 rounded-xl text-sm font-medium text-zinc-300 placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all resize-none"
+                    className="w-full bg-black/40 border border-white/10 p-3 rounded-lg text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50 resize-none"
                   />
                   <input
                     value={siteSettings.announcement?.footer_en || ''}
@@ -2439,12 +2382,12 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                       ...siteSettings,
                       announcement: { ...siteSettings.announcement, footer_en: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 h-12 px-4 rounded-xl text-sm font-bold text-zinc-400 placeholder:text-zinc-700 outline-none focus:border-white/10 transition-all"
+                    className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-white/20"
                   />
                 </div>
-              </div>
+                </div>
 
-              <div className="flex pt-4">
+              <div className="flex justify-end pt-3 border-t border-white/10">
                 <button
                   type="button"
                   disabled={loading}
@@ -2455,111 +2398,100 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     else setAlertModal({ isOpen: true, title: 'Success', message: "Announcement Updated Successfully!", type: 'success' });
                     setLoading(false);
                   }}
-                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                  className="inline-flex items-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                 >
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Announcement'}</span>
+                  {loading ? <RotateCcw size={15} className="animate-spin" /> : <Save size={15} />}
+                  <span>{loading ? 'Saving...' : 'Save announcement'}</span>
                 </button>
               </div>
-            </div>
+            </section>
 
-            <div className="space-y-6 pt-12 border-t border-white/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold uppercase tracking-tight text-white">Offer <span className="text-[#ce112d]">Popup</span></h3>
-                  <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Shows 3 seconds after a visitor enters. X closes it. The poster opens the link.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSiteSettings(prev => ({
-                    ...prev,
-                    promo_popup: { ...prev.promo_popup, enabled: !prev.promo_popup?.enabled }
-                  }))}
-                  className="flex items-center gap-3"
-                >
-                  <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.promo_popup?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}>
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.promo_popup?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            <section className="order-3 h-full rounded-xl border border-white/10 bg-[#111113] p-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-white">Offer popup</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Opens 3 seconds after a visit</p>
                   </div>
-                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">
-                    {siteSettings.promo_popup?.enabled ? 'ON' : 'OFF'}
-                  </span>
-                </button>
-              </div>
-              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-5 md:p-8 space-y-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block">Poster</label>
+                  <button
+                    type="button"
+                    onClick={() => setSiteSettings(prev => ({
+                      ...prev,
+                      promo_popup: { ...prev.promo_popup, enabled: !prev.promo_popup?.enabled }
+                    }))}
+                    className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${siteSettings.promo_popup?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-700'}`}
+                    aria-label={siteSettings.promo_popup?.enabled ? 'Turn popup off' : 'Turn popup on'}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full transition-transform ${siteSettings.promo_popup?.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-[112px_minmax(0,1fr)] gap-3 items-start flex-1">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-zinc-500 block">Poster</label>
                   {siteSettings.promo_popup?.image_url ? (
-                    <div className="relative w-full max-w-[240px] aspect-[4/5] rounded-xl overflow-hidden bg-black group">
-                      <img src={siteSettings.promo_popup.image_url} alt="" className="w-full h-full object-contain" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
-                        <label className="px-4 py-2 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer">
+                    <div className="space-y-1.5">
+                      <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden bg-black">
+                        <img src={siteSettings.promo_popup.image_url} alt="" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <label className="h-7 inline-flex items-center justify-center bg-white text-zinc-900 rounded-md text-[11px] font-medium cursor-pointer">
                           Replace
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPromoPoster(e)} />
                         </label>
                         <button type="button" onClick={() => setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, image_url: '' } }))}
-                          className="px-4 py-2 bg-[#ce112d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                          className="h-7 bg-white/10 text-zinc-300 rounded-md text-[11px] font-medium hover:text-white">
                           Remove
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full max-w-[240px] aspect-[4/5] rounded-xl border-2 border-dashed border-zinc-700 hover:border-[#ce112d]/60 cursor-pointer bg-zinc-950/50">
-                      <Plus size={22} className="text-[#ce112d] mb-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Upload poster</span>
-                      <span className="text-[9px] text-zinc-600 mt-1">1080×1350 works best</span>
+                    <label className="flex flex-col items-center justify-center w-full aspect-[4/5] rounded-lg border border-dashed border-white/15 hover:border-[#ce112d]/60 cursor-pointer bg-black/30">
+                      <Plus size={18} className="text-[#ce112d] mb-2" />
+                      <span className="text-[11px] font-semibold text-zinc-400">Upload</span>
+                      <span className="text-[10px] text-zinc-600 mt-0.5">1080×1350</span>
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPromoPoster(e)} />
                     </label>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Destination link</label>
-                  <input
-                    type="text"
-                    value={siteSettings.promo_popup?.link || ''}
-                    onChange={e => setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, link: e.target.value } }))}
-                    className="w-full bg-black/50 border border-zinc-800 focus:border-[#ce112d]/40 text-white text-sm font-bold px-4 h-11 rounded-xl outline-none transition-all"
-                    placeholder="/products or https://..."
-                  />
+                <div className="space-y-3 flex flex-col h-full">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-zinc-400 block">Destination link</label>
+                    <input
+                      type="text"
+                      value={siteSettings.promo_popup?.link || ''}
+                      onChange={e => setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, link: e.target.value } }))}
+                      className="w-full bg-black/40 border border-white/10 focus:border-[#ce112d]/40 text-white text-sm px-3 h-10 rounded-lg outline-none"
+                      placeholder="/products or https://..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'promo_popup', value: siteSettings.promo_popup }, { onConflict: 'key' });
+                      if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                      else setAlertModal({ isOpen: true, title: 'Saved', message: 'Offer popup updated.', type: 'success' });
+                      setLoading(false);
+                    }}
+                    className="mt-auto inline-flex items-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {loading ? <RotateCcw size={15} className="animate-spin" /> : <Save size={15} />}
+                    <span>{loading ? 'Saving...' : 'Save popup'}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={async () => {
-                    setLoading(true);
-                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'promo_popup', value: siteSettings.promo_popup }, { onConflict: 'key' });
-                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                    else setAlertModal({ isOpen: true, title: 'Saved', message: 'Offer popup updated.', type: 'success' });
-                    setLoading(false);
-                  }}
-                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
-                >
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Popup'}</span>
-                </button>
-              </div>
-            </div>
+                </div>
+            </section>
 
             {/* Moving Text Announcement Ticker Section */}
-            <div className="space-y-8 pt-12 border-t border-white/5">
-              <div>
-                <h3 className="text-xl font-bold uppercase tracking-tight text-white">
-                  Scrolling Announcement <span className="text-[#ce112d]">Ticker</span>
-                </h3>
-                <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">
-                  Create a minimal moving text strip (e.g. Free Delivery for Mirsharai, 10% OFF, etc.)
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-8">
-                {/* Enable/Disable Toggle */}
-                <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d] text-white shadow-lg shadow-red-500/20' : 'bg-zinc-800 text-zinc-600'}`}>
-                      <Sparkles size={18} />
+            <section className="lg:col-span-2 order-6 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d] text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                      <Sparkles size={16} />
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-white uppercase tracking-wider">Enable Moving Ticker</p>
-                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Show left-to-right animated text strip</p>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-white">Ticker</h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">A short moving line, such as free delivery</p>
                     </div>
                   </div>
                   <button
@@ -2571,40 +2503,41 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                         enabled: !siteSettings.ticker_announcement?.enabled 
                       }
                     })}
-                    className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}
+                    className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${siteSettings.ticker_announcement?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-700'}`}
+                    aria-label={siteSettings.ticker_announcement?.enabled ? 'Turn ticker off' : 'Turn ticker on'}
                   >
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.ticker_announcement?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    <div className={`w-5 h-5 bg-white rounded-full transition-transform ${siteSettings.ticker_announcement?.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                   </button>
                 </div>
 
                 {/* Text Content Input */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] px-1 block">
-                    Announcement Text (বিজ্ঞপ্তির লেখা)
+                  <label className="text-[11px] font-medium text-zinc-400 block">
+                    Announcement text
                   </label>
                   <input
                     value={siteSettings.ticker_announcement?.text || ''}
-                    placeholder="Enter your announcement (e.g. Free Delivery for Mirsharai on orders over 1000 BDT! | 10% OFF on Eid Collection)"
+                    placeholder="Free delivery in Mirsarai | 10% off"
                     onChange={e => setSiteSettings({
                       ...siteSettings,
                       ticker_announcement: { ...siteSettings.ticker_announcement, text: e.target.value }
                     })}
-                    className="w-full bg-black/40 border border-white/5 h-14 px-4 rounded-xl text-sm font-bold text-white placeholder:text-zinc-700 outline-none focus:border-[#ce112d]/50 transition-all"
+                    className="w-full bg-black/40 border border-white/10 h-10 px-3 rounded-lg text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
                   />
-                  <p className="text-[10px] text-zinc-500 italic px-1">
-                    * Leave empty or disable toggle to hide the ticker from the website.
+                  <p className="text-[11px] text-zinc-500">
+                    Leave empty or turn it off to hide the ticker.
                   </p>
                 </div>
 
                 {/* Display Position Selector */}
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] px-1 block">
-                    Display Position (প্রদর্শনের স্থান)
+                  <label className="text-[11px] font-medium text-zinc-400 block">
+                    Position
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: 'top_navbar', label: 'Top of Page (On Navbar)', desc: 'Sticks above the site header across all pages' },
-                      { id: 'bottom_slider', label: 'Bottom of Hero Slider', desc: 'Displays right below main slider on home page' }
+                      { id: 'top_navbar', label: 'Above the header', desc: 'Every page, above the menu' },
+                      { id: 'bottom_slider', label: 'Under the hero', desc: 'Home page, below the slider' }
                     ].map(pos => (
                       <button
                         key={pos.id}
@@ -2613,27 +2546,26 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           ...siteSettings,
                           ticker_announcement: { ...siteSettings.ticker_announcement, position: pos.id }
                         })}
-                        className={`p-4 rounded-2xl border text-left transition-all ${
+                        className={`min-h-[64px] p-3 rounded-lg border text-left transition-colors ${
                           (siteSettings.ticker_announcement?.position || 'top_navbar') === pos.id 
                             ? 'bg-[#ce112d]/10 border-[#ce112d] text-white' 
-                            : 'bg-black/40 border-white/5 text-zinc-400 hover:border-white/10'
+                            : 'bg-black/40 border-white/10 text-zinc-400 hover:border-white/20'
                         }`}
                       >
-                        <p className="text-xs font-bold uppercase tracking-wider">{pos.label}</p>
-                        <p className="text-[10px] opacity-60 mt-1">{pos.desc}</p>
+                        <p className="text-xs font-semibold">{pos.label}</p>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">{pos.desc}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Color & Speed Customization */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-white/5">
-                  {/* Background Color */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] block">
-                      Background Theme Color
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-white/10">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-medium text-zinc-400 block">
+                      Background
                     </label>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {[
                         { color: '#ce112d', label: 'Red' },
                         { color: '#18181b', label: 'Dark' },
@@ -2648,9 +2580,9 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                             ...siteSettings,
                             ticker_announcement: { ...siteSettings.ticker_announcement, bg_color: c.color }
                           })}
-                          className={`w-9 h-9 rounded-xl transition-transform ${
+                          className={`w-8 h-8 rounded-lg transition-transform ${
                             (siteSettings.ticker_announcement?.bg_color || '#ce112d') === c.color 
-                              ? 'scale-110 ring-2 ring-white shadow-lg' 
+                              ? 'ring-2 ring-white ring-offset-2 ring-offset-[#111113]' 
                               : 'opacity-70 hover:opacity-100'
                           }`}
                           style={{ backgroundColor: c.color }}
@@ -2660,16 +2592,16 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   </div>
 
                   {/* Speed */}
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em] block">
-                      Scroll Speed
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-medium text-zinc-400 block">
+                      Speed
                     </label>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="grid grid-cols-2 gap-2">
                       {[
-                        { speed: 45, label: 'Normal (45s)' },
-                        { speed: 65, label: 'Slow (65s)' },
-                        { speed: 90, label: 'Very Slow (90s)' },
-                        { speed: 120, label: 'Ultra Slow (120s)' }
+                        { speed: 45, label: 'Normal' },
+                        { speed: 65, label: 'Slow' },
+                        { speed: 90, label: 'Slower' },
+                        { speed: 120, label: 'Slowest' }
                       ].map(s => (
                         <button
                           key={s.speed}
@@ -2678,10 +2610,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                             ...siteSettings,
                             ticker_announcement: { ...siteSettings.ticker_announcement, speed: s.speed }
                           })}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          className={`h-9 rounded-lg text-[11px] font-semibold border ${
                             (siteSettings.ticker_announcement?.speed || 65) === s.speed 
                               ? 'bg-white text-black border-white' 
-                              : 'bg-black/40 text-zinc-400 border-white/5 hover:border-white/10'
+                              : 'bg-black/40 text-zinc-400 border-white/10 hover:border-white/20'
                           }`}
                         >
                           {s.label}
@@ -2690,9 +2622,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex pt-4">
+              <div className="flex justify-end pt-3 border-t border-white/10">
                 <button
                   type="button"
                   disabled={loading}
@@ -2706,49 +2637,40 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     else setAlertModal({ isOpen: true, title: 'Success', message: "Ticker Announcement Saved Successfully!", type: 'success' });
                     setLoading(false);
                   }}
-                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                  className="inline-flex items-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                 >
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Ticker Announcement'}</span>
+                  {loading ? <RotateCcw size={15} className="animate-spin" /> : <Save size={15} />}
+                  <span>{loading ? 'Saving...' : 'Save ticker'}</span>
                 </button>
               </div>
-            </div>
+            </section>
 
             {/* Home banner under the hero */}
-            <div className="space-y-6 pt-12 border-t border-white/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home <span className="text-[#ce112d]">Banner</span></h3>
-                  <p className="text-zinc-500 text-[10px] mt-1 font-black uppercase tracking-[0.2em]">Banner under the hero. A click opens the destination link.</p>
-                </div>
-                {/* Enable / Disable Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setSiteSettings(prev => ({
-                    ...prev,
-                    wedding_banner: { ...prev.wedding_banner, enabled: !prev.wedding_banner?.enabled }
-                  }))}
-                  className="flex items-center gap-3"
-                >
-                  <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.wedding_banner?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}>
-                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.wedding_banner?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            <section className="order-4 h-full rounded-xl border border-white/10 bg-[#111113] p-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-white">Home banner</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Sits under the hero. A click opens the link.</p>
                   </div>
-                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">
-                    {siteSettings.wedding_banner?.enabled ? 'ON' : 'OFF'}
-                  </span>
-                </button>
-              </div>
-
-              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-5 md:p-8 space-y-6">
-
-                {/* Poster Image */}
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block">Poster Image</label>
+                  <button
+                    type="button"
+                    onClick={() => setSiteSettings(prev => ({
+                      ...prev,
+                      wedding_banner: { ...prev.wedding_banner, enabled: !prev.wedding_banner?.enabled }
+                    }))}
+                    className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${siteSettings.wedding_banner?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-700'}`}
+                    aria-label={siteSettings.wedding_banner?.enabled ? 'Turn banner off' : 'Turn banner on'}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full transition-transform ${siteSettings.wedding_banner?.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-zinc-500 block">Image</label>
                   {siteSettings.wedding_banner?.image_url ? (
-                    <div className="relative w-full aspect-[16/5] rounded-xl overflow-hidden group">
+                    <div className="relative w-full aspect-[12/5] rounded-lg overflow-hidden group bg-black">
                       <img src={siteSettings.wedding_banner.image_url} alt="Home banner" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
-                        <label className="px-4 py-2 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-zinc-100 transition-all">
+                      <div className="absolute inset-x-2 bottom-2 flex items-center justify-end gap-1.5">
+                        <label className="h-7 px-2.5 inline-flex items-center bg-white text-zinc-900 rounded-md text-[11px] font-medium cursor-pointer">
                           Replace
                           <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                             const file = e.target.files?.[0]; if (!file) return;
@@ -2771,18 +2693,18 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           }} />
                         </label>
                         <button type="button" onClick={() => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: '' } }))}
-                          className="px-4 py-2 bg-[#ce112d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                          className="h-7 px-2.5 bg-black/70 text-white rounded-md text-[11px] font-medium hover:bg-[#ce112d]">
                           Remove
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center w-full aspect-[16/5] rounded-xl border-2 border-dashed border-zinc-700 hover:border-[#ce112d]/60 cursor-pointer transition-all group bg-zinc-950/50">
-                      <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-[#ce112d] group-hover:scale-110 transition-transform mb-3">
-                        <Plus size={22} strokeWidth={2.5} />
+                    <label className="flex flex-col items-center justify-center w-full aspect-[12/5] rounded-lg border border-dashed border-white/15 hover:border-[#ce112d]/60 cursor-pointer group bg-black/30">
+                      <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center text-[#ce112d] mb-2">
+                        <Plus size={18} />
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Upload Poster Image</span>
-                      <span className="text-[9px] text-zinc-700 mt-1">Recommended: 1920×600px, landscape</span>
+                      <span className="text-[11px] font-semibold text-zinc-400">Upload image</span>
+                      <span className="text-[10px] text-zinc-600 mt-0.5">1920×600, landscape</span>
                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                         const file = e.target.files?.[0]; if (!file) return;
                         setLoading(true);
@@ -2808,17 +2730,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
 
 
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Destination link</label>
-                  <p className="text-[9px] text-zinc-600">Where the banner click goes. Site path or a full link.</p>
-                  <input
-                    type="text"
-                    value={siteSettings.wedding_banner?.link || ''}
-                    onChange={e => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, link: e.target.value } }))}
-                    className="w-full bg-black/50 border border-zinc-800 focus:border-[#ce112d]/40 text-white text-sm font-bold px-4 h-11 rounded-xl outline-none transition-all"
-                    placeholder="/products or https://..."
-                  />
-                </div>
+                <div className="mt-auto grid grid-cols-1 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-zinc-400 block">Destination link</label>
+                    <input
+                      type="text"
+                      value={siteSettings.wedding_banner?.link || ''}
+                      onChange={e => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, link: e.target.value } }))}
+                      className="w-full bg-black/40 border border-white/10 focus:border-[#ce112d]/40 text-white text-sm px-3 h-10 rounded-lg outline-none"
+                      placeholder="/products or https://..."
+                    />
+                  </div>
 
                 {/* Save Button */}
                 <button
@@ -2831,45 +2753,44 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Home banner updated.', type: 'success' });
                     setLoading(false);
                   }}
-                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                  className="inline-flex items-center justify-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                 >
-                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Home Banner'}</span>
+                  {loading ? <RotateCcw size={15} className="animate-spin" /> : <Save size={15} />}
+                  <span>{loading ? 'Saving...' : 'Save banner'}</span>
                 </button>
-              </div>
-            </div>
+                </div>
+            </section>
 
-            {/* Security — Pending Admin Login Codes */}
-            <div className="space-y-6 pt-12 border-t border-white/5">
-              <div className="flex items-center justify-between">
+            <section className="lg:col-span-2 order-7 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Security <span className="text-[#ce112d]">Codes</span></h3>
-                  <p className="text-zinc-500 text-xs mt-1 font-medium">Active 2FA codes for pending admin logins (expire in 5 min)</p>
+                  <h3 className="text-sm font-semibold text-white">Security codes</h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">Login codes expire in 5 minutes</p>
                 </div>
                 <button
                   onClick={fetchPendingCodes}
-                  className="flex items-center gap-2 px-4 h-10 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all"
+                  className="inline-flex items-center gap-2 px-3 h-9 rounded-lg bg-white/5 border border-white/10 text-zinc-300 text-xs font-semibold hover:bg-white/10"
                 >
                   <RotateCcw size={14} /> Refresh
                 </button>
               </div>
 
               {pendingCodes.length === 0 ? (
-                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-8 text-center">
-                  <ShieldCheck size={32} className="text-zinc-700 mx-auto mb-3" />
-                  <p className="text-zinc-600 text-sm font-bold">No pending login attempts</p>
-                  <p className="text-zinc-700 text-xs mt-1">Codes appear here when someone tries to log in</p>
+                <div className="rounded-lg border border-white/10 bg-black/30 px-4 py-8 text-center">
+                  <ShieldCheck size={22} className="text-zinc-600 mx-auto mb-2" />
+                  <p className="text-zinc-400 text-sm font-medium">No pending login attempts</p>
+                  <p className="text-zinc-600 text-xs mt-1">Codes appear here when someone tries to log in</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {pendingCodes.map(entry => (
-                    <div key={entry.login_id} className="bg-zinc-900 border border-[#ce112d]/20 rounded-2xl p-5 flex items-center justify-between gap-4">
+                    <div key={entry.login_id} className="bg-black/30 border border-[#ce112d]/25 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
                       <div className="space-y-1">
                         <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{entry.email}</p>
                         <p className="text-xs text-zinc-600">Expires in {entry.expires_in}s</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="text-4xl font-black tracking-[0.25em] text-[#ce112d] font-mono">{entry.code}</div>
+                        <div className="text-2xl font-semibold tracking-[0.2em] text-[#ce112d] font-mono">{entry.code}</div>
                         <button
                           onClick={() => { navigator.clipboard.writeText(entry.code); }}
                           className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition-all"
@@ -2881,7 +2802,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
           </div>
         ) : activeTab === 'add' ? (
