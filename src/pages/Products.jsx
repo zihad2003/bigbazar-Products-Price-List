@@ -20,7 +20,6 @@ export default function Products() {
   const { language } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [weddingConfig, setWeddingConfig] = useState(null);
   const [subcategoriesData, setSubcategoriesData] = useState(null);
 
   const selectedCategory = searchParams.get('category') || 'All';
@@ -45,22 +44,12 @@ export default function Products() {
       const isArray = Array.isArray(data);
       const getValue = (key) => isArray ? data.find(s => s.key === key)?.value : data[key];
 
-      const wb = getValue('wedding_banner');
-      if (wb?.enabled && wb?.category_filter) setWeddingConfig(wb);
-
       const subcats = getValue('subcategories');
       if (subcats && typeof subcats === 'object') setSubcategoriesData(subcats);
     });
   }, []);
 
-  const CATEGORIES = [
-    ...BASE_CATEGORIES,
-    ...(weddingConfig ? [{
-      id: weddingConfig.category_filter,
-      en: weddingConfig.title_en || 'Wedding',
-      bn: weddingConfig.title_bn || 'ওয়েডিং',
-    }] : []),
-  ];
+  const CATEGORIES = BASE_CATEGORIES;
 
   const handleCategoryChange = (cat) => {
     if (cat === selectedCategory && !selectedSubcategory) return;
@@ -105,19 +94,13 @@ export default function Products() {
         .range(start, end);
 
       if (selectedCategory && selectedCategory !== 'All') {
-        const isWeddingCat = weddingConfig && selectedCategory === weddingConfig.category_filter;
-        if (isWeddingCat) {
-          const kw = weddingConfig.category_filter.toLowerCase();
-          query = query.or(`category.ilike.%${kw}%,is_exclusive.eq.true`);
-        } else {
-          const catMap = {
-            'Men':          ['Men', 'ছেলেদের'],
-            'Women':        ['Women', 'মেয়েদের'],
-            'Kids (Boys)':  ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'],
-          };
-          query = query.in('category', catMap[selectedCategory] || [selectedCategory]);
-        }
+        const catMap = {
+          'Men':          ['Men', 'ছেলেদের'],
+          'Women':        ['Women', 'মেয়েদের'],
+          'Kids (Boys)':  ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+          'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'],
+        };
+        query = query.in('category', catMap[selectedCategory] || [selectedCategory]);
       }
 
       if (selectedSubcategory) {
@@ -149,7 +132,7 @@ export default function Products() {
 
     fetchProducts();
     return () => { isMounted = false; };
-  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery, weddingConfig]);
+  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery]);
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingRef.current || loading || loadingMore) return;

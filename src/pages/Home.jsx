@@ -18,6 +18,26 @@ import Reveal from '../components/Reveal';
 
 const PAGE_SIZE = 12;
 
+function homeBannerHref(banner) {
+  const link = String(banner?.link || '').trim();
+  if (link) return link;
+  const category = String(banner?.category_filter || '').trim();
+  if (!category || category.toLowerCase() === 'all' || category.toLowerCase() === 'wedding') {
+    return '/products';
+  }
+  return `/products?category=${encodeURIComponent(category)}`;
+}
+
+function HomeBannerLink({ banner, children }) {
+  const href = homeBannerHref(banner);
+  const className = 'block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group shadow-xl hover:shadow-2xl transition-all duration-500';
+  if (!href) return <div className={className}>{children}</div>;
+  if (href.startsWith('/') && !href.startsWith('//')) {
+    return <Link to={href} className={`${className} cursor-pointer`}>{children}</Link>;
+  }
+  return <a href={href} className={`${className} cursor-pointer`}>{children}</a>;
+}
+
 const formatTitleCase = (str) => {
   if (!str || typeof str !== 'string') return '';
   // If string contains mostly uppercase ASCII characters, convert to clean Title Case
@@ -231,22 +251,19 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       )}
 
 
-      {/* Wedding Collection Banner — Admin Controlled Canva Poster */}
+      {/* Banner under the hero */}
       {siteSettings.wedding_banner?.enabled && siteSettings.wedding_banner?.image_url && (
         <Reveal>
           <section className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-6 md:mt-8">
-            <Link
-              to={`/products?category=${encodeURIComponent(siteSettings.wedding_banner.category_filter || 'Wedding')}`}
-              className="block relative w-full aspect-[16/6] sm:aspect-[16/5] md:aspect-[16/4] rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
+            <HomeBannerLink banner={siteSettings.wedding_banner}>
               <img
                 src={getOptimizedUrl(siteSettings.wedding_banner.image_url, mediaSizes.banner)}
-                alt="Collection Banner"
+                alt="Home banner"
                 className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out"
                 loading="lazy"
                 decoding="async"
               />
-            </Link>
+            </HomeBannerLink>
           </section>
         </Reveal>
       )}

@@ -14,6 +14,7 @@ import CustomerMenu from './components/CustomerMenu';
 import CategoryModal from './components/modals/CategoryModal';
 import LoginModal from './components/modals/LoginModal';
 import TickerAnnouncement from './components/TickerAnnouncement';
+import PromoPopup from './components/modals/PromoPopup';
 import SEOHead from './components/SEOHead';
 import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
@@ -90,6 +91,7 @@ function PublicLayout() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [tickerSettings, setTickerSettings] = useState(null);
+  const [promoPopup, setPromoPopup] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -155,7 +157,9 @@ function PublicLayout() {
       if (data) {
         const isArray = Array.isArray(data);
         const ticker = isArray ? data.find(s => s.key === 'ticker_announcement')?.value : data.ticker_announcement;
+        const popup = isArray ? data.find(s => s.key === 'promo_popup')?.value : data.promo_popup;
         if (ticker) setTickerSettings(ticker);
+        if (popup) setPromoPopup(popup);
       }
     });
   }, []);
@@ -238,6 +242,13 @@ function PublicLayout() {
 
       {!isCheckoutPage && !isConfirmationPage && (
         <ChatWidget hidden={isCartOpen} onOpenAuth={() => openModal(setIsAuthOpen)} />
+      )}
+      {!isCheckoutPage && !isConfirmationPage && promoPopup?.enabled && promoPopup?.image_url && (
+        <PromoPopup
+          image={promoPopup.image_url}
+          link={promoPopup.link}
+          hidden={isCartOpen || isAuthOpen || isCategoryOpen}
+        />
       )}
 
     </div>

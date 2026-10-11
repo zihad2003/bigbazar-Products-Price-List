@@ -247,8 +247,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       subtitle_en: 'Exclusive Collection',
       cta_bn: 'কালেকশন দেখুন',
       cta_en: 'Explore Collection',
-      category_filter: 'Wedding',
+      category_filter: '',
+      link: '',
     },
+    promo_popup: { enabled: false, image_url: '', link: '' },
     announcement: {
       enabled: false,
       title_bn: 'গুরুত্বপূর্ণ বিজ্ঞপ্তি',
@@ -775,7 +777,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         position: 'top_navbar',
         bg_color: '#ce112d',
         speed: 25
-      }
+      },
+      promo_popup: { enabled: false, image_url: '', link: '' }
     };
 
     if (data) {
@@ -794,18 +797,28 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       const sliderAspect = getValue('slider_aspect');
       const announcement = getValue('announcement');
       const ticker = getValue('ticker_announcement');
+      const promoPopup = getValue('promo_popup');
       if (banner) settings.hero_banner = banner;
       if (contact) settings.contact_info = contact;
       if (slides) settings.main_slides = Array.isArray(slides) ? slides : [];
       if (sliderAspect) settings.slider_aspect = sliderAspect;
       if (announcement) settings.announcement = announcement;
       if (ticker) settings.ticker_announcement = ticker;
+      if (promoPopup) settings.promo_popup = { enabled: false, image_url: '', link: '', ...promoPopup };
       const themeData = getValue('site_theme');
       if (themeData?.mode) setSiteTheme(themeData.mode);
       const catVis = getValue('category_visibility');
       if (catVis) settings.category_visibility = catVis;
       const weddingBanner = getValue('wedding_banner');
-      if (weddingBanner) settings.wedding_banner = { ...settings.wedding_banner, ...weddingBanner };
+      if (weddingBanner) {
+        const savedCategory = String(weddingBanner.category_filter || '').trim();
+        const categoryKey = savedCategory.toLowerCase();
+        const link = String(weddingBanner.link || '').trim()
+          || (!savedCategory || categoryKey === 'all' || categoryKey === 'wedding'
+            ? '/products'
+            : `/products?category=${encodeURIComponent(savedCategory)}`);
+        settings.wedding_banner = { ...settings.wedding_banner, ...weddingBanner, link };
+      }
 
       // Load dynamic subcategories
       const subcats = getValue('subcategories');
@@ -1078,6 +1091,27 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
     } catch (err) {
       console.error('Upload Error:', err);
       return null;
+    }
+  };
+
+  const uploadPromoPoster = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const compressed = await compressImage(file, COMPRESS_PRESETS.slider_mobile);
+      const url = await uploadSingleFile(compressed);
+      if (url) {
+        setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, image_url: url } }));
+        setAlertModal({ isOpen: true, title: 'Poster uploaded', message: 'Save the popup to show it on the site.', type: 'success' });
+      } else {
+        setAlertModal({ isOpen: true, title: 'Upload failed', message: 'Could not upload the poster.', type: 'error' });
+      }
+    } catch (err) {
+      setAlertModal({ isOpen: true, title: 'Upload error', message: err.message || 'Could not process the image.', type: 'error' });
+    } finally {
+      setLoading(false);
+      e.target.value = '';
     }
   };
 
@@ -2429,6 +2463,82 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               </div>
             </div>
 
+            <div className="space-y-6 pt-12 border-t border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold uppercase tracking-tight text-white">Offer <span className="text-[#ce112d]">Popup</span></h3>
+                  <p className="text-zinc-500 text-[11px] mt-2 uppercase font-bold tracking-widest">Shows 3 seconds after a visitor enters. X closes it. The poster opens the link.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSiteSettings(prev => ({
+                    ...prev,
+                    promo_popup: { ...prev.promo_popup, enabled: !prev.promo_popup?.enabled }
+                  }))}
+                  className="flex items-center gap-3"
+                >
+                  <div className={`w-14 h-8 rounded-full p-1 transition-all duration-300 ${siteSettings.promo_popup?.enabled ? 'bg-[#ce112d]' : 'bg-zinc-800'}`}>
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-lg transition-transform duration-300 ${siteSettings.promo_popup?.enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">
+                    {siteSettings.promo_popup?.enabled ? 'ON' : 'OFF'}
+                  </span>
+                </button>
+              </div>
+              <div className="bg-zinc-900 border border-white/5 rounded-2xl md:rounded-3xl p-5 md:p-8 space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block">Poster</label>
+                  {siteSettings.promo_popup?.image_url ? (
+                    <div className="relative w-full max-w-[240px] aspect-[4/5] rounded-xl overflow-hidden bg-black group">
+                      <img src={siteSettings.promo_popup.image_url} alt="" className="w-full h-full object-contain" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                        <label className="px-4 py-2 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer">
+                          Replace
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPromoPoster(e)} />
+                        </label>
+                        <button type="button" onClick={() => setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, image_url: '' } }))}
+                          className="px-4 py-2 bg-[#ce112d] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full max-w-[240px] aspect-[4/5] rounded-xl border-2 border-dashed border-zinc-700 hover:border-[#ce112d]/60 cursor-pointer bg-zinc-950/50">
+                      <Plus size={22} className="text-[#ce112d] mb-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Upload poster</span>
+                      <span className="text-[9px] text-zinc-600 mt-1">1080×1350 works best</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => uploadPromoPoster(e)} />
+                    </label>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Destination link</label>
+                  <input
+                    type="text"
+                    value={siteSettings.promo_popup?.link || ''}
+                    onChange={e => setSiteSettings(prev => ({ ...prev, promo_popup: { ...prev.promo_popup, link: e.target.value } }))}
+                    className="w-full bg-black/50 border border-zinc-800 focus:border-[#ce112d]/40 text-white text-sm font-bold px-4 h-11 rounded-xl outline-none transition-all"
+                    placeholder="/products or https://..."
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'promo_popup', value: siteSettings.promo_popup }, { onConflict: 'key' });
+                    if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+                    else setAlertModal({ isOpen: true, title: 'Saved', message: 'Offer popup updated.', type: 'success' });
+                    setLoading(false);
+                  }}
+                  className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
+                >
+                  {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
+                  <span>{loading ? 'Saving...' : 'Save Popup'}</span>
+                </button>
+              </div>
+            </div>
+
             {/* Moving Text Announcement Ticker Section */}
             <div className="space-y-8 pt-12 border-t border-white/5">
               <div>
@@ -2604,12 +2714,12 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               </div>
             </div>
 
-            {/* Wedding Banner Section */}
+            {/* Home banner under the hero */}
             <div className="space-y-6 pt-12 border-t border-white/5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Wedding <span className="text-[#ce112d]">Banner</span></h3>
-                  <p className="text-zinc-500 text-[10px] mt-1 font-black uppercase tracking-[0.2em]">Homepage promotional banner — image, text & category filter</p>
+                  <h3 className="text-xl font-bold italic uppercase tracking-tight text-white">Home <span className="text-[#ce112d]">Banner</span></h3>
+                  <p className="text-zinc-500 text-[10px] mt-1 font-black uppercase tracking-[0.2em]">Banner under the hero. A click opens the destination link.</p>
                 </div>
                 {/* Enable / Disable Toggle */}
                 <button
@@ -2636,7 +2746,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest block">Poster Image</label>
                   {siteSettings.wedding_banner?.image_url ? (
                     <div className="relative w-full aspect-[16/5] rounded-xl overflow-hidden group">
-                      <img src={siteSettings.wedding_banner.image_url} alt="Wedding Banner" className="w-full h-full object-cover" />
+                      <img src={siteSettings.wedding_banner.image_url} alt="Home banner" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
                         <label className="px-4 py-2 bg-white text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-zinc-100 transition-all">
                           Replace
@@ -2648,7 +2758,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                               const url = await uploadSingleFile(compressed);
                               if (url) {
                                 setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
-                                setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Wedding banner uploaded successfully!', type: 'success' });
+                                setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Home banner uploaded. Save it to update the site.', type: 'success' });
                               } else {
                                 setAlertModal({ isOpen: true, title: 'Upload Failed', message: 'Could not upload banner. Please try again.', type: 'error' });
                               }
@@ -2681,7 +2791,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           const url = await uploadSingleFile(compressed);
                           if (url) {
                             setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, image_url: url } }));
-                            setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Wedding banner uploaded successfully!', type: 'success' });
+                            setAlertModal({ isOpen: true, title: 'Banner Uploaded', message: 'Home banner uploaded. Save it to update the site.', type: 'success' });
                           } else {
                             setAlertModal({ isOpen: true, title: 'Upload Failed', message: 'Could not upload banner. Please try again.', type: 'error' });
                           }
@@ -2698,16 +2808,15 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
 
 
-                {/* Category Filter */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Category Filter Keyword</label>
-                  <p className="text-[9px] text-zinc-600">Products page will filter by this category name when banner is clicked</p>
+                  <label className="text-[9px] font-black uppercase text-zinc-500 tracking-widest block">Destination link</label>
+                  <p className="text-[9px] text-zinc-600">Where the banner click goes. Site path or a full link.</p>
                   <input
                     type="text"
-                    value={siteSettings.wedding_banner?.category_filter || ''}
-                    onChange={e => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, category_filter: e.target.value } }))}
+                    value={siteSettings.wedding_banner?.link || ''}
+                    onChange={e => setSiteSettings(prev => ({ ...prev, wedding_banner: { ...prev.wedding_banner, link: e.target.value } }))}
                     className="w-full bg-black/50 border border-zinc-800 focus:border-[#ce112d]/40 text-white text-sm font-bold px-4 h-11 rounded-xl outline-none transition-all"
-                    placeholder="e.g. Wedding"
+                    placeholder="/products or https://..."
                   />
                 </div>
 
@@ -2719,13 +2828,13 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     setLoading(true);
                     const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'wedding_banner', value: siteSettings.wedding_banner }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                    else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Wedding banner settings updated.', type: 'success' });
+                    else setAlertModal({ isOpen: true, title: 'Saved!', message: 'Home banner updated.', type: 'success' });
                     setLoading(false);
                   }}
                   className="flex items-center gap-2 bg-[#ce112d] px-10 h-14 rounded-2xl font-bold uppercase tracking-widest shadow-xl shadow-red-900/30 active:scale-95 transition-all disabled:opacity-50 text-white"
                 >
                   {loading ? <RotateCcw size={18} className="animate-spin" /> : <Save size={18} />}
-                  <span>{loading ? 'Saving...' : 'Save Wedding Banner'}</span>
+                  <span>{loading ? 'Saving...' : 'Save Home Banner'}</span>
                 </button>
               </div>
             </div>
