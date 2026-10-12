@@ -3606,7 +3606,38 @@ async function ensureShopperSessionsTable(conn) {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
+  try {
+    await conn.execute('ALTER TABLE shopper_sessions ADD COLUMN checkout_form TEXT NULL');
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (!/duplicate column|already exists/i.test(msg)) throw err;
+  }
   shopperSessionsReady = true;
+}
+
+function shopperFormPayload(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const text = (value, max) => String(value || '').trim().slice(0, max);
+  const form = {
+    address: text(raw.address, 300),
+    district: text(raw.district, 80),
+    upazila: text(raw.upazila, 80),
+    note: text(raw.note, 500),
+    payment_method: text(raw.payment_method, 20),
+    sender_number: text(raw.sender_number, 40),
+    payment_option: text(raw.payment_option, 20),
+  };
+  return Object.values(form).some(Boolean) ? form : null;
+}
+
+function mergeShopperForm(previous, next) {
+  const base = previous && typeof previous === 'object' ? previous : {};
+  const incoming = next || {};
+  const merged = { ...base };
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (String(value || '').trim()) merged[key] = value;
+  });
+  return Object.keys(merged).length ? merged : null;
 }
 
 function slimShopperItems(raw, limit = 8) {
@@ -3653,6 +3684,7 @@ app.post('/shopper/activity', async (c) => {
   const phoneDigits = toAsciiDigits(body.phone).replace(/\D/g, '').slice(-11);
   const phone = phoneDigits.length >= 10 ? phoneDigits : '';
   const customerName = String(body.name || '').trim().slice(0, 120);
+  const incomingForm = shopperFormPayload(body.form);
   const orderId = String(body.order_id || '').trim().slice(0, 64);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const clientIp = getClientIp(c);
@@ -3660,7 +3692,7 @@ app.post('/shopper/activity', async (c) => {
   await ensureShopperSessionsTable(conn);
 
   const existingRows = await conn.execute(
-    'SELECT browser_id, customer_ip, ip_geo FROM shopper_sessions WHERE browser_id = ? LIMIT 1',
+    'SELECT browser_id, customer_ip, ip_geo, checkout_form FROM shopper_sessions WHERE browser_id = ? LIMIT 1',
     [browserId]
   );
   const existing = existingRows?.[0] || null;
@@ -3672,11 +3704,13 @@ app.post('/shopper/activity', async (c) => {
   const cartJson = JSON.stringify(cartItems);
   const checkoutJson = JSON.stringify(checkoutItems);
   const geoJson = geo ? JSON.stringify(geo) : (existing?.ip_geo || null);
+  const storedForm = mergeShopperForm(parseShopperJson(existing?.checkout_form, null), incomingForm);
+  const formJson = storedForm ? JSON.stringify(storedForm) : null;
 
   await conn.execute(
     `INSERT INTO shopper_sessions
-      (browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, order_id, customer_ip, ip_geo, last_seen_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      (browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, checkout_form, order_id, customer_ip, ip_geo, last_seen_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
      ON DUPLICATE KEY UPDATE
       cart_items = IF(? = 0, cart_items, VALUES(cart_items)),
       cart_count = IF(? = 0, cart_count, VALUES(cart_count)),
@@ -3684,6 +3718,7 @@ app.post('/shopper/activity', async (c) => {
       checkout_items = IF(? = 0, checkout_items, VALUES(checkout_items)),
       phone = IF(VALUES(phone) = '', phone, VALUES(phone)),
       customer_name = IF(VALUES(customer_name) = '', customer_name, VALUES(customer_name)),
+      checkout_form = COALESCE(VALUES(checkout_form), checkout_form),
       order_id = COALESCE(NULLIF(VALUES(order_id), ''), order_id),
       customer_ip = COALESCE(VALUES(customer_ip), customer_ip),
       ip_geo = COALESCE(VALUES(ip_geo), ip_geo),
@@ -3696,6 +3731,7 @@ app.post('/shopper/activity', async (c) => {
       checkoutJson,
       phone,
       customerName,
+      formJson,
       orderId || null,
       clientIp || existing?.customer_ip || null,
       geoJson,
@@ -3719,7 +3755,7 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await ensureShopperSessionsTable(conn);
   const rows = await conn.execute(
-    `SELECT browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, order_id, customer_ip, ip_geo, last_seen_at, created_at
+    `SELECT browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, checkout_form, order_id, customer_ip, ip_geo, last_seen_at, created_at
      FROM shopper_sessions
      WHERE last_seen_at >= (NOW() - INTERVAL 30 DAY)
      ORDER BY last_seen_at DESC
@@ -3737,6 +3773,7 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
       checkout_items: checkout,
       phone: row.phone || '',
       name: row.customer_name || '',
+      form: shopperFormPayload(parseShopperJson(row.checkout_form, null)) || null,
       order_id: row.order_id || null,
       ip: row.customer_ip || '',
       area: shopperArea(row.ip_geo) || '',

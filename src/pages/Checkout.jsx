@@ -145,6 +145,40 @@ export default function Checkout() {
         }
     }, [items, subtotal]);
 
+    const itemsRef = useRef(items);
+    itemsRef.current = items;
+    const itemKey = items.map((item) => `${item.id}:${item.quantity}`).join('|');
+    useEffect(() => {
+        if (!itemKey) return;
+        reportCheckout({
+            source: productIdQuery ? 'buy_now' : 'cart',
+            items: itemsRef.current,
+            phone: formData.phone,
+            name: formData.name,
+            form: {
+                address: formData.address,
+                district: formData.district,
+                upazila: formData.upazila,
+                note: formData.note,
+                paymentMethod: formData.paymentMethod,
+                senderNumber: formData.senderNumber,
+                paymentOption,
+            },
+        });
+    }, [
+        formData.name,
+        formData.phone,
+        formData.address,
+        formData.district,
+        formData.upazila,
+        formData.note,
+        formData.paymentMethod,
+        formData.senderNumber,
+        paymentOption,
+        productIdQuery,
+        itemKey,
+    ]);
+
     const detailsFilled = useRef(false);
     useEffect(() => {
         if (!isLoggedIn || detailsFilled.current) return undefined;
@@ -207,14 +241,6 @@ export default function Checkout() {
         }
         if (error) setError('');
         if (fieldError) setFieldError('');
-        if ((name === 'phone' && value.replace(/\D/g, '').length >= 10) || name === 'name') {
-            reportCheckout({
-                source: productIdQuery ? 'buy_now' : 'cart',
-                items,
-                phone: name === 'phone' ? value : formData.phone,
-                name: name === 'name' ? value : formData.name,
-            });
-        }
     };
 
     const markField = (name) => (node) => {

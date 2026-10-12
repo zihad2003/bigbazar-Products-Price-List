@@ -36,6 +36,21 @@ function itemImage(item) {
     return '';
 }
 
+function slimForm(form) {
+    if (!form || typeof form !== 'object') return undefined;
+    const text = (value, max) => String(value || '').trim().slice(0, max);
+    const out = {
+        address: text(form.address, 300),
+        district: text(form.district, 80),
+        upazila: text(form.upazila, 80),
+        note: text(form.note, 500),
+        payment_method: text(form.paymentMethod, 20),
+        sender_number: text(form.senderNumber, 40),
+        payment_option: text(form.paymentOption, 20),
+    };
+    return Object.values(out).some(Boolean) ? out : undefined;
+}
+
 function slimItems(items = []) {
     return (Array.isArray(items) ? items : []).slice(0, 8).map((item) => ({
         id: item.id,
@@ -77,6 +92,7 @@ export function flushShopperActivity() {
             checkout_items: Array.isArray(body.checkout_items) ? slimItems(body.checkout_items) : undefined,
             phone: body.phone || '',
             name: body.name || '',
+            form: slimForm(body.form),
             order_id: body.order_id || null,
         }),
         keepalive: true,
@@ -87,12 +103,13 @@ export function reportCart(cartItems) {
     reportShopperActivity({ cart: cartItems });
 }
 
-export function reportCheckout({ source, items, phone, name }) {
+export function reportCheckout({ source, items, phone, name, form }) {
     reportShopperActivity({
         checkout_source: source,
         checkout_items: items,
         phone,
         name,
+        form,
         cart: source === 'cart' ? items : undefined,
     });
 }

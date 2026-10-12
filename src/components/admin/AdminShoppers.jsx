@@ -41,6 +41,35 @@ function ItemRow({ item, photo }) {
   );
 }
 
+function paymentLabel(method, option) {
+  const name = method === 'bkash' ? 'bKash' : method === 'bangla_qr' ? 'Bangla QR' : method === 'cod' ? 'Cash on delivery' : method;
+  if (!name) return '';
+  if (option === 'full') return `${name} · full payment`;
+  if (option === 'advance') return `${name} · advance`;
+  return name;
+}
+
+function FormDetails({ form }) {
+  if (!form) return null;
+  const place = [form.upazila, form.district].filter(Boolean).join(', ');
+  const pay = paymentLabel(form.payment_method, form.payment_option);
+  const lines = [
+    form.address,
+    place,
+    pay,
+    form.sender_number ? `Sender ${form.sender_number}` : '',
+    form.note ? `Note: ${form.note}` : '',
+  ].filter(Boolean);
+  if (!lines.length) return null;
+  return (
+    <div className="text-xs text-zinc-400 space-y-0.5 border-t border-white/10 pt-2">
+      {lines.map((line) => (
+        <p key={line} className="break-words">{line}</p>
+      ))}
+    </div>
+  );
+}
+
 function SessionCard({ row, items, badge, photos }) {
   return (
     <article className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
@@ -60,6 +89,7 @@ function SessionCard({ row, items, badge, photos }) {
           <ItemRow key={`${item.id || item.name}-${index}`} item={item} photo={photos(item)} />
         ))}
       </div>
+      <FormDetails form={row.form} />
     </article>
   );
 }
@@ -111,7 +141,7 @@ export default function AdminShoppers({ products = [] }) {
           <h2 className="text-xl font-semibold text-white tracking-tight">
             Carts & <span className="text-[#ce112d]">Checkouts</span>
           </h2>
-          <p className="text-[11px] text-zinc-500 mt-1">People who added a product or opened checkout and have not ordered yet.</p>
+          <p className="text-[11px] text-zinc-500 mt-1">Name, phone, address, district, note, and payment fields they type before ordering.</p>
         </div>
         <button
           type="button"
