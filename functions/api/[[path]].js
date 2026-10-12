@@ -3005,6 +3005,136 @@ function periodLabel(key, grain) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
+let phoneParcelsReady = false;
+async function ensurePhoneParcelsTable(conn) {
+  if (phoneParcelsReady) return;
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS steadfast_phone_parcels (
+      ref_code VARCHAR(64) PRIMARY KEY,
+      tracking_code VARCHAR(64) NULL,
+      invoice VARCHAR(64) NULL,
+      consignment_id VARCHAR(64) NULL,
+      booked_on DATE NOT NULL,
+      delivery_status VARCHAR(64) NULL,
+      cod_amount DECIMAL(10,2) NULL,
+      delivery_charge DECIMAL(10,2) NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  phoneParcelsReady = true;
+}
+
+function phoneParcelStatus(payload) {
+  const nested = payload?.consignment && typeof payload.consignment === 'object' ? payload.consignment : {};
+  const raw = payload?.delivery_status || nested.delivery_status || nested.status || payload?.status;
+  const text = String(raw ?? '').trim();
+  if (!text || /^\d+$/.test(text) || text === 'true' || text === 'false' || text === 'success') return '';
+  return text;
+}
+
+function phoneParcelMoney(payload) {
+  const nested = payload?.consignment || payload?.data || {};
+  const num = (value) => Number(String(value ?? '').replace(/[^0-9.]/g, '')) || 0;
+  return {
+    cod: num(nested.cod_amount ?? nested.cod ?? payload?.cod_amount),
+    charge: num(nested.delivery_charge ?? nested.charge ?? payload?.delivery_charge),
+    tracking: String(nested.tracking_code || payload?.tracking_code || '').slice(0, 64),
+    invoice: String(nested.invoice || payload?.invoice || '').slice(0, 64),
+    cid: String(nested.consignment_id || payload?.consignment_id || '').slice(0, 64),
+  };
+}
+
+function addPhoneParcelTotals(bucket, row) {
+  const status = String(row.delivery_status || '').toLowerCase();
+  let kind = 'inTransit';
+  if (status.includes('return')) kind = 'returned';
+  else if (status.includes('cancel')) kind = 'cancelled';
+  else if (status.includes('deliver')) kind = 'delivered';
+  bucket.parcels += 1;
+  bucket[kind] += 1;
+  const canceled = kind === 'cancelled' || kind === 'returned';
+  const cod = canceled ? 0 : (Number(row.cod_amount) || 0);
+  const charge = Number(row.delivery_charge) || 0;
+  const due = kind === 'delivered' || canceled ? 0 : cod;
+  bucket.cod = Math.round((bucket.cod + cod) * 100) / 100;
+  bucket.deliveryCharge = Math.round((bucket.deliveryCharge + charge) * 100) / 100;
+  bucket.due = Math.round((bucket.due + due) * 100) / 100;
+}
+
+// POST /admin/steadfast/phone-parcels — phone/app bookings Steadfast does not list
+app.post('/admin/steadfast/phone-parcels', requireAuth, requireSuperAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const bookedOn = String(body.booked_on || dhakaDay(new Date())).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(bookedOn)) {
+    return c.json({ error: 'Choose the date these parcels were booked.' }, 400);
+  }
+  const refs = String(body.refs || '')
+    .split(/[\s,]+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 40);
+  if (!refs.length) return c.json({ error: 'Paste at least one tracking code or invoice.' }, 400);
+
+  const conn = getDb(c.env);
+  await ensurePhoneParcelsTable(conn);
+  await ensureOrderSteadfastColumns(conn);
+  const saved = [];
+  const skipped = [];
+
+  for (const ref of refs) {
+    const existingOrder = await conn.execute(
+      `SELECT id FROM orders
+       WHERE tracking_code = ? OR steadfast_consignment_id = ? OR id = ?
+       LIMIT 1`,
+      [ref, ref, ref]
+    );
+    if (existingOrder?.[0]) {
+      skipped.push({ ref, reason: 'Already in website orders' });
+      continue;
+    }
+    let status = null;
+    try {
+      status = /^[0-9]+$/.test(ref) && ref.length >= 5
+        ? await steadfastStatusByCid(c.env, ref)
+        : await steadfastStatusByTracking(c.env, ref);
+    } catch (_) {
+      try { status = await steadfastStatusByInvoice(c.env, ref); } catch (_) {}
+    }
+    const deliveryStatus = phoneParcelStatus(status || {});
+    if (!deliveryStatus) {
+      skipped.push({ ref, reason: 'Steadfast did not recognize this code' });
+      continue;
+    }
+    const money = phoneParcelMoney(status || {});
+    await conn.execute(
+      `INSERT INTO steadfast_phone_parcels
+        (ref_code, tracking_code, invoice, consignment_id, booked_on, delivery_status, cod_amount, delivery_charge)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        tracking_code = VALUES(tracking_code),
+        invoice = VALUES(invoice),
+        consignment_id = VALUES(consignment_id),
+        booked_on = VALUES(booked_on),
+        delivery_status = VALUES(delivery_status),
+        cod_amount = VALUES(cod_amount),
+        delivery_charge = VALUES(delivery_charge)`,
+      [
+        ref.slice(0, 64),
+        money.tracking || null,
+        money.invoice || null,
+        money.cid || null,
+        bookedOn,
+        deliveryStatus.slice(0, 64),
+        money.cod,
+        money.charge,
+      ]
+    );
+    saved.push(ref);
+  }
+
+  return c.json({ success: true, saved, skipped });
+});
+
 // GET /admin/steadfast/report?range=daily|monthly|yearly|custom&from=&to=
 app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => {
   const range = String(c.req.query('range') || 'daily');
@@ -3031,10 +3161,11 @@ app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => 
     return c.json({ error: 'Unknown report range' }, 400);
   }
 
-  const conn = getDb(c.env);
+    const conn = getDb(c.env);
   try {
     await ensureOrderSteadfastColumns(conn);
     await ensureOrderPaymentColumns(conn);
+    await ensurePhoneParcelsTable(conn);
     const rows = await conn.execute(
       `SELECT created_at, total_amount, delivery_charge, status, steadfast_status,
               advance_paid_amount, is_advance_paid, payment_status, is_exclusive_order, delivery_area
@@ -3073,6 +3204,19 @@ app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => 
       addSteadfastParcel(touch(key), order);
     }
 
+    const phoneRows = await conn.execute(
+      `SELECT booked_on, delivery_status, cod_amount, delivery_charge
+       FROM steadfast_phone_parcels
+       WHERE booked_on >= ? AND booked_on <= ?`,
+      [from, to]
+    );
+    for (const parcel of phoneRows || []) {
+      const day = dhakaDay(parcel.booked_on);
+      if (!day) continue;
+      const key = grain === 'year' ? day.slice(0, 4) : grain === 'month' ? day.slice(0, 7) : day;
+      addPhoneParcelTotals(touch(key), parcel);
+    }
+
     const list = [...grouped.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([key, totals]) => ({ key, label: periodLabel(key, grain), ...totals }));
@@ -3088,7 +3232,16 @@ app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => 
       totals.advance = Math.round((totals.advance + row.advance) * 100) / 100;
       totals.due = Math.round((totals.due + row.due) * 100) / 100;
     }
-    return c.json({ success: true, range, grain, from, to, totals, rows: list });
+    return c.json({
+      success: true,
+      range,
+      grain,
+      from,
+      to,
+      totals,
+      rows: list,
+      phone_parcels: (phoneRows || []).length,
+    });
   } catch (err) {
     return c.json({ error: err.message || 'Could not build the Steadfast report' }, 500);
   }
@@ -3464,6 +3617,7 @@ function slimShopperItems(raw, limit = 8) {
     quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
     size: String(item?.selectedSize || item?.size || '').slice(0, 40) || null,
     color: String(item?.selectedColor || item?.color || '').slice(0, 40) || null,
+    image: String(item?.image || '').slice(0, 400) || null,
   })).filter((item) => item.id || item.name);
 }
 

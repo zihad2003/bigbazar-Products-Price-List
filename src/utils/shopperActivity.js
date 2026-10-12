@@ -19,6 +19,23 @@ export function getShopperId() {
     }
 }
 
+function itemImage(item) {
+    const color = String(item.selectedColor || item.color || '').trim().toLowerCase();
+    if (color && Array.isArray(item.available_colors)) {
+        const matched = item.available_colors.find((entry) => {
+            const name = typeof entry === 'object' ? entry.name : entry;
+            return String(name || '').trim().toLowerCase() === color;
+        });
+        if (matched && typeof matched === 'object' && (matched.image || matched.image_url)) {
+            return matched.image || matched.image_url;
+        }
+    }
+    if (item.image_url) return item.image_url;
+    if (item.image) return item.image;
+    if (Array.isArray(item.images) && item.images[0]) return item.images[0];
+    return '';
+}
+
 function slimItems(items = []) {
     return (Array.isArray(items) ? items : []).slice(0, 8).map((item) => ({
         id: item.id,
@@ -26,6 +43,7 @@ function slimItems(items = []) {
         quantity: item.quantity,
         selectedColor: item.selectedColor || item.color || '',
         selectedSize: item.selectedSize || item.size || '',
+        image: String(itemImage(item) || '').slice(0, 400),
     }));
 }
 

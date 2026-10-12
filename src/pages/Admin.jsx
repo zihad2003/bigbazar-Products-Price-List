@@ -7,7 +7,7 @@ import {
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
   Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
-  Smartphone, Monitor, Tablet, Shield
+  Smartphone, Monitor, Tablet, Shield, ShoppingCart
 } from 'lucide-react';
 import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -16,6 +16,7 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
 import AdminReports from '../components/admin/AdminReports';
+import AdminShoppers from '../components/admin/AdminShoppers';
 import AdminConversations from '../components/admin/AdminConversations';
 import AdminUsers from '../components/admin/AdminUsers';
 import AdminSteadfast from '../components/admin/AdminSteadfast';
@@ -61,6 +62,7 @@ export default function Admin() {
   const [previewImage, setPreviewImage] = useState(null);
   const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'error' });
   const [orders, setOrders] = useState([]);
+  const [ordersTotal, setOrdersTotal] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [navCounts, setNavCounts] = useState({ users: null, conversations: null });
@@ -456,12 +458,13 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
   const fetchOrders = async () => {
     setLoading(true);
-    const { data } = await bigBazarApi
+    const { data, count } = await bigBazarApi
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(300);
+      .limit(2000);
     setOrders(data || []);
+    setOrdersTotal(Number(count) || (data || []).length);
     setLoading(false);
   };
 
@@ -1720,16 +1723,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
             {[
               { id: 'pending-items', icon: <Package size={18} />, label: 'Pending Items', count: orders.filter(o => o && o.status === 'Pending').length },
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
-              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics', count: orders.filter(o => o && o.status !== 'Deleted').length },
-              { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations', count: navCounts.conversations },
-              { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users', count: navCounts.users },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
-              { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
-              { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
+              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics', count: orders.filter(o => o && o.status !== 'Deleted').length },
+              { id: 'shoppers', icon: <ShoppingCart size={18} />, label: 'Carts & Checkouts' },
               { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
+              { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
               { id: 'soldout', icon: <AlertCircle size={18} />, label: 'Sold Out', count: products.filter(p => p && p.is_sold_out).length },
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
               { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories', count: Object.values(mergeWithDynamic(subcategoriesData)).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0) },
+              { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
+              { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users', count: navCounts.users },
+              { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations', count: navCounts.conversations },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
               ...(session?.user?.role === 'superadmin' ? [
                 { id: 'steadfast', icon: <Truck size={18} />, label: 'Steadfast' },
@@ -1822,7 +1826,9 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       {/* Main Content */}
       <main className={`flex-1 p-4 md:p-12 overflow-y-auto no-scrollbar ${adminTheme === 'light' ? 'bg-slate-50' : 'bg-[#0a0a0c]'}`}>
         {activeTab === 'reports' ? (
-          <AdminReports orders={orders} products={products} reviews={reviews} />
+          <AdminReports orders={orders} ordersTotal={ordersTotal} products={products} reviews={reviews} />
+        ) : activeTab === 'shoppers' ? (
+          <AdminShoppers products={products} />
         ) : activeTab === 'steadfast' && session?.user?.role === 'superadmin' ? (
           <AdminSteadfast />
         ) : activeTab === 'conversations' ? (

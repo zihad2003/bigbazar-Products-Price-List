@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { API_URL, getToken } from '../../api/client';
-import { balanceDue, receivedAdvance } from '../../utils/orderMoney';
+import React, { useState, useMemo } from 'react';
+import { orderTotal, receivedAdvance } from '../../utils/orderMoney';
 import {
   BarChart3, Calendar, Download, Printer, TrendingUp, DollarSign,
-  ShoppingBag, Package, Users, CheckCircle2, Clock, XCircle, Truck,
+  Package, Users, CheckCircle2, Clock, XCircle, Truck,
   Sparkles, Filter, ChevronRight, Search, FileText, ArrowUpRight,
   PieChart, CreditCard, AlertCircle, RotateCcw, ChevronDown, Layers, X
 } from 'lucide-react';
@@ -12,13 +11,50 @@ import {
 const isCanceledStatus = (status) => status === 'Canceled' || status === 'Cancelled';
 const isDeliveredStatus = (status) => status === 'Delivered' || status === 'Completed';
 const isShippedStatus = (status) => status === 'Shipped';
+const isWaitingStatus = (status) => !status || status === 'Pending' || status === 'Confirmed';
 
-function getAdvanceAmount(order) {
-  return receivedAdvance(order);
+function dhakaDateKey(dateString) {
+  if (!dateString) return null;
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Dhaka',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+  const year = get('year');
+  const month = get('month');
+  const day = get('day');
+  if (!year || !month || !day) return null;
+  return `${year}-${month}-${day}`;
 }
 
-function getBalanceDue(order) {
-  return balanceDue(order);
+function monthNameFromKey(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function deliveryBucket(order) {
+  const raw = String(order?.delivery_area || '').toLowerCase();
+  if (raw === 'mirsarai') return 'mirsarai';
+  if (raw.includes('chattogram') || raw.includes('chittagong')) return 'chattogram';
+  return 'outside';
+}
+
+/** Booked value, bKash advance, and money still to collect. Delivered cash is not left as due. */
+function reportMoney(order) {
+  const canceled = isCanceledStatus(order.status);
+  const booked = canceled ? 0 : orderTotal(order);
+  const advance = canceled ? 0 : receivedAdvance(order);
+  const closed = isDeliveredStatus(order.status) || order?.payment_status === 'Fully Paid';
+  const due = canceled || closed ? 0 : Math.max(0, booked - advance);
+  return { booked, advance, due };
 }
 
 function parseOrderQty(order) {
@@ -28,64 +64,12 @@ function parseOrderQty(order) {
   return match ? Number(match[1]) : 1;
 }
 
-export default function AdminReports({ orders = [], products = [], reviews = [] }) {
-  const [activeReportTab, setActiveReportTab] = useState('monthly'); // 'monthly' | 'sales' | 'products' | 'customers' | 'financial' | 'funnel'
-  const [shoppers, setShoppers] = useState({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
-  const [shoppersLoading, setShoppersLoading] = useState(false);
+export default function AdminReports({ orders = [], ordersTotal = 0, products = [], reviews = [] }) {
+  const [activeReportTab, setActiveReportTab] = useState('monthly'); // 'monthly' | 'sales' | 'products' | 'customers' | 'financial'
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'last_3_months' | 'this_year'
   const [selectedMonthKey, setSelectedMonthKey] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
-
-  useEffect(() => {
-    if (activeReportTab !== 'funnel') return undefined;
-    let alive = true;
-    setShoppersLoading(true);
-    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
-    const token = getToken();
-    fetch(`${base}/api/admin/shoppers`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      cache: 'no-store',
-    })
-      .then((res) => res.json().catch(() => ({})))
-      .then((json) => {
-        if (!alive) return;
-        setShoppers({
-          today: json.today || { carts: 0, checkouts: 0, orders: 0 },
-          carts: Array.isArray(json.carts) ? json.carts : [],
-          checkouts: Array.isArray(json.checkouts) ? json.checkouts : [],
-        });
-      })
-      .catch(() => {
-        if (alive) setShoppers({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
-      })
-      .finally(() => { if (alive) setShoppersLoading(false); });
-    return () => { alive = false; };
-  }, [activeReportTab]);
-
-  const formatWhen = (value) => {
-    if (!value) return '';
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleString('en-BD', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  };
-
-  const itemLine = (items = []) => items
-    .map((item) => {
-      const bits = [item.name || 'Item'];
-      if (item.color) bits.push(item.color);
-      if (item.size) bits.push(item.size);
-      bits.push(`x${item.quantity || 1}`);
-      return bits.join(' · ');
-    })
-    .join(', ');
-
-  // Helper to parse dates safely
-  const parseOrderDate = (dateString) => {
-    if (!dateString) return new Date();
-    const d = new Date(dateString);
-    return isNaN(d.getTime()) ? new Date() : d;
-  };
 
   // Helper to format currency
   const formatTaka = (amount) => {
@@ -93,28 +77,25 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     return `৳${num.toLocaleString('en-BD')}`;
   };
 
-  // Filter orders by selected global time range
+  // Filter orders by selected global time range, using Bangladesh dates
   const filteredOrders = useMemo(() => {
-    const now = new Date();
-    return orders.filter(o => {
-      if (o.status === 'Deleted') return false; // exclude deleted orders from revenue reports
-      if (timeFilter === 'all') return true;
+    const todayKey = dhakaDateKey(new Date().toISOString());
+    const todayMonth = todayKey.slice(0, 7);
+    const [year, month] = todayMonth.split('-').map(Number);
+    const lastMonthDate = new Date(Date.UTC(year, month - 2, 1));
+    const lastMonth = `${lastMonthDate.getUTCFullYear()}-${String(lastMonthDate.getUTCMonth() + 1).padStart(2, '0')}`;
+    const threeMonthDate = new Date(Date.UTC(year, month - 4, 1));
+    const threeMonthStart = `${threeMonthDate.getUTCFullYear()}-${String(threeMonthDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
-      const orderDate = parseOrderDate(o.created_at);
-      if (timeFilter === 'this_month') {
-        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-      }
-      if (timeFilter === 'last_month') {
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        return orderDate.getMonth() === lastMonth.getMonth() && orderDate.getFullYear() === lastMonth.getFullYear();
-      }
-      if (timeFilter === 'last_3_months') {
-        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        return orderDate >= threeMonthsAgo;
-      }
-      if (timeFilter === 'this_year') {
-        return orderDate.getFullYear() === now.getFullYear();
-      }
+    return orders.filter(o => {
+      if (o.status === 'Deleted') return false;
+      const key = dhakaDateKey(o.created_at);
+      if (!key) return false;
+      if (timeFilter === 'all') return true;
+      if (timeFilter === 'this_month') return key.slice(0, 7) === todayMonth;
+      if (timeFilter === 'last_month') return key.slice(0, 7) === lastMonth;
+      if (timeFilter === 'last_3_months') return key >= threeMonthStart && key <= todayKey;
+      if (timeFilter === 'this_year') return key.slice(0, 4) === todayKey.slice(0, 4);
       return true;
     });
   }, [orders, timeFilter]);
@@ -130,18 +111,17 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     const monthsMap = {};
 
     filteredOrders.forEach(o => {
-      const date = parseOrderDate(o.created_at);
-      const year = date.getFullYear();
-      const monthIndex = date.getMonth();
-      const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
-      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const dateKey = dhakaDateKey(o.created_at);
+      if (!dateKey) return;
+      const key = dateKey.slice(0, 7);
+      const monthName = monthNameFromKey(key);
 
       if (!monthsMap[key]) {
         monthsMap[key] = {
           key,
           monthName,
-          year,
-          monthIndex,
+          year: Number(key.slice(0, 4)),
+          monthIndex: Number(key.slice(5, 7)) - 1,
           totalOrders: 0,
           pendingOrders: 0,
           shippedOrders: 0,
@@ -152,34 +132,34 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           balanceDueTotal: 0,
           deliveryChargesTotal: 0,
           mirsaraiOrdersCount: 0,
+          chattogramOrdersCount: 0,
           outsideOrdersCount: 0,
           ordersList: []
         };
       }
 
       const m = monthsMap[key];
-      const totalAmt = Number(o.total_amount) || 0;
-      const delCharge = Number(o.delivery_charge) || 0;
       const canceled = isCanceledStatus(o.status);
-      const advance = canceled ? 0 : getAdvanceAmount(o);
-      const due = canceled ? 0 : getBalanceDue(o);
+      const money = reportMoney(o);
 
       m.totalOrders += 1;
-      if (!canceled) {
-        m.totalRevenue += totalAmt;
-        m.advancePaidTotal += advance;
-        m.balanceDueTotal += due;
-        m.deliveryChargesTotal += delCharge;
-      }
+      m.totalRevenue += money.booked;
+      m.advancePaidTotal += money.advance;
+      m.balanceDueTotal += money.due;
+      if (!canceled) m.deliveryChargesTotal += Number(o.delivery_charge) || 0;
       m.ordersList.push(o);
 
-      if (o.status === 'Pending') m.pendingOrders += 1;
+      if (isWaitingStatus(o.status)) m.pendingOrders += 1;
       else if (isShippedStatus(o.status)) m.shippedOrders += 1;
       else if (isDeliveredStatus(o.status)) m.deliveredOrders += 1;
       else if (canceled) m.cancelledOrders += 1;
 
-      if (o.delivery_area === 'mirsarai') m.mirsaraiOrdersCount += 1;
-      else m.outsideOrdersCount += 1;
+      if (!canceled) {
+        const area = deliveryBucket(o);
+        if (area === 'mirsarai') m.mirsaraiOrdersCount += 1;
+        else if (area === 'chattogram') m.chattogramOrdersCount += 1;
+        else m.outsideOrdersCount += 1;
+      }
     });
 
     const sorted = Object.values(monthsMap).sort((a, b) => b.key.localeCompare(a.key));
@@ -207,15 +187,16 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
   }, [monthlyDataReport, selectedMonthKey]);
 
   const overallKPIs = useMemo(() => {
-    const totalRev = revenueOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const totalRev = revenueOrders.reduce((sum, o) => sum + reportMoney(o).booked, 0);
     const totalOrdersCount = filteredOrders.length;
     const activeOrdersCount = revenueOrders.length;
-    const totalAdvance = revenueOrders.reduce((sum, o) => sum + getAdvanceAmount(o), 0);
-    const totalDue = revenueOrders.reduce((sum, o) => sum + getBalanceDue(o), 0);
+    const totalAdvance = revenueOrders.reduce((sum, o) => sum + reportMoney(o).advance, 0);
+    const totalDue = revenueOrders.reduce((sum, o) => sum + reportMoney(o).due, 0);
     const avgOrderVal = activeOrdersCount > 0 ? Math.round(totalRev / activeOrdersCount) : 0;
     const deliveredCount = filteredOrders.filter(o => isDeliveredStatus(o.status)).length;
     const shippedCount = filteredOrders.filter(o => isShippedStatus(o.status)).length;
-    const pendingCount = filteredOrders.filter(o => o.status === 'Pending').length;
+    const confirmedCount = filteredOrders.filter(o => o.status === 'Confirmed').length;
+    const pendingCount = filteredOrders.filter(o => !o.status || o.status === 'Pending').length;
     const cancelledCount = filteredOrders.filter(o => isCanceledStatus(o.status)).length;
     const deliveryRate = activeOrdersCount > 0 ? Math.round((deliveredCount / activeOrdersCount) * 100) : 0;
 
@@ -228,6 +209,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
       avgOrderValue: avgOrderVal,
       deliveredCount,
       shippedCount,
+      confirmedCount,
       pendingCount,
       cancelledCount,
       deliveryRate
@@ -251,8 +233,12 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
         };
       }
 
+      const productPrice = Number(o.product_price);
+      const productRevenue = Number.isFinite(productPrice) && productPrice > 0
+        ? productPrice
+        : Math.max(0, orderTotal(o) - (Number(o.delivery_charge) || 0));
       prodMap[pid].totalQty += parseOrderQty(o);
-      prodMap[pid].totalRevenue += Number(o.total_amount) || 0;
+      prodMap[pid].totalRevenue += productRevenue;
       prodMap[pid].ordersCount += 1;
     });
 
@@ -260,12 +246,16 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
   }, [revenueOrders]);
 
   const deliveryAreaStats = useMemo(() => {
-    const areas = { mirsarai: { name: 'Mirsarai (Local)', count: 0, revenue: 0 }, outside: { name: 'Outside Mirsarai', count: 0, revenue: 0 } };
+    const areas = {
+      mirsarai: { name: 'Mirsarai', count: 0, revenue: 0 },
+      chattogram: { name: 'Chattogram', count: 0, revenue: 0 },
+      outside: { name: 'Outside Chattogram', count: 0, revenue: 0 },
+    };
 
     revenueOrders.forEach(o => {
-      const areaKey = o.delivery_area === 'mirsarai' ? 'mirsarai' : 'outside';
+      const areaKey = deliveryBucket(o);
       areas[areaKey].count += 1;
-      areas[areaKey].revenue += Number(o.total_amount) || 0;
+      areas[areaKey].revenue += reportMoney(o).booked;
     });
 
     return areas;
@@ -276,7 +266,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     let filename = `big_bazar_report_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
 
     if (type === 'monthly') {
-      csvRows.push(['Month-Year', 'Total Orders', 'Delivered Orders', 'Shipped Orders', 'Pending Orders', 'Cancelled Orders', 'Gross Revenue (BDT)', 'Advance Collected (BDT)', 'Outstanding Due (BDT)', 'Avg Order Value (BDT)']);
+      csvRows.push(['Month-Year', 'Total Orders', 'Delivered Orders', 'Shipped Orders', 'Waiting Orders', 'Cancelled Orders', 'Gross Revenue (BDT)', 'Advance Collected (BDT)', 'Still To Collect (BDT)', 'Avg Order Value (BDT)']);
       monthlyDataReport.forEach(m => {
         csvRows.push([
           `"${m.monthName}"`,
@@ -299,9 +289,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
     } else if (type === 'orders') {
       csvRows.push(['Order ID', 'Date', 'Customer Name', 'Phone', 'Address', 'Area', 'Product', 'Total Amount', 'Advance Paid', 'Due Balance', 'Status']);
       filteredOrders.forEach(o => {
-        const total = Number(o.total_amount) || 0;
-        const advance = getAdvanceAmount(o);
-        const due = getBalanceDue(o);
+        const money = reportMoney(o);
+        const total = orderTotal(o);
+        const advance = money.advance;
+        const due = money.due;
 
         csvRows.push([
           `"#${o.id.toString().slice(-6).toUpperCase()}"`,
@@ -398,7 +389,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
         {[
           { label: 'Gross Revenue', value: formatTaka(overallKPIs.totalRevenue), sub: `${overallKPIs.activeOrders} active / ${overallKPIs.totalOrders} total`, color: 'border-t-[#ce112d]', icon: <DollarSign size={14} className="text-[#ce112d]" /> },
           { label: 'Advance Collected', value: formatTaka(overallKPIs.totalAdvance), sub: 'bKash / Bank', color: 'border-t-emerald-500', icon: <CheckCircle2 size={14} className="text-emerald-400" /> },
-          { label: 'Balance Due', value: formatTaka(overallKPIs.totalDue), sub: 'COD pending', color: 'border-t-amber-500', icon: <Clock size={14} className="text-amber-400" /> },
+          { label: 'Still to collect', value: formatTaka(overallKPIs.totalDue), sub: 'Open orders only', color: 'border-t-amber-500', icon: <Clock size={14} className="text-amber-400" /> },
           { label: 'Avg Order Value', value: formatTaka(overallKPIs.avgOrderValue), sub: `${overallKPIs.deliveryRate}% fulfilled`, color: 'border-t-blue-500', icon: <TrendingUp size={14} className="text-blue-400" /> },
         ].map((c) => (
           <div key={c.label} className={`rounded-lg border border-white/10 bg-[#121215] border-t-2 ${c.color} px-3 py-2.5 flex items-center justify-between gap-2`}>
@@ -413,6 +404,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           </div>
         ))}
       </div>
+      <p className="text-[11px] text-zinc-500 -mt-2">
+        Still to collect leaves out delivered orders. That cash is already taken.
+        {ordersTotal > orders.length ? ` Showing the latest ${orders.length} of ${ordersTotal} orders.` : ''}
+      </p>
 
       {/* Navigation Sub-Tabs for Reports */}
       <div className="flex border-b border-white/10 gap-2 sm:gap-6 overflow-x-auto no-scrollbar pb-1">
@@ -422,7 +417,6 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           { id: 'products', label: 'Product & Inventory Trends', icon: Package, count: productPerformance.length },
           { id: 'customers', label: 'Delivery & Customer Insights', icon: Users },
           { id: 'financial', label: 'Financial Cash Flow Statement', icon: DollarSign },
-          { id: 'funnel', label: 'Carts & Checkouts', icon: ShoppingBag, count: shoppers.carts.length + shoppers.checkouts.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -535,10 +529,12 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                       <th className="py-4 px-6">Month</th>
                       <th className="py-4 px-4 text-center">Orders</th>
                       <th className="py-4 px-4 text-center">Delivered</th>
-                      <th className="py-4 px-4 text-center">Pending</th>
+                      <th className="py-4 px-4 text-center">Shipped</th>
+                      <th className="py-4 px-4 text-center">Waiting</th>
+                      <th className="py-4 px-4 text-center">Canceled</th>
                       <th className="py-4 px-6 text-right">Gross Revenue</th>
                       <th className="py-4 px-6 text-right">Advance Paid</th>
-                      <th className="py-4 px-6 text-right">Balance Due</th>
+                      <th className="py-4 px-6 text-right">Still to collect</th>
                       <th className="py-4 px-6 text-right">AOV</th>
                       <th className="py-4 px-6 text-center">Action</th>
                     </tr>
@@ -559,7 +555,9 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                           </td>
                           <td className="py-4 px-4 text-center font-bold text-white">{m.totalOrders}</td>
                           <td className="py-4 px-4 text-center text-emerald-400 font-bold">{m.deliveredOrders}</td>
+                          <td className="py-4 px-4 text-center text-blue-400 font-bold">{m.shippedOrders}</td>
                           <td className="py-4 px-4 text-center text-amber-400 font-bold">{m.pendingOrders}</td>
+                          <td className="py-4 px-4 text-center text-red-400 font-bold">{m.cancelledOrders}</td>
                           <td className="py-4 px-6 text-right font-black text-white">{formatTaka(m.totalRevenue)}</td>
                           <td className="py-4 px-6 text-right font-bold text-emerald-400">{formatTaka(m.advancePaidTotal)}</td>
                           <td className="py-4 px-6 text-right font-bold text-amber-400">{formatTaka(m.balanceDueTotal)}</td>
@@ -600,6 +598,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                   <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-lg">
                     <span className="text-zinc-500 text-[10px] font-medium block">Mirsarai</span>
                     <span className="text-white font-semibold text-sm">{activeMonthDetail.mirsaraiOrdersCount}</span>
+                  </div>
+                  <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-lg">
+                    <span className="text-zinc-500 text-[10px] font-medium block">Chattogram</span>
+                    <span className="text-white font-semibold text-sm">{activeMonthDetail.chattogramOrdersCount || 0}</span>
                   </div>
                   <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-lg">
                     <span className="text-zinc-500 text-[10px] font-medium block">Outside</span>
@@ -650,7 +652,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div>
                   <h3 className="text-base font-semibold text-white tracking-tight">Delivery Area Breakdown</h3>
-                  <p className="text-zinc-500 text-xs">Mirsarai Local vs Outside Delivery Revenue</p>
+                  <p className="text-zinc-500 text-xs">Mirsarai, Chattogram, and outside</p>
                 </div>
                 <Truck className="text-[#ce112d]" size={20} />
               </div>
@@ -675,7 +677,24 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
 
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold mb-2">
-                    <span className="text-zinc-300">Outside Mirsarai / Courier ({deliveryAreaStats.outside.count} Orders)</span>
+                    <span className="text-zinc-300">Chattogram ({deliveryAreaStats.chattogram.count} Orders)</span>
+                    <span className="text-white">{formatTaka(deliveryAreaStats.chattogram.revenue)}</span>
+                  </div>
+                  <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-1000"
+                      style={{
+                        width: overallKPIs.totalRevenue > 0
+                          ? `${(deliveryAreaStats.chattogram.revenue / overallKPIs.totalRevenue) * 100}%`
+                          : '0%'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold mb-2">
+                    <span className="text-zinc-300">Outside Chattogram ({deliveryAreaStats.outside.count} Orders)</span>
                     <span className="text-white">{formatTaka(deliveryAreaStats.outside.revenue)}</span>
                   </div>
                   <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
@@ -702,7 +721,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 <PieChart className="text-amber-400" size={20} />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-emerald-500 p-3 rounded-lg text-center">
                   <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Delivered</span>
                   <span className="text-lg font-semibold text-white">{overallKPIs.deliveredCount}</span>
@@ -710,6 +729,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-blue-500 p-3 rounded-lg text-center">
                   <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Shipped</span>
                   <span className="text-lg font-semibold text-white">{overallKPIs.shippedCount}</span>
+                </div>
+                <div className="bg-[#121215] border border-white/10 border-t-2 border-t-sky-500 p-3 rounded-lg text-center">
+                  <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Confirmed</span>
+                  <span className="text-lg font-semibold text-white">{overallKPIs.confirmedCount}</span>
                 </div>
                 <div className="bg-[#121215] border border-white/10 border-t-2 border-t-amber-500 p-3 rounded-lg text-center">
                   <span className="text-[10px] font-medium text-zinc-500 block mb-0.5">Pending</span>
@@ -800,9 +823,10 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               </thead>
               <tbody className="divide-y divide-white/5 text-xs font-semibold text-zinc-300">
                 {filteredOrders.slice(0, 20).map((o) => {
-                  const total = Number(o.total_amount) || 0;
-                  const advance = getAdvanceAmount(o);
-                  const due = getBalanceDue(o);
+                  const money = reportMoney(o);
+                  const total = orderTotal(o);
+                  const advance = money.advance;
+                  const due = money.due;
 
                   return (
                     <tr key={o.id} className="hover:bg-white/[0.02] transition-colors">
@@ -837,83 +861,6 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
         </div>
       )}
 
-      {activeReportTab === 'funnel' && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Carts today', value: shoppers.today.carts },
-              { label: 'Checkouts today', value: shoppers.today.checkouts },
-              { label: 'Orders today', value: shoppers.today.orders },
-            ].map((card) => (
-              <div key={card.label} className="bg-zinc-900 border border-white/5 rounded-xl p-4">
-                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">{card.label}</p>
-                <p className="text-2xl font-bold text-white mt-1">{shoppersLoading ? '…' : card.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold text-white">In cart, no order</h3>
-              <p className="text-xs text-zinc-500">People who added items and have not placed an order yet.</p>
-            </div>
-            {shoppers.carts.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-6 text-center">
-                {shoppersLoading ? 'Loading…' : 'No open carts in the last 30 days.'}
-              </p>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {shoppers.carts.map((row) => (
-                  <div key={row.id} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{itemLine(row.cart) || 'Cart'}</p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {row.phone || 'Guest'}
-                        {row.name ? ` · ${row.name}` : ''}
-                        {row.area ? ` · ${row.area}` : ''}
-                      </p>
-                    </div>
-                    <p className="text-[11px] text-zinc-500 shrink-0">{formatWhen(row.last_seen_at)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-3">
-            <div>
-              <h3 className="text-base font-semibold text-white">Opened checkout, did not submit</h3>
-              <p className="text-xs text-zinc-500">Buy Now or bag checkout started, order not placed.</p>
-            </div>
-            {shoppers.checkouts.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-6 text-center">
-                {shoppersLoading ? 'Loading…' : 'No unfinished checkouts in the last 30 days.'}
-              </p>
-            ) : (
-              <div className="divide-y divide-white/5">
-                {shoppers.checkouts.map((row) => (
-                  <div key={`co-${row.id}`} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">
-                        {itemLine(row.checkout_items.length ? row.checkout_items : row.cart) || 'Checkout'}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {row.checkout_source === 'buy_now' ? 'Buy Now' : 'Cart'}
-                        {' · '}
-                        {row.phone || 'Guest'}
-                        {row.name ? ` · ${row.name}` : ''}
-                        {row.area ? ` · ${row.area}` : ''}
-                      </p>
-                    </div>
-                    <p className="text-[11px] text-zinc-500 shrink-0">{formatWhen(row.last_seen_at)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── SUB-TAB 5: FINANCIAL & CASH FLOW STATEMENT ── */}
       {activeReportTab === 'financial' && (
         <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-5 ">
@@ -921,7 +868,7 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
             <h3 className="text-base font-semibold text-white tracking-tight">
               Executive Financial <span className="text-[#ce112d]">Statement</span>
             </h3>
-            <p className="text-zinc-500 text-xs font-semibold">Summary of income, cash flow advances, and open receivables</p>
+            <p className="text-zinc-500 text-xs font-semibold">Collected plus still to collect equals the booked order value. Canceled orders are left out.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -929,15 +876,19 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
               <h4 className="text-xs font-semibold text-zinc-400">Revenue &amp; Collections</h4>
               <div className="space-y-3 divide-y divide-white/5 text-sm font-semibold">
                 <div className="flex justify-between py-2">
-                  <span className="text-zinc-400">Total Billed Gross Revenue</span>
+                  <span className="text-zinc-400">Booked order value</span>
                   <span className="text-white font-black">{formatTaka(overallKPIs.totalRevenue)}</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-emerald-400">Total Advance Receipts (bKash/Bank)</span>
+                  <span className="text-white">Collected so far</span>
+                  <span className="text-white font-black">{formatTaka(overallKPIs.totalRevenue - overallKPIs.totalDue)}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-emerald-400 pl-3">Includes bKash advance</span>
                   <span className="text-emerald-400 font-black">{formatTaka(overallKPIs.totalAdvance)}</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-amber-400">Pending COD Due Collection</span>
+                  <span className="text-amber-400">Still to collect</span>
                   <span className="text-amber-400 font-black">{formatTaka(overallKPIs.totalDue)}</span>
                 </div>
               </div>

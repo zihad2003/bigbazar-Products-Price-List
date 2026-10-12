@@ -529,6 +529,10 @@ function SteadfastReport({ nonce }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [phoneCodes, setPhoneCodes] = useState('');
+  const [phoneDate, setPhoneDate] = useState('');
+  const [phoneNote, setPhoneNote] = useState('');
+  const [phoneBusy, setPhoneBusy] = useState(false);
 
   const load = async (nextRange = range, nextFrom = from, nextTo = to) => {
     if (nextRange === 'custom' && (!nextFrom || !nextTo)) return;
@@ -590,9 +594,63 @@ function SteadfastReport({ nonce }) {
 
       <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
         <BarChart3 size={12} />
-        Parcels booked from this website. App-only entries are not included.
+        Website bookings are included automatically.
+        {report?.phone_parcels ? ` ${report.phone_parcels} phone booking${report.phone_parcels === 1 ? '' : 's'} are included in this period.` : ' Phone bookings appear after you add their tracking code.'}
         {report ? ` ${report.from} – ${report.to}.` : ''}
       </p>
+
+      <form
+        className="rounded-xl border border-white/10 bg-[#121215] p-3 space-y-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setPhoneBusy(true);
+          setPhoneNote('');
+          setError('');
+          try {
+            const data = await sfFetch('/admin/steadfast/phone-parcels', {
+              method: 'POST',
+              body: JSON.stringify({ refs: phoneCodes, booked_on: phoneDate }),
+            });
+            const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+            const unknown = skipped.filter((item) => String(item.reason || '').includes('recognize')).length;
+            const already = skipped.length - unknown;
+            const parts = [`Added ${data.saved?.length || 0}.`];
+            if (already) parts.push(`${already} already counted from the website.`);
+            if (unknown) parts.push(`${unknown} code${unknown === 1 ? '' : 's'} not found on Steadfast.`);
+            setPhoneNote(parts.join(' '));
+            if (data.saved?.length) setPhoneCodes('');
+            await load(range, from, to);
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setPhoneBusy(false);
+          }
+        }}
+      >
+        <p className="text-xs font-semibold text-white">Add phone or app bookings</p>
+        <p className="text-[11px] text-zinc-500">Steadfast does not send a full list. Paste tracking codes or invoices, one per line, and the day they were booked.</p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="date"
+            required
+            value={phoneDate}
+            onChange={(e) => setPhoneDate(e.target.value)}
+            className="h-10 px-2 rounded-lg bg-black/40 border border-white/10 text-xs text-white"
+          />
+          <textarea
+            required
+            value={phoneCodes}
+            onChange={(e) => setPhoneCodes(e.target.value)}
+            rows={2}
+            placeholder="Tracking code or invoice"
+            className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-sm text-white"
+          />
+          <button type="submit" disabled={phoneBusy} className="h-10 px-4 rounded-lg bg-[#ce112d] text-white text-xs font-semibold disabled:opacity-60">
+            {phoneBusy ? 'Adding…' : 'Add to report'}
+          </button>
+        </div>
+        {phoneNote && <p className="text-[11px] text-emerald-300">{phoneNote}</p>}
+      </form>
       {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
 
       {totals && (
