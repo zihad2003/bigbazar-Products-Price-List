@@ -294,7 +294,7 @@ export default function Checkout() {
             return;
         }
         if (!validateBDNumber(formData.phone)) {
-            showFieldError('phone', language === 'bn' ? "সটীক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
+            showFieldError('phone', language === 'bn' ? "সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
             return;
         }
         if (!formData.district) {

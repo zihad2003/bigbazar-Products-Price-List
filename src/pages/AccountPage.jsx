@@ -42,6 +42,7 @@ const ORDER_STATUS_CONFIG = {
   'Shipped': { icon: Truck, color: 'text-violet-500', bg: 'bg-violet-500/10', label: 'Shipped', labelBn: 'শিপড' },
   'Delivered': { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10', label: 'Delivered', labelBn: 'ডেলিভারড' },
   'Cancelled': { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Cancelled', labelBn: 'বাতিল' },
+  'Canceled': { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Cancelled', labelBn: 'বাতিল' },
   'Deleted': { icon: XCircle, color: 'text-zinc-500', bg: 'bg-zinc-500/10', label: 'Deleted', labelBn: 'মুছে ফেলা' },
 };
 

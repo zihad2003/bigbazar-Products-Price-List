@@ -3649,7 +3649,11 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               const open = listed.filter(o => !isCanceled(o.status));
               const revenue = open.reduce((acc, o) => acc + orderTotal(o), 0);
               const advance = open.reduce((acc, o) => acc + receivedAdvance(o), 0);
-              const due = open.reduce((acc, o) => acc + balanceDue(o), 0);
+              const stillDue = (order) => {
+                if (order.status === 'Delivered' || order.status === 'Completed' || order.payment_status === 'Fully Paid') return 0;
+                return balanceDue(order);
+              };
+              const due = open.reduce((acc, o) => acc + stillDue(o), 0);
               const pending = open.filter(o => o.status === 'Pending').length;
               const shipped = open.filter(o => o.status === 'Shipped').length;
               const done = open.filter(o => o.status === 'Delivered').length;

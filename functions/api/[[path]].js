@@ -2977,7 +2977,8 @@ function steadfastOrderMoney(order) {
       advance = charge;
     }
   }
-  const due = order.payment_status === 'Fully Paid' ? 0 : Math.max(0, total - advance);
+  const delivered = steadfastBucket(order) === 'delivered';
+  const due = order.payment_status === 'Fully Paid' || delivered ? 0 : Math.max(0, total - advance);
   return { cod: total, charge, advance, due };
 }
 
@@ -3205,11 +3206,38 @@ app.get('/admin/steadfast/report', requireAuth, requireSuperAdmin, async (c) => 
     }
 
     const phoneRows = await conn.execute(
-      `SELECT booked_on, delivery_status, cod_amount, delivery_charge
+      `SELECT ref_code, tracking_code, invoice, consignment_id, booked_on, delivery_status, cod_amount, delivery_charge
        FROM steadfast_phone_parcels
        WHERE booked_on >= ? AND booked_on <= ?`,
       [from, to]
     );
+    let refreshed = 0;
+    for (const parcel of phoneRows || []) {
+      const current = String(parcel.delivery_status || '').toLowerCase();
+      const finished = current.includes('deliver') || current.includes('cancel') || current.includes('return');
+      if (finished || refreshed >= 15) continue;
+      refreshed += 1;
+      let status = null;
+      try {
+        if (parcel.consignment_id) status = await steadfastStatusByCid(c.env, parcel.consignment_id);
+        else if (parcel.tracking_code) status = await steadfastStatusByTracking(c.env, parcel.tracking_code);
+        else status = await steadfastStatusByInvoice(c.env, parcel.invoice || parcel.ref_code);
+      } catch (_) {
+        try { status = await steadfastStatusByInvoice(c.env, parcel.invoice || parcel.ref_code); } catch (_) {}
+      }
+      const nextStatus = phoneParcelStatus(status || {});
+      if (!nextStatus) continue;
+      const money = phoneParcelMoney(status || {});
+      parcel.delivery_status = nextStatus;
+      if (money.cod) parcel.cod_amount = money.cod;
+      if (money.charge) parcel.delivery_charge = money.charge;
+      await conn.execute(
+        `UPDATE steadfast_phone_parcels
+         SET delivery_status = ?, cod_amount = ?, delivery_charge = ?
+         WHERE ref_code = ?`,
+        [nextStatus.slice(0, 64), Number(parcel.cod_amount) || 0, Number(parcel.delivery_charge) || 0, parcel.ref_code]
+      );
+    }
     for (const parcel of phoneRows || []) {
       const day = dhakaDay(parcel.booked_on);
       if (!day) continue;
