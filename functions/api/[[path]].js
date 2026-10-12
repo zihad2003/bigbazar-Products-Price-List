@@ -85,6 +85,87 @@ async function ensureOrderRiskColumns(conn) {
   orderRiskColumnsReady = true;
 }
 
+let orderTrackCodeReady = false;
+async function ensureOrderTrackCodeColumn(conn) {
+  if (orderTrackCodeReady) return;
+  try {
+    await conn.execute('ALTER TABLE orders ADD COLUMN track_code CHAR(6) NULL');
+  } catch (_) {
+    /* column already exists */
+  }
+  try {
+    await conn.execute('ALTER TABLE orders ADD INDEX idx_orders_track_code (track_code)');
+  } catch (_) {
+    /* index already exists */
+  }
+  orderTrackCodeReady = true;
+}
+
+function randomTrackCode() {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(buf[0] % 1000000).padStart(6, '0');
+}
+
+async function mintTrackCode(conn, phone) {
+  const tail = String(normalizeBdPhone(phone) || '').replace(/\D/g, '').slice(-10);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const code = randomTrackCode();
+    if (tail.length < 10) return code;
+    try {
+      const rows = await conn.execute(
+        `SELECT id FROM orders WHERE track_code = ? AND RIGHT(REPLACE(REPLACE(REPLACE(IFNULL(customer_phone,''), ' ', ''), '-', ''), '+', ''), 10) = ? LIMIT 1`,
+        [code, tail]
+      );
+      if (!rows || rows.length === 0) return code;
+    } catch (_) {
+      return code;
+    }
+  }
+  return randomTrackCode();
+}
+
+function toAsciiDigits(raw) {
+  const map = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+  return String(raw || '').replace(/[০-৯]/g, (d) => map[d]);
+}
+
+function phoneTail(raw) {
+  return String(normalizeBdPhone(toAsciiDigits(raw)) || '').replace(/\D/g, '').slice(-10);
+}
+
+function isStoredOrderId(value) {
+  const v = String(value || '').trim();
+  if (v.length < 8 || v.length > 80) return false;
+  if (/^\d+$/.test(v)) return false;
+  return true;
+}
+
+function publicOrderRow(row, full) {
+  const slim = {
+    id: row.id,
+    track_code: row.track_code || null,
+    status: row.status,
+    product_name: row.product_name,
+    total_amount: row.total_amount,
+    created_at: row.created_at,
+  };
+  if (!full) return slim;
+  return {
+    ...slim,
+    customer_name: row.customer_name,
+    customer_phone: row.customer_phone,
+    customer_address: row.customer_address,
+    product_price: row.product_price,
+    delivery_charge: row.delivery_charge,
+    last_four_digits: row.last_four_digits,
+    payment_status: row.payment_status,
+    is_advance_paid: row.is_advance_paid,
+    is_exclusive_order: row.is_exclusive_order,
+    delivery_area: row.delivery_area,
+  };
+}
+
 /** Real visitor IP. Prefer the customer in X-Forwarded-For, not the Hostinger edge. */
 function getClientIp(c) {
   const candidates = [];
@@ -2147,6 +2228,8 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
   const clientIp = getClientIp(c);
   const userAgent = String(c.req.header('User-Agent') || '').slice(0, 255) || null;
   await ensureOrderRiskColumns(conn);
+  await ensureOrderTrackCodeColumn(conn);
+  let issuedTrackCode = await mintTrackCode(conn, o.customer_phone);
 
   const tx = await conn.begin();
   try {
@@ -2280,22 +2363,41 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
       normalizedArea || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
       o.size || null, o.color || null, safeAdvancePaid, o.is_exclusive_order ? 1 : 0, safePaymentStatus, o.moderator_reference || null
     ];
-    const colsSql = customerId ? orderCols + ', user_id' : orderCols;
-    const placeholders = customerId ? orderVals.map(() => '?').join(', ') + ', ?' : orderVals.map(() => '?').join(', ');
-    if (customerId) orderVals.push(customerId);
-    
+    const insertWith = async (includeTrack, includeUser) => {
+      let colsSql = orderCols;
+      const vals = [...orderVals];
+      if (includeTrack) {
+        colsSql += ', track_code';
+        vals.push(issuedTrackCode);
+      }
+      if (includeUser && customerId) {
+        colsSql += ', user_id';
+        vals.push(customerId);
+      }
+      await tx.execute(
+        `INSERT INTO orders (${colsSql}) VALUES (${vals.map(() => '?').join(', ')})`,
+        vals
+      );
+    };
+
     try {
-      await tx.execute(`INSERT INTO orders (${colsSql}) VALUES (${placeholders})`, orderVals);
+      await insertWith(true, true);
     } catch (insertErr) {
-      // If user_id column doesn't exist yet, retry without it
-      if (insertErr.message?.includes('user_id') || insertErr.message?.includes('Unknown column')) {
-        const fallbackVals = orderVals.slice(0, -1); // Remove customerId
-        await tx.execute(
-          `INSERT INTO orders (${orderCols}) VALUES (${fallbackVals.map(() => '?').join(', ')})`,
-          fallbackVals
-        );
-      } else {
-        throw insertErr;
+      const msg = String(insertErr.message || '');
+      const unknown = /unknown column/i.test(msg);
+      const namedTrack = /track_code/i.test(msg);
+      const namedUser = /user_id/i.test(msg);
+      if (!unknown && !namedTrack && !namedUser) throw insertErr;
+      const dropTrack = namedTrack || (unknown && !namedUser);
+      const dropUser = namedUser || (unknown && !namedTrack);
+      if (dropTrack) issuedTrackCode = '';
+      try {
+        await insertWith(!dropTrack, !dropUser);
+      } catch (retryErr) {
+        const retryMsg = String(retryErr.message || '');
+        if (!/unknown column|user_id|track_code/i.test(retryMsg)) throw retryErr;
+        issuedTrackCode = '';
+        await insertWith(false, false);
       }
     }
 
@@ -2354,7 +2456,12 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
     await bumpCatalogVersion(c);
     runInBackground(c, () => prewarmCatalogCache(c));
-    return c.json({ success: true, order_id: id, data: { id, order_id: id } });
+    return c.json({
+      success: true,
+      order_id: id,
+      track_code: issuedTrackCode || null,
+      data: { id, order_id: id, track_code: issuedTrackCode || null },
+    });
   } catch (err) {
     await tx.rollback();
     console.error('Order placement transaction error:', err);
@@ -3073,23 +3180,51 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
 });
 
 app.get('/orders/track', async (c) => {
-  const query = (c.req.query('query') || '').trim();
-  if (!query) return c.json({ data: [] });
-
-  const cacheKey = `cache:orders:track:${query}`;
-  const cached = await kvGet(c, cacheKey);
-  if (cached) {
-    return c.json(cached);
+  if (!(await checkRateLimitKV(c, 'order-track', 12, 60000))) {
+    return c.json({ error: 'Too many tries. Please wait a minute.', data: [] }, 429);
   }
 
+  const query = (c.req.query('query') || '').trim();
+  const phone = (c.req.query('phone') || '').trim();
+  const code = (c.req.query('code') || '').trim();
   const conn = getDb(c.env);
-  const res = await conn.execute(
-    'SELECT * FROM orders WHERE customer_phone = ? OR id = ? ORDER BY created_at DESC',
-    [query, query]
-  );
-  const responseData = { data: res };
-  await kvSet(c, cacheKey, responseData, 60);
-  return c.json(responseData);
+  await ensureOrderTrackCodeColumn(conn);
+
+  const empty = { data: [] };
+  const notDeleted = `(status IS NULL OR status <> 'Deleted')`;
+
+  // Confirmation links keep working with the full order id and no phone.
+  if (isStoredOrderId(query) && !phone && !code) {
+    const rows = await conn.execute(
+      `SELECT * FROM orders WHERE id = ? AND ${notDeleted} LIMIT 1`,
+      [query]
+    );
+    const row = rows?.[0];
+    if (!row) return c.json(empty);
+    return c.json({ data: [publicOrderRow(row, true)] });
+  }
+
+  const tail = phoneTail(phone);
+  if (tail.length < 10) return c.json(empty);
+
+  const codePlain = toAsciiDigits(code).replace(/\s/g, '');
+  const codeDigits = codePlain.replace(/\D/g, '');
+  const isSix = /^\d{6}$/.test(codePlain);
+  const lookupId = isStoredOrderId(code) ? code.trim() : (isStoredOrderId(query) ? query : '');
+  if (!isSix && !lookupId) return c.json(empty);
+
+  const phoneSql = `RIGHT(REPLACE(REPLACE(REPLACE(IFNULL(customer_phone,''), ' ', ''), '-', ''), '+', ''), 10) = ?`;
+  const rows = isSix && !lookupId
+    ? await conn.execute(
+        `SELECT * FROM orders WHERE track_code = ? AND ${phoneSql} AND ${notDeleted} ORDER BY created_at DESC LIMIT 5`,
+        [codeDigits, tail]
+      )
+    : await conn.execute(
+        `SELECT * FROM orders WHERE id = ? AND ${phoneSql} AND ${notDeleted} LIMIT 1`,
+        [lookupId, tail]
+      );
+
+  return c.json({ data: (rows || []).map((row) => publicOrderRow(row, false)) });
 });
 
 // ============================================
@@ -3297,6 +3432,182 @@ app.post('/analytics/ping', (c) => c.json({ success: true }));
 app.get('/analytics/stats', (c) => c.json({ success: true, online_now: 0, today_count: 0, total_count: 0 }));
 app.post('/analytics/track-visitor', (c) => c.json({ success: true }));
 app.get('/analytics/visitor-count', (c) => c.json({ success: true, count: 0 }));
+
+let shopperSessionsReady = false;
+async function ensureShopperSessionsTable(conn) {
+  if (shopperSessionsReady) return;
+  await conn.execute(`
+    CREATE TABLE IF NOT EXISTS shopper_sessions (
+      browser_id VARCHAR(64) PRIMARY KEY,
+      cart_items TEXT NULL,
+      cart_count INT NOT NULL DEFAULT 0,
+      checkout_source VARCHAR(16) NULL,
+      checkout_items TEXT NULL,
+      phone VARCHAR(20) NULL,
+      customer_name VARCHAR(120) NULL,
+      order_id VARCHAR(64) NULL,
+      customer_ip VARCHAR(64) NULL,
+      ip_geo TEXT NULL,
+      last_seen_at DATETIME NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+  shopperSessionsReady = true;
+}
+
+function slimShopperItems(raw, limit = 8) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, limit).map((item) => ({
+    id: String(item?.id || '').slice(0, 80),
+    name: String(item?.name || '').slice(0, 120),
+    quantity: Math.max(1, parseInt(item?.quantity, 10) || 1),
+    size: String(item?.selectedSize || item?.size || '').slice(0, 40) || null,
+    color: String(item?.selectedColor || item?.color || '').slice(0, 40) || null,
+  })).filter((item) => item.id || item.name);
+}
+
+function parseShopperJson(raw, fallback = []) {
+  if (!raw) return fallback;
+  if (Array.isArray(raw) || typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (_) { return fallback; }
+}
+
+function shopperArea(geo) {
+  const parsed = withBdPlace(parseIpGeo(geo));
+  if (!parsed) return '';
+  if (parsed.upazila && parsed.district) return `${parsed.upazila}, ${parsed.district}`;
+  return parsed.district || parsed.city || parsed.region || parsed.country || '';
+}
+
+app.post('/shopper/activity', async (c) => {
+  if (!(await checkRateLimitKV(c, 'shopper-activity', 20, 60000))) {
+    return c.json({ success: true });
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const browserId = String(body.browser_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  if (browserId.length < 8) return c.json({ success: false }, 400);
+
+  const hasCart = Array.isArray(body.cart);
+  const hasCheckoutItems = Array.isArray(body.checkout_items);
+  const cartItems = slimShopperItems(hasCart ? body.cart : []);
+  const checkoutItems = slimShopperItems(hasCheckoutItems ? body.checkout_items : []);
+  const checkoutSource = body.checkout_source === 'buy_now' || body.checkout_source === 'cart'
+    ? body.checkout_source
+    : null;
+  const phoneDigits = toAsciiDigits(body.phone).replace(/\D/g, '').slice(-11);
+  const phone = phoneDigits.length >= 10 ? phoneDigits : '';
+  const customerName = String(body.name || '').trim().slice(0, 120);
+  const orderId = String(body.order_id || '').trim().slice(0, 64);
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const clientIp = getClientIp(c);
+  const conn = getDb(c.env);
+  await ensureShopperSessionsTable(conn);
+
+  const existingRows = await conn.execute(
+    'SELECT browser_id, customer_ip, ip_geo FROM shopper_sessions WHERE browser_id = ? LIMIT 1',
+    [browserId]
+  );
+  const existing = existingRows?.[0] || null;
+  let geo = parseIpGeo(existing?.ip_geo);
+  if (!geo && clientIp && !isPrivateIp(clientIp)) {
+    geo = await lookupIpGeo(c.env, clientIp);
+  }
+
+  const cartJson = JSON.stringify(cartItems);
+  const checkoutJson = JSON.stringify(checkoutItems);
+  const geoJson = geo ? JSON.stringify(geo) : (existing?.ip_geo || null);
+
+  await conn.execute(
+    `INSERT INTO shopper_sessions
+      (browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, order_id, customer_ip, ip_geo, last_seen_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+      cart_items = IF(? = 0, cart_items, VALUES(cart_items)),
+      cart_count = IF(? = 0, cart_count, VALUES(cart_count)),
+      checkout_source = COALESCE(VALUES(checkout_source), checkout_source),
+      checkout_items = IF(? = 0, checkout_items, VALUES(checkout_items)),
+      phone = IF(VALUES(phone) = '', phone, VALUES(phone)),
+      customer_name = IF(VALUES(customer_name) = '', customer_name, VALUES(customer_name)),
+      order_id = COALESCE(NULLIF(VALUES(order_id), ''), order_id),
+      customer_ip = COALESCE(VALUES(customer_ip), customer_ip),
+      ip_geo = COALESCE(VALUES(ip_geo), ip_geo),
+      last_seen_at = NOW()`,
+    [
+      browserId,
+      cartJson,
+      cartCount,
+      checkoutSource,
+      checkoutJson,
+      phone,
+      customerName,
+      orderId || null,
+      clientIp || existing?.customer_ip || null,
+      geoJson,
+      hasCart ? 1 : 0,
+      hasCart ? 1 : 0,
+      hasCheckoutItems ? 1 : 0,
+    ]
+  );
+
+  try {
+    await conn.execute(
+      `DELETE FROM shopper_sessions
+       WHERE order_id IS NULL AND last_seen_at < (NOW() - INTERVAL 30 DAY)`
+    );
+  } catch (_) {}
+
+  return c.json({ success: true });
+});
+
+app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
+  const conn = getDb(c.env);
+  await ensureShopperSessionsTable(conn);
+  const rows = await conn.execute(
+    `SELECT browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, order_id, customer_ip, ip_geo, last_seen_at, created_at
+     FROM shopper_sessions
+     WHERE last_seen_at >= (NOW() - INTERVAL 30 DAY)
+     ORDER BY last_seen_at DESC
+     LIMIT 200`
+  );
+
+  const list = (rows || []).map((row) => {
+    const cart = parseShopperJson(row.cart_items, []);
+    const checkout = parseShopperJson(row.checkout_items, []);
+    return {
+      id: row.browser_id,
+      cart,
+      cart_count: Number(row.cart_count) || 0,
+      checkout_source: row.checkout_source || null,
+      checkout_items: checkout,
+      phone: row.phone || '',
+      name: row.customer_name || '',
+      order_id: row.order_id || null,
+      ip: row.customer_ip || '',
+      area: shopperArea(row.ip_geo) || '',
+      last_seen_at: row.last_seen_at,
+      created_at: row.created_at,
+    };
+  });
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const isToday = (value) => {
+    const d = new Date(value);
+    return !Number.isNaN(d.getTime()) && d >= todayStart;
+  };
+
+  return c.json({
+    today: {
+      carts: list.filter((row) => row.cart_count > 0 && isToday(row.last_seen_at)).length,
+      checkouts: list.filter((row) => row.checkout_source && isToday(row.last_seen_at)).length,
+      orders: list.filter((row) => row.order_id && isToday(row.last_seen_at)).length,
+    },
+    carts: list.filter((row) => !row.order_id && row.cart_count > 0),
+    checkouts: list.filter((row) => !row.order_id && row.checkout_source),
+  });
+});
 
 // ============================================
 // UPLOAD (Cloudinary primary / Base64 fallback)

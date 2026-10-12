@@ -327,7 +327,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                               <div className="flex items-center gap-3 p-4 bg-yellow-500/5 rounded-2xl border border-yellow-500/10">
                                  <AlertTriangle size={16} className="text-yellow-600 shrink-0" />
                                  <p className="text-[10px] font-bold text-neutral-600 leading-tight italic">
-                                    {language === 'bn' ? 'অর্ডারের স্ক্রিনশট নিয়ে রাখুন এবং মেইন মেনুর "ট্র্যাক করুন" বাটন থেকে আপডেট দেখুন।' : 'Please take a screenshot and track your order from the "Track Order" button.'}
+                                    {language === 'bn' ? '৬ সংখ্যার ট্র্যাক কোড সেভ রাখুন। মেইন মেনুর "ট্র্যাক করুন" থেকে নম্বর আর কোড দিয়ে স্ট্যাটাস দেখুন।' : 'Save the 6-digit track code. Use Track Order with your mobile number and that code.'}
                                  </p>
                               </div>
                            </div>

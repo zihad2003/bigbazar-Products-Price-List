@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import BanglaQRPayment from '../components/BanglaQRPayment';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
+import { reportCheckout, reportShopperOrder } from '../utils/shopperActivity';
 import { getOptimizedUrl } from '../utils/media';
 import { PRESET_SWATCHES, COLOR_MAP } from '../utils/colorNames';
 
@@ -135,6 +136,12 @@ export default function Checkout() {
         if (!checkoutTrackedRef.current && items.length > 0) {
             checkoutTrackedRef.current = true;
             trackInitiateCheckout(items, subtotal);
+            reportCheckout({
+                source: productIdQuery ? 'buy_now' : 'cart',
+                items,
+                phone: formData.phone,
+                name: formData.name,
+            });
         }
     }, [items, subtotal]);
 
@@ -200,6 +207,14 @@ export default function Checkout() {
         }
         if (error) setError('');
         if (fieldError) setFieldError('');
+        if ((name === 'phone' && value.replace(/\D/g, '').length >= 10) || name === 'name') {
+            reportCheckout({
+                source: productIdQuery ? 'buy_now' : 'cart',
+                items,
+                phone: name === 'phone' ? value : formData.phone,
+                name: name === 'name' ? value : formData.name,
+            });
+        }
     };
 
     const markField = (name) => (node) => {
@@ -372,11 +387,19 @@ export default function Checkout() {
             }
 
             const newOrderId = insertedData?.order_id || insertedData?.id || (Array.isArray(insertedData) ? (insertedData[0]?.order_id || insertedData[0]?.id) : null) || `ORD-${Date.now().toString().slice(-6)}`;
+            const trackCode = insertedData?.track_code || (Array.isArray(insertedData) ? insertedData[0]?.track_code : '') || '';
+            reportShopperOrder(newOrderId, {
+                phone: formData.phone,
+                name: formData.name,
+                checkout_source: productIdQuery ? 'buy_now' : 'cart',
+                checkout_items: items,
+                cart: productIdQuery ? undefined : [],
+            });
             trackPurchase(newOrderId, items, finalTotal);
             if (isLoggedIn && formData.phone && !user?.phone) {
                 updatePhone(formData.phone).catch(() => {});
             }
-            navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, items, subtotal, deliveryCharge, finalTotal } } });
+            navigate(`/order-confirmation/${newOrderId}`, { state: { orderDetails: { ...formData, id: newOrderId, trackCode, items, subtotal, deliveryCharge, finalTotal } } });
         } catch (err) {
             const errorMsg = err?.message || (language === 'bn' ? "অর্ডার সাবমিট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।" : "Order submission failed. Please try again.");
             setFieldError('');

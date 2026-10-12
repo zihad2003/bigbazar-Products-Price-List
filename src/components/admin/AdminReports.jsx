@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { API_URL, getToken } from '../../api/client';
 import { balanceDue, receivedAdvance } from '../../utils/orderMoney';
 import {
   BarChart3, Calendar, Download, Printer, TrendingUp, DollarSign,
@@ -28,11 +29,56 @@ function parseOrderQty(order) {
 }
 
 export default function AdminReports({ orders = [], products = [], reviews = [] }) {
-  const [activeReportTab, setActiveReportTab] = useState('monthly'); // 'monthly' | 'sales' | 'products' | 'customers' | 'financial'
+  const [activeReportTab, setActiveReportTab] = useState('monthly'); // 'monthly' | 'sales' | 'products' | 'customers' | 'financial' | 'funnel'
+  const [shoppers, setShoppers] = useState({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
+  const [shoppersLoading, setShoppersLoading] = useState(false);
   const [timeFilter, setTimeFilter] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'last_3_months' | 'this_year'
   const [selectedMonthKey, setSelectedMonthKey] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showPrintModal, setShowPrintModal] = useState(false);
+
+  useEffect(() => {
+    if (activeReportTab !== 'funnel') return undefined;
+    let alive = true;
+    setShoppersLoading(true);
+    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+    const token = getToken();
+    fetch(`${base}/api/admin/shoppers`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: 'no-store',
+    })
+      .then((res) => res.json().catch(() => ({})))
+      .then((json) => {
+        if (!alive) return;
+        setShoppers({
+          today: json.today || { carts: 0, checkouts: 0, orders: 0 },
+          carts: Array.isArray(json.carts) ? json.carts : [],
+          checkouts: Array.isArray(json.checkouts) ? json.checkouts : [],
+        });
+      })
+      .catch(() => {
+        if (alive) setShoppers({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
+      })
+      .finally(() => { if (alive) setShoppersLoading(false); });
+    return () => { alive = false; };
+  }, [activeReportTab]);
+
+  const formatWhen = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-BD', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  };
+
+  const itemLine = (items = []) => items
+    .map((item) => {
+      const bits = [item.name || 'Item'];
+      if (item.color) bits.push(item.color);
+      if (item.size) bits.push(item.size);
+      bits.push(`x${item.quantity || 1}`);
+      return bits.join(' · ');
+    })
+    .join(', ');
 
   // Helper to parse dates safely
   const parseOrderDate = (dateString) => {
@@ -375,7 +421,8 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
           { id: 'sales', label: 'Sales & Revenue Analytics', icon: BarChart3 },
           { id: 'products', label: 'Product & Inventory Trends', icon: Package, count: productPerformance.length },
           { id: 'customers', label: 'Delivery & Customer Insights', icon: Users },
-          { id: 'financial', label: 'Financial Cash Flow Statement', icon: DollarSign }
+          { id: 'financial', label: 'Financial Cash Flow Statement', icon: DollarSign },
+          { id: 'funnel', label: 'Carts & Checkouts', icon: ShoppingBag, count: shoppers.carts.length + shoppers.checkouts.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -786,6 +833,83 @@ export default function AdminReports({ orders = [], products = [], reviews = [] 
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeReportTab === 'funnel' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Carts today', value: shoppers.today.carts },
+              { label: 'Checkouts today', value: shoppers.today.checkouts },
+              { label: 'Orders today', value: shoppers.today.orders },
+            ].map((card) => (
+              <div key={card.label} className="bg-zinc-900 border border-white/5 rounded-xl p-4">
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">{card.label}</p>
+                <p className="text-2xl font-bold text-white mt-1">{shoppersLoading ? '…' : card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">In cart, no order</h3>
+              <p className="text-xs text-zinc-500">People who added items and have not placed an order yet.</p>
+            </div>
+            {shoppers.carts.length === 0 ? (
+              <p className="text-sm text-zinc-500 py-6 text-center">
+                {shoppersLoading ? 'Loading…' : 'No open carts in the last 30 days.'}
+              </p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {shoppers.carts.map((row) => (
+                  <div key={row.id} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{itemLine(row.cart) || 'Cart'}</p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {row.phone || 'Guest'}
+                        {row.name ? ` · ${row.name}` : ''}
+                        {row.area ? ` · ${row.area}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 shrink-0">{formatWhen(row.last_seen_at)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-zinc-900 border border-white/5 rounded-xl p-4 space-y-3">
+            <div>
+              <h3 className="text-base font-semibold text-white">Opened checkout, did not submit</h3>
+              <p className="text-xs text-zinc-500">Buy Now or bag checkout started, order not placed.</p>
+            </div>
+            {shoppers.checkouts.length === 0 ? (
+              <p className="text-sm text-zinc-500 py-6 text-center">
+                {shoppersLoading ? 'Loading…' : 'No unfinished checkouts in the last 30 days.'}
+              </p>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {shoppers.checkouts.map((row) => (
+                  <div key={`co-${row.id}`} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {itemLine(row.checkout_items.length ? row.checkout_items : row.cart) || 'Checkout'}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {row.checkout_source === 'buy_now' ? 'Buy Now' : 'Cart'}
+                        {' · '}
+                        {row.phone || 'Guest'}
+                        {row.name ? ` · ${row.name}` : ''}
+                        {row.area ? ` · ${row.area}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 shrink-0">{formatWhen(row.last_seen_at)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

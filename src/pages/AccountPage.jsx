@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL, getToken } from '../api/client';
+import GuestTrack from '../components/GuestTrack';
 import { Package, LogOut, Phone, ChevronRight, ShoppingBag, Clock, CheckCircle2, Truck, XCircle, User, Bell, BellRing } from 'lucide-react';
 import {
   pushSupported,
@@ -219,6 +220,10 @@ export default function AccountPage() {
         <div className="w-8 h-8 border-3 border-zinc-300 border-t-[#ce112d] rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (!isLoggedIn && fromTrackOrder) {
+    return <GuestTrack />;
   }
 
   // Not logged in — show sign-in page

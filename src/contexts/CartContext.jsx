@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { reportCart } from '../utils/shopperActivity';
 
 const CartContext = createContext();
 
@@ -23,12 +24,18 @@ export function CartProvider({ children }) {
         }
     });
 
+    const cartReady = useRef(false);
     useEffect(() => {
         try {
             localStorage.setItem('bigbazar_cart', JSON.stringify(cartItems));
         } catch (error) {
             console.error('Error saving cart to localStorage:', error);
         }
+        if (!cartReady.current) {
+            cartReady.current = true;
+            if (cartItems.length === 0) return;
+        }
+        reportCart(cartItems);
     }, [cartItems]);
 
     const addToCart = (product, arg2, arg3, arg4) => {

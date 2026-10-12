@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package, Share2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL } from '../api/client';
+import { rememberGuestOrder } from '../utils/guestOrders';
 
 function orderFromCheckoutState(details) {
     if (!details?.id || !Array.isArray(details.items)) return null;
@@ -33,6 +34,7 @@ function orderFromCheckoutState(details) {
         paidAmount: 0,
         dueOnDelivery: finalTotal,
         lastFourDigits: ref ? `${details.paymentMethod === 'bkash' ? 'bKash' : 'Payment'}: ${ref}` : '',
+        trackCode: String(details.trackCode || details.track_code || '').replace(/\D/g, '').slice(0, 6),
     };
 }
 
@@ -44,6 +46,7 @@ export default function OrderConfirmation() {
     const [order, setOrder] = useState(checkoutOrder);
     const [loading, setLoading] = useState(!!orderId && !checkoutOrder);
     const [copied, setCopied] = useState(false);
+    const [copiedCode, setCopiedCode] = useState(false);
 
     useEffect(() => {
         if (!orderId || checkoutOrder) return;
@@ -129,7 +132,8 @@ export default function OrderConfirmation() {
                             paymentPendingVerify,
                             paidAmount,
                             dueOnDelivery,
-                            lastFourDigits: rawLastDigits
+                            lastFourDigits: rawLastDigits,
+                            trackCode: String(dbOrder.track_code || '').replace(/\D/g, '').slice(0, 6),
                         });
                     }
                 })
@@ -141,12 +145,51 @@ export default function OrderConfirmation() {
                 });
     }, [orderId]);
 
+    useEffect(() => {
+        if (!order?.id) return;
+        rememberGuestOrder({
+            id: order.id,
+            phone: order.phone,
+            code: order.trackCode || '',
+            name: order.items?.[0]?.name || '',
+            total: order.finalTotal,
+        });
+    }, [order]);
+
     const handleCopyId = () => {
         if (order?.id) {
             navigator.clipboard.writeText(order.id);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    const handleCopyCode = () => {
+        if (!order?.trackCode) return;
+        navigator.clipboard.writeText(order.trackCode);
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    const handleShareCode = async () => {
+        if (!order?.trackCode) return;
+        const page = `${window.location.origin}/account?track=1`;
+        const text = language === 'bn'
+            ? `বিগ বাজার ট্র্যাক কোড: ${order.trackCode}\nমোবাইল: ${order.phone || ''}\nট্র্যাক: ${page}`
+            : `Big Bazar track code: ${order.trackCode}\nPhone: ${order.phone || ''}\nTrack: ${page}`;
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: language === 'bn' ? 'অর্ডার ট্র্যাক কোড' : 'Order track code', text });
+                return;
+            } catch (err) {
+                if (err?.name === 'AbortError') return;
+            }
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedCode(true);
+            setTimeout(() => setCopiedCode(false), 2000);
+        } catch (_) {}
     };
 
     if (loading) {
@@ -202,6 +245,40 @@ export default function OrderConfirmation() {
                     {language === 'bn' ? 'আমাদের সাথে কেনাকাটার জন্য আপনাকে ধন্যবাদ' : 'Thank you for shopping with us'}
                 </p>
             </div>
+
+            {order.trackCode && (
+                <div className="bg-white border border-zinc-200/80 rounded-2xl p-5 sm:p-6 mb-4 text-center shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                        {language === 'bn' ? 'ট্র্যাক কোড' : 'Track code'}
+                    </p>
+                    <p className="mt-2 text-4xl sm:text-5xl font-bold tracking-[0.28em] text-zinc-900">
+                        {order.trackCode}
+                    </p>
+                    <p className="mt-3 text-sm text-zinc-500 leading-relaxed max-w-sm mx-auto">
+                        {language === 'bn'
+                            ? 'এই ফোনে সেভ হয়েছে। অন্য ফোনে নম্বর আর এই কোড লাগবে।'
+                            : 'Saved on this phone. On another phone, use your number and this code.'}
+                    </p>
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleCopyCode}
+                            className="h-11 px-4 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-sm font-semibold text-zinc-800 inline-flex items-center gap-2"
+                        >
+                            {copiedCode ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                            {copiedCode ? (language === 'bn' ? 'কপি হয়েছে' : 'Copied') : (language === 'bn' ? 'কপি' : 'Copy')}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleShareCode}
+                            className="h-11 px-4 rounded-xl bg-[#ce112d] hover:bg-[#b00e26] text-white text-sm font-semibold inline-flex items-center gap-2"
+                        >
+                            <Share2 size={16} />
+                            {language === 'bn' ? 'শেয়ার' : 'Share'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Main Order Card */}
             <div className="bg-white border border-zinc-200/80 rounded-2xl p-5 sm:p-7 space-y-6 shadow-sm">
@@ -374,9 +451,13 @@ export default function OrderConfirmation() {
                 </Link>
 
                 <p className="text-[11px] text-zinc-400 text-center font-medium">
-                    {language === 'bn'
-                        ? 'অর্ডার ট্র্যাকিং কোড ব্যবহার করে পরবর্তীতে আপনার অর্ডারের অবস্থা দেখতে পারবেন।'
-                        : 'Save the Order ID to track your order status later.'}
+                    {order.trackCode
+                        ? (language === 'bn'
+                            ? 'এই ফোনে অর্ডার সেভ হয়েছে। অন্য ফোনে নম্বর ও ৬ সংখ্যার কোড দিয়ে ট্র্যাক করুন।'
+                            : 'This phone remembers the order. On another phone, use your mobile number and the 6-digit code.')
+                        : (language === 'bn'
+                            ? 'পুরো অর্ডার আইডি সেভ রাখুন। ট্র্যাক করতে নম্বর আর এই আইডি লাগবে।'
+                            : 'Save the full order id. Tracking needs your mobile number and this id.')}
                 </p>
             </div>
         </div>
