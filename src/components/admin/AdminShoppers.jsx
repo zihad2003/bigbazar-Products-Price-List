@@ -49,23 +49,29 @@ function paymentLabel(method, option) {
   return name;
 }
 
+function DetailLine({ label, value }) {
+  if (!value) return null;
+  return (
+    <div className="grid grid-cols-[4.75rem_1fr] gap-x-3 gap-y-0.5 text-xs">
+      <span className="text-zinc-500">{label}</span>
+      <span className="text-zinc-200 break-words">{value}</span>
+    </div>
+  );
+}
+
 function FormDetails({ form }) {
   if (!form) return null;
   const place = [form.upazila, form.district].filter(Boolean).join(', ');
   const pay = paymentLabel(form.payment_method, form.payment_option);
-  const lines = [
-    form.address,
-    place,
-    pay,
-    form.sender_number ? `Sender ${form.sender_number}` : '',
-    form.note ? `Note: ${form.note}` : '',
-  ].filter(Boolean);
-  if (!lines.length) return null;
+  const hasAny = form.address || place || pay || form.sender_number || form.note;
+  if (!hasAny) return null;
   return (
-    <div className="text-xs text-zinc-400 space-y-0.5 border-t border-white/10 pt-2">
-      {lines.map((line) => (
-        <p key={line} className="break-words">{line}</p>
-      ))}
+    <div className="space-y-1.5 border-t border-white/10 pt-3">
+      <DetailLine label="Address" value={form.address} />
+      <DetailLine label="Place" value={place} />
+      <DetailLine label="Payment" value={pay} />
+      <DetailLine label="Sender" value={form.sender_number} />
+      <DetailLine label="Note" value={form.note} />
     </div>
   );
 }
@@ -75,22 +81,53 @@ function SessionCard({ row, items, badge, photos }) {
     <article className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">
-            {row.name || row.phone || 'Guest'}
-          </p>
-          <p className="text-xs text-zinc-500 mt-0.5 truncate">
-            {[row.phone && row.name ? row.phone : '', badge, row.area].filter(Boolean).join(' · ')}
-          </p>
+          <p className="text-sm font-semibold text-white truncate">{row.name || 'Guest'}</p>
+          {row.phone && <p className="text-xs text-zinc-300 mt-0.5">{row.phone}</p>}
         </div>
-        <p className="text-[11px] text-zinc-500 shrink-0">{formatWhen(row.last_seen_at)}</p>
+        <div className="text-right shrink-0 space-y-1">
+          <p className="text-[11px] text-zinc-500">{formatWhen(row.last_seen_at)}</p>
+          {badge && (
+            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
+              {badge}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="space-y-2.5">
-        {items.map((item, index) => (
-          <ItemRow key={`${item.id || item.name}-${index}`} item={item} photo={photos(item)} />
-        ))}
-      </div>
+      {items.length > 0 && (
+        <div className="space-y-2.5">
+          {items.map((item, index) => (
+            <ItemRow key={`${item.id || item.name}-${index}`} item={item} photo={photos(item)} />
+          ))}
+        </div>
+      )}
       <FormDetails form={row.form} />
+      {row.area && <p className="text-[11px] text-zinc-500">Near {row.area}</p>}
     </article>
+  );
+}
+
+function byRecent(a, b) {
+  return new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0);
+}
+
+function Column({ title, hint, rows, empty, render }) {
+  return (
+    <section className="space-y-3 min-w-0">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <p className="text-xs text-zinc-500">{hint}</p>
+        </div>
+        <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 rounded-md px-2 py-1">{rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-zinc-500 py-8 text-center border border-white/10 rounded-xl">{empty}</p>
+      ) : (
+        <div className="space-y-3">
+          {rows.map(render)}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -134,8 +171,12 @@ export default function AdminShoppers({ products = [] }) {
 
   useEffect(() => { load(); }, []);
 
+  const checkouts = [...shoppers.checkouts].sort(byRecent);
+  const checkoutIds = new Set(checkouts.map((row) => row.id));
+  const carts = shoppers.carts.filter((row) => !checkoutIds.has(row.id)).sort(byRecent);
+
   return (
-    <div className="max-w-5xl space-y-5 pb-16">
+    <div className="max-w-6xl space-y-5 pb-16">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-white tracking-tight">
@@ -155,8 +196,8 @@ export default function AdminShoppers({ products = [] }) {
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Carts today', value: shoppers.today.carts },
           { label: 'Checkouts today', value: shoppers.today.checkouts },
+          { label: 'Carts today', value: shoppers.today.carts },
           { label: 'Orders today', value: shoppers.today.orders },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215] px-3 py-3">
@@ -170,47 +211,32 @@ export default function AdminShoppers({ products = [] }) {
         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
       )}
 
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-white">In the cart</h3>
-          <p className="text-xs text-zinc-500">Added to the bag, order not placed.</p>
-        </div>
-        {shoppers.carts.length === 0 ? (
-          <p className="text-sm text-zinc-500 py-8 text-center border border-white/10 rounded-xl">
-            {loading ? 'Loading…' : 'No open carts in the last 30 days.'}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {shoppers.carts.map((row) => (
-              <SessionCard key={row.id} row={row} items={row.cart || []} photos={photos} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-white">Opened checkout</h3>
-          <p className="text-xs text-zinc-500">Buy Now or bag checkout started, order not submitted.</p>
-        </div>
-        {shoppers.checkouts.length === 0 ? (
-          <p className="text-sm text-zinc-500 py-8 text-center border border-white/10 rounded-xl">
-            {loading ? 'Loading…' : 'No unfinished checkouts in the last 30 days.'}
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {shoppers.checkouts.map((row) => (
-              <SessionCard
-                key={`co-${row.id}`}
-                row={row}
-                badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
-                items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
-                photos={photos}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <Column
+          title="Opened checkout"
+          hint="Started checkout and has not ordered. Newest first."
+          rows={checkouts}
+          empty={loading ? 'Loading…' : 'No unfinished checkouts in the last 30 days.'}
+          render={(row) => (
+            <SessionCard
+              key={`co-${row.id}`}
+              row={row}
+              badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
+              items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
+              photos={photos}
+            />
+          )}
+        />
+        <Column
+          title="In the cart"
+          hint="Still in the bag. Anyone who opened checkout is listed only there."
+          rows={carts}
+          empty={loading ? 'Loading…' : 'No open carts in the last 30 days.'}
+          render={(row) => (
+            <SessionCard key={row.id} row={row} items={row.cart || []} photos={photos} />
+          )}
+        />
+      </div>
     </div>
   );
 }
