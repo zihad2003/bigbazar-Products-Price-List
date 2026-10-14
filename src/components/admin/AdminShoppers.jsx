@@ -194,6 +194,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   };
 
   const convertToOrder = (row) => {
+    if (busyId) return; // ignore double clicks while one conversion is running
     setBusyId(row.id);
     setError('');
     setNotice('');
@@ -209,9 +210,16 @@ export default function AdminShoppers({ products = [], onConverted }) {
     })
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || 'Could not create the order');
-        setNotice('Sent to orders.');
-        if (onConverted) onConverted();
+        if (res.status === 409) {
+          // The order already exists — that is a success for the admin, not a warning
+          setNotice('Already sent to orders.');
+        } else if (!res.ok) {
+          throw new Error(json.error || 'Could not create the order');
+        } else {
+          setNotice('Sent to orders.');
+        }
+        // Refresh failures must not look like a failed conversion
+        try { if (onConverted) onConverted(); } catch (_) {}
         load();
       })
       .catch((err) => setError(err.message || 'Could not create the order'))

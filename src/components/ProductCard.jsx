@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Instagram } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -27,7 +26,6 @@ const colorSwatches = (product) => {
 };
 
 export const ProductCard = ({ product, onClick }) => {
-  const navigate = useNavigate();
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
   const [imgFailed, setImgFailed] = React.useState(false);
   const [activeSwatch, setActiveSwatch] = React.useState(0);
@@ -67,13 +65,11 @@ export const ProductCard = ({ product, onClick }) => {
 
   const openProduct = () => onClick?.(product);
 
+  // Open the product page so the shopper confirms size/color before the form
   const orderNow = (e) => {
     e.stopPropagation();
     if (product.is_sold_out) return;
-    const params = new URLSearchParams({ product: String(product.id), qty: '1' });
-    const colorName = swatches[activeSwatch]?.name;
-    if (colorName) params.set('color', colorName);
-    navigate(`/checkout?${params.toString()}`);
+    onClick?.(product);
   };
 
   return (
