@@ -14,33 +14,31 @@ export default function ConfirmationModal({ isOpen, onClose, onConfirm, title, m
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        className="absolute inset-0 bg-slate-950/55"
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.96, y: 8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative w-full max-w-md bg-neutral-900 border border-white/10 rounded-3xl p-6 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+                        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                        className="relative w-full max-w-sm bg-[#121215] border border-white/10 rounded-2xl p-5 shadow-xl"
                     >
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                                <AlertTriangle size={24} />
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                                <AlertTriangle size={20} />
                             </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-white">{title}</h3>
-                            </div>
-                            <button onClick={onClose} className="ml-auto text-neutral-500 hover:text-white transition-colors">
-                                <X size={24} />
+                            <h3 className="text-base font-semibold text-white leading-snug pt-2 flex-1">{title}</h3>
+                            <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5" aria-label="Close">
+                                <X size={16} />
                             </button>
                         </div>
 
-                        <p className="text-neutral-400 mb-8">{message}</p>
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-5">{message}</p>
 
-                        <div className="flex gap-3">
-                            <button onClick={onClose} className="flex-1 py-3 px-4 rounded-xl font-bold text-neutral-400 hover:bg-white/5 transition-colors">
+                        <div className="flex gap-2">
+                            <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl text-sm font-semibold text-zinc-400 bg-white/5 hover:bg-white/10">
                                 Cancel
                             </button>
-                            <button onClick={() => { onConfirm(); onClose(); }} className="flex-1 py-3 px-4 rounded-xl font-bold bg-[#ce112d] hover:bg-red-700 text-white shadow-lg shadow-red-900/20 transition-all">
+                            <button type="button" onClick={() => { onConfirm(); onClose(); }} className="flex-1 h-11 rounded-xl text-sm font-semibold bg-[#ce112d] hover:bg-red-700 text-white">
                                 {confirmText}
                             </button>
                         </div>

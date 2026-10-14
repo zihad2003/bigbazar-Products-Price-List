@@ -2211,18 +2211,12 @@ app.get('/orders', requireAuth, requireAdmin, async (c) => {
   return c.json({ data: res, count: total });
 });
 
-app.post('/orders', optionalCustomerAuth, async (c) => {
-  if (!(await checkRateLimitKV(c, 'orders', 5, 60000))) {
-    return c.json({ error: 'Too many order requests. Please try again after a minute.' }, 429);
-  }
-
-  const o = await c.req.json();
+async function placeShopOrder(c, o, customerId = null) {
   const conn = getDb(c.env);
   const id = crypto.randomUUID();
-  const customerId = c.get('customer')?.id || null;
 
   if (!o.product_id) {
-    return c.json({ error: 'Product ID is required' }, 400);
+    return { status: 400, body: { error: 'Product ID is required' } };
   }
 
   const clientIp = getClientIp(c);
@@ -2256,13 +2250,13 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
       if (products.length === 0) {
         await tx.rollback();
-        return c.json({ error: `Product not found: ${item.id}` }, 404);
+        return { status: 404, body: { error: `Product not found: ${item.id}` } };
       }
 
       const product = products[0];
       if (product.is_deleted || product.status !== 'published') {
         await tx.rollback();
-        return c.json({ error: `Product "${product.name}" is no longer available` }, 400);
+        return { status: 400, body: { error: `Product "${product.name}" is no longer available` } };
       }
 
       const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
@@ -2270,7 +2264,7 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
       if (hadRealStock && product.stock_count < requestedQty) {
         await tx.rollback();
-        return c.json({ error: `Product "${product.name}" is out of stock (Requested: ${requestedQty}, Available: ${product.stock_count})` }, 400);
+        return { status: 400, body: { error: `Product "${product.name}" is out of stock (Requested: ${requestedQty}, Available: ${product.stock_count})` } };
       }
 
       // Calculate true price of the product item
@@ -2456,17 +2450,30 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
 
     await bumpCatalogVersion(c);
     runInBackground(c, () => prewarmCatalogCache(c));
-    return c.json({
-      success: true,
-      order_id: id,
-      track_code: issuedTrackCode || null,
-      data: { id, order_id: id, track_code: issuedTrackCode || null },
-    });
+    return {
+      status: 200,
+      body: {
+        success: true,
+        order_id: id,
+        track_code: issuedTrackCode || null,
+        data: { id, order_id: id, track_code: issuedTrackCode || null },
+      },
+    };
   } catch (err) {
     await tx.rollback();
     console.error('Order placement transaction error:', err);
-    return c.json({ error: err.message }, 500);
+    return { status: 500, body: { error: err.message } };
   }
+}
+
+app.post('/orders', optionalCustomerAuth, async (c) => {
+  if (!(await checkRateLimitKV(c, 'orders', 5, 60000))) {
+    return c.json({ error: 'Too many order requests. Please try again after a minute.' }, 429);
+  }
+
+  const o = await c.req.json();
+  const result = await placeShopOrder(c, o, c.get('customer')?.id || null);
+  return c.json(result.body, result.status);
 });
 
 async function restoreOrderStock(tx, order) {
@@ -3826,6 +3833,113 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
     carts: list.filter((row) => !row.order_id && row.cart_count > 0),
     checkouts: list.filter((row) => !row.order_id && row.checkout_source),
   });
+});
+
+function shopperDeliveryArea(district, upazila) {
+  const d = String(district || '').trim();
+  const raw = String(upazila || '').trim();
+  const u = raw.startsWith('u:') ? raw.slice(2) : raw.startsWith('t:') ? raw.slice(2).split('|')[0] : raw;
+  if ((d === 'চট্টগ্রাম' || /^chattogram$/i.test(d) || /^chittagong$/i.test(d)) && u === 'মীরসরাই') return 'mirsarai';
+  if (d === 'চট্টগ্রাম' || /^chattogram$/i.test(d) || /^chittagong$/i.test(d)) return 'chattogram';
+  return 'outside';
+}
+
+app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const browserId = String(body.browser_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  if (browserId.length < 8) return c.json({ error: 'This checkout could not be found.' }, 400);
+
+  const conn = getDb(c.env);
+  await ensureShopperSessionsTable(conn);
+  const rows = await conn.execute(
+    `SELECT browser_id, cart_items, checkout_items, phone, customer_name, checkout_form, order_id
+     FROM shopper_sessions WHERE browser_id = ? LIMIT 1`,
+    [browserId]
+  );
+  const row = rows?.[0];
+  if (!row) return c.json({ error: 'This checkout could not be found.' }, 404);
+  if (row.order_id) return c.json({ error: 'Already sent to orders.', order_id: row.order_id }, 409);
+
+  const name = String(row.customer_name || '').trim();
+  const phone = String(row.phone || '').trim();
+  const form = shopperFormPayload(parseShopperJson(row.checkout_form, null)) || {};
+  const address = String(form.address || '').trim();
+  if (!name || !phone || !address) {
+    return c.json({ error: 'Name, phone, and address are required.' }, 400);
+  }
+
+  const checkout = parseShopperJson(row.checkout_items, []);
+  const cart = parseShopperJson(row.cart_items, []);
+  const source = (Array.isArray(checkout) && checkout.length) ? checkout : cart;
+  const items = (Array.isArray(source) ? source : []).filter((item) => item && item.id);
+  if (!items.length) return c.json({ error: 'There is no product to order.' }, 400);
+
+  const upazilaRaw = String(form.upazila || '').trim();
+  const upazila = upazilaRaw.startsWith('u:')
+    ? upazilaRaw.slice(2)
+    : upazilaRaw.startsWith('t:')
+      ? upazilaRaw.slice(2).split('|')[0]
+      : upazilaRaw;
+  const district = String(form.district || '').trim();
+  const place = [upazila, district].filter(Boolean).join(', ');
+  const productName = items.map((item) => {
+    let line = item.name || 'Item';
+    if (item.color) line += ` (Color: ${item.color})`;
+    if (item.size) line += ` (Size: ${item.size})`;
+    line += ` (Qty: ${item.quantity || 1})`;
+    line += ` (PID: ${item.id})`;
+    return line;
+  }).join(' + ').slice(0, 1000);
+
+  let exclusive = false;
+  try {
+    const flags = await conn.execute(
+      `SELECT is_exclusive FROM products WHERE id IN (${items.map(() => '?').join(',')})`,
+      items.map((item) => item.id)
+    );
+    exclusive = (flags || []).some((product) => product.is_exclusive);
+  } catch (_) {}
+
+  const sender = String(form.sender_number || '').trim();
+  const method = form.payment_method;
+  const paymentRef = sender
+    ? (method === 'bkash' ? `bKash: ${sender}` : method === 'bangla_qr' ? `Bangla QR: ${sender}` : `COD: ${sender}`)
+    : (method === 'cod' ? 'COD' : '');
+
+  const result = await placeShopOrder(c, {
+    product_id: items[0].id,
+    product_name: productName,
+    quantity: items[0].quantity || 1,
+    items: items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity || 1,
+      selectedColor: item.color || null,
+      selectedSize: item.size || null,
+    })),
+    customer_name: name,
+    customer_phone: phone,
+    customer_address: place ? `${address} | ${place}` : address,
+    customer_note: form.note || null,
+    delivery_area: shopperDeliveryArea(district, upazila),
+    size: items.map((item) => item.size).filter(Boolean).join(', ').slice(0, 250) || null,
+    color: items.map((item) => item.color).filter(Boolean).join(', ').slice(0, 250) || null,
+    last_four_digits: paymentRef,
+    is_exclusive_order: exclusive,
+    moderator_reference: 'Converted from checkout',
+  }, null);
+
+  if (!result || result.status >= 400) {
+    return c.json(result?.body || { error: 'Could not create the order.' }, result?.status || 500);
+  }
+
+  await conn.execute(
+    `UPDATE shopper_sessions
+     SET order_id = ?, cart_count = 0, last_seen_at = NOW()
+     WHERE browser_id = ? AND (order_id IS NULL OR order_id = '')`,
+    [result.body.order_id, browserId]
+  );
+
+  return c.json({ success: true, order_id: result.body.order_id });
 });
 
 // ============================================

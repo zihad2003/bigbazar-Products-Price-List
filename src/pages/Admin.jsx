@@ -3,15 +3,15 @@ import { bigBazarApi } from '../api/client';
 import { setToken, API_URL, getToken, clearCustomerToken, clearAdminToken } from '../api/client';
 import {
   Plus, Trash2, LogOut, Image as ImageIcon, Search,
-  Settings, ShoppingBag, Edit, X, Play, Check,
+  Settings, ShoppingBag, Edit, X, Play,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
-  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Pipette, Menu, Copy, ExternalLink,
+  Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Menu, Copy, ExternalLink,
   Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
   Smartphone, Monitor, Tablet, Shield, ShoppingCart
 } from 'lucide-react';
 import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
-import { getColorName, PRESET_SWATCHES, suggestColorNames, resolveColorByName } from '../utils/colorNames';
+import { suggestColorNames, resolveColorByName } from '../utils/colorNames';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import AlertModal from '../components/modals/AlertModal';
 import VideoPlayer from '../components/VideoPlayer';
@@ -27,6 +27,42 @@ import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from 
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { balanceDue, orderTotal, receivedAdvance } from '../utils/orderMoney';
+
+const VIDEO_NOTE = 'বিস্তারিত দেখতে প্রোডাক্ট ভিডিও দেখুন';
+
+function descriptionWithVideoNote(description, hasVideo) {
+  const text = String(description || '').split(VIDEO_NOTE).join('').replace(/\n{2,}/g, '\n').trim();
+  if (!hasVideo) return text;
+  return text ? `${text}\n${VIDEO_NOTE}` : VIDEO_NOTE;
+}
+
+function OnOffSwitch({ on, disabled, onClick, label }) {
+  return (
+    <div className={`admin-onoff ${on ? 'is-on' : 'is-off'}${disabled ? ' is-disabled' : ''}`} role="group" aria-label={label}>
+      <button type="button" className="seg off" aria-pressed={!on} disabled={disabled} onClick={() => { if (on) onClick(); }}>OFF</button>
+      <button type="button" className="seg on" aria-pressed={!!on} disabled={disabled} onClick={() => { if (!on) onClick(); }}>ON</button>
+    </div>
+  );
+}
+
+function syncPhotoColorRows(images, colors) {
+  const gallery = (images || []).filter(Boolean);
+  const prev = (Array.isArray(colors) ? colors : []).filter((c) => c && typeof c === 'object');
+  const ordered = [...gallery];
+  prev.forEach((c) => {
+    if (c.image && !ordered.includes(c.image)) ordered.push(c.image);
+  });
+  return ordered.map((img) => {
+    const match = prev.find((c) => c.image === img);
+    return {
+      name: match?.name || '',
+      image: img,
+      is_available: match ? match.is_available !== false : true,
+      hex: match?.hex || '#888888',
+      sizes: Array.isArray(match?.sizes) ? match.sizes : [],
+    };
+  });
+}
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -78,6 +114,7 @@ export default function Admin() {
   const [customSizeInput, setCustomSizeInput] = useState('');
   const [copyBusy, setCopyBusy] = useState(null); // null | 'name' | 'description' | 'both'
   const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [colorNameFocus, setColorNameFocus] = useState(null);
   const [productPage, setProductPage] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
   const [showRangeDeleteModal, setShowRangeDeleteModal] = useState(false);
@@ -853,17 +890,18 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
   };
 
   const handleVideoBlur = async () => {
-    if (!form.video_url) return;
-    // Instagram URL is for the video player only — store platform_id for reference, never pull photos
-    if (form.video_url.includes('instagram.com') || form.video_url.includes('instagr.am')) {
-      const igId = extractInstagramId(form.video_url);
-      if (igId) {
-        setForm(prev => ({
-          ...prev,
-          platform_id: prev.platform_id || igId,
-        }));
+    setForm(prev => {
+      const url = prev.video_url || '';
+      const next = {
+        ...prev,
+        description: descriptionWithVideoNote(prev.description, !!String(url).trim()),
+      };
+      if (url.includes('instagram.com') || url.includes('instagr.am')) {
+        const igId = extractInstagramId(url);
+        if (igId) next.platform_id = prev.platform_id || igId;
       }
-    }
+      return next;
+    });
   };
 
   const handleProductSubmit = async (e) => {
@@ -896,6 +934,11 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
     // Validation: Every added color must have an image
     if (form.available_colors && form.available_colors.length > 0) {
+      const missingName = form.available_colors.find((c) => !String(c?.name || '').trim());
+      if (missingName) {
+        setAlertModal({ isOpen: true, title: 'Color Name Required', message: 'প্রতিটি ছবির কালারের নাম দিন। ছবি দেখে নাম লিখুন বা খুঁজে নিন।', type: 'error' });
+        return;
+      }
       const missingColorImage = form.available_colors.find(c => !c.image);
       if (missingColorImage) {
         setAlertModal({ isOpen: true, title: 'Color Image Required', message: `অনুগ্রহ করে '${missingColorImage.name || 'রঙ'}' এর জন্য একটি ছবি যুক্ত করুন।`, type: 'error' });
@@ -920,7 +963,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       finalSerialNo = Math.max(maxFromDb, maxFromLoaded) + 1;
     }
 
-    const { _newColorHex, _newColorName, _colorSuggestions, serial_no: _ignoredSerial, ...formData } = form;
+    const { serial_no: _ignoredSerial, ...formRest } = form;
+    const formData = Object.fromEntries(Object.entries(formRest).filter(([key]) => !key.startsWith('_')));
     const finalMainImage = currentImageUrl || (currentImages.length > 0 ? currentImages[0] : null);
     if (finalMainImage && (!currentImages.length || currentImages[0] !== finalMainImage)) {
       currentImages = [finalMainImage, ...currentImages.filter(img => img !== finalMainImage)];
@@ -936,7 +980,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       is_exclusive: form.is_exclusive || false,
       platform_id: form.platform_id || null,
       video_url: form.video_url || '',
-      description: form.description || '',
+      description: descriptionWithVideoNote(form.description, !!String(form.video_url || '').trim()),
     };
 
     // Preserve existing serial on edit — never coerce null/undefined to 1
@@ -1270,14 +1314,16 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
       if (uploadedUrls.length > 0) {
         if (target === 'product') {
-          setForm(prev => {
-            const cleanOther = (prev.images || []).filter(img => !img.includes('Big Bazar Video') && !img.includes('placeholder'));
-            return {
-              ...prev,
-              image_url: prev.image_url || uploadedUrls[0],
-              images: [...uploadedUrls, ...cleanOther.filter(img => !uploadedUrls.includes(img))]
-            };
-          });
+        setForm(prev => {
+          const cleanOther = (prev.images || []).filter(img => !img.includes('Big Bazar Video') && !img.includes('placeholder'));
+          const images = [...uploadedUrls, ...cleanOther.filter(img => !uploadedUrls.includes(img))];
+          return {
+            ...prev,
+            image_url: prev.image_url || uploadedUrls[0],
+            images,
+            available_colors: prev._photoColors ? syncPhotoColorRows(images, prev.available_colors) : prev.available_colors,
+          };
+        });
           setPreviewImage(uploadedUrls[0]);
         } else {
           setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
@@ -1507,10 +1553,21 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
     const rawImages = Array.isArray(p.images) ? p.images.filter(img => !isFakePoster(img)) : [];
     const mainImg = p.image_url && !isFakePoster(p.image_url) ? p.image_url : (rawImages[0] || null);
 
+    const images = rawImages.length > 0 ? rawImages : (mainImg ? [mainImg] : []);
+    const existingColors = Array.isArray(p.available_colors) ? p.available_colors : [];
+    const photoColors = existingColors.some((c) => c && (c.image || String(c.name || '').trim()));
+    const colorImages = existingColors
+      .map((c) => (c && typeof c === 'object' ? c.image : null))
+      .filter(Boolean);
+    const rowImages = colorImages.length ? colorImages : images;
+
     setForm({
       ...p,
       image_url: mainImg,
-      images: rawImages.length > 0 ? rawImages : (mainImg ? [mainImg] : [])
+      images,
+      _photoColors: photoColors,
+      _sizesOn: Array.isArray(p.available_sizes) && p.available_sizes.length > 0,
+      available_colors: photoColors ? syncPhotoColorRows(rowImages, existingColors) : [],
     });
     setPreviewImage(mainImg);
     setFormStep(1);
@@ -1518,7 +1575,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
   };
 
   if (!session) return (
-    <div className={`min-h-screen flex items-center justify-center p-6 font-sans relative ${adminTheme === 'light' ? 'bg-slate-100' : 'bg-black'}`}>
+    <div className={`min-h-screen flex items-center justify-center p-6 font-sans relative ${adminTheme === 'light' ? 'admin-theme-light bg-slate-100' : 'admin-theme-dark bg-black'}`}>
       {/* Theme toggle on login screen */}
       <button
         onClick={toggleAdminTheme}
@@ -1828,7 +1885,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         {activeTab === 'reports' ? (
           <AdminReports orders={orders} ordersTotal={ordersTotal} products={products} reviews={reviews} />
         ) : activeTab === 'shoppers' ? (
-          <AdminShoppers products={products} />
+          <AdminShoppers products={products} onConverted={fetchOrders} />
         ) : activeTab === 'steadfast' && session?.user?.role === 'superadmin' ? (
           <AdminSteadfast />
         ) : activeTab === 'conversations' ? (
@@ -2831,8 +2888,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
             {formAlert && (
               <div className={`flex items-start gap-3 p-4 rounded-xl border ${
                 formAlert.type === 'error'
-                  ? 'bg-red-500/10 border-red-500/30 text-red-100'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-100'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
               }`}>
                 {formAlert.type === 'error' ? <AlertCircle size={18} className="shrink-0 mt-0.5" /> : <CheckCircle2 size={18} className="shrink-0 mt-0.5" />}
                 <div className="min-w-0 flex-1">
@@ -3018,11 +3075,15 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                         <img src={previewImage || form.image_url} className="w-full h-full object-cover object-top" alt="Preview" />
                         <button type="button" onClick={() => {
                           setPreviewImage(null);
-                          setForm(prev => ({
-                            ...prev,
-                            image_url: null,
-                            images: (prev.images || []).filter((_, idx) => idx !== 0)
-                          }));
+                          setForm(prev => {
+                            const images = (prev.images || []).filter((_, idx) => idx !== 0);
+                            return {
+                              ...prev,
+                              image_url: null,
+                              images,
+                              available_colors: prev._photoColors ? syncPhotoColorRows(images, prev.available_colors) : prev.available_colors,
+                            };
+                          });
                         }} className="absolute top-2.5 right-2.5 p-2 bg-black/70 hover:bg-red-600 text-white rounded-lg transition-colors">
                           <Trash2 size={14} />
                         </button>
@@ -3051,7 +3112,14 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     <div className="relative">
                       <input value={form.video_url} onBlur={handleVideoBlur} placeholder="https://www.instagram.com/reels/..."
                         className="w-full h-11 pl-3.5 pr-10 rounded-lg bg-black/50 border border-white/10 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-[#ce112d]/50"
-                        onChange={e => setForm({ ...form, video_url: e.target.value })} />
+                        onChange={e => {
+                          const video_url = e.target.value;
+                          setForm(prev => ({
+                            ...prev,
+                            video_url,
+                            description: descriptionWithVideoNote(prev.description, !!String(video_url).trim()),
+                          }));
+                        }} />
                       <Video size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                     </div>
                   </div>
@@ -3060,7 +3128,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-zinc-500">Video preview</span>
-                        <button type="button" onClick={() => setForm(prev => ({ ...prev, video_url: '', platform_id: prev.platform_id }))} className="text-[11px] text-red-400 hover:underline">Clear</button>
+                        <button type="button" onClick={() => setForm(prev => ({ ...prev, video_url: '', description: descriptionWithVideoNote(prev.description, false) }))} className="text-[11px] text-red-400 hover:underline">Clear</button>
                       </div>
                       <div className="aspect-[4/5] max-h-52 rounded-lg border border-white/10 overflow-hidden bg-black">
                         <VideoPlayer src={form.video_url} priority={true} />
@@ -3083,10 +3151,14 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           <img src={img} onError={(e) => { e.target.src = 'https://placehold.co/400x500/0a0a0c/ce112d?text=Error'; }} className="w-full h-full object-cover" alt="Gallery" />
                           <button type="button" className="absolute inset-0 bg-red-600/80 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
                             onClick={() => {
-                              const removedImg = form.images[i];
                               const updatedImages = form.images.filter((_, idx) => idx !== i);
-                              const updatedColors = (form.available_colors || []).map(c => c.image === removedImg ? { ...c, image: null } : c);
-                              setForm({ ...form, images: updatedImages, available_colors: updatedColors });
+                              setForm({
+                                ...form,
+                                images: updatedImages,
+                                available_colors: form._photoColors
+                                  ? syncPhotoColorRows(updatedImages, form.available_colors)
+                                  : (form.available_colors || []).map(c => c.image === form.images[i] ? { ...c, image: null } : c),
+                              });
                             }}>
                             <Trash2 size={14} className="text-white" />
                           </button>
@@ -3111,11 +3183,21 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
               <div className="space-y-6">
                 <div className="space-y-4 rounded-lg border border-white/5 bg-black/20 p-4 md:p-5">
-                  <div>
-                    <label className="text-xs font-semibold text-white">Available sizes</label>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">Type a size or use presets</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-white">Available sizes</label>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">{form._sizesOn ? 'Type a size or use presets' : 'Off — this product has no sizes'}</p>
+                    </div>
+                    <OnOffSwitch
+                      on={!!form._sizesOn}
+                      label="Sizes"
+                      onClick={() => setForm(prev => {
+                        const next = !prev._sizesOn;
+                        return { ...prev, _sizesOn: next, available_sizes: next ? (prev.available_sizes || []) : [] };
+                      })}
+                    />
                   </div>
-                  <div className="flex gap-2">
+                  {form._sizesOn && <div className="flex gap-2">
                     <input value={customSizeInput} placeholder="e.g. S, M, L, 38, Free Size"
                       onChange={e => setCustomSizeInput(e.target.value)}
                       onKeyDown={e => {
@@ -3136,8 +3218,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                         setCustomSizeInput('');
                       }
                     }} className="px-4 h-11 bg-[#ce112d] hover:bg-[#b00e26] text-white rounded-lg text-xs font-semibold shrink-0">Add</button>
-                  </div>
-                  <div className="space-y-2">
+                  </div>}
+                  {form._sizesOn && <div className="space-y-2">
                     <span className="text-[11px] text-zinc-500">Presets</span>
                     <div className="flex flex-wrap gap-1.5">
                       {['S', 'M', 'L', 'XL', 'XXL', '36', '38', '40', '42', 'Free Size'].map(s => {
@@ -3150,8 +3232,8 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                         );
                       })}
                     </div>
-                  </div>
-                  {(form.available_sizes || []).length > 0 && (
+                  </div>}
+                  {form._sizesOn && (form.available_sizes || []).length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {form.available_sizes.map((size, idx) => {
                         const name = typeof size === 'object' ? size.name : size;
@@ -3167,359 +3249,186 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   )}
                 </div>
 
-                    {/* Colors — compact picker (no category grids) */}
+                    {/* Colors — one row per photo when this is on */}
                     <div className="space-y-4 pt-4">
-                      <div>
-                        <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Colors</label>
-                        <p className="text-[11px] text-zinc-600 mt-0.5">Tap a named color, or pick a shade. A typed name stays as you wrote it.</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 p-4">
+                        <div>
+                          <label className="text-sm font-semibold text-white">Colors from these photos</label>
+                          <p className="text-[11px] text-zinc-500 mt-0.5">Leave off when the photos are the same product. Turn on when each photo is a different color — one photo becomes one row, then name it.</p>
+                        </div>
+                        <OnOffSwitch
+                          on={!!form._photoColors}
+                          disabled={!(form.images || []).length}
+                          label="Colors"
+                          onClick={() => {
+                            const images = form.images || [];
+                            if (!images.length) return;
+                            const next = !form._photoColors;
+                            setColorNameFocus(null);
+                            setForm({
+                              ...form,
+                              _photoColors: next,
+                              available_colors: next ? syncPhotoColorRows(images, form.available_colors) : [],
+                            });
+                          }}
+                        />
                       </div>
 
-                      <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
-                        {/* Primary row: native picker + name + hex + add */}
-                        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-                          <label
-                            className="relative w-12 h-12 shrink-0 cursor-pointer rounded-lg border border-white/15 overflow-hidden shadow-inner"
-                            style={{ backgroundColor: form._newColorHex || '#888888' }}
-                            title="Open color picker"
-                          >
-                            <input
-                              type="color"
-                              aria-label="Pick color"
-                              value={/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') ? form._newColorHex : '#888888'}
-                              onChange={(e) => {
-                                const matched = getColorName(e.target.value);
-                                setForm((prev) => {
-                                  const current = (prev._newColorName || '').trim();
-                                  const auto = prev._colorNameAuto || '';
-                                  const keepTyped = current && current !== auto;
-                                  return {
-                                    ...prev,
-                                    _newColorHex: e.target.value,
-                                    _colorNameAuto: matched.en,
-                                    _newColorName: keepTyped ? prev._newColorName : matched.en,
-                                  };
-                                });
-                              }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center py-0.5 bg-black/40">
-                              <Pipette size={10} className="text-white/70" />
-                            </span>
-                          </label>
-
-                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-[1fr_7.5rem] gap-2">
-                            <div className="relative">
-                              <span className="text-[10px] text-zinc-500 font-medium mb-1 block">Name</span>
-                              <input
-                                value={form._newColorName || ''}
-                                placeholder="Type to search… e.g. Navy"
-                                autoComplete="off"
-                                onFocus={() => setForm((prev) => ({ ...prev, _colorSuggestions: true }))}
-                                onBlur={() => {
-                                  // Delay so suggestion click registers
-                                  setTimeout(() => setForm((prev) => ({ ...prev, _colorSuggestions: false })), 150);
-                                }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  const exact = resolveColorByName(val);
-                                  setForm({
-                                    ...form,
-                                    _newColorName: val,
-                                    _colorSuggestions: true,
-                                    ...(exact ? { _newColorHex: exact.hex } : {}),
-                                  });
-                                }}
-                                className="w-full h-10 px-3 rounded-lg bg-black/50 border border-white/10 text-sm text-white outline-none focus:border-[#ce112d]/50"
-                              />
-                              {form._colorSuggestions && (
-                                <div className="absolute left-0 right-0 top-full mt-1 z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 shadow-2xl">
-                                  {suggestColorNames(form._newColorName || '', 10).map((s) => (
-                                    <button
-                                      key={`${s.en}-${s.hex}`}
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => {
-                                        setForm({
-                                          ...form,
-                                          _newColorName: s.en,
-                                          _newColorHex: s.hex,
-                                          _colorSuggestions: false,
-                                        });
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
-                                    >
-                                      <span
-                                        className="w-5 h-5 rounded border border-white/20 shrink-0"
-                                        style={{ backgroundColor: s.hex }}
-                                      />
-                                      <span className="flex-1 min-w-0">
-                                        <span className="block text-xs font-semibold text-white truncate">{s.en}</span>
-                                        <span className="block text-[10px] text-zinc-500 truncate">{s.bn}</span>
-                                      </span>
-                                      <span className="text-[10px] font-mono text-zinc-600 uppercase shrink-0">{s.hex}</span>
-                                    </button>
-                                  ))}
-                                  {suggestColorNames(form._newColorName || '', 10).length === 0 && (
-                                    <p className="px-3 py-2.5 text-[11px] text-zinc-500">No match — pick a swatch or use the color picker</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <span className="text-[10px] text-zinc-500 font-medium mb-1 block">HEX</span>
-                              <input
-                                value={form._newColorHex || ''}
-                                placeholder="#000000"
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-                                    const matched = getColorName(val);
-                                    setForm((prev) => {
-                                      const current = (prev._newColorName || '').trim();
-                                      const auto = prev._colorNameAuto || '';
-                                      const keepTyped = current && current !== auto;
-                                      return {
-                                        ...prev,
-                                        _newColorHex: val,
-                                        _colorNameAuto: matched.en,
-                                        _newColorName: keepTyped ? prev._newColorName : matched.en,
-                                        _colorSuggestions: false,
-                                      };
-                                    });
-                                  } else {
-                                    setForm({ ...form, _newColorHex: val });
-                                  }
-                                }}
-                                className="w-full h-10 px-3 rounded-lg bg-black/50 border border-white/10 text-xs font-mono uppercase text-zinc-300 outline-none focus:border-[#ce112d]/50"
-                              />
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const typed = (form._newColorName || '').trim();
-                              if (!typed) {
-                                setAlertModal({ isOpen: true, title: 'Missing Name', message: 'Enter or pick a color name first.', type: 'error' });
-                                return;
-                              }
-                              const known = resolveColorByName(typed);
-                              const name = known?.en || typed;
-                              const hex = known?.hex
-                                || (/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') ? form._newColorHex : '#888888');
-                              setForm({
-                                ...form,
-                                available_colors: [...(form.available_colors || []), { name, image: null, is_available: true, hex, sizes: [] }],
-                                _newColorHex: '#888888',
-                                _newColorName: '',
-                                _colorNameAuto: '',
-                                _colorSuggestions: false,
-                              });
-                            }}
-                            className="h-10 px-4 rounded-lg bg-[#ce112d] hover:bg-[#e61535] text-white text-xs font-semibold shrink-0 active:scale-[0.98] transition-all"
-                          >
-                            + Add
-                          </button>
-                        </div>
-
-                        {/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') && (() => {
-                          const nearest = getColorName(form._newColorHex);
-                          const usingIt = (form._newColorName || '').trim().toLowerCase() === nearest.en.toLowerCase();
-                          if (usingIt) return null;
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => setForm({
-                                ...form,
-                                _newColorName: nearest.en,
-                                _colorNameAuto: nearest.en,
-                                _newColorHex: form._newColorHex,
-                              })}
-                              className="text-[11px] text-left text-zinc-400 hover:text-white"
-                            >
-                              Closest free name: <span className="text-white font-semibold">{nearest.en}</span>
-                              <span className="text-zinc-500"> · {nearest.bn}</span>
-                            </button>
-                          );
-                        })()}
-
-                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-white/5">
-                          {PRESET_SWATCHES.map((swatch) => {
-                            const isSelected = (form._newColorName || '').trim().toLowerCase() === swatch.en.toLowerCase()
-                              && (form._newColorHex || '').toLowerCase() === swatch.hex.toLowerCase();
+                      {form._photoColors && (
+                        <div className="space-y-3">
+                          <p className="text-[11px] text-zinc-500">
+                            {(form.available_colors || []).length} photo{(form.available_colors || []).length === 1 ? '' : 's'} — look at each one and type the color name.
+                          </p>
+                          {(form.available_colors || []).map((rawColor, idx) => {
+                            const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null, sizes: [] };
+                            const isAvailable = color.is_available ?? true;
+                            const suggestions = colorNameFocus === idx ? suggestColorNames(color.name || '', 14) : [];
                             return (
-                              <button
-                                key={swatch.hex + swatch.en}
-                                type="button"
-                                onClick={() => setForm({
-                                  ...form,
-                                  _newColorHex: swatch.hex,
-                                  _newColorName: swatch.en,
-                                  _colorNameAuto: swatch.en,
-                                  _colorSuggestions: false,
-                                })}
-                                className={`inline-flex items-center gap-1.5 h-8 pl-1 pr-2.5 rounded-full border text-[11px] font-medium transition-colors ${
-                                  isSelected
-                                    ? 'border-[#ce112d] bg-[#ce112d]/15 text-white'
-                                    : 'border-white/10 text-zinc-300 hover:border-white/30 hover:text-white'
-                                }`}
-                              >
-                                <span className="w-5 h-5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: swatch.hex }} />
-                                {swatch.en}
-                              </button>
+                              <div key={`${color.image || 'color'}-${idx}`} className="rounded-lg border border-white/10 bg-black/30 p-4">
+                                <div className="flex gap-3 sm:gap-4">
+                                  <div className="w-20 h-28 sm:w-24 sm:h-32 rounded-lg overflow-hidden border border-white/15 bg-black shrink-0">
+                                    {color.image ? (
+                                      <img src={color.image} alt="" className="w-full h-full object-cover object-top" />
+                                    ) : (
+                                      <div className="w-full h-full" style={{ backgroundColor: color.hex || '#888' }} />
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0 space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div>
+                                        <p className="text-[11px] font-medium text-zinc-500">Color {idx + 1}</p>
+                                        <p className={`text-[10px] font-medium ${isAvailable ? 'text-emerald-400' : 'text-red-400'}`}>
+                                          {isAvailable ? 'Active' : 'Sold out'}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <button type="button" onClick={() => {
+                                          const updated = [...form.available_colors];
+                                          updated[idx] = { ...color, is_available: !isAvailable };
+                                          setForm({ ...form, available_colors: updated });
+                                        }} className={`px-2.5 py-1.5 rounded-md text-[11px] font-medium ${isAvailable ? 'bg-white/5 text-zinc-400 hover:text-white' : 'bg-emerald-600 text-white'}`}>
+                                          {isAvailable ? 'Mark sold out' : 'Restore'}
+                                        </button>
+                                        <button type="button" onClick={() => {
+                                          const images = (form.images || []).filter((img) => img !== color.image);
+                                          setColorNameFocus(null);
+                                          setForm({
+                                            ...form,
+                                            images,
+                                            image_url: form.image_url === color.image ? (images[0] || null) : form.image_url,
+                                            available_colors: syncPhotoColorRows(images, form.available_colors),
+                                          });
+                                        }} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md">
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    <div className="relative">
+                                      <span className="text-[10px] text-zinc-500 font-medium mb-1 block">Color name</span>
+                                      <input
+                                        value={color.name || ''}
+                                        placeholder="Search… Mehendi, Rani, Navy"
+                                        autoComplete="off"
+                                        onFocus={() => setColorNameFocus(idx)}
+                                        onBlur={() => setTimeout(() => setColorNameFocus((cur) => (cur === idx ? null : cur)), 150)}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          const exact = resolveColorByName(val);
+                                          const updated = [...form.available_colors];
+                                          updated[idx] = {
+                                            ...color,
+                                            name: val,
+                                            hex: exact?.hex || color.hex || '#888888',
+                                          };
+                                          setForm({ ...form, available_colors: updated });
+                                          setColorNameFocus(idx);
+                                        }}
+                                        className="w-full h-10 px-3 rounded-lg bg-black/50 border border-white/10 text-sm text-white outline-none focus:border-[#ce112d]/50"
+                                      />
+                                      {colorNameFocus === idx && suggestions.length > 0 && (
+                                        <div className="absolute left-0 right-0 top-full mt-1 z-30 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 shadow-2xl">
+                                          {suggestions.map((s) => (
+                                            <button
+                                              key={`${s.en}-${s.hex}`}
+                                              type="button"
+                                              onMouseDown={(e) => e.preventDefault()}
+                                              onClick={() => {
+                                                const updated = [...form.available_colors];
+                                                updated[idx] = { ...color, name: s.en, hex: s.hex };
+                                                setForm({ ...form, available_colors: updated });
+                                                setColorNameFocus(null);
+                                              }}
+                                              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/5 border-b border-white/5 last:border-0"
+                                            >
+                                              <span className="w-5 h-5 rounded border border-white/20 shrink-0" style={{ backgroundColor: s.hex }} />
+                                              <span className="flex-1 min-w-0">
+                                                <span className="block text-xs font-semibold text-white truncate">{s.en}</span>
+                                                <span className="block text-[10px] text-zinc-500 truncate">{s.bn}</span>
+                                              </span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {(form.available_sizes || []).length > 0 && (
+                                  <div className="space-y-2 pt-3 mt-3 border-t border-white/10">
+                                    <label className="text-[11px] font-medium text-zinc-500">Stock & SKU per size</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
+                                      {form.available_sizes.map((sz, sIdx) => {
+                                        const sName = typeof sz === 'object' ? sz.name : sz;
+                                        const sObj = color.sizes?.find(s => (typeof s === 'object' ? s.name : s) === sName);
+                                        const isLinked = !!sObj;
+                                        return (
+                                          <div key={sIdx} className={`p-3 rounded-lg border ${isLinked ? 'bg-black/40 border-[#ce112d]/30' : 'bg-black/10 border-white/5 opacity-60'}`}>
+                                            <div className="flex items-center justify-between mb-2">
+                                              <span className="text-xs font-semibold text-white">{sName}</span>
+                                              <input type="checkbox" checked={isLinked} onChange={() => {
+                                                const updated = [...form.available_colors];
+                                                const curSizes = color.sizes || [];
+                                                const newSizes = isLinked ? curSizes.filter(s => (typeof s === 'object' ? s.name : s) !== sName) : [...curSizes, { name: sName, stock: 0, sku: '' }];
+                                                updated[idx] = { ...color, sizes: newSizes };
+                                                setForm({ ...form, available_colors: updated });
+                                              }} className="w-4 h-4 accent-[#ce112d]" />
+                                            </div>
+                                            {isLinked && (
+                                              <div className="space-y-2">
+                                                <div>
+                                                  <p className="text-[10px] text-zinc-500 mb-1">Stock</p>
+                                                  <input type="number" value={sObj.stock || 0} onChange={e => {
+                                                    const updated = [...form.available_colors];
+                                                    const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, stock: parseInt(e.target.value) || 0 } : s);
+                                                    updated[idx] = { ...color, sizes: newSizes };
+                                                    setForm({ ...form, available_colors: updated });
+                                                  }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-xs text-white outline-none focus:border-[#ce112d]" />
+                                                </div>
+                                                <div>
+                                                  <p className="text-[10px] text-zinc-500 mb-1">SKU</p>
+                                                  <input type="text" placeholder="SKU" value={sObj.sku || ''} onChange={e => {
+                                                    const updated = [...form.available_colors];
+                                                    const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, sku: e.target.value } : s);
+                                                    updated[idx] = { ...color, sizes: newSizes };
+                                                    setForm({ ...form, available_colors: updated });
+                                                  }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-[11px] font-mono text-[#ce112d] outline-none focus:border-[#ce112d] uppercase" />
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
-                      </div>
-
-                      <div className="space-y-8">
-                        {form.available_colors?.map((rawColor, idx) => {
-                          const color = typeof rawColor === 'object' ? rawColor : { name: rawColor, is_available: true, image: null, hex: null, sizes: [] };
-                          const isAvailable = color.is_available ?? true;
-                          return (
-                            <div key={idx} className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
-                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-md border border-white/15" style={{ backgroundColor: color.hex || '#888' }}></div>
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-white">{color.name}</h4>
-                                    <span className={`text-[10px] font-medium ${isAvailable ? 'text-emerald-400' : 'text-red-400'}`}>
-                                      {isAvailable ? 'Active' : 'Sold out'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button type="button" onClick={() => {
-                                    const updated = [...form.available_colors];
-                                    updated[idx] = { ...color, is_available: !isAvailable };
-                                    setForm({ ...form, available_colors: updated });
-                                  }} className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${isAvailable ? 'bg-white/5 text-zinc-400 hover:text-white' : 'bg-emerald-600 text-white'}`}>
-                                    {isAvailable ? 'Mark sold out' : 'Restore'}
-                                  </button>
-                                  <button type="button" onClick={() => setForm({ ...form, available_colors: form.available_colors.filter((_, i) => i !== idx) })} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors">
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div className="space-y-3">
-                                <label className="text-[11px] font-medium text-zinc-500">Stock & SKU per size</label>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
-                                    {form.available_sizes?.map((sz, sIdx) => {
-                                      const sName = typeof sz === 'object' ? sz.name : sz;
-                                      const sObj = color.sizes?.find(s => (typeof s === 'object' ? s.name : s) === sName);
-                                      const isLinked = !!sObj;
-                                      return (
-                                        <div key={sIdx} className={`p-3 rounded-lg border transition-colors ${isLinked ? 'bg-black/40 border-[#ce112d]/30' : 'bg-black/10 border-white/5 opacity-60'}`}>
-                                          <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-semibold text-white">{sName}</span>
-                                            <input type="checkbox" checked={isLinked} onChange={() => {
-                                              const updated = [...form.available_colors];
-                                              const curSizes = color.sizes || [];
-                                              const newSizes = isLinked ? curSizes.filter(s => (typeof s === 'object' ? s.name : s) !== sName) : [...curSizes, { name: sName, stock: 0, sku: '' }];
-                                              updated[idx] = { ...color, sizes: newSizes };
-                                              setForm({ ...form, available_colors: updated });
-                                            }} className="w-4 h-4 accent-[#ce112d]" />
-                                          </div>
-                                          {isLinked && (
-                                            <div className="space-y-2">
-                                              <div>
-                                                <p className="text-[10px] text-zinc-500 mb-1">Stock</p>
-                                                <input type="number" value={sObj.stock || 0} onChange={e => {
-                                                  const updated = [...form.available_colors];
-                                                  const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, stock: parseInt(e.target.value) || 0 } : s);
-                                                  updated[idx] = { ...color, sizes: newSizes };
-                                                  setForm({ ...form, available_colors: updated });
-                                                }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-xs text-white outline-none focus:border-[#ce112d]" />
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] text-zinc-500 mb-1">SKU</p>
-                                                <input type="text" placeholder="SKU" value={sObj.sku || ''} onChange={e => {
-                                                  const updated = [...form.available_colors];
-                                                  const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, sku: e.target.value } : s);
-                                                  updated[idx] = { ...color, sizes: newSizes };
-                                                  setForm({ ...form, available_colors: updated });
-                                                }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-[11px] font-mono text-[#ce112d] outline-none focus:border-[#ce112d] uppercase" />
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                                <div className="pt-4 border-t border-white/10 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <label className="text-[11px] font-medium text-zinc-500">
-                                      Photo for {color.name || 'this color'}
-                                    </label>
-                                    <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-md text-[11px] font-medium cursor-pointer border border-white/10">
-                                      <Upload size={12} />
-                                      <span>Upload</span>
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={async (e) => {
-                                          const file = e.target.files?.[0];
-                                          if (!file) return;
-                                          setLoading(true);
-                                          try {
-                                            const compressed = await compressImage(file, COMPRESS_PRESETS.product);
-                                            const url = await uploadSingleFile(compressed);
-                                            if (url) {
-                                              const updated = [...form.available_colors];
-                                              updated[idx] = { ...color, image: url };
-                                              setForm(prev => ({
-                                                ...prev,
-                                                images: [url, ...(prev.images || []).filter(img => img !== url)],
-                                                available_colors: updated
-                                              }));
-                                            }
-                                          } catch (err) {
-                                            console.error('Color image upload error:', err);
-                                          } finally {
-                                            setLoading(false);
-                                            e.target.value = '';
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  </div>
-
-                                  {form.images?.length > 0 && (
-                                    <div className="flex flex-wrap gap-2.5">
-                                      {form.images.map((img, i) => (
-                                        <div
-                                          key={i}
-                                          onClick={() => {
-                                            const updated = [...form.available_colors];
-                                            updated[idx] = { ...color, image: color.image === img ? null : img };
-                                            setForm({ ...form, available_colors: updated });
-                                          }}
-                                          className={`relative w-14 h-14 rounded-[18px] overflow-hidden border-2 cursor-pointer transition-all ${
-                                            color.image === img
-                                              ? 'border-[#ce112d] scale-110 shadow-2xl ring-4 ring-red-900/20'
-                                              : 'border-zinc-800 opacity-40 hover:opacity-100'
-                                          }`}
-                                        >
-                                          <img src={img} className="w-full h-full object-cover" alt="Variant" />
-                                          {color.image === img && (
-                                            <div className="absolute inset-0 bg-[#ce112d]/40 flex items-center justify-center">
-                                              <Check size={16} strokeWidth={4} className="text-white" />
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      )}
                     </div>
+
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                   <label className="flex items-center gap-3 p-4 rounded-lg border border-white/10 bg-black/30 cursor-pointer hover:bg-white/[0.03] transition-colors">
@@ -4676,7 +4585,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
       {/* Bulk Serial Range Delete Modal */}
       {showRangeDeleteModal && (
-        <div className="fixed inset-0 z-[110] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setShowRangeDeleteModal(false)}>
+        <div className="fixed inset-0 z-[110] bg-slate-950/55 flex items-center justify-center p-4" onClick={() => setShowRangeDeleteModal(false)}>
           <div className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-6 space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
@@ -4749,7 +4658,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
       {/* Progress Overlay during Bulk Range Delete */}
       {deletingRangeProgress && (
-        <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] bg-slate-950/55 flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
             <div className="w-16 h-16 bg-[#ce112d]/10 border border-[#ce112d]/20 rounded-2xl flex items-center justify-center mx-auto text-[#ce112d]">
               <RotateCcw size={32} className="animate-spin" />

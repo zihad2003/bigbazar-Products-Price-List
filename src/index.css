@@ -1087,3 +1087,58 @@ html {
     transition: none;
   }
 }
+
+/* Admin On / Off — two labeled sides. Active side is solid with white text. */
+.admin-onoff {
+  display: inline-flex;
+  align-items: stretch;
+  height: 36px;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+.admin-onoff .seg {
+  min-width: 52px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b !important;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  cursor: pointer;
+}
+.admin-onoff.is-off .seg.off {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
+.admin-onoff.is-on .seg.on {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+.admin-onoff.is-disabled {
+  opacity: 0.45;
+}
+.admin-onoff.is-disabled .seg {
+  cursor: not-allowed;
+}
+.admin-theme-dark .admin-onoff {
+  background: #27272a;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.admin-theme-dark .admin-onoff .seg {
+  color: #a1a1aa !important;
+}
+.admin-theme-dark .admin-onoff.is-off .seg.off {
+  background: #52525b !important;
+  color: #ffffff !important;
+}
+.admin-theme-dark .admin-onoff.is-on .seg.on {
+  background: #059669 !important;
+  color: #ffffff !important;
+}

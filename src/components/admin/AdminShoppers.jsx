@@ -76,7 +76,7 @@ function FormDetails({ form }) {
   );
 }
 
-function SessionCard({ row, items, badge, photos }) {
+function SessionCard({ row, items, badge, photos, canConvert, busy, onConvert }) {
   return (
     <article className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -102,6 +102,16 @@ function SessionCard({ row, items, badge, photos }) {
       )}
       <FormDetails form={row.form} />
       {row.area && <p className="text-[11px] text-zinc-500">Near {row.area}</p>}
+      {canConvert && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onConvert(row)}
+          className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-60"
+        >
+          {busy ? 'Sending…' : 'Convert to order'}
+        </button>
+      )}
     </article>
   );
 }
@@ -131,10 +141,12 @@ function Column({ title, hint, rows, empty, render }) {
   );
 }
 
-export default function AdminShoppers({ products = [] }) {
+export default function AdminShoppers({ products = [], onConverted }) {
   const [shoppers, setShoppers] = useState({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busyId, setBusyId] = useState('');
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -170,6 +182,38 @@ export default function AdminShoppers({ products = [] }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  const readyToOrder = (row, items) => Boolean(
+    String(row.name || '').trim()
+    && String(row.phone || '').trim()
+    && String(row.form?.address || '').trim()
+    && items.length
+  );
+
+  const convertToOrder = (row) => {
+    setBusyId(row.id);
+    setError('');
+    setNotice('');
+    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+    const token = getToken();
+    fetch(`${base}/api/admin/shoppers/convert`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ browser_id: row.id }),
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'Could not create the order');
+        setNotice('Sent to orders.');
+        if (onConverted) onConverted();
+        load();
+      })
+      .catch((err) => setError(err.message || 'Could not create the order'))
+      .finally(() => setBusyId(''));
+  };
 
   const checkouts = [...shoppers.checkouts].sort(byRecent);
   const checkoutIds = new Set(checkouts.map((row) => row.id));
@@ -207,6 +251,9 @@ export default function AdminShoppers({ products = [] }) {
         ))}
       </div>
 
+      {notice && (
+        <p className="text-sm text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{notice}</p>
+      )}
       {error && (
         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
       )}
@@ -224,6 +271,9 @@ export default function AdminShoppers({ products = [] }) {
               badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
               items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
               photos={photos}
+              canConvert={readyToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
+              busy={busyId === row.id}
+              onConvert={convertToOrder}
             />
           )}
         />
@@ -233,7 +283,15 @@ export default function AdminShoppers({ products = [] }) {
           rows={carts}
           empty={loading ? 'Loading…' : 'No open carts in the last 30 days.'}
           render={(row) => (
-            <SessionCard key={row.id} row={row} items={row.cart || []} photos={photos} />
+            <SessionCard
+              key={row.id}
+              row={row}
+              items={row.cart || []}
+              photos={photos}
+              canConvert={readyToOrder(row, row.cart || [])}
+              busy={busyId === row.id}
+              onConvert={convertToOrder}
+            />
           )}
         />
       </div>
