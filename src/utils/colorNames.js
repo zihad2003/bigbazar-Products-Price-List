@@ -227,6 +227,14 @@ export const COLOR_MAP = [
     // Mustard
     { hex: '#FFDB58', bn: 'সরিষা', en: 'Mustard' },
     { hex: '#E1AD01', bn: 'গাঢ় সরিষা', en: 'Dark Mustard' },
+
+    // Names used on Bangladeshi clothing
+    { hex: '#355E3B', bn: 'বোতল গ্রিন', en: 'Bottle Green' },
+    { hex: '#6B8E23', bn: 'মেহেদি', en: 'Mehendi' },
+    { hex: '#722F37', bn: 'ওয়াইন', en: 'Wine' },
+    { hex: '#581845', bn: 'জাম', en: 'Jam' },
+    { hex: '#C71585', bn: 'রানি পিঙ্ক', en: 'Rani Pink' },
+    { hex: '#E6C7B8', bn: 'পেঁয়াজ', en: 'Onion' },
 ];
 
 /**
@@ -246,12 +254,13 @@ function hexToRgb(hex) {
 /**
  * Calculate Euclidean distance between two RGB colors
  */
+/** Redmean distance. Closer to how the eye separates reds, greens, and blues than plain RGB. */
 function colorDistance(c1, c2) {
-    return Math.sqrt(
-        Math.pow(c1.r - c2.r, 2) +
-        Math.pow(c1.g - c2.g, 2) +
-        Math.pow(c1.b - c2.b, 2)
-    );
+    const rmean = (c1.r + c2.r) / 2;
+    const r = c1.r - c2.r;
+    const g = c1.g - c2.g;
+    const b = c1.b - c2.b;
+    return Math.sqrt((2 + rmean / 256) * r * r + 4 * g * g + (2 + (255 - rmean) / 256) * b * b);
 }
 
 /**
@@ -368,4 +377,12 @@ export const PRESET_SWATCHES = [
     { hex: '#808080', en: 'Grey', bn: 'গ্রে' },
     { hex: '#36454F', en: 'Charcoal', bn: 'চারকোল' },
     { hex: '#C0C0C0', en: 'Silver', bn: 'সিলভার' },
+    { hex: '#355E3B', en: 'Bottle Green', bn: 'বোতল গ্রিন' },
+    { hex: '#6B8E23', en: 'Mehendi', bn: 'মেহেদি' },
+    { hex: '#722F37', en: 'Wine', bn: 'ওয়াইন' },
+    { hex: '#581845', en: 'Jam', bn: 'জাম' },
+    { hex: '#C71585', en: 'Rani Pink', bn: 'রানি পিঙ্ক' },
+    { hex: '#E6C7B8', en: 'Onion', bn: 'পেঁয়াজ' },
+    { hex: '#F5F5F5', en: 'Off White', bn: 'অফ হোয়াইট' },
+    { hex: '#FFDBAC', en: 'Peach', bn: 'পীচ' },
 ];

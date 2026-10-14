@@ -3171,7 +3171,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     <div className="space-y-4 pt-4">
                       <div>
                         <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Colors</label>
-                        <p className="text-[11px] text-zinc-600 mt-0.5">Pick a color, confirm the name, then add</p>
+                        <p className="text-[11px] text-zinc-600 mt-0.5">Tap a named color, or pick a shade. A typed name stays as you wrote it.</p>
                       </div>
 
                       <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-4">
@@ -3188,7 +3188,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                               value={/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') ? form._newColorHex : '#888888'}
                               onChange={(e) => {
                                 const matched = getColorName(e.target.value);
-                                setForm({ ...form, _newColorHex: e.target.value, _newColorName: matched.en });
+                                setForm((prev) => {
+                                  const current = (prev._newColorName || '').trim();
+                                  const auto = prev._colorNameAuto || '';
+                                  const keepTyped = current && current !== auto;
+                                  return {
+                                    ...prev,
+                                    _newColorHex: e.target.value,
+                                    _colorNameAuto: matched.en,
+                                    _newColorName: keepTyped ? prev._newColorName : matched.en,
+                                  };
+                                });
                               }}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
@@ -3264,7 +3274,18 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                                   const val = e.target.value;
                                   if (/^#[0-9a-fA-F]{6}$/.test(val)) {
                                     const matched = getColorName(val);
-                                    setForm({ ...form, _newColorHex: val, _newColorName: matched.en, _colorSuggestions: false });
+                                    setForm((prev) => {
+                                      const current = (prev._newColorName || '').trim();
+                                      const auto = prev._colorNameAuto || '';
+                                      const keepTyped = current && current !== auto;
+                                      return {
+                                        ...prev,
+                                        _newColorHex: val,
+                                        _colorNameAuto: matched.en,
+                                        _newColorName: keepTyped ? prev._newColorName : matched.en,
+                                        _colorSuggestions: false,
+                                      };
+                                    });
                                   } else {
                                     setForm({ ...form, _newColorHex: val });
                                   }
@@ -3291,6 +3312,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                                 available_colors: [...(form.available_colors || []), { name, image: null, is_available: true, hex, sizes: [] }],
                                 _newColorHex: '#888888',
                                 _newColorName: '',
+                                _colorNameAuto: '',
                                 _colorSuggestions: false,
                               });
                             }}
@@ -3300,24 +3322,51 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           </button>
                         </div>
 
-                        {/* Quick fashion colors — one compact strip, no category labels */}
+                        {/^#[0-9a-fA-F]{6}$/.test(form._newColorHex || '') && (() => {
+                          const nearest = getColorName(form._newColorHex);
+                          const usingIt = (form._newColorName || '').trim().toLowerCase() === nearest.en.toLowerCase();
+                          if (usingIt) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setForm({
+                                ...form,
+                                _newColorName: nearest.en,
+                                _colorNameAuto: nearest.en,
+                                _newColorHex: form._newColorHex,
+                              })}
+                              className="text-[11px] text-left text-zinc-400 hover:text-white"
+                            >
+                              Closest free name: <span className="text-white font-semibold">{nearest.en}</span>
+                              <span className="text-zinc-500"> · {nearest.bn}</span>
+                            </button>
+                          );
+                        })()}
+
                         <div className="flex flex-wrap gap-1.5 pt-1 border-t border-white/5">
                           {PRESET_SWATCHES.map((swatch) => {
-                            const isSelected = (form._newColorHex || '').toLowerCase() === swatch.hex.toLowerCase();
+                            const isSelected = (form._newColorName || '').trim().toLowerCase() === swatch.en.toLowerCase()
+                              && (form._newColorHex || '').toLowerCase() === swatch.hex.toLowerCase();
                             return (
                               <button
                                 key={swatch.hex + swatch.en}
                                 type="button"
-                                title={swatch.en}
-                                aria-label={swatch.en}
-                                onClick={() => setForm({ ...form, _newColorHex: swatch.hex, _newColorName: swatch.en })}
-                                className={`w-7 h-7 rounded-md border transition-all ${
+                                onClick={() => setForm({
+                                  ...form,
+                                  _newColorHex: swatch.hex,
+                                  _newColorName: swatch.en,
+                                  _colorNameAuto: swatch.en,
+                                  _colorSuggestions: false,
+                                })}
+                                className={`inline-flex items-center gap-1.5 h-8 pl-1 pr-2.5 rounded-full border text-[11px] font-medium transition-colors ${
                                   isSelected
-                                    ? 'border-emerald-400 ring-1 ring-emerald-400/50 scale-110'
-                                    : 'border-white/15 hover:border-white/40 hover:scale-105'
+                                    ? 'border-[#ce112d] bg-[#ce112d]/15 text-white'
+                                    : 'border-white/10 text-zinc-300 hover:border-white/30 hover:text-white'
                                 }`}
-                                style={{ backgroundColor: swatch.hex }}
-                              />
+                              >
+                                <span className="w-5 h-5 rounded-full border border-black/20 shrink-0" style={{ backgroundColor: swatch.hex }} />
+                                {swatch.en}
+                              </button>
                             );
                           })}
                         </div>
