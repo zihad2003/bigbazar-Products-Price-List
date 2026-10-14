@@ -1,16 +1,40 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { ArrowRight, Instagram } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Instagram } from 'lucide-react';
 import { calculatePrice } from '../utils/pricing';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
 import { useLanguage } from '../contexts/LanguageContext';
 
+const colorSwatches = (product) => {
+  const colors = Array.isArray(product?.available_colors) ? product.available_colors : [];
+  const fromColors = colors
+    .map((c) => {
+      if (!c || typeof c !== 'object') return null;
+      const name = String(c.name || '').trim();
+      const image = c.image || c.image_url;
+      if (!image || c.is_available === false) return null;
+      return { name, image };
+    })
+    .filter(Boolean);
+  if (fromColors.length > 1) return fromColors;
+
+  const images = Array.isArray(product?.images) ? product.images.filter(Boolean) : [];
+  const unique = [...new Set(images)];
+  if (unique.length > 1) {
+    return unique.map((image) => ({ name: '', image }));
+  }
+  return [];
+};
+
 export const ProductCard = ({ product, onClick }) => {
+  const navigate = useNavigate();
   const { price, originalPrice, hasDiscount } = calculatePrice(product);
   const [imgFailed, setImgFailed] = React.useState(false);
+  const [activeSwatch, setActiveSwatch] = React.useState(0);
+  const swatches = colorSwatches(product);
 
   // Choose the best candidate for the display image (never use Instagram video URL as a photo)
-  const sourceImage = product.image_url || product.images?.[0] || null;
+  const sourceImage = swatches[activeSwatch]?.image || product.image_url || product.images?.[0] || null;
   // Legacy circular /api/img/{uuid} (no up-) often 404s — try static migrate path as fallback
   const staticFallback =
     sourceImage &&
@@ -23,7 +47,12 @@ export const ProductCard = ({ product, onClick }) => {
 
   React.useEffect(() => {
     setImgFailed(false);
-  }, [product?.id, sourceImage]);
+    setActiveSwatch(0);
+  }, [product?.id]);
+
+  React.useEffect(() => {
+    setImgFailed(false);
+  }, [sourceImage]);
 
   // Calculate discount percentage
   const discountPercent = hasDiscount && originalPrice > 0 
@@ -36,21 +65,34 @@ export const ProductCard = ({ product, onClick }) => {
     ? (product.name_bn || product.name) 
     : (product.name_en || product.name);
 
+  const openProduct = () => onClick?.(product);
+
+  const orderNow = (e) => {
+    e.stopPropagation();
+    if (product.is_sold_out) return;
+    const params = new URLSearchParams({ product: String(product.id), qty: '1' });
+    const colorName = swatches[activeSwatch]?.name;
+    if (colorName) params.set('color', colorName);
+    navigate(`/checkout?${params.toString()}`);
+  };
+
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`${displayName} - ৳${price}`}
-      onClick={() => onClick(product)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick(product);
-        }
-      }}
-      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 cursor-pointer group flex flex-col h-full focus:outline-none focus:ring-2 focus:ring-[#ce112d]/40"
+      className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-neutral-100 group flex flex-col h-full"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${displayName} - ৳${price}`}
+        onClick={openProduct}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openProduct();
+          }
+        }}
+        className="relative aspect-[4/5] overflow-hidden bg-neutral-50 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#ce112d]/40"
+      >
         {showImage ? (
           <div className="relative w-full h-full">
             <img
@@ -106,8 +148,19 @@ export const ProductCard = ({ product, onClick }) => {
         )}
       </div>
       
-      <div className="p-3.5 md:p-5 flex flex-col flex-1 gap-3">
-        <div className="space-y-1">
+      <div className="p-3.5 md:p-5 flex flex-col flex-1 gap-2.5">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openProduct}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openProduct();
+            }
+          }}
+          className="space-y-1 cursor-pointer text-left focus:outline-none"
+        >
           <p className="text-[10px] md:text-xs font-bold uppercase text-neutral-400 tracking-wider truncate">
             {product.category || 'Clothing'}
           </p>
@@ -115,21 +168,59 @@ export const ProductCard = ({ product, onClick }) => {
             {displayName}
           </h2>
         </div>
+
+        {swatches.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {swatches.slice(0, 6).map((swatch, i) => (
+              <button
+                key={`${swatch.image}-${i}`}
+                type="button"
+                aria-label={swatch.name || `${displayName} ${i + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveSwatch(i);
+                }}
+                className={`w-8 h-10 rounded-lg overflow-hidden border bg-neutral-100 shrink-0 ${
+                  activeSwatch === i
+                    ? 'border-[#ce112d] ring-2 ring-[#ce112d]/30'
+                    : 'border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
+                <img
+                  src={getOptimizedUrl(swatch.image, { w: 96, h: 120, q: 70 })}
+                  alt=""
+                  className="w-full h-full object-cover object-top"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </button>
+            ))}
+          </div>
+        )}
         
-        <div className="mt-auto flex items-center justify-between gap-1.5 pt-1 min-w-0">
+        <div className="mt-auto flex flex-col gap-2.5 pt-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0 overflow-hidden">
             <span className="text-sm sm:text-base md:text-lg font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>
             {hasDiscount && (
               <span className="text-xs text-neutral-400 line-through font-semibold whitespace-nowrap">৳{originalPrice}</span>
             )}
           </div>
-          {/* Interaction Signifier — Accessible touch target & high clarity */}
-          <div 
-            aria-hidden="true"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 group-hover:bg-[#ce112d] group-hover:text-white transition-all shadow-sm shrink-0"
+          <button
+            type="button"
+            onClick={orderNow}
+            disabled={!!product.is_sold_out}
+            className={`w-full py-2.5 rounded-xl text-[11px] md:text-xs font-bold transition-all ${
+              language === 'en' ? 'uppercase tracking-wider' : 'tracking-wide'
+            } ${
+              product.is_sold_out
+                ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                : 'bg-[#ce112d] text-white hover:bg-[#b00e26] active:scale-[0.98]'
+            }`}
           >
-            <ArrowRight size={16} strokeWidth={2.5} className="group-hover:translate-x-0.5 transition-transform" />
-          </div>
+            {product.is_sold_out
+              ? (language === 'bn' ? 'স্টক নেই' : 'Sold Out')
+              : (language === 'bn' ? 'অর্ডার করুন' : 'Order Now')}
+          </button>
         </div>
       </div>
     </div>
@@ -143,9 +234,9 @@ export const ProductSkeleton = () => (
       <div className="h-2 w-16 bg-neutral-100 rounded-full" />
       <div className="h-4 w-full bg-neutral-200 rounded-lg" />
       <div className="h-4 w-2/3 bg-neutral-100 rounded-lg" />
-      <div className="mt-8 flex justify-between items-end">
+      <div className="mt-6 space-y-2.5">
         <div className="h-6 w-20 bg-neutral-100 rounded-lg" />
-        <div className="h-8 w-8 md:h-10 md:w-10 bg-neutral-200 rounded-xl" />
+        <div className="h-9 w-full bg-neutral-200 rounded-xl" />
       </div>
     </div>
   </div>
