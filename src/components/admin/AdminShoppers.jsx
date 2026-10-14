@@ -76,7 +76,7 @@ function FormDetails({ form }) {
   );
 }
 
-function SessionCard({ row, items, badge, photos, canConvert, busy, onConvert }) {
+function SessionCard({ row, items, badge, photos, canConvert, missing, busy, onConvert }) {
   return (
     <article className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -102,15 +102,16 @@ function SessionCard({ row, items, badge, photos, canConvert, busy, onConvert })
       )}
       <FormDetails form={row.form} />
       {row.area && <p className="text-[11px] text-zinc-500">Near {row.area}</p>}
-      {canConvert && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onConvert(row)}
-          className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-60"
-        >
-          {busy ? 'Sending…' : 'Convert to order'}
-        </button>
+      <button
+        type="button"
+        disabled={busy || !canConvert}
+        onClick={() => onConvert(row)}
+        className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {busy ? 'Sending…' : 'Convert to order'}
+      </button>
+      {!canConvert && missing && (
+        <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
       )}
     </article>
   );
@@ -183,12 +184,14 @@ export default function AdminShoppers({ products = [], onConverted }) {
 
   useEffect(() => { load(); }, []);
 
-  const readyToOrder = (row, items) => Boolean(
-    String(row.name || '').trim()
-    && String(row.phone || '').trim()
-    && String(row.form?.address || '').trim()
-    && items.length
-  );
+  const missingToOrder = (row, items) => {
+    const missing = [];
+    if (!String(row.name || '').trim()) missing.push('name');
+    if (!String(row.phone || '').trim()) missing.push('phone');
+    if (!String(row.form?.address || '').trim()) missing.push('address');
+    if (!items.length) missing.push('a product');
+    return missing.join(', ');
+  };
 
   const convertToOrder = (row) => {
     setBusyId(row.id);
@@ -271,7 +274,8 @@ export default function AdminShoppers({ products = [], onConverted }) {
               badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
               items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
               photos={photos}
-              canConvert={readyToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
+              canConvert={!missingToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
+              missing={missingToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
               busy={busyId === row.id}
               onConvert={convertToOrder}
             />
@@ -288,7 +292,8 @@ export default function AdminShoppers({ products = [], onConverted }) {
               row={row}
               items={row.cart || []}
               photos={photos}
-              canConvert={readyToOrder(row, row.cart || [])}
+              canConvert={!missingToOrder(row, row.cart || [])}
+              missing={missingToOrder(row, row.cart || [])}
               busy={busyId === row.id}
               onConvert={convertToOrder}
             />

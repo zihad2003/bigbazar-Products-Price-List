@@ -226,6 +226,12 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
+      // This route is not on the live Node app until Hostinger deploys it.
+      // The local server (node server.js) has the route and the same database.
+      '/api/admin/shoppers/convert': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
       // Hit the live custom domain directly. pages.dev used to 301 /api → Hostinger,
       // which broke POST login (redirect → GET → "Endpoint not found").
       '/api': {
