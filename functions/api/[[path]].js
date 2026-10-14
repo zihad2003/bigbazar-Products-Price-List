@@ -19,6 +19,7 @@ import {
 } from './assistant-query.js';
 import { getVapidConfig, sendWebPushBatch } from './webPush.js';
 import { generateProductCopy } from './product-copy.js';
+import { analyzeProductImages, productAssistEnabled } from './product-assist.js';
 import {
   getSteadfastConfig,
   normalizeBdPhone,
@@ -785,7 +786,7 @@ const requireSuperAdmin = async (c, next) => {
   await next();
 };
 
-/** Comma-separated owner emails that must always receive superadmin (Hostinger/TiDB bootstrap). */
+/** Comma-separated owner emails that must always receive superadmin (Hostinger bootstrap). */
 function getSuperadminEmails(env) {
   const raw =
     env?.SUPERADMIN_EMAILS ||
@@ -1112,7 +1113,7 @@ app.get('/health', async (c) => {
 });
 
 // ============================================
-// IMAGE CDN ENDPOINT — zero TiDB queries, instant static asset delivery
+// IMAGE CDN ENDPOINT — zero database queries, instant static asset delivery
 // ============================================
 const IMG_EXT_RE = /\.(jpe?g|png|webp)$/i;
 
@@ -1279,7 +1280,7 @@ app.get('/img/:id', async (c) => {
 });
 
 // ============================================
-// SETTINGS IMAGE CDN ENDPOINT — zero TiDB queries, instant static asset delivery
+// SETTINGS IMAGE CDN ENDPOINT — zero database queries, instant static asset delivery
 // ============================================
 app.get('/settings-img/:type/:id', async (c) => {
   const type = c.req.param('type'); // 'subcat' or 'slide'
@@ -3560,7 +3561,7 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
   const s = await c.req.json();
   const conn = getDb(c.env);
 
-  // Merge protection: Never let dummy display URLs overwrite real images in TiDB!
+  // Merge protection: Never let dummy display URLs overwrite real images in the database!
   if (s.key === 'main_slides' && Array.isArray(s.value)) {
     try {
       const existingRows = await conn.execute("SELECT value FROM site_settings WHERE `key` = 'main_slides'");
@@ -3614,7 +3615,7 @@ app.post('/settings', requireAuth, requireAdmin, async (c) => {
 });
 
 // ============================================
-// VISITOR ANALYTICS (DISABLED to eliminate TiDB RU writes)
+// VISITOR ANALYTICS (DISABLED to keep database writes low)
 // ============================================
 app.post('/analytics/ping', (c) => c.json({ success: true }));
 app.get('/analytics/stats', (c) => c.json({ success: true, online_now: 0, today_count: 0, total_count: 0 }));
@@ -3832,6 +3833,8 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
     },
     carts: list.filter((row) => !row.order_id && row.cart_count > 0),
     checkouts: list.filter((row) => !row.order_id && row.checkout_source),
+    // Sessions that already became orders, so the admin can track the total
+    converted: list.filter((row) => row.order_id),
   });
 });
 
@@ -5102,7 +5105,7 @@ app.post('/assistant', requireCustomerAuth, async (c) => {
       productsRes = (rows || []).map(mapProductRow);
       hasMore = (requestedOffset + productsRes.length) < totalAvailable;
     } catch (err) {
-      console.error('TiDB query error:', err);
+      console.error('DB query error:', err);
     }
   }
 
@@ -5390,6 +5393,29 @@ app.delete('/admin/conversations/:id', requireAuth, requireAdmin, async (c) => {
   } catch (err) {
     console.error('delete conversation error:', err);
     return c.json({ error: 'Failed to delete conversation' }, 500);
+  }
+});
+
+// AI Product Assist — reads uploaded photos, suggests name/description/colors.
+// Flagged: does nothing in production until AI_PRODUCT_ASSIST_ENABLED=true.
+app.post('/admin/analyze-product', requireAuth, requireAdmin, async (c) => {
+  if (!productAssistEnabled(c.env)) {
+    return c.json({ error: 'Product assist is off' }, 404);
+  }
+  const ip = getClientIp(c);
+  if (!checkRateLimit(ip, 'analyze-product', 8, 60000)) {
+    return c.json({ ok: false, error: 'Too many analyze requests. Try again in a minute.' }, 429);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  try {
+    const result = await analyzeProductImages(c.env, body.image_urls);
+    if (!result.ok) {
+      return c.json({ ok: false, error: result.error }, result.status || 502);
+    }
+    return c.json(result);
+  } catch (err) {
+    console.error('analyze-product error:', err);
+    return c.json({ ok: false, error: 'Could not read the photos. Colors from the browser are still filled.' }, 502);
   }
 });
 

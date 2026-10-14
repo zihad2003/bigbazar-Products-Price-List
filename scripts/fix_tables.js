@@ -1,22 +1,11 @@
 import dotenv from 'dotenv';
-import { connect } from '@tidbcloud/serverless';
+import { getDb } from '../functions/api/db.js';
 
 dotenv.config();
 
-const getDb = () => {
-    const user = encodeURIComponent(process.env.DB_USER || '');
-    const pass = encodeURIComponent(process.env.DB_PASSWORD || '');
-    const host = process.env.DB_HOST;
-    const port = process.env.DB_PORT || '4000';
-    const name = process.env.DB_NAME || 'test';
-
-    const url = process.env.DATABASE_URL || `mysql://${user}:${pass}@${host}:${port}/${name}?ssl={"rejectUnauthorized":true}`;
-    return connect({ url });
-};
-
 async function createMissingTables() {
-    const db = getDb();
-    console.log('Connecting to TiDB to create missing tables...');
+    const db = getDb(process.env);
+    console.log('Connecting to the database to create missing tables...');
     try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS site_settings (

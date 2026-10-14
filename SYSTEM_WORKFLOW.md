@@ -1,6 +1,6 @@
 # BigBazar — System Workflow & Architecture Reference
 
-> Last updated: 2026-07-22
+> Last updated: 2026-10-14
 
 ---
 
@@ -9,11 +9,10 @@
 | Layer | Technology |
 |---|---|
 | Frontend | React 18 + Vite + Tailwind CSS |
-| API (prod) | Cloudflare Pages Functions — `functions/api/[[path]].js` (Hono) |
-| API (local) | Node.js / `@hono/node-server` — `server/index.js` |
-| Database | TiDB Serverless (MySQL-compatible) via `@tidbcloud/serverless` |
-| Auth | JWT (jsonwebtoken) + bcryptjs |
-| Hosting | Cloudflare Pages (`npm run deploy`) |
+| API (prod & local) | Node.js / `@hono/node-server` — `server.js` serving `functions/api/[[path]].js` (Hono) |
+| Database | Hostinger MySQL via `mysql2` pool (`functions/api/db.js`) |
+| Auth | JWT + bcryptjs |
+| Hosting | Hostinger (Node.js app, auto-deploy OFF — manual deploy + restart) |
 
 ---
 
@@ -28,20 +27,21 @@ BigBazar is an e-commerce platform designed for high conversion sales with real-
 
 ## Critical Environment Variables
 
-These must be set in **Cloudflare Pages Dashboard → Settings → Environment Variables** for production.
-For local dev they live in `.env` (loaded by dotenv in `server/index.js`).
+In production these live in the `.env` file on the Hostinger server.
+For local dev they live in the local `.env` (loaded by dotenv in `server.js`).
+See `.env.example` for the full list.
 
 | Variable | Used for |
 |---|---|
-| `DB_HOST` | TiDB cluster host |
-| `DB_PORT` | TiDB port (default 4000) |
-| `DB_USER` | TiDB username |
-| `DB_PASSWORD` | TiDB password |
-| `DB_NAME` | Database name (default `test`) |
+| `DATABASE_URL` | MySQL connection URL (`mysql://user:pass@host:3306/db`) — or use the `DB_*` vars below |
+| `DB_HOST` | MySQL host |
+| `DB_PORT` | MySQL port (default 3306) |
+| `DB_USER` | MySQL username |
+| `DB_PASSWORD` | MySQL password |
+| `DB_NAME` | Database name |
 | `JWT_SECRET` | JWT signing/verification |
 
-> **Note:** wrangler.toml cannot hold secrets for Cloudflare Pages.
-> All secrets must be set in the dashboard or via `wrangler secret put KEY`.
+> **Note:** Secrets are never committed to git — only placeholder keys go in `.env.example`.
 
 ---
 
@@ -104,7 +104,7 @@ into REST calls to the Hono API.
 ### 2026-07-22 — Admin Authentication Reset & Local Login Fix
 - **Root Cause**: The legacy hash in `admin_users` table did not match standard local login credentials, and a missing `selectedOrder` state hook in `Admin.jsx` threw client-side runtime errors.
 - **Fixes Applied**:
-  1. Reset `admin@bigbazar.com` password in TiDB Cloud database to `admin`.
+  1. Reset `admin@bigbazar.com` password in the database to `admin`.
   2. Upgraded backend login handler (`functions/api/[[path]].js`) to support both `admin@bigbazar.com` and `admin` identifiers with seamless fallback handling.
   3. Added missing `selectedOrder` state hook declaration in `src/pages/Admin.jsx`.
 
@@ -160,20 +160,22 @@ into REST calls to the Hono API.
 
 ### 2026-04-05 — Core Bug Fixes & Optimizations
 1. **Admin Login JWT Secret Mismatch**: Standardized `requireAuth` secret lookup to match login signing logic.
-2. **bcrypt.compareSync Async Fix**: Changed to `await bcrypt.compare()` to prevent event loop blocking on Cloudflare Pages CPU limits.
-3. **TiDB Connection Caching Fix**: Removed module-level DB connection cache from `db.js`.
+2. **bcrypt.compareSync Async Fix**: Changed to `await bcrypt.compare()` to prevent event loop blocking.
+3. **DB Connection Caching Fix**: Reworked module-level DB connection handling in `db.js`.
 4. **Local API Proxying**: Configured `VITE_API_URL=http://localhost:3001` in `.env.local`.
 5. **Bulk Order Deletion Endpoint**: Added `DELETE /api/orders?status=...` endpoint for Admin Empty Bin.
 6. **Product Card Video Preview**: Replaced live Instagram iframes on product list grid with static thumbnails + play button overlays.
 
 ---
 
-## Cloudflare Pages Deployment
+## Hostinger Deployment
 
 ```bash
 npm run build       # Vite build → dist/
-npm run deploy      # build + wrangler pages deploy dist
+git push origin main
 ```
 
-The catch-all Pages Function at `functions/api/[[path]].js` handles all `/api/*`
-requests. It is exported as `onRequest` (Cloudflare Pages Function convention).
+Auto-deploy is **OFF** on Hostinger: after pushing to GitHub `main`, deploy the
+latest code from the Hostinger panel and restart the Node.js application.
+`server.js` serves both the Hono API (`functions/api/[[path]].js` mounted at
+`/api`) and the built frontend from `dist/`.

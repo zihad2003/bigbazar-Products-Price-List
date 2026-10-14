@@ -1,23 +1,12 @@
 import dotenv from 'dotenv';
-import { connect } from '@tidbcloud/serverless';
 import bcrypt from 'bcryptjs';
+import { getDb } from '../functions/api/db.js';
 
 dotenv.config();
 
-const getDb = () => {
-    const user = encodeURIComponent(process.env.DB_USER || '');
-    const pass = encodeURIComponent(process.env.DB_PASSWORD || '');
-    const host = process.env.DB_HOST;
-    const port = process.env.DB_PORT || '4000';
-    const name = process.env.DB_NAME || 'test';
-
-    const url = `mysql://${user}:${pass}@${host}:${port}/${name}?ssl={"rejectUnauthorized":true}`;
-    return connect({ url });
-};
-
 async function setup() {
-    const db = getDb();
-    console.log('Connected to TiDB. Initializing schema...');
+    const db = getDb(process.env);
+    console.log('Connected to the database. Initializing schema...');
 
     try {
         // Create Admin Users Table

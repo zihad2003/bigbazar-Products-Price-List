@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingBag, RefreshCw } from 'lucide-react';
+import { ShoppingBag, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 import { getOptimizedUrl } from '../../utils/media';
 
@@ -102,16 +102,25 @@ function SessionCard({ row, items, badge, photos, canConvert, missing, busy, onC
       )}
       <FormDetails form={row.form} />
       {row.area && <p className="text-[11px] text-zinc-500">Near {row.area}</p>}
-      <button
-        type="button"
-        disabled={busy || !canConvert}
-        onClick={() => onConvert(row)}
-        className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {busy ? 'Sending…' : 'Convert to order'}
-      </button>
-      {!canConvert && missing && (
-        <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
+      {row.order_id ? (
+        <p className="w-full h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+          <CheckCircle2 size={14} />
+          Converted to order #{String(row.order_id).slice(0, 8)}
+        </p>
+      ) : (
+        <>
+          <button
+            type="button"
+            disabled={busy || !canConvert}
+            onClick={() => onConvert(row)}
+            className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {busy ? 'Sending…' : 'Convert to order'}
+          </button>
+          {!canConvert && missing && (
+            <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
+          )}
+        </>
       )}
     </article>
   );
@@ -143,7 +152,7 @@ function Column({ title, hint, rows, empty, render }) {
 }
 
 export default function AdminShoppers({ products = [], onConverted }) {
-  const [shoppers, setShoppers] = useState({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
+  const [shoppers, setShoppers] = useState({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [], converted: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -173,11 +182,12 @@ export default function AdminShoppers({ products = [], onConverted }) {
           today: json.today || { carts: 0, checkouts: 0, orders: 0 },
           carts: Array.isArray(json.carts) ? json.carts : [],
           checkouts: Array.isArray(json.checkouts) ? json.checkouts : [],
+          converted: Array.isArray(json.converted) ? json.converted : [],
         });
       })
       .catch((err) => {
         setError(err.message || 'Could not load carts');
-        setShoppers({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [] });
+        setShoppers({ today: { carts: 0, checkouts: 0, orders: 0 }, carts: [], checkouts: [], converted: [] });
       })
       .finally(() => setLoading(false));
   };
@@ -229,6 +239,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const checkouts = [...shoppers.checkouts].sort(byRecent);
   const checkoutIds = new Set(checkouts.map((row) => row.id));
   const carts = shoppers.carts.filter((row) => !checkoutIds.has(row.id)).sort(byRecent);
+  const converted = [...(shoppers.converted || [])].sort(byRecent);
 
   return (
     <div className="max-w-6xl space-y-5 pb-16">
@@ -249,11 +260,12 @@ export default function AdminShoppers({ products = [], onConverted }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Checkouts today', value: shoppers.today.checkouts },
           { label: 'Carts today', value: shoppers.today.carts },
           { label: 'Orders today', value: shoppers.today.orders },
+          { label: 'Converted (30 days)', value: converted.length },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215] px-3 py-3">
             <p className="text-[10px] font-medium text-zinc-500">{card.label}</p>
@@ -308,6 +320,26 @@ export default function AdminShoppers({ products = [], onConverted }) {
           )}
         />
       </div>
+
+      <Column
+        title="Converted to orders"
+        hint="Carts and checkouts that were confirmed as orders in the last 30 days."
+        rows={converted}
+        empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
+        render={(row) => (
+          <SessionCard
+            key={`cv-${row.id}`}
+            row={row}
+            badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
+            items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
+            photos={photos}
+            canConvert={false}
+            missing=""
+            busy={false}
+            onConvert={() => {}}
+          />
+        )}
+      />
     </div>
   );
 }

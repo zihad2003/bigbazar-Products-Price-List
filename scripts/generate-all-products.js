@@ -1,6 +1,6 @@
 /**
  * Automated Generator for public/all_products.json
- * Fetches all published products from TiDB database and writes to public/all_products.json.
+ * Fetches all published products from the MySQL database and writes to public/all_products.json.
  */
 
 import fs from 'fs';
@@ -16,7 +16,7 @@ const __dirname = path.dirname(__filename);
 const targetPath = path.resolve(__dirname, '../public/all_products.json');
 
 export async function generateAllProductsJson() {
-  console.log('Generating public/all_products.json from TiDB database...');
+  console.log('Generating public/all_products.json from the MySQL database...');
   const conn = getDb();
   const products = await conn.execute(
     'SELECT id, name, price, original_price, description, category, subcategory, images, image_url, video_url, is_sale, is_hot, is_new, is_sold_out, is_exclusive, created_at, serial_no FROM products WHERE status = "published" AND is_deleted = 0 ORDER BY created_at DESC'

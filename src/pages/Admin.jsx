@@ -24,6 +24,7 @@ import SuperadminPanel from '../components/admin/SuperadminPanel';
 import OrderDetailsPanel, { customerNoteText, orderItemNames } from '../components/admin/OrderDetailsPanel';
 import { splitOrderAddress } from '../data/bdLocations';
 import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from '../utils/imageCompressor';
+import { extractProductColors, combinedColorLabel } from '../utils/productColorExtract';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { balanceDue, orderTotal, receivedAdvance } from '../utils/orderMoney';
@@ -34,6 +35,17 @@ function descriptionWithVideoNote(description, hasVideo) {
   const text = String(description || '').split(VIDEO_NOTE).join('').replace(/\n{2,}/g, '\n').trim();
   if (!hasVideo) return text;
   return text ? `${text}\n${VIDEO_NOTE}` : VIDEO_NOTE;
+}
+
+// AI Product Assist is a server flag. The browser learns it from the first
+// analyze reply (404 = off) and remembers for the session, so an unflagged
+// production admin behaves exactly as before.
+const ASSIST_FLAG_KEY = 'bb_assist_enabled';
+function assistSessionState() {
+  try { return sessionStorage.getItem(ASSIST_FLAG_KEY) || ''; } catch (_) { return ''; }
+}
+function rememberAssistState(value) {
+  try { sessionStorage.setItem(ASSIST_FLAG_KEY, value); } catch (_) {}
 }
 
 function OnOffSwitch({ on, disabled, onClick, label }) {
@@ -114,6 +126,7 @@ export default function Admin() {
   const [customSizeInput, setCustomSizeInput] = useState('');
   const [copyBusy, setCopyBusy] = useState(null); // null | 'name' | 'description' | 'both'
   const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [assistBusy, setAssistBusy] = useState(false); // AI Product Assist in flight
   const [colorNameFocus, setColorNameFocus] = useState(null);
   const [productPage, setProductPage] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
@@ -1325,6 +1338,11 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
           };
         });
           setPreviewImage(uploadedUrls[0]);
+          // Assist only suggests. A failure here must never block the upload or Save.
+          runProductAssist([
+            ...uploadedUrls,
+            ...(form.images || []).filter(img => !uploadedUrls.includes(img)),
+          ].slice(0, 4)).catch(() => setAssistBusy(false));
         } else {
           setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
           setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
@@ -1464,6 +1482,116 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       available_sizes: [], available_colors: [], stock_count: ''
     });
     setFormStep(1);
+  };
+
+  /**
+   * AI Product Assist. Runs after a successful gallery upload.
+   * Canvas colors fill empty color rows instantly; the AI then fills the
+   * empty name/description and refines color names. Typed fields are never
+   * replaced. When the server flag is off (404), nothing changes.
+   */
+  const runProductAssist = async (imageUrls) => {
+    const urls = (imageUrls || []).filter(Boolean);
+    if (!urls.length || assistSessionState() === 'off') return;
+
+    const applyCanvasColors = async () => {
+      for (const url of urls) {
+        let colors = [];
+        try {
+          colors = await extractProductColors(url);
+        } catch (_) {
+          colors = [];
+        }
+        const label = combinedColorLabel(colors);
+        if (!label) continue;
+        setForm(prev => {
+          if (!prev._photoColors) return prev;
+          return {
+            ...prev,
+            available_colors: (prev.available_colors || []).map(row => (
+              row.image === url && !String(row.name || '').trim()
+                ? { ...row, name: label, hex: colors[0]?.hex || row.hex }
+                : row
+            )),
+          };
+        });
+      }
+    };
+
+    // Known-enabled sessions get the instant local fill before the AI returns.
+    const knownOn = assistSessionState() === 'on';
+    if (knownOn) applyCanvasColors().catch(() => {});
+
+    setAssistBusy(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const endpoint = (!API_URL || API_URL === '/')
+        ? '/api/admin/analyze-product'
+        : `${API_URL.replace(/\/$/, '')}/api/admin/analyze-product`;
+      const token = getToken();
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ image_urls: urls.slice(0, 4) }),
+      });
+
+      if (res.status === 404) {
+        rememberAssistState('off');
+        return;
+      }
+      rememberAssistState('on');
+      if (!knownOn) applyCanvasColors().catch(() => {});
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setFormAlert({
+          type: 'error',
+          title: 'AI assist skipped',
+          message: 'The AI could not read the photos. Type the name, price, and colors yourself — Save product still works.',
+        });
+        return;
+      }
+
+      setForm(prev => {
+        const next = { ...prev };
+        if (!String(prev.name || '').trim() && data.name_en) next.name = data.name_en;
+        if (!String(prev.description || '').trim() && data.description_bn) {
+          next.description = descriptionWithVideoNote(data.description_bn, !!String(prev.video_url || '').trim());
+        }
+        if (prev._photoColors && Array.isArray(data.colors) && data.colors.length) {
+          next.available_colors = (prev.available_colors || []).map(row => {
+            const hit = data.colors.find(c => c.image_url === row.image && String(c.name || '').trim());
+            return hit && !String(row.name || '').trim()
+              ? { ...row, name: hit.name, hex: hit.hex || row.hex }
+              : row;
+          });
+        }
+        return next;
+      });
+      const nameChips = [data.name_en, data.name_bn].filter(Boolean);
+      if (nameChips.length) {
+        setNameSuggestions(prev => [...new Set([...nameChips, ...prev])].slice(0, 8));
+      }
+      setFormAlert({
+        type: 'success',
+        title: 'AI read the photos',
+        message: `${data.category ? `Looks like: ${data.category}. ` : ''}Only empty fields were filled — everything stays editable.`,
+      });
+    } catch (_) {
+      setFormAlert({
+        type: 'error',
+        title: 'AI assist skipped',
+        message: 'The AI did not answer. Type the name, price, and colors yourself — Save product still works.',
+      });
+    } finally {
+      clearTimeout(timer);
+      setAssistBusy(false);
+    }
   };
 
   const requestProductCopy = async (mode = 'both') => {
@@ -1781,7 +1909,6 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               { id: 'pending-items', icon: <Package size={18} />, label: 'Pending Items', count: orders.filter(o => o && o.status === 'Pending').length },
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
-              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'shoppers', icon: <ShoppingCart size={18} />, label: 'Carts & Checkouts' },
               { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
               { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
@@ -1791,6 +1918,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },
               { id: 'users', icon: <Users size={18} />, label: 'Signed-in Users', count: navCounts.users },
               { id: 'conversations', icon: <MessageSquare size={18} />, label: 'AI Conversations', count: navCounts.conversations },
+              { id: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & Analytics', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'settings', icon: <Settings size={18} />, label: 'System Settings' },
               ...(session?.user?.role === 'superadmin' ? [
                 { id: 'steadfast', icon: <Truck size={18} />, label: 'Steadfast' },
@@ -1822,7 +1950,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                 }`}
               >
                 <div className={`${activeTab === tab.id ? 'text-white' : adminTheme === 'light' ? 'text-slate-400' : 'text-zinc-500'}`}>{tab.icon}</div>
-                <span className="font-semibold text-xs tracking-normal">{tab.label}</span>
+                <span className="flex-1 min-w-0 text-left font-semibold text-xs tracking-normal">{tab.label}</span>
                 {typeof tab.count === 'number' && (
                   <span className={`ml-auto text-[10px] min-w-[20px] h-5 flex items-center justify-center rounded-full px-1.5 font-bold ${
                     activeTab === tab.id ? 'bg-white/20 text-white' : adminTheme === 'light' ? 'bg-slate-100 text-slate-500' : 'bg-zinc-900 text-zinc-400'
@@ -3139,11 +3267,15 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   <div className="pt-2 border-t border-white/10 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-zinc-400">Gallery</span>
-                      {loading && uploadStatus !== 'idle' && (
+                      {loading && uploadStatus !== 'idle' ? (
                         <span className="text-[11px] text-[#ce112d]">
                           {uploadStatus === 'compressing' ? 'Compressing…' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
                         </span>
-                      )}
+                      ) : assistBusy ? (
+                        <span className="text-[11px] text-amber-400 inline-flex items-center gap-1">
+                          <Sparkles size={11} /> Analyzing…
+                        </span>
+                      ) : null}
                     </div>
                     <div className="grid grid-cols-4 gap-2">
                       {form.images?.map((img, i) => (

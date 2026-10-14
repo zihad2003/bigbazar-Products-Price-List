@@ -48,8 +48,8 @@ function assistantDevPlugin() {
             const getConn = async () => {
               if (conn) return conn;
               if (!dbUrl) throw new Error('DATABASE_URL missing');
-              const { connect } = await import('@tidbcloud/serverless');
-              conn = connect({ url: dbUrl });
+              const { getDb } = await import('./functions/api/db.js');
+              conn = getDb(env);
               return conn;
             };
 
@@ -119,7 +119,7 @@ function assistantDevPlugin() {
                 hasMore = (requestedOffset + productsRes.length) < totalAvailable;
                 replyText = q.getCatalogReplyText(productsRes.length, requestedOffset, lang);
               } catch (err) {
-                console.error('Dev TiDB query error:', err.message || err);
+                console.error('Dev DB query error:', err.message || err);
                 replyText = lang === 'en'
                   ? 'Catalog is temporarily unavailable. Try again or call 01857045449.'
                   : 'কালেকশন সাময়িকভাবে লোড হচ্ছে না। অনুগ্রহ করে আবার চেষ্টা করুন বা 01857045449 এ কল দিন।';
@@ -226,9 +226,8 @@ export default defineConfig({
       usePolling: true,
     },
     proxy: {
-      // This route is not on the live Node app until Hostinger deploys it.
-      // The local server (node server.js) has the route and the same database.
-      '/api/admin/shoppers/convert': {
+      // AI assist is not deployed yet, so only this route stays on the local server.
+      '/api/admin/analyze-product': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,
       },

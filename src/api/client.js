@@ -1,5 +1,5 @@
 /**
- * API Client — all data goes through the Cloudflare Pages Function / TiDB backend.
+ * API Client — all data goes through the Hono API / Hostinger MySQL backend.
  * Supabase has been fully removed. This file is the single source of truth for
  * auth, database queries, and storage — imported everywhere via supabaseClient.js.
  */
@@ -139,7 +139,7 @@ function getTokenType() {
  * Returns true ONLY when the user is actually an admin.
  * Previously, this returned true for ANY token (including customer tokens),
  * which caused all logged-in customers to bypass every cache layer —
- * the root cause of TiDB RU exhaustion.
+ * the root cause of heavy database load.
  */
 export function isAdminRequest() {
     // Only treat as admin if on /admin path AND token is actually admin type
@@ -627,7 +627,7 @@ export const storage = {
 };
 
 // ============================================
-// Single export — all traffic goes through the Cloudflare / TiDB backend
+// Single export — all traffic goes through the Hostinger API backend
 // ============================================
 export const bigBazarApi = { auth, from, storage };
 

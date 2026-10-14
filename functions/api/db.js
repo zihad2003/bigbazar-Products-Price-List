@@ -1,15 +1,15 @@
-import { connect as connectTiDB } from '@tidbcloud/serverless';
 import mysql from 'mysql2/promise';
 
 let mysqlPool = null;
 
 /**
  * Returns a database connection for the given environment.
- * Supports both Hostinger Native MySQL (via mysql2) and TiDB Cloud Serverless.
+ * Hostinger MySQL over a standard TCP connection via mysql2,
+ * either from DATABASE_URL (mysql://…) or the DB_* variables.
  *
- * @param {object} env - Cloudflare env bindings or node process.env
+ * @param {object} env - Server env bindings or node process.env
  * @returns {object} Database Connection instance with .execute(sql, params)
- *                   and TiDB-compatible .begin() for transactions
+ *                   and .begin() for transactions
  */
 export const getDb = (env = {}) => {
   const getVar = (key) => {
@@ -25,24 +25,11 @@ export const getDb = (env = {}) => {
   const password = getVar('DB_PASSWORD') || '';
   const database = getVar('DB_NAME') || '';
 
-  // 1. TiDB Cloud Serverless (HTTP Gateway)
-  const isTiDB = (host && host.includes('tidbcloud.com')) || (databaseUrl && databaseUrl.includes('tidbcloud.com'));
-
-  if (isTiDB) {
-    if (databaseUrl) {
-      return connectTiDB({ url: databaseUrl });
-    }
-    const encUser = encodeURIComponent(user);
-    const encPass = encodeURIComponent(password);
-    const url = `mysql://${encUser}:${encPass}@${host}:${port || 4000}/${database}?ssl={"rejectUnauthorized":true}`;
-    return connectTiDB({ url });
-  }
-
-  // 2. Hostinger Native MySQL (Standard TCP connection via mysql2)
+  // Hostinger MySQL (singleton pool for the whole worker)
   if (!mysqlPool) {
     const targetHost = host === 'localhost' ? '127.0.0.1' : host;
-    
-    if (databaseUrl && !databaseUrl.includes('tidbcloud.com')) {
+
+    if (databaseUrl) {
       mysqlPool = mysql.createPool(databaseUrl);
     } else {
       mysqlPool = mysql.createPool({
@@ -69,7 +56,7 @@ export const getDb = (env = {}) => {
     },
 
     /**
-     * TiDB-compatible transaction API used by order create/update/delete.
+     * Transaction API used by order create/update/delete.
      * Holds one pooled connection for the full begin → execute* → commit/rollback cycle.
      */
     async begin() {

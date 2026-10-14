@@ -45,33 +45,30 @@ async function runMysql() {
   await conn.end();
 }
 
-async function runTidb() {
-  const { connect } = require('@tidbcloud/serverless');
-  const conn = connect({ url: process.env.DATABASE_URL });
-  const execute = async (sql, params = []) => {
-    const res = await conn.execute(sql, params);
-    return Array.isArray(res) ? res : res.rows || [];
-  };
-  await ensureRoleColumn((sql, params) => conn.execute(sql, params));
+async function runMysqlUrl() {
+  const mysql = require('mysql2/promise');
+  const conn = await mysql.createConnection(process.env.DATABASE_URL);
+  const execute = (sql, params) => conn.execute(sql, params).then(([r]) => r);
+  await ensureRoleColumn(execute);
   const before = await execute('SELECT id, email, role FROM admin_users');
   console.log('BEFORE:', before);
-  await conn.execute('UPDATE admin_users SET role = ? WHERE LOWER(email) = ?', [
+  await execute('UPDATE admin_users SET role = ? WHERE LOWER(email) = ?', [
     'superadmin',
     EMAIL,
   ]);
   const after = await execute('SELECT id, email, role FROM admin_users');
   console.log('AFTER:', after);
+  await conn.end();
 }
 
 (async () => {
   try {
-    const url = process.env.DATABASE_URL || '';
-    if (url.includes('tidbcloud.com')) {
-      console.log('Using TiDB...');
-      await runTidb();
-    } else if (process.env.DB_HOST) {
-      console.log('Using MySQL...');
+    if (process.env.DB_HOST) {
+      console.log('Using MySQL (DB_* vars)...');
       await runMysql();
+    } else if (process.env.DATABASE_URL) {
+      console.log('Using MySQL (DATABASE_URL)...');
+      await runMysqlUrl();
     } else {
       throw new Error('No DB credentials in .env');
     }

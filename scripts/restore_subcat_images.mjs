@@ -24,7 +24,7 @@ const ID_TO_UPLOAD = {
 };
 
 async function main() {
-  // Prefer Hostinger TCP (DB_*), never TiDB HTTP gateway for this restore
+  // Uses the Hostinger MySQL credentials (DB_*) for this restore
   const host = process.env.DB_HOST;
   const user = process.env.DB_USER;
   const password = process.env.DB_PASSWORD;
@@ -33,11 +33,6 @@ async function main() {
 
   if (!host || !user || !database) {
     console.error('Missing DB_HOST / DB_USER / DB_NAME — cannot update production settings');
-    process.exit(1);
-  }
-
-  if (/tidbcloud/i.test(host)) {
-    console.error('DB_HOST looks like TiDB; need Hostinger MySQL host for live settings');
     process.exit(1);
   }
 
