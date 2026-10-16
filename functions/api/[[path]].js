@@ -554,26 +554,77 @@ const checkRateLimit = (ip, endpoint, limit, windowMs) => {
 };
 
 // ── Part 4: Cloudflare KV Cache & Rate-Limit Helpers ──
+// Hostinger has no KV binding, so catalog reads fall back to this process
+// cache. 45 seconds is enough to absorb a traffic burst. Checkout lookups
+// (?id= / ?ids=) and account data are never stored here.
+const MEM_CACHE_TTL_MS = 45_000;
+const MEM_CACHE_MAX = 200;
+const memCache = new Map();
+
+function memCacheAllowed(key) {
+  if (typeof key !== 'string') return false;
+  if (/^cache:[^:]+:settings$/.test(key)) return true;
+  if (/^cache:[^:]+:subcounts:/.test(key)) return true;
+  if (/^cache:[^:]+:product:/.test(key)) return true;
+  if (/^cache:[^:]+:products:/.test(key)) {
+    const query = key.split(':products:')[1] || '';
+    if (/(^|&)id=/.test(query) || /(^|&)ids=/.test(query)) return false;
+    return true;
+  }
+  return false;
+}
+
+function memCacheGet(key) {
+  if (!memCacheAllowed(key)) return null;
+  const hit = memCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    memCache.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function memCacheSet(key, value) {
+  if (!memCacheAllowed(key)) return;
+  memCache.delete(key);
+  memCache.set(key, { value, expiresAt: Date.now() + MEM_CACHE_TTL_MS });
+  while (memCache.size > MEM_CACHE_MAX) {
+    const oldest = memCache.keys().next().value;
+    memCache.delete(oldest);
+  }
+}
+
+function memCacheClear() {
+  memCache.clear();
+}
+
 async function kvGet(c, key) {
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
-    if (!kv) return null;
+    if (!kv) return memCacheGet(key);
     const val = await kv.get(key, { type: 'json' });
     return val;
   } catch (_) {
-    return null;
+    return memCacheGet(key);
   }
 }
 
 async function kvSet(c, key, value, ttlSeconds = 86400) {
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
-    if (!kv) return;
+    if (!kv) {
+      memCacheSet(key, value);
+      return;
+    }
     await kv.put(key, JSON.stringify(value), { expirationTtl: Math.max(60, ttlSeconds) });
-  } catch (_) {}
+  } catch (_) {
+    memCacheSet(key, value);
+  }
 }
 
 async function kvDelete(c, key) {
+  memCache.delete(key);
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
     if (!kv) return;
@@ -606,6 +657,7 @@ async function bumpCatalogVersion(c) {
   const newVer = Date.now().toString();
   _memCatalogVersion = newVer;
   _memVersionFetchedAt = Date.now();
+  memCacheClear();
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
     if (kv) {
