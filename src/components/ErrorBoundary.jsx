@@ -77,13 +77,13 @@ class ErrorBoundary extends React.Component {
 
             <div className="space-y-2.5">
               <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">
-                Something went wrong
+                পেজটা এখন খোলেনি
               </h1>
               <p className="text-sm text-zinc-500 leading-relaxed">
-                We couldn&apos;t load this page. Please refresh and try again.
+                দোকান চালু আছে। নিচের লাল বাটনে একবার চাপুন, পেজটা আবার খুলবে।
               </p>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                পেজটি লোড হয়নি। রিফ্রেশ করে আবার চেষ্টা করুন।
+                The shop is open. Tap the red button once to open this page again.
               </p>
             </div>
 
@@ -93,14 +93,14 @@ class ErrorBoundary extends React.Component {
                 onClick={() => window.location.reload()}
                 className="w-full py-3.5 bg-[#ce112d] hover:bg-[#b00e26] text-white text-sm font-semibold rounded-2xl shadow-lg shadow-red-600/20 active:scale-95 transition-all cursor-pointer"
               >
-                Refresh
+                আবার খুলুন
               </button>
               <button
                 type="button"
                 onClick={() => { window.location.href = '/'; }}
                 className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-sm font-semibold rounded-2xl transition-all border border-zinc-200 cursor-pointer"
               >
-                Back to homepage
+                হোমে যান
               </button>
             </div>
           </div>

@@ -124,9 +124,15 @@ self.addEventListener('fetch', (event) => {
       caches.open(CACHE_NAME).then(async (cache) => {
         try {
           const networkResponse = await fetch(request);
-          if (networkResponse && networkResponse.status === 200) {
+          const type = networkResponse?.headers?.get('content-type') || '';
+          // A bot-check HTML page is not a script. Never hand that to the page loader.
+          const usable = networkResponse && networkResponse.status === 200 && !type.includes('text/html');
+          if (usable) {
             cache.put(request, networkResponse.clone());
+            return networkResponse;
           }
+          const cachedResponse = await cache.match(request);
+          if (cachedResponse) return cachedResponse;
           return networkResponse;
         } catch (_) {
           const cachedResponse = await cache.match(request);

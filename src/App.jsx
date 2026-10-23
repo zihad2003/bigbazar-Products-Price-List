@@ -20,17 +20,30 @@ import ChatWidget from './components/ChatWidget';
 import { bigBazarApi, API_URL } from './api/client';
 import { initAnalytics, trackPageview } from './utils/analytics';
 
-// Lazy load with one automatic retry — survives transient chunk/SW misses after deploy
+// If a page file fails to load, try once more, then reload the tab a single time.
+// Shoppers never sit on the English crash screen for a blip that a refresh fixes.
 function lazyRetry(factory) {
+  const load = () => factory();
   return lazy(() =>
-    factory().catch(() => {
-      // Force a fresh module URL on retry
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          factory().then(resolve).catch(reject);
-        }, 400);
-      });
-    })
+    load().catch(() => new Promise((resolve, reject) => {
+      setTimeout(() => {
+        load().then(resolve).catch((err) => {
+          const path = window.location.pathname;
+          const key = 'bb_chunk_reload';
+          let recent = false;
+          try {
+            const prev = JSON.parse(sessionStorage.getItem(key) || 'null');
+            recent = !!(prev && prev.path === path && Date.now() - prev.at < 20000);
+          } catch (_) {}
+          if (!recent) {
+            try { sessionStorage.setItem(key, JSON.stringify({ path, at: Date.now() })); } catch (_) {}
+            window.location.reload();
+            return;
+          }
+          reject(err);
+        });
+      }, 400);
+    }))
   );
 }
 
@@ -44,7 +57,7 @@ const AccountPage = lazyRetry(() => import('./pages/AccountPage'));
 const PageLoadingFallback = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
     <div className="w-9 h-9 border-4 border-[#ce112d]/20 border-t-[#ce112d] rounded-full animate-spin" />
-    <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest animate-pulse">Loading...</span>
+    <span className="text-[11px] font-bold text-neutral-400 tracking-wide">খুলছে...</span>
   </div>
 );
 
