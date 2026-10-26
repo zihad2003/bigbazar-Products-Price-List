@@ -273,13 +273,14 @@ export default function Admin() {
     const total = orderTotal(order);
     const due = balanceDue(order);
 
+    const isGift = order.is_gift === true || order.is_gift === 1 || order.is_gift === '1';
     const text = `BIG BAZAR ORDER DETAILS
 ━━━━━━━━━━━━━━━━━━━━
 Order Ref: #${order.id.toString().slice(-6).toUpperCase()}
 Date: ${new Date(order.created_at).toLocaleDateString()}
-Customer: ${order.customer_name || 'N/A'}
-Phone: ${order.customer_phone || 'N/A'}
-Address: ${splitOrderAddress(order.customer_address).street || 'N/A'}
+${isGift ? 'Type: GIFT\n' : ''}Buyer: ${order.customer_name || 'N/A'}
+Buyer phone: ${order.customer_phone || 'N/A'}
+${isGift ? `Recipient: ${order.recipient_name || 'N/A'}\nRecipient phone: ${order.recipient_phone || 'N/A'}\n` : ''}Address: ${splitOrderAddress(order.customer_address).street || 'N/A'}
 Place: ${splitOrderAddress(order.customer_address).selected || 'N/A'}
 Area: ${order.delivery_area || 'N/A'}
 ━━━━━━━━━━━━━━━━━━━━
@@ -3707,8 +3708,16 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                                 {order.size && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">SZ: {order.size}</span>}
                                 {order.color && <span className="bg-white/5 text-zinc-400 px-1.5 py-0.5 rounded text-[9px] border border-white/10">COL: {order.color}</span>}
                               </div>
-                              <p className="text-[11px] text-[#ce112d] font-medium truncate">{order.customer_name}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-[11px] text-[#ce112d] font-medium truncate">{order.customer_name}</p>
+                                {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') && (
+                                  <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-[#ce112d]/15 text-[#ce112d] border border-[#ce112d]/30">Gift</span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-zinc-500 truncate">{order.customer_phone}</p>
+                              {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') && order.recipient_name && (
+                                <p className="text-[10px] text-zinc-400 truncate">To: {order.recipient_name} · {order.recipient_phone || ''}</p>
+                              )}
                             </div>
                           </>
                         );
@@ -4072,7 +4081,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                           <p className="text-[12px] font-semibold text-white truncate">{o.product_name}</p>
                           <p className="text-[12px] font-semibold text-[#ce112d] mt-0.5">৳{o.total_amount}</p>
                           <p className="text-[11px] text-zinc-400 truncate mt-1">{o.customer_name}</p>
-                          <p className="text-[10px] text-zinc-500 truncate">{o.customer_phone} · {o.delivery_area}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">
+                            {o.customer_phone} · {o.delivery_area}
+                            {(o.is_gift === true || o.is_gift === 1 || o.is_gift === '1') ? ' · Gift' : ''}
+                          </p>
                         </div>
                       </div>
                       <div className="flex gap-1.5 pt-1 border-t border-white/5" onClick={e => e.stopPropagation()}>

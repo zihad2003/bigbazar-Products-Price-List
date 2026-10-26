@@ -1,6 +1,6 @@
 import {
   User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon, Truck, RefreshCw, ExternalLink,
-  ShieldCheck, ShieldAlert, ShieldX,
+  ShieldCheck, ShieldAlert, ShieldX, Gift,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -396,8 +396,16 @@ export default function OrderDetailsPanel({
         {/* Customer + Delivery */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-              <User size={12} className="text-[#ce112d]" /> Customer
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                <User size={12} className="text-[#ce112d]" />
+                {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') ? 'Buyer (confirm)' : 'Customer'}
+              </div>
+              {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#ce112d] bg-[#ce112d]/10 border border-[#ce112d]/25 px-1.5 py-0.5 rounded">
+                  <Gift size={10} /> Gift
+                </span>
+              )}
             </div>
             <div>
               <p className="text-[10px] text-zinc-500 mb-0.5">Name</p>
@@ -409,12 +417,29 @@ export default function OrderDetailsPanel({
                 <p className="text-sm font-semibold text-white flex-1">{order.customer_phone || '—'}</p>
                 {order.customer_phone && (
                   <div className="flex gap-1">
-                    <a href={`tel:${order.customer_phone}`} className="w-8 h-8 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 flex items-center justify-center"><Phone size={12} /></a>
-                    <a href={`https://wa.me/${String(order.customer_phone).replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 flex items-center justify-center"><MessageSquare size={12} /></a>
+                    <a href={`tel:${order.customer_phone}`} className="w-8 h-8 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 flex items-center justify-center" title="Call buyer"><Phone size={12} /></a>
+                    <a href={`https://wa.me/${String(order.customer_phone).replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 flex items-center justify-center" title="WhatsApp buyer"><MessageSquare size={12} /></a>
                   </div>
                 )}
               </div>
             </div>
+            {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') && (
+              <div className="pt-2 border-t border-white/10 space-y-2">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                  <Gift size={10} className="text-[#ce112d]" /> Recipient (delivery)
+                </p>
+                <p className="text-sm font-semibold text-white">{order.recipient_name || '—'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-white flex-1">{order.recipient_phone || '—'}</p>
+                  {order.recipient_phone && (
+                    <div className="flex gap-1">
+                      <a href={`tel:${order.recipient_phone}`} className="w-8 h-8 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 flex items-center justify-center" title="Call recipient"><Phone size={12} /></a>
+                      <a href={`https://wa.me/${String(order.recipient_phone).replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 flex items-center justify-center" title="WhatsApp recipient"><MessageSquare size={12} /></a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 space-y-3">

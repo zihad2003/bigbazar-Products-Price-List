@@ -47,6 +47,9 @@ function slimForm(form) {
         payment_method: text(form.paymentMethod, 20),
         sender_number: text(form.senderNumber, 40),
         payment_option: text(form.paymentOption, 20),
+        is_gift: form.isGift === true || form.is_gift === true || form.is_gift === 1 || form.is_gift === '1' ? 1 : 0,
+        recipient_name: text(form.recipientName || form.recipient_name, 120),
+        recipient_phone: text(form.recipientPhone || form.recipient_phone, 20),
     };
     return Object.values(out).some(Boolean) ? out : undefined;
 }

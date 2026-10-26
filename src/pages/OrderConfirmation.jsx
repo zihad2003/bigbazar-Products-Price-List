@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package, Share2, Clock, Truck } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, MapPin, Phone, User, Receipt, ArrowRight, Copy, Check, Package, Share2, Clock, Truck, Gift } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL } from '../api/client';
 import { rememberGuestOrder } from '../utils/guestOrders';
@@ -104,6 +104,9 @@ function orderFromCheckoutState(details) {
         dueOnDelivery: finalTotal,
         lastFourDigits: ref ? `${details.paymentMethod === 'bkash' ? 'bKash' : 'Payment'}: ${ref}` : '',
         trackCode: String(details.trackCode || details.track_code || '').replace(/\D/g, '').slice(0, 6),
+        isGift: Boolean(details.isGift || details.is_gift),
+        recipientName: details.recipientName || details.recipient_name || '',
+        recipientPhone: details.recipientPhone || details.recipient_phone || '',
     };
 }
 
@@ -177,6 +180,9 @@ function mapDbOrder(dbOrder, imageMap = {}) {
         dueOnDelivery: Math.max(0, totalVal - paidAmount),
         lastFourDigits: rawLastDigits,
         trackCode: String(dbOrder.track_code || '').replace(/\D/g, '').slice(0, 6),
+        isGift: dbOrder.is_gift === true || dbOrder.is_gift === 1 || dbOrder.is_gift === '1',
+        recipientName: dbOrder.recipient_name || '',
+        recipientPhone: dbOrder.recipient_phone || '',
     };
 }
 
@@ -538,10 +544,18 @@ export default function OrderConfirmation() {
                         </div>
                     </div>
 
-                    {/* Delivery */}
+                    {/* Contact + Delivery */}
                     <div className="space-y-2.5 pt-1 border-t border-zinc-100">
+                        {order.isGift && (
+                            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/5 border border-[#ce112d]/15 rounded-full px-2.5 py-1">
+                                <Gift size={12} />
+                                {language === 'bn' ? 'গিফট অর্ডার' : 'Gift order'}
+                            </div>
+                        )}
                         <p className="text-sm font-semibold text-zinc-800">
-                            {language === 'bn' ? 'ডেলিভারি ঠিকানা' : 'Delivery address'}
+                            {order.isGift
+                                ? (language === 'bn' ? 'যোগাযোগ (অর্ডারকারী)' : 'Contact (buyer)')
+                                : (language === 'bn' ? 'ডেলিভারি ঠিকানা' : 'Delivery address')}
                         </p>
                         <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-3.5 py-3 space-y-2 text-sm text-zinc-700">
                             <div className="flex items-center gap-2.5">
@@ -552,13 +566,38 @@ export default function OrderConfirmation() {
                                 <Phone size={15} className="text-zinc-400 shrink-0" />
                                 <span>{order.phone}</span>
                             </div>
-                            <div className="flex items-start gap-2.5">
-                                <MapPin size={15} className="text-zinc-400 shrink-0 mt-0.5" />
-                                <span className="leading-snug text-zinc-600">
-                                    {order.address}{order.district ? ` · ${order.upazila ? `${order.upazila}, ` : ''}${order.district}` : ''}
-                                </span>
-                            </div>
+                            {!order.isGift && (
+                                <div className="flex items-start gap-2.5">
+                                    <MapPin size={15} className="text-zinc-400 shrink-0 mt-0.5" />
+                                    <span className="leading-snug text-zinc-600">
+                                        {order.address}{order.district ? ` · ${order.upazila ? `${order.upazila}, ` : ''}${order.district}` : ''}
+                                    </span>
+                                </div>
+                            )}
                         </div>
+                        {order.isGift && (
+                            <>
+                                <p className="text-sm font-semibold text-zinc-800 pt-1">
+                                    {language === 'bn' ? 'প্রাপক ও ডেলিভারি' : 'Recipient & delivery'}
+                                </p>
+                                <div className="rounded-xl bg-[#ce112d]/[0.03] border border-[#ce112d]/15 px-3.5 py-3 space-y-2 text-sm text-zinc-700">
+                                    <div className="flex items-center gap-2.5">
+                                        <Gift size={15} className="text-[#ce112d] shrink-0" />
+                                        <span className="font-semibold text-zinc-900">{order.recipientName || '—'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <Phone size={15} className="text-zinc-400 shrink-0" />
+                                        <span>{order.recipientPhone || '—'}</span>
+                                    </div>
+                                    <div className="flex items-start gap-2.5">
+                                        <MapPin size={15} className="text-zinc-400 shrink-0 mt-0.5" />
+                                        <span className="leading-snug text-zinc-600">
+                                            {order.address}{order.district ? ` · ${order.upazila ? `${order.upazila}, ` : ''}${order.district}` : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Bill */}

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Package, Clock, CheckCircle2, Truck, XCircle, Search,
-    User, Phone, MapPin, Check, ShoppingBag,
+    User, Phone, MapPin, Check, ShoppingBag, Gift,
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL } from '../api/client';
@@ -131,6 +131,9 @@ function mapTrackOrder(row, imageMap = {}) {
         paidAmount,
         dueOnDelivery: Math.max(0, finalTotal - paidAmount),
         createdAt: row.created_at || null,
+        isGift: row.is_gift === true || row.is_gift === 1 || row.is_gift === '1',
+        recipientName: row.recipient_name || '',
+        recipientPhone: row.recipient_phone || '',
     };
 }
 
@@ -527,8 +530,16 @@ export default function GuestTrack() {
 
                                 {(order.name || order.phone || order.address) && (
                                     <div className="space-y-2.5 pt-1 border-t border-[var(--border-color)]">
+                                        {order.isGift && (
+                                            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ce112d] bg-[#ce112d]/5 border border-[#ce112d]/15 rounded-full px-2.5 py-1">
+                                                <Gift size={12} />
+                                                {bn ? 'গিফট অর্ডার' : 'Gift order'}
+                                            </div>
+                                        )}
                                         <p className="text-sm font-semibold text-content-primary">
-                                            {bn ? 'ডেলিভারি ঠিকানা' : 'Delivery address'}
+                                            {order.isGift
+                                                ? (bn ? 'যোগাযোগ (অর্ডারকারী)' : 'Contact (buyer)')
+                                                : (bn ? 'ডেলিভারি ঠিকানা' : 'Delivery address')}
                                         </p>
                                         <div className="rounded-xl bg-surface-input/60 border border-[var(--border-color)] px-3.5 py-3 space-y-2 text-sm text-content-secondary">
                                             {order.name && (
@@ -543,7 +554,7 @@ export default function GuestTrack() {
                                                     <span>{order.phone}</span>
                                                 </div>
                                             )}
-                                            {order.address && (
+                                            {!order.isGift && order.address && (
                                                 <div className="flex items-start gap-2.5">
                                                     <MapPin size={15} className="text-content-tertiary shrink-0 mt-0.5" />
                                                     <span className="leading-snug">
@@ -555,6 +566,34 @@ export default function GuestTrack() {
                                                 </div>
                                             )}
                                         </div>
+                                        {order.isGift && (
+                                            <>
+                                                <p className="text-sm font-semibold text-content-primary pt-1">
+                                                    {bn ? 'প্রাপক ও ডেলিভারি' : 'Recipient & delivery'}
+                                                </p>
+                                                <div className="rounded-xl border border-[#ce112d]/15 bg-[#ce112d]/5 px-3.5 py-3 space-y-2 text-sm text-content-secondary">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Gift size={15} className="text-[#ce112d] shrink-0" />
+                                                        <span className="font-semibold text-content-primary">{order.recipientName || '—'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Phone size={15} className="text-content-tertiary shrink-0" />
+                                                        <span>{order.recipientPhone || '—'}</span>
+                                                    </div>
+                                                    {order.address && (
+                                                        <div className="flex items-start gap-2.5">
+                                                            <MapPin size={15} className="text-content-tertiary shrink-0 mt-0.5" />
+                                                            <span className="leading-snug">
+                                                                {order.address}
+                                                                {order.district
+                                                                    ? ` · ${order.upazila ? `${order.upazila}, ` : ''}${order.district}`
+                                                                    : ''}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 )}
 

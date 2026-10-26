@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, Package } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, Package, Gift } from 'lucide-react';
 import { bigBazarApi, API_URL, getCustomerToken } from '../api/client';
 import { allDistricts, formatLocation, getDeliveryInfo, localityName, matchLocality, placeLabel } from '../data/bdLocations';
 import { localityOptionList, localityPrompt } from '../components/LocalityOptions';
@@ -72,7 +72,10 @@ export default function Checkout() {
         upazila: '',
         senderNumber: '',
         note: '',
-        paymentMethod: 'cod'
+        paymentMethod: 'cod',
+        isGift: false,
+        recipientName: '',
+        recipientPhone: '',
     });
 
     const bKashNumber = "01857045449";
@@ -159,11 +162,17 @@ export default function Checkout() {
                 note: formData.note,
                 paymentMethod: formData.paymentMethod,
                 senderNumber: formData.senderNumber,
+                isGift: formData.isGift,
+                recipientName: formData.recipientName,
+                recipientPhone: formData.recipientPhone,
             },
         });
     }, [
         formData.name,
         formData.phone,
+        formData.isGift,
+        formData.recipientName,
+        formData.recipientPhone,
         formData.address,
         formData.district,
         formData.upazila,
@@ -227,8 +236,14 @@ export default function Checkout() {
     }, [isLoggedIn, user]);
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'phone' || name === 'senderNumber') {
+        const { name, value, type, checked } = e.target;
+        if (type === 'checkbox' && name === 'isGift') {
+            setFormData(prev => ({
+                ...prev,
+                isGift: checked,
+                ...(checked ? {} : { recipientName: '', recipientPhone: '' }),
+            }));
+        } else if (name === 'phone' || name === 'senderNumber' || name === 'recipientPhone') {
             setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9+]/g, '') }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
@@ -300,8 +315,24 @@ export default function Checkout() {
             return;
         }
         if (!String(formData.address || '').trim()) {
-            showFieldError('address', language === 'bn' ? "বাসা, রোড, মহল্লার ঠিকানা লিখুন।" : "Please enter your house address.");
+            showFieldError('address', language === 'bn'
+                ? (formData.isGift ? "প্রাপকের বাসা, রোড, মহল্লার ঠিকানা লিখুন।" : "বাসা, রোড, মহল্লার ঠিকানা লিখুন।")
+                : (formData.isGift ? "Please enter the recipient's house address." : "Please enter your house address."));
             return;
+        }
+        if (formData.isGift) {
+            if (!String(formData.recipientName || '').trim()) {
+                showFieldError('recipientName', language === 'bn' ? "প্রাপকের নাম লিখুন।" : "Please enter the recipient's name.");
+                return;
+            }
+            if (!String(formData.recipientPhone || '').trim()) {
+                showFieldError('recipientPhone', language === 'bn' ? "প্রাপকের মোবাইল নম্বর লিখুন।" : "Please enter the recipient's phone number.");
+                return;
+            }
+            if (!validateBDNumber(formData.recipientPhone)) {
+                showFieldError('recipientPhone', language === 'bn' ? "প্রাপকের সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid recipient phone number.");
+                return;
+            }
         }
         if (formData.paymentMethod === 'bkash' && !formData.senderNumber) {
             showFieldError('senderNumber', language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Please enter the sender number.");
@@ -385,6 +416,9 @@ export default function Checkout() {
                     is_advance_paid: 0,
                     payment_status: 'Unpaid',
                     customer_note: String(formData.note || '').trim().slice(0, 500) || null,
+                    is_gift: formData.isGift ? 1 : 0,
+                    recipient_name: formData.isGift ? String(formData.recipientName || '').trim() : null,
+                    recipient_phone: formData.isGift ? String(formData.recipientPhone || '').trim() : null,
                     items: items.map(item => ({
                         id: item.id,
                         quantity: item.quantity,
@@ -468,33 +502,92 @@ export default function Checkout() {
                         </div>
                     )}
 
-                    {/* Customer form inputs */}
-                    <div className="space-y-4 bg-zinc-50/50 p-6 rounded-3xl border border-neutral-100">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400 flex items-center gap-1.5">
+                    {/* Gift toggle */}
+                    <label className="flex items-start gap-3 rounded-3xl border border-neutral-100 bg-zinc-50/50 px-5 py-4 cursor-pointer hover:border-[#ce112d]/30 transition-colors">
+                        <input
+                            type="checkbox"
+                            name="isGift"
+                            checked={formData.isGift}
+                            onChange={handleInputChange}
+                            className="mt-1 h-4 w-4 accent-[#ce112d] shrink-0"
+                        />
+                        <span className="min-w-0">
+                            <span className="flex items-center gap-1.5 text-sm font-bold text-neutral-900">
+                                <Gift size={14} className="text-[#ce112d]" />
+                                {language === 'bn' ? 'প্রিয়জনকে গিফট পাঠাচ্ছি' : 'Sending a gift to someone special'}
+                            </span>
+                            <span className="block mt-0.5 text-xs text-neutral-500 leading-snug">
+                                {language === 'bn'
+                                    ? 'প্রাপকের নাম, নম্বর ও ঠিকানা আলাদা নেওয়া হবে। কনফার্ম কল আপনার নম্বরে যাবে।'
+                                    : 'We’ll take the recipient’s details separately. Confirmation calls go to your number.'}
+                            </span>
+                        </span>
+                    </label>
+
+                    {/* Contact */}
+                    <div className="space-y-3 bg-zinc-50/50 p-5 sm:p-6 rounded-3xl border border-neutral-100">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
                             <User size={13} className="text-neutral-400" />
-                            <span>{language === 'bn' ? 'আপনার তথ্য' : 'Customer Info'}</span>
+                            <span>{formData.isGift
+                                ? (language === 'bn' ? 'আপনার তথ্য (যোগাযোগ)' : 'Your contact')
+                                : (language === 'bn' ? 'আপনার তথ্য' : 'Customer Info')}</span>
                         </h4>
-                        <div className="relative" ref={markField('name')}>
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                            <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
-                                className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'name' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
-                            {fieldError === 'name' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
-                        </div>
-                        <div className="relative" ref={markField('phone')}>
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
-                            <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
-                                className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'phone' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
-                            {fieldError === 'phone' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="relative" ref={markField('name')}>
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                                <input type="text" name="name" placeholder={formData.isGift
+                                    ? (language === 'bn' ? 'আপনার নাম' : 'Your name')
+                                    : t('placeholder_name')} value={formData.name} onChange={handleInputChange}
+                                    className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'name' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                                {fieldError === 'name' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                            </div>
+                            <div className="relative" ref={markField('phone')}>
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                                <input type="tel" name="phone" placeholder={formData.isGift
+                                    ? (language === 'bn' ? 'যোগাযোগের নম্বর' : 'Your number')
+                                    : t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
+                                    className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'phone' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                                {fieldError === 'phone' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                            </div>
                         </div>
                     </div>
 
+                    {formData.isGift && (
+                        <div className="space-y-3 bg-[#ce112d]/[0.03] p-5 sm:p-6 rounded-3xl border border-[#ce112d]/15">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] flex items-center gap-1.5">
+                                <Gift size={13} />
+                                <span>{language === 'bn' ? 'প্রাপকের তথ্য' : 'Recipient details'}</span>
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="relative" ref={markField('recipientName')}>
+                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                                    <input type="text" name="recipientName"
+                                        placeholder={language === 'bn' ? 'প্রাপকের নাম' : "Recipient's name"}
+                                        value={formData.recipientName} onChange={handleInputChange}
+                                        className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'recipientName' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                                    {fieldError === 'recipientName' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                                </div>
+                                <div className="relative" ref={markField('recipientPhone')}>
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                                    <input type="tel" name="recipientPhone"
+                                        placeholder={language === 'bn' ? 'প্রাপকের মোবাইল' : "Recipient's mobile"}
+                                        value={formData.recipientPhone} onChange={handleInputChange}
+                                        className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'recipientPhone' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
+                                    {fieldError === 'recipientPhone' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Location selector */}
-                    <div className="space-y-3 bg-zinc-50/50 p-6 rounded-3xl border border-neutral-100">
-                        <h4 className="text-[10px] font-black uppercase tracking-widest ml-1 text-neutral-400 flex items-center gap-1.5">
+                    <div className="space-y-3 bg-zinc-50/50 p-5 sm:p-6 rounded-3xl border border-neutral-100">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
                             <MapPin size={13} className="text-neutral-400" />
-                            <span>{language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area'} <span className="text-[#ce112d]">*</span></span>
+                            <span>{formData.isGift
+                                ? (language === 'bn' ? 'প্রাপকের ডেলিভারি এরিয়া' : 'Recipient delivery area')
+                                : (language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area')} <span className="text-[#ce112d]">*</span></span>
                         </h4>
-                        <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div ref={markField('district')}>
                             <PlaceSelect
                                 value={formData.district}
@@ -554,8 +647,8 @@ export default function Checkout() {
                     </div>
                 </div>
 
-                {/* Sidebar details */}
-                <div className="lg:col-span-5 space-y-6">
+                {/* Sidebar details — drop below the left “Order form” header on desktop */}
+                <div className="lg:col-span-5 space-y-6 lg:mt-16">
                     {/* Order items listing */}
                     <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-sm">
                         <div className="flex items-center gap-2 border-b border-neutral-100 pb-3">

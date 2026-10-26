@@ -6,7 +6,7 @@ import {
   ShieldCheck, CheckCircle, Package, ArrowRight, Tag, Layers,
   Phone, Copy, Check, Info, HelpCircle, Truck, RotateCcw,
   Ruler, CreditCard, MapPin, Store, ChevronLeft, AlertCircle,
-  Shirt, User, Users, Lock, Loader2
+  Shirt, User, Users, Lock, Loader2, Gift
 } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -247,7 +247,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
     color: '',
     quantity: 1,
     senderNumber: '',
-    notes: ''
+    notes: '',
+    isGift: false,
+    recipientName: '',
+    recipientPhone: '',
   });
   const [orderStep, setOrderStep] = useState('details'); // 'details' | 'payment' | 'submitting'
   const [orderError, setOrderError] = useState('');
@@ -746,7 +749,10 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
       color: initialColor,
       quantity: Math.max(1, customQuantity || 1),
       senderNumber: '',
-      notes: ''
+      notes: '',
+      isGift: false,
+      recipientName: '',
+      recipientPhone: '',
     });
     setOrderStep('details');
     setOrderError('');
@@ -766,6 +772,17 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
     if (!orderForm.address.trim()) {
       setOrderError(c.errAddress);
       return;
+    }
+    if (orderForm.isGift) {
+      if (!String(orderForm.recipientName || '').trim() || !String(orderForm.recipientPhone || '').replace(/\D/g, '')) {
+        setOrderError(language === 'bn' ? 'প্রাপকের নাম ও মোবাইল নম্বর দিন।' : "Enter the recipient's name and mobile.");
+        return;
+      }
+      const recvPhone = String(orderForm.recipientPhone || '').replace(/\D/g, '');
+      if (recvPhone.length < 11) {
+        setOrderError(language === 'bn' ? 'প্রাপকের সঠিক মোবাইল নম্বর দিন।' : 'Enter a valid recipient mobile number.');
+        return;
+      }
     }
     if (!orderForm.upazila) {
       setOrderError('উপজেলা বা থানা নির্বাচন করুন।');
@@ -816,6 +833,9 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
       is_advance_paid: 0,
       payment_status: 'Unpaid',
       is_exclusive_order: Boolean(orderModalProduct.is_exclusive),
+      is_gift: orderForm.isGift ? 1 : 0,
+      recipient_name: orderForm.isGift ? String(orderForm.recipientName || '').trim() : null,
+      recipient_phone: orderForm.isGift ? String(orderForm.recipientPhone || '').replace(/\D/g, '') : null,
       items: [{
         id: orderModalProduct.id,
         quantity: orderForm.quantity,
@@ -1405,24 +1425,73 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
                   <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">
                     {c.addressSection}
                   </label>
-                  
-                  <input
-                    type="text"
-                    placeholder={c.namePh}
-                    value={orderForm.name}
-                    onChange={e => setOrderForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
-                  />
-                  
-                  <input
-                    type="tel"
-                    placeholder={c.phonePh}
-                    value={orderForm.phone}
-                    onChange={e => setOrderForm(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
-                  />
 
-                  <div className="space-y-2">
+                  <label className="flex items-start gap-2.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={orderForm.isGift}
+                      onChange={e => setOrderForm(prev => ({
+                        ...prev,
+                        isGift: e.target.checked,
+                        ...(e.target.checked ? {} : { recipientName: '', recipientPhone: '' }),
+                      }))}
+                      className="mt-0.5 h-4 w-4 accent-[#ce112d] shrink-0"
+                    />
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1 text-sm font-bold text-zinc-900">
+                        <Gift size={13} className="text-[#ce112d]" />
+                        {language === 'bn' ? 'প্রিয়জনকে গিফট পাঠাচ্ছি' : 'Sending a gift to someone special'}
+                      </span>
+                      <span className="block text-[11px] text-zinc-500 leading-snug mt-0.5">
+                        {language === 'bn'
+                          ? 'প্রাপকের তথ্য আলাদা; কনফার্ম কল আপনার নম্বরে।'
+                          : 'Recipient separate; confirmation calls go to you.'}
+                      </span>
+                    </span>
+                  </label>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder={orderForm.isGift ? (language === 'bn' ? 'আপনার নাম' : 'Your name') : c.namePh}
+                      value={orderForm.name}
+                      onChange={e => setOrderForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
+                    />
+                    <input
+                      type="tel"
+                      placeholder={orderForm.isGift ? (language === 'bn' ? 'যোগাযোগের নম্বর' : 'Your number') : c.phonePh}
+                      value={orderForm.phone}
+                      onChange={e => setOrderForm(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
+                    />
+                  </div>
+
+                  {orderForm.isGift && (
+                    <div className="space-y-2 rounded-xl border border-[#ce112d]/20 bg-[#ce112d]/5 p-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#ce112d]">
+                        {language === 'bn' ? 'প্রাপকের তথ্য' : 'Recipient'}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder={language === 'bn' ? 'প্রাপকের নাম' : "Recipient's name"}
+                          value={orderForm.recipientName}
+                          onChange={e => setOrderForm(prev => ({ ...prev, recipientName: e.target.value }))}
+                          className="w-full px-3 py-2.5 bg-white border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
+                        />
+                        <input
+                          type="tel"
+                          placeholder={language === 'bn' ? 'প্রাপকের মোবাইল' : "Recipient's mobile"}
+                          value={orderForm.recipientPhone}
+                          onChange={e => setOrderForm(prev => ({ ...prev, recipientPhone: e.target.value.replace(/[^0-9+]/g, '') }))}
+                          className="w-full px-3 py-2.5 bg-white border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <PlaceSelect
                       value={orderForm.district}
                       onChange={(district) => setOrderForm(prev => ({ ...prev, district, upazila: '' }))}
@@ -1450,7 +1519,9 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
 
                   <textarea
                     rows={2}
-                    placeholder={c.addressPh}
+                    placeholder={orderForm.isGift
+                      ? (language === 'bn' ? 'প্রাপকের ঠিকানা' : "Recipient's address")
+                      : c.addressPh}
                     value={orderForm.address}
                     onChange={e => setOrderForm(prev => ({ ...prev, address: e.target.value }))}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d] resize-none"

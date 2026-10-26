@@ -71,6 +71,43 @@ async function ensureOrderPaymentColumns(conn) {
   orderPaymentColumnsReady = true;
 }
 
+let orderGiftColumnsReady = false;
+async function ensureOrderGiftColumns(conn) {
+  if (orderGiftColumnsReady) return;
+  for (const sql of [
+    'ALTER TABLE orders ADD COLUMN is_gift TINYINT(1) NOT NULL DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN recipient_name VARCHAR(255) NULL',
+    'ALTER TABLE orders ADD COLUMN recipient_phone VARCHAR(20) NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/duplicate column|already exists/i.test(msg)) {
+        /* ignore missing-permission / other transient */
+      }
+    }
+  }
+  orderGiftColumnsReady = true;
+}
+
+function isGiftOrderPayload(o) {
+  return o?.is_gift === true || o?.is_gift === 1 || o?.is_gift === '1';
+}
+
+function giftRecipientFromOrder(order) {
+  const gift = order?.is_gift === true || order?.is_gift === 1 || order?.is_gift === '1';
+  if (!gift) {
+    return {
+      name: String(order?.customer_name || 'Customer').trim().slice(0, 100),
+      phone: normalizeBdPhone(order?.customer_phone),
+    };
+  }
+  const name = String(order?.recipient_name || order?.customer_name || 'Customer').trim().slice(0, 100);
+  const phone = normalizeBdPhone(order?.recipient_phone || order?.customer_phone);
+  return { name, phone };
+}
+
 let orderRiskColumnsReady = false;
 async function ensureOrderRiskColumns(conn) {
   if (orderRiskColumnsReady) return;
@@ -167,6 +204,9 @@ function publicOrderRow(row, full) {
     is_advance_paid: row.is_advance_paid,
     is_exclusive_order: row.is_exclusive_order,
     delivery_area: row.delivery_area,
+    is_gift: row.is_gift === true || row.is_gift === 1 || row.is_gift === '1' ? 1 : 0,
+    recipient_name: row.recipient_name || null,
+    recipient_phone: row.recipient_phone || null,
   };
 }
 
@@ -2297,10 +2337,24 @@ async function placeShopOrder(c, o, customerId = null) {
     return { status: 400, body: { error: 'Product ID is required' } };
   }
 
+  const asGift = isGiftOrderPayload(o);
+  const recipientName = String(o.recipient_name || '').trim().slice(0, 255);
+  const recipientPhoneRaw = String(o.recipient_phone || '').trim();
+  const recipientPhone = normalizeBdPhone(recipientPhoneRaw);
+  if (asGift) {
+    if (!recipientName) {
+      return { status: 400, body: { error: 'Recipient name is required for gift orders' } };
+    }
+    if (recipientPhone.length !== 11 || !recipientPhone.startsWith('01')) {
+      return { status: 400, body: { error: 'Valid recipient mobile number is required for gift orders' } };
+    }
+  }
+
   const clientIp = getClientIp(c);
   const userAgent = String(c.req.header('User-Agent') || '').slice(0, 255) || null;
   await ensureOrderRiskColumns(conn);
   await ensureOrderTrackCodeColumn(conn);
+  await ensureOrderGiftColumns(conn);
   let issuedTrackCode = await mintTrackCode(conn, o.customer_phone);
 
   const tx = await conn.begin();
@@ -2428,16 +2482,24 @@ async function placeShopOrder(c, o, customerId = null) {
     const safeAdvancePaid = 0;
 
     // 3. Create the order using server-side calculated totals
-    // Build INSERT with optional user_id column
+    // Build INSERT with optional user_id / gift columns
     const orderCols = 'id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference';
     const orderVals = [
       id, o.product_id, o.product_name, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
       normalizedArea || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
       o.size || null, o.color || null, safeAdvancePaid, o.is_exclusive_order ? 1 : 0, safePaymentStatus, o.moderator_reference || null
     ];
-    const insertWith = async (includeTrack, includeUser) => {
+    const giftCols = ', is_gift, recipient_name, recipient_phone';
+    const giftVals = asGift
+      ? [1, recipientName, recipientPhone]
+      : [0, null, null];
+    const insertWith = async (includeTrack, includeUser, includeGift) => {
       let colsSql = orderCols;
       const vals = [...orderVals];
+      if (includeGift) {
+        colsSql += giftCols;
+        vals.push(...giftVals);
+      }
       if (includeTrack) {
         colsSql += ', track_code';
         vals.push(issuedTrackCode);
@@ -2453,23 +2515,25 @@ async function placeShopOrder(c, o, customerId = null) {
     };
 
     try {
-      await insertWith(true, true);
+      await insertWith(true, true, true);
     } catch (insertErr) {
       const msg = String(insertErr.message || '');
       const unknown = /unknown column/i.test(msg);
       const namedTrack = /track_code/i.test(msg);
       const namedUser = /user_id/i.test(msg);
-      if (!unknown && !namedTrack && !namedUser) throw insertErr;
-      const dropTrack = namedTrack || (unknown && !namedUser);
-      const dropUser = namedUser || (unknown && !namedTrack);
+      const namedGift = /is_gift|recipient_name|recipient_phone/i.test(msg);
+      if (!unknown && !namedTrack && !namedUser && !namedGift) throw insertErr;
+      const dropTrack = namedTrack || (unknown && !namedUser && !namedGift);
+      const dropUser = namedUser || (unknown && !namedTrack && !namedGift);
+      const dropGift = namedGift || (unknown && !namedTrack && !namedUser);
       if (dropTrack) issuedTrackCode = '';
       try {
-        await insertWith(!dropTrack, !dropUser);
+        await insertWith(!dropTrack, !dropUser, !dropGift);
       } catch (retryErr) {
         const retryMsg = String(retryErr.message || '');
-        if (!/unknown column|user_id|track_code/i.test(retryMsg)) throw retryErr;
+        if (!/unknown column|user_id|track_code|is_gift|recipient_/i.test(retryMsg)) throw retryErr;
         issuedTrackCode = '';
-        await insertWith(false, false);
+        await insertWith(false, false, false);
       }
     }
 
@@ -2813,9 +2877,11 @@ app.post('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
     }, 409);
   }
 
-  const phone = normalizeBdPhone(order.customer_phone);
+  const parcelTo = giftRecipientFromOrder(order);
+  const phone = parcelTo.phone;
   if (phone.length !== 11 || !phone.startsWith('01')) {
-    return c.json({ error: `Invalid recipient phone (need 11-digit BD mobile). Got: ${order.customer_phone || 'empty'}` }, 400);
+    const rawPhone = order.is_gift ? (order.recipient_phone || order.customer_phone) : order.customer_phone;
+    return c.json({ error: `Invalid recipient phone (need 11-digit BD mobile). Got: ${rawPhone || 'empty'}` }, 400);
   }
 
   const address = String(order.customer_address || '').trim();
@@ -2823,11 +2889,12 @@ app.post('/orders/:id/steadfast', requireAuth, requireAdmin, async (c) => {
     return c.json({ error: 'Customer address is required for courier booking' }, 400);
   }
 
-  const name = String(order.customer_name || 'Customer').trim().slice(0, 100);
+  const name = parcelTo.name;
   const invoice = orderInvoiceId(order);
   const cod = orderCodAmount(order);
   const itemDesc = String(order.product_name || 'Fashion items').slice(0, 200);
   const note = [
+    order.is_gift ? `Gift — buyer: ${order.customer_name || ''} ${order.customer_phone || ''}`.trim() : '',
     order.delivery_area ? `Area: ${order.delivery_area}` : '',
     order.size ? `Size: ${order.size}` : '',
     order.color ? `Color: ${order.color}` : '',
@@ -4011,6 +4078,9 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
     last_four_digits: paymentRef,
     is_exclusive_order: exclusive,
     moderator_reference: 'Converted from checkout',
+    is_gift: form.is_gift === true || form.is_gift === 1 || form.is_gift === '1' ? 1 : 0,
+    recipient_name: form.recipient_name || null,
+    recipient_phone: form.recipient_phone || null,
   }, null);
 
   if (!result || result.status >= 400) {

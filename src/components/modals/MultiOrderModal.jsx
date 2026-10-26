@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, Package } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, Package, Gift } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
 import { allDistricts, formatLocation, getDeliveryInfo, localityName, placeLabel } from '../../data/bdLocations';
 import { localityOptionList, localityPrompt } from '../LocalityOptions';
@@ -58,7 +58,10 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
         upazila: '',
         senderNumber: '',
         note: '',
-        paymentMethod: 'cod'
+        paymentMethod: 'cod',
+        isGift: false,
+        recipientName: '',
+        recipientPhone: '',
     });
 
 
@@ -77,8 +80,17 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
     const isConfirmationFee = !isExclusiveOrder && deliveryCharge === 0 && advanceAmount > 0;
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'senderNumber' || name === 'phone') {
+        const { name, value, type, checked } = e.target;
+        if (type === 'checkbox' && name === 'isGift') {
+            setFormData(prev => ({
+                ...prev,
+                isGift: checked,
+                ...(checked ? {} : { recipientName: '', recipientPhone: '' }),
+            }));
+            if (error) setError('');
+            return;
+        }
+        if (name === 'senderNumber' || name === 'phone' || name === 'recipientPhone') {
             setFormData(prev => ({ ...prev, [name]: value.replace(/[^0-9+]/g, '') }));
             return;
         }
@@ -105,6 +117,16 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
         if (!validateBDNumber(formData.phone)) {
             setError(language === 'bn' ? "সঠিক মোবাইল নাম্বার দিন (যেমন: 017XXXXXXXX)।" : "Please enter a valid phone number.");
             return;
+        }
+        if (formData.isGift) {
+            if (!String(formData.recipientName || '').trim() || !String(formData.recipientPhone || '').trim()) {
+                setError(language === 'bn' ? "প্রাপকের নাম ও মোবাইল নম্বর দিন।" : "Enter the recipient's name and mobile number.");
+                return;
+            }
+            if (!validateBDNumber(formData.recipientPhone)) {
+                setError(language === 'bn' ? "প্রাপকের সঠিক মোবাইল নম্বর দিন।" : "Enter a valid recipient mobile number.");
+                return;
+            }
         }
         if (!formData.district) {
             setError(language === 'bn' ? "অনুগ্রহ করে আপনার জেলা নির্বাচন করুন।" : "Please select your district.");
@@ -187,7 +209,10 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     // Advance/Fully Paid is confirmed by admin only — send payment ref via last_four_digits
                     is_advance_paid: 0,
                     payment_status: 'Unpaid',
-                    customer_note: String(formData.note || '').trim().slice(0, 500) || null
+                    customer_note: String(formData.note || '').trim().slice(0, 500) || null,
+                    is_gift: formData.isGift ? 1 : 0,
+                    recipient_name: formData.isGift ? String(formData.recipientName || '').trim() : null,
+                    recipient_phone: formData.isGift ? String(formData.recipientPhone || '').trim() : null,
                 }]);
 
             if (insertError) throw insertError;
@@ -381,39 +406,93 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                             )}
 
                             <div className="space-y-4">
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="relative">
-                                        <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                        <input type="text" name="name" placeholder={t('placeholder_name')} value={formData.name} onChange={handleInputChange}
-                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
-                                    </div>
-                                    <div className="relative">
-                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
-                                        <input type="tel" name="phone" placeholder={t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
-                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                <label className="flex items-start gap-3 rounded-xl border px-3.5 py-3 cursor-pointer" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-input)' }}>
+                                    <input type="checkbox" name="isGift" checked={formData.isGift} onChange={handleInputChange} className="mt-0.5 h-4 w-4 accent-[#ce112d] shrink-0" />
+                                    <span className="min-w-0">
+                                        <span className="flex items-center gap-1.5 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                            <Gift size={14} className="text-[#ce112d]" />
+                                            {language === 'bn' ? 'প্রিয়জনকে গিফট পাঠাচ্ছি' : 'Sending a gift to someone special'}
+                                        </span>
+                                        <span className="block mt-0.5 text-[11px] leading-snug" style={{ color: 'var(--text-muted)' }}>
+                                            {language === 'bn'
+                                                ? 'প্রাপকের তথ্য আলাদা নেওয়া হবে। কনফার্ম কল আপনার নম্বরে যাবে।'
+                                                : 'Recipient details are separate. Confirmation calls go to you.'}
+                                        </span>
+                                    </span>
+                                </label>
+
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                        <User size={13} />
+                                        {formData.isGift
+                                            ? (language === 'bn' ? 'আপনার তথ্য (যোগাযোগ)' : 'Your contact')
+                                            : (language === 'bn' ? 'আপনার তথ্য' : 'Customer Info')}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="relative">
+                                            <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                            <input type="text" name="name" placeholder={formData.isGift ? (language === 'bn' ? 'আপনার নাম' : 'Your name') : t('placeholder_name')} value={formData.name} onChange={handleInputChange}
+                                                className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
+                                                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                        </div>
+                                        <div className="relative">
+                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                            <input type="tel" name="phone" placeholder={formData.isGift ? (language === 'bn' ? 'যোগাযোগের নম্বর' : 'Your number') : t('placeholder_phone')} value={formData.phone} onChange={handleInputChange}
+                                                className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
+                                                style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                        </div>
                                     </div>
                                 </div>
 
+                                {formData.isGift && (
+                                    <div className="space-y-3 rounded-2xl border border-[#ce112d]/20 bg-[#ce112d]/5 p-3.5">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-[#ce112d] flex items-center gap-1.5">
+                                            <Gift size={13} />
+                                            {language === 'bn' ? 'প্রাপকের তথ্য' : 'Recipient details'}
+                                        </h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="relative">
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                                <input type="text" name="recipientName" placeholder={language === 'bn' ? 'প্রাপকের নাম' : "Recipient's name"} value={formData.recipientName} onChange={handleInputChange}
+                                                    className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#ce112d] outline-none transition-all"
+                                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                            </div>
+                                            <div className="relative">
+                                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                                <input type="tel" name="recipientPhone" placeholder={language === 'bn' ? 'প্রাপকের মোবাইল' : "Recipient's mobile"} value={formData.recipientPhone} onChange={handleInputChange}
+                                                    className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
+                                                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="space-y-3">
-                                    <PlaceSelect
-                                        value={formData.district}
-                                        onChange={(district) => setFormData(p => ({ ...p, district, upazila: '' }))}
-                                        placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
-                                        options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
-                                        className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                    />
-                                    <PlaceSelect
-                                        value={formData.upazila}
-                                        disabled={!formData.district}
-                                        onChange={(upazila) => setFormData(p => ({ ...p, upazila }))}
-                                        placeholder={localityPrompt(formData.district, language)}
-                                        options={localityOptionList(formData.district, language)}
-                                        className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left disabled:cursor-not-allowed"
-                                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                                    />
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                        <MapPin size={13} />
+                                        {formData.isGift
+                                            ? (language === 'bn' ? 'প্রাপকের ডেলিভারি এরিয়া' : 'Recipient delivery area')
+                                            : (language === 'bn' ? 'ডেলিভারি এরিয়া' : 'Delivery Area')}
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <PlaceSelect
+                                            value={formData.district}
+                                            onChange={(district) => setFormData(p => ({ ...p, district, upazila: '' }))}
+                                            placeholder={language === 'bn' ? 'জেলা নির্বাচন করুন' : 'Select District'}
+                                            options={allDistricts.map(d => ({ value: d, label: placeLabel(d, language) }))}
+                                            className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                        />
+                                        <PlaceSelect
+                                            value={formData.upazila}
+                                            disabled={!formData.district}
+                                            onChange={(upazila) => setFormData(p => ({ ...p, upazila }))}
+                                            placeholder={localityPrompt(formData.district, language)}
+                                            options={localityOptionList(formData.district, language)}
+                                            className="w-full border rounded-xl py-3.5 pl-4 pr-10 text-[16px] sm:text-sm outline-none transition-all cursor-pointer text-left disabled:cursor-not-allowed"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
                                 </div>
 
                                 {formData.district && formData.upazila && (
