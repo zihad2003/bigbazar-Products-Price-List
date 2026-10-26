@@ -50,8 +50,8 @@ const FAQ_ITEMS = [
   {
     q: { bn: 'পেমেন্ট কীভাবে?', en: 'How can I pay?' },
     a: {
-      bn: 'ক্যাশ অন ডেলিভারি, বিকাশ অগ্রিম, বা Bangla QR। সম্পূর্ণ পেমেন্ট অ্যাডমিন ভেরিফাই করে।',
-      en: 'Cash on delivery, bKash advance, or Bangla QR. Payments are verified by admin.',
+      bn: 'ক্যাশ অন ডেলিভারি বা বিকাশ অগ্রিম। সম্পূর্ণ পেমেন্ট অ্যাডমিন ভেরিফাই করে।',
+      en: 'Cash on delivery or bKash advance. Payments are verified by admin.',
     },
   },
 ];
@@ -437,7 +437,7 @@ function buildPages(lang) {
             },
             {
               t: pick(lang, 'পেমেন্ট', 'Payment'),
-              d: pick(lang, 'COD, বিকাশ অগ্রিম, Bangla QR — অ্যাডমিন ভেরিফাই করে।', 'COD, bKash advance, Bangla QR — verified by admin.'),
+              d: pick(lang, 'COD বা বিকাশ অগ্রিম — অ্যাডমিন ভেরিফাই করে।', 'COD or bKash advance — verified by admin.'),
             },
             {
               t: pick(lang, 'আচরণ', 'Conduct'),

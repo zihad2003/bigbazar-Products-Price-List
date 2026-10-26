@@ -210,7 +210,6 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                         {[
                             { src: '/img/payments/bkash.png', alt: 'bKash' },
                             { src: '/img/payments/nagad.png', alt: 'Nagad' },
-                            { src: '/img/payments/bangla-qr.png', alt: 'Bangla QR', imgClass: 'h-7 w-auto' },
                             { src: '/img/payments/dbbl.png', alt: 'Dutch-Bangla Bank', imgClass: 'h-7 w-auto max-w-[140px]' },
                             { src: '/img/payments/visa.png', alt: 'Visa' },
                             { src: '/img/payments/mastercard.png', alt: 'Mastercard' },

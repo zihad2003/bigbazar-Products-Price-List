@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star, AlertTriangle, Search, QrCode } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, ChevronDown, Star, AlertTriangle, Search } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
 import { allDistricts, formatLocation, getDeliveryInfo, localityName, placeLabel } from '../../data/bdLocations';
 import { localityOptionList, localityPrompt } from '../LocalityOptions';
 import PlaceSelect from '../PlaceSelect';
 import { useLanguage } from '../../contexts/LanguageContext';
-import BanglaQRPayment from '../BanglaQRPayment';
 
 const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: propSize, selectedColor: propColor }) => {
     const selectedColor = propColor || product?.selectedColor;
@@ -17,7 +16,6 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [paymentOption, setPaymentOption] = useState('advance');
     const [showReview, setShowReview] = useState(false);
     const [rating, setRating] = useState(0);
     const [hoverRating, setHoverRating] = useState(0);
@@ -101,10 +99,6 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
             setError(language === 'bn' ? "যে নম্বর থেকে টাকা পাঠিয়েছেন সেই নম্বরটি দিন।" : "Provide the sender bKash number.");
             return;
         }
-        if (formData.paymentMethod === 'bangla_qr' && !formData.senderNumber) {
-            setError(language === 'bn' ? "প্রেরকের অ্যাকাউন্ট নাম অথবা ট্রানজেকশন আইডি দিন।" : "Please enter the sender account name or transaction ID.");
-            return;
-        }
         if (formData.paymentMethod === 'cod' && advanceAmount > 0 && !formData.senderNumber) {
             const prefix = isExclusiveOrder ? (language === 'bn' ? 'অগ্রিম' : 'Advance') : 
                           (isConfirmationFee ? (language === 'bn' ? 'অর্ডার কনফার্মেশন ফি' : 'Order Confirmation Fee') : (language === 'bn' ? 'ডেলিভারি চার্জ' : 'Delivery Charge'));
@@ -162,9 +156,7 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                     last_four_digits: formData.senderNumber
                         ? (formData.paymentMethod === 'bkash'
                             ? `bKash: ${formData.senderNumber}`
-                            : formData.paymentMethod === 'bangla_qr'
-                                ? `Bangla QR (${paymentOption === 'full' ? 'Full ৳' + calculateTotal() : 'Advance ৳' + advanceAmount}): ${formData.senderNumber}`
-                                : `COD: ${formData.senderNumber}`)
+                            : `COD: ${formData.senderNumber}`)
                         : (formData.paymentMethod === 'cod' ? 'COD' : ''),
                     status: 'Pending',
                     size: selectedSize || null,
@@ -557,11 +549,10 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                                 <CreditCard size={13} style={{ color: 'var(--text-muted)' }} />
                                 <span>{language === 'bn' ? 'পেমেন্ট পদ্ধতি' : 'Payment Method'}</span>
                             </h4>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { id: 'cod', label: language === 'bn' ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery', icon: <Truck size={16} /> },
                                     { id: 'bkash', label: language === 'bn' ? 'বিকাশ পেমেন্ট' : 'bKash Payment', icon: <CreditCard size={16} /> },
-                                    { id: 'bangla_qr', label: language === 'bn' ? 'বাংলা কিউআর' : 'Bangla QR', icon: <QrCode size={16} /> }
                                 ].map(m => (
                                     <button key={m.id} type="button"
                                         onClick={() => setFormData(p => ({ ...p, paymentMethod: m.id, senderNumber: '' }))}
@@ -579,20 +570,8 @@ const DeliveryModal = ({ isOpen, onClose, product, contactInfo, selectedSize: pr
                             </div>
                         </div>
 
-                        {/* ===== Bangla QR Payment ===== */}
-                        {formData.paymentMethod === 'bangla_qr' && (
-                            <BanglaQRPayment
-                                advanceAmount={advanceAmount}
-                                finalTotal={calculateTotal()}
-                                paymentOption={paymentOption}
-                                setPaymentOption={setPaymentOption}
-                                senderNumber={formData.senderNumber}
-                                onSenderNumberChange={handleInputChange}
-                            />
-                        )}
-
                         {/* ===== bKash / Advance Payment ===== */}
-                        {formData.paymentMethod !== 'bangla_qr' && needsAdvancePayment && (
+                        {needsAdvancePayment && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
                                 <div className="bg-[#ce112d]/5 border border-[#ce112d]/10 rounded-xl p-3 space-y-3">
                                     <p className="text-[11px] leading-relaxed font-medium" style={{ color: 'var(--text-secondary)' }}>

@@ -21,7 +21,7 @@ A modern, high-performance, full-stack e-commerce web application engineered for
 * **📦 Smart Bag & Checkout:**
   - Slide-out Cart Drawer with instantaneous quantity and variant adjustments.
   - Bangladesh-specific automated delivery charge calculation (64 Districts & Mirsarai/Chattogram Upazila logic).
-  - Integrated payment options including **Bangla QR**, **bKash Advance**, and **Cash on Delivery (COD)**.
+  - Integrated payment options including **bKash Advance** and **Cash on Delivery (COD)**.
   - Direct Messenger & WhatsApp order generator with pre-formatted product metadata.
 * **🔍 Order Tracking:** Public order tracking portal by Phone Number or Order ID with real-time delivery status timeline.
 * **🤖 AI Shopping Assistant:** Embedded conversational shopping widget to assist customers with product recommendations and queries.

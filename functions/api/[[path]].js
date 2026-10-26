@@ -149,6 +149,7 @@ function publicOrderRow(row, full) {
     id: row.id,
     track_code: row.track_code || null,
     status: row.status,
+    product_id: row.product_id || null,
     product_name: row.product_name,
     total_amount: row.total_amount,
     created_at: row.created_at,
