@@ -1092,6 +1092,27 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
                               <span className="text-zinc-500">{c.quantity}</span>
                               <span className="font-bold">{msg.orderData.form.quantity}</span>
                             </div>
+                            {msg.orderData.form.isGift && (
+                              <>
+                                <div className="flex justify-between items-center pt-1.5 border-t border-zinc-200">
+                                  <span className="inline-flex items-center gap-1 text-[#ce112d] font-bold">
+                                    <Gift size={11} />
+                                    {language === 'bn' ? 'গিফট' : 'Gift'}
+                                  </span>
+                                  <span className="font-bold text-zinc-800 truncate max-w-[150px]">
+                                    {msg.orderData.form.recipientName || '—'}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-500">{language === 'bn' ? 'প্রাপকের নম্বর' : 'Recipient phone'}</span>
+                                  <span className="font-bold">{msg.orderData.form.recipientPhone || '—'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-500">{language === 'bn' ? 'যোগাযোগ' : 'Your contact'}</span>
+                                  <span className="font-bold">{msg.orderData.form.phone || '—'}</span>
+                                </div>
+                              </>
+                            )}
                             <div className="flex justify-between pt-1.5 border-t border-zinc-200 font-black text-zinc-900">
                               <span>{c.totalBill}</span>
                               <span className="text-[#ce112d]">৳{msg.orderData.totalAmount}</span>
@@ -1099,7 +1120,11 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
                           </div>
 
                           <div className="p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 text-[11px] leading-relaxed text-zinc-700 font-medium">
-                            {c.thankYou}
+                            {msg.orderData.form.isGift
+                              ? (language === 'bn'
+                                  ? 'গিফট অর্ডার পেয়েছি। কনফার্মেশন কল আপনার নম্বরে যাবে; পণ্য প্রাপকের ঠিকানায় যাবে।'
+                                  : 'Gift order received. We’ll confirm on your number; delivery goes to the recipient.')
+                              : c.thankYou}
                           </div>
 
                           <div className="pt-1">
