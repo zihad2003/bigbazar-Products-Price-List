@@ -254,10 +254,85 @@ export function buildProductSearch(matchedCategory, userMessage, limit, offset) 
   return { countSql, countParams: params, dataSql, dataParams };
 }
 
+export function isOwnOrderStatusQuestion(message) {
+  const m = String(message || '').toLowerCase();
+  const asks = /(confirm\s*hoi[sc]e|confirm\s*hoyeche|কনফার্ম|order\s*status|অর্ডার\s*স্ট্যাটাস|আমার\s*অর্ডার|amar\s*order|কবে\s*পাব|কখন\s*পাব|kobe\s*pab|order\s*koi|অর্ডার\s*কই|ট্র্যাক|track\s*order)/i.test(m);
+  const placing = /(কিভাবে|kivabe|how to|order\s*korbo|অর্ডার\s*করব|অর্ডার\s*করতে)/i.test(m);
+  return asks && !placing;
+}
+
+function deliveryWindow(area) {
+  const a = String(area || '').toLowerCase();
+  if (/mirsarai|মীরসরাই|baraiyarhat|বারই/.test(a)) {
+    return { bn: 'মীরসরাইয়ে সাধারণত ১–২ দিনের মধ্যে', en: 'usually within 1–2 days in Mirsarai' };
+  }
+  if (/chittagong|chattogram|চট্টগ্রাম/.test(a)) {
+    return { bn: 'চট্টগ্রামে সাধারণত ১–২ দিনের মধ্যে', en: 'usually within 1–2 days in Chattogram' };
+  }
+  if (/dhaka|ঢাকা/.test(a)) {
+    return { bn: 'ঢাকায় সাধারণত ২–৩ দিনের মধ্যে', en: 'usually within 2–3 days in Dhaka' };
+  }
+  return { bn: 'সারা দেশে সাধারণত ২–৫ দিনের মধ্যে', en: 'usually within 2–5 days' };
+}
+
+function orderIsConfirmed(order) {
+  const status = String(order?.status || '');
+  if (status === 'Canceled' || status === 'Cancelled' || status === 'Deleted') return false;
+  if (status === 'Confirmed' || status === 'Shipped' || status === 'Delivered') return true;
+  if (order?.payment_status === 'Advance Paid' || order?.payment_status === 'Fully Paid') return true;
+  return Boolean(order?.is_advance_paid);
+}
+
+/** Friendly status for the customer's own orders. rows are newest first. */
+export function formatCustomerOrderReply(rows, lang = 'bn') {
+  const bn = lang !== 'en';
+  const list = (rows || []).filter((o) => o && o.status !== 'Deleted');
+  if (!list.length) {
+    return bn
+      ? 'এই একাউন্টে এখনো কোনো অর্ডার দেখছি না। যে মোবাইল নম্বর দিয়ে অর্ডার করেছেন সেটা প্রোফাইলে সেভ করলে আমি স্ট্যাটাস বলে দিতে পারব। অর্ডার নম্বরের শেষ কয়েকটা অক্ষর লিখলেও হয়।'
+      : 'I cannot see an order on this account yet. Save the mobile number you used at checkout on your profile, or send the last few characters of the order number.';
+  }
+  const o = list[0];
+  const ref = String(o.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+  const name = String(o.product_name || '').trim();
+  const item = name ? ` (${name})` : '';
+  const when = deliveryWindow(o.delivery_area);
+  const status = String(o.status || 'Pending');
+  const more = list.length > 1
+    ? (bn
+      ? ` আপনার আরও ${list.length - 1}টি অর্ডার আছে। অন্যটা জানতে সেই অর্ডার নম্বর লিখুন।`
+      : ` You have ${list.length - 1} more order(s). Send that order number if you want that one.`)
+    : '';
+
+  if (status === 'Delivered') {
+    return (bn
+      ? `আপনার অর্ডার #${ref}${item} ডেলিভারি হয়ে গেছে। আর কিছু লাগলে বলুন, আমি আছি।`
+      : `Your order #${ref}${item} has been delivered. Tell me if you need anything else.`) + more;
+  }
+  if (status === 'Shipped') {
+    return (bn
+      ? `আপনার অর্ডার #${ref}${item} কনফার্ম হয়ে কুরিয়ারে চলে গেছে। ${when.bn} পেয়ে যাওয়ার কথা।`
+      : `Your order #${ref}${item} is confirmed and already with the courier. You should receive it ${when.en}.`) + more;
+  }
+  if (status === 'Canceled' || status === 'Cancelled') {
+    return (bn
+      ? `আপনার অর্ডার #${ref}${item} বাতিল আছে। নতুন করে নিতে চাইলে বলুন, আমি সাহায্য করব।`
+      : `Your order #${ref}${item} is cancelled. If you want to order again, just tell me.`) + more;
+  }
+  if (orderIsConfirmed(o)) {
+    return (bn
+      ? `হ্যাঁ, আপনার অর্ডার #${ref}${item} কনফার্ম হয়েছে। ${when.bn} পৌঁছানোর কথা। বাকি টাকা পণ্য হাতে পেয়ে দিলেই হবে।`
+      : `Yes, your order #${ref}${item} is confirmed. It should arrive ${when.en}. Pay the rest when the parcel arrives.`) + more;
+  }
+  return (bn
+    ? `আপনার অর্ডার #${ref}${item} আমরা পেয়েছি, তবে এখনো কনফার্ম হয়নি। কনফার্ম হতে ডেলিভারি চার্জ bKash/Nagad 01857045449 নম্বরে পৌঁছাতে হবে। পৌঁছালে এসএমএস দিয়ে পাঠাব। ${when.bn}।`
+    : `We have your order #${ref}${item}, but it is not confirmed yet. It is confirmed after the delivery charge reaches bKash/Nagad 01857045449. Then we SMS you and send it, ${when.en}.`) + more;
+}
+
 export function defaultQuickReplies(lang = 'bn') {
   return lang === 'en'
-    ? ['Saree collection', 'Three-piece', 'Delivery info', 'Showroom location']
-    : ['শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'ডেলিভারি তথ্য', 'শোরুম লোকেশন'];
+    ? ['Is my order confirmed?', 'Saree collection', 'Three-piece', 'Delivery info']
+    : ['আমার অর্ডার কনফার্ম?', 'শাড়ি কালেকশন', 'থ্রি-পিস কালেকশন', 'ডেলিভারি তথ্য'];
 }
 
 export { FAQ_KB, matchFAQ };

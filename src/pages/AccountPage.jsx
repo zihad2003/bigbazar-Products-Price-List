@@ -66,6 +66,11 @@ export default function AccountPage() {
   const [loginError, setLoginError] = useState('');
   const [phone, setPhone] = useState('');
   const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [pushPermission, setPushPermission] = useState(null);
+  const [pushAskSkipped, setPushAskSkipped] = useState(() => {
+    try { return sessionStorage.getItem('bb_push_ask_skipped') === '1'; } catch (_) { return false; }
+  });
   const { updatePhone } = useAuth();
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -153,8 +158,21 @@ export default function AccountPage() {
       fetchNotifications();
       if (user?.phone) setPhone(user.phone);
       hasActivePushSubscription().then(setPushEnabled).catch(() => setPushEnabled(false));
+      getPushPermissionState()
+        .then((state) => {
+          setPushPermission(state);
+        })
+        .catch(() => setPushPermission('unsupported'));
     }
   }, [isLoggedIn, fetchOrders, fetchNotifications, user]);
+
+  useEffect(() => {
+    if (pushPermission !== 'denied' || pushAskSkipped) return;
+    const timer = setTimeout(() => {
+      try { sessionStorage.setItem('bb_push_ask_skipped', '1'); } catch (_) {}
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pushPermission, pushAskSkipped]);
 
   useEffect(() => {
     if (!isLoggedIn || !fromTrackOrder || loadingOrders) return;
@@ -202,8 +220,50 @@ export default function AccountPage() {
   };
 
   const handleSavePhone = async () => {
-    const result = await updatePhone(phone);
-    if (!result.error) setEditingPhone(false);
+    const digits = String(phone || '').replace(/\D/g, '');
+    const normalized = digits.startsWith('880') && digits.length >= 13 ? `0${digits.slice(3)}` : digits;
+    if (!/^01[3-9]\d{8}$/.test(normalized)) {
+      setPhoneError(language === 'bn' ? 'সঠিক মোবাইল নম্বর দিন (01XXXXXXXXX)' : 'Enter a valid mobile number (01XXXXXXXXX)');
+      return;
+    }
+    setPhoneError('');
+    const result = await updatePhone(normalized);
+    if (!result.error) {
+      setPhone(normalized);
+      setEditingPhone(false);
+    } else {
+      setPhoneError(language === 'bn' ? 'নম্বর সেভ হয়নি। আবার চেষ্টা করুন।' : 'Could not save the number. Try again.');
+    }
+  };
+
+  const handleEnableFromSetup = async () => {
+    setPushBusy(true);
+    setPushMessage('');
+    try {
+      const state = await getPushPermissionState();
+      if (state === 'unsupported') {
+        setPushPermission('unsupported');
+        return;
+      }
+      if (state === 'denied') {
+        setPushPermission('denied');
+        setPushMessage(language === 'bn' ? 'ব্রাউজার সেটিংস থেকে নোটিফিকেশন অনুমতি দিন' : 'Allow notifications in browser settings first');
+        return;
+      }
+      await enableBrowserPush();
+      setPushEnabled(true);
+      setPushPermission('granted');
+    } catch (err) {
+      const state = await getPushPermissionState().catch(() => 'default');
+      setPushPermission(state);
+      setPushMessage(
+        state === 'denied'
+          ? (language === 'bn' ? 'ব্রাউজার সেটিংস থেকে নোটিফিকেশন অনুমতি দিন' : 'Allow notifications in browser settings first')
+          : (err.message || 'Failed')
+      );
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -284,6 +344,115 @@ export default function AccountPage() {
     );
   }
 
+  const needsPhone = !String(user?.phone || '').trim();
+  const needsPush = pushSupported() && !pushAskSkipped && (pushPermission === 'default' || pushPermission === 'denied');
+  const checkingPush = !needsPhone && pushSupported() && !pushAskSkipped && pushPermission == null;
+
+  if (needsPhone || needsPush || checkingPush) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-10">
+        <div className="bg-surface-card border border-[var(--border-color)] rounded-2xl p-6 shadow-card space-y-5">
+          <div className="flex items-center gap-3">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover ring-2 ring-zinc-200" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#ce112d] flex items-center justify-center text-white text-lg font-bold">
+                {user?.name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-content-primary truncate">{user?.name}</h1>
+              <p className="text-xs text-content-secondary truncate">{user?.email}</p>
+            </div>
+          </div>
+
+          {needsPhone ? (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-content-primary flex items-center gap-2">
+                <Phone size={16} className="text-[#ce112d]" />
+                {language === 'bn' ? 'মোবাইল নম্বর দিন' : 'Add your mobile number'}
+              </p>
+              <p className="text-xs text-content-secondary leading-relaxed">
+                {language === 'bn'
+                  ? 'অর্ডার আপডেট এই একাউন্টের সাথে মেলাতে মোবাইল নম্বর দিন।'
+                  : 'Add your mobile number so order updates stay on this account.'}
+              </p>
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/[^0-9+]/g, ''));
+                  if (phoneError) setPhoneError('');
+                }}
+                placeholder="01XXXXXXXXX"
+                className="w-full text-sm px-3 py-3 rounded-xl border border-[var(--border-color)] bg-surface-input text-content-primary"
+              />
+              {phoneError && <p className="text-[11px] text-[#ce112d]">{phoneError}</p>}
+              <button
+                type="button"
+                onClick={handleSavePhone}
+                className="w-full px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-[#ce112d] text-white"
+              >
+                {language === 'bn' ? 'নম্বর সেভ করুন' : 'Save number'}
+              </button>
+            </div>
+          ) : checkingPush ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#ce112d] rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-content-primary flex items-center gap-2">
+                <BellRing size={16} className="text-[#ce112d]" />
+                {language === 'bn' ? 'নোটিফিকেশন চালু করুন' : 'Turn on notifications'}
+              </p>
+              <p className="text-xs text-content-secondary leading-relaxed">
+                {pushPermission === 'denied'
+                  ? (language === 'bn'
+                    ? 'ব্রাউজার সেটিংস থেকে নোটিফিকেশন অনুমতি দিন। তারপর এখানে আবার চালু করতে পারবেন।'
+                    : 'Allow notifications in your browser settings, then turn them on here.')
+                  : (language === 'bn'
+                    ? 'নতুন প্রোডাক্ট এলে ফোনে খবর পেতে নোটিফিকেশন চালু করুন। Allow চাপুন।'
+                    : 'Turn on notifications to hear when a new product arrives. Tap Allow.')}
+              </p>
+              {pushMessage && <p className="text-[11px] text-[#ce112d] font-medium">{pushMessage}</p>}
+              {pushPermission === 'denied' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    try { sessionStorage.setItem('bb_push_ask_skipped', '1'); } catch (_) {}
+                    setPushAskSkipped(true);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-[#ce112d] text-white"
+                >
+                  {language === 'bn' ? 'একাউন্ট দেখুন' : 'View account'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pushBusy}
+                  onClick={handleEnableFromSetup}
+                  className="w-full px-4 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider bg-[#ce112d] text-white disabled:opacity-50"
+                >
+                  {pushBusy ? '...' : (language === 'bn' ? 'চালু করুন' : 'Turn on')}
+                </button>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="text-sm text-content-tertiary hover:text-content-primary transition-colors"
+          >
+            {language === 'bn' ? '← কেনাকাটা চালিয়ে যান' : '← Continue shopping'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Logged in — show account page
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -333,6 +502,9 @@ export default function AccountPage() {
                   {language === 'bn' ? 'সম্পাদনা' : 'Edit'}
                 </button>
               </div>
+            )}
+            {phoneError && editingPhone && (
+              <p className="text-[11px] text-[#ce112d] mt-1">{phoneError}</p>
             )}
           </div>
         </div>

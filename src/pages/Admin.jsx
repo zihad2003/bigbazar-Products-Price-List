@@ -29,6 +29,24 @@ import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesF
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { balanceDue, orderTotal, receivedAdvance } from '../utils/orderMoney';
 
+function shiftProductNav(prev, product, fields) {
+  if (!prev || !product) return prev;
+  const beforeSold = !!product.is_sold_out;
+  const afterSold = fields.is_sold_out !== undefined ? !!fields.is_sold_out : beforeSold;
+  const beforeStatus = product.status;
+  const afterStatus = fields.status !== undefined ? fields.status : beforeStatus;
+  if (beforeSold === afterSold && beforeStatus === afterStatus) return prev;
+  const next = { ...prev };
+  const bump = (status, sold, delta) => {
+    if (sold) next.soldout = Math.max(0, (next.soldout || 0) + delta);
+    else if (status === 'published') next.published = Math.max(0, (next.published || 0) + delta);
+    else if (status === 'pending') next.pending = Math.max(0, (next.pending || 0) + delta);
+  };
+  bump(beforeStatus, beforeSold, -1);
+  bump(afterStatus, afterSold, 1);
+  return next;
+}
+
 const VIDEO_NOTE = 'বিস্তারিত দেখতে প্রোডাক্ট ভিডিও দেখুন';
 
 function descriptionWithVideoNote(description, hasVideo) {
@@ -114,6 +132,7 @@ export default function Admin() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [navCounts, setNavCounts] = useState({ users: null, conversations: null });
+  const [productNav, setProductNav] = useState(null);
   const [shotBusy, setShotBusy] = useState(false);
   const [confirmation, setConfirmation] = useState({ isOpen: false, title: '', message: '', onConfirm: null, confirmText: 'Delete' });
   const [siteTheme, setSiteTheme] = useState('dark');
@@ -364,7 +383,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
   const fetchProducts = async (pageToFetch = 0, append = false) => {
     setLoading(true);
-    const { data } = await bigBazarApi
+    const { data, nav } = await bigBazarApi
       .from('products')
       // DB-1 fix: use fixed 100-item page size (range 0..99, 100..199, etc.) for stable KV cache reuse
       .select('id,serial_no,name,price,original_price,category,subcategory,status,stock_count,is_sale,is_hot,is_new,is_sold_out,is_deleted,available_sizes,available_colors,is_exclusive,images,created_at,video_url,platform_id')
@@ -380,6 +399,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       });
     } else {
       setProducts(fetched);
+      if (nav) setProductNav(nav);
     }
     setProductPage(pageToFetch);
     setHasMoreProducts(fetched.length >= 100);
@@ -393,6 +413,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
   /** Optimistic flag/status patch — keeps list order stable (no full refetch). */
   const patchProductFields = async (id, fields) => {
+    const previous = products.find((x) => x.id === id) || null;
     setProducts((prev) => prev.map((x) => (x.id === id ? { ...x, ...fields } : x)));
     const { error } = await bigBazarApi.from('products').update(fields).eq('id', id);
     if (error) {
@@ -403,6 +424,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         type: 'error',
       });
       fetchProducts();
+      return;
+    }
+    if (previous && (fields.is_sold_out !== undefined || fields.status !== undefined)) {
+      setProductNav((prev) => shiftProductNav(prev, previous, fields));
     }
   };
 
@@ -1910,9 +1935,9 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
               { id: 'orders', icon: <ShoppingBag size={18} />, label: 'All Orders', count: orders.filter(o => o && o.status !== 'Deleted').length },
               { id: 'deleted', icon: <Archive size={18} />, label: 'Deleted', count: orders.filter(o => o && o.status === 'Deleted').length },
               { id: 'shoppers', icon: <ShoppingCart size={18} />, label: 'Carts & Checkouts' },
-              { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
-              { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
-              { id: 'soldout', icon: <AlertCircle size={18} />, label: 'Sold Out', count: products.filter(p => p && p.is_sold_out).length },
+              { id: 'published', icon: <CheckCircle2 size={18} />, label: 'Live Products', count: productNav ? productNav.published : products.filter(p => p && p.status === 'published' && !p.is_sold_out).length },
+              { id: 'pending', icon: <Clock size={18} />, label: 'Drafts', count: productNav ? productNav.pending : products.filter(p => p && p.status === 'pending' && !p.is_sold_out).length },
+              { id: 'soldout', icon: <AlertCircle size={18} />, label: 'Sold Out', count: productNav ? productNav.soldout : products.filter(p => p && p.is_sold_out).length },
               { id: 'add', icon: <Plus size={18} />, label: 'Add Product', special: true },
               { id: 'subcategories', icon: <Box size={18} />, label: 'Subcategories', count: Object.values(mergeWithDynamic(subcategoriesData)).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0) },
               { id: 'reviews', icon: <Star size={18} />, label: 'Reviews', count: reviews.length },

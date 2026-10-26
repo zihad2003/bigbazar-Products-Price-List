@@ -15,7 +15,9 @@ import {
   getCatalogReplyText,
   getSmartFallbackReply,
   buildProductSearch,
-  defaultQuickReplies
+  defaultQuickReplies,
+  isOwnOrderStatusQuestion,
+  formatCustomerOrderReply
 } from './assistant-query.js';
 import { getVapidConfig, sendWebPushBatch } from './webPush.js';
 import { generateProductCopy } from './product-copy.js';
@@ -2051,7 +2053,29 @@ app.get('/products', async (c) => {
       }
     }
 
-    const resultData = { data: rows.map(parseProductRowLite), count: total };
+    let nav = null;
+    if (isAdmin && pageNum === 0) {
+      try {
+        const navRows = await conn.execute(
+          `SELECT
+             SUM(CASE WHEN status = 'published' AND (is_sold_out = 0 OR is_sold_out IS NULL) THEN 1 ELSE 0 END) AS live_count,
+             SUM(CASE WHEN status = 'pending' AND (is_sold_out = 0 OR is_sold_out IS NULL) THEN 1 ELSE 0 END) AS draft_count,
+             SUM(CASE WHEN is_sold_out = 1 THEN 1 ELSE 0 END) AS sold_out_count
+           FROM products
+           WHERE (is_deleted = 0 OR is_deleted IS NULL)`
+        );
+        const navRow = navRows?.[0] || {};
+        nav = {
+          published: Number(navRow.live_count) || 0,
+          pending: Number(navRow.draft_count) || 0,
+          soldout: Number(navRow.sold_out_count) || 0,
+        };
+      } catch (navErr) {
+        console.error('Product nav counts error:', navErr?.message || navErr);
+      }
+    }
+
+    const resultData = { data: rows.map(parseProductRowLite), count: total, ...(nav ? { nav } : {}) };
     if (isNoCache) {
       c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       c.header('Pragma', 'no-cache');
@@ -2681,6 +2705,10 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     // 3. Update fields
     const setClauses = [];
     const params = [];
+    let customerNote;
+    if (o.customer_note !== undefined) {
+      customerNote = customerNoteText(o.customer_note).slice(0, 1000);
+    }
     const fields = {
       status: o.status,
       is_advance_paid: o.is_advance_paid !== undefined ? (o.is_advance_paid ? 1 : 0) : undefined,
@@ -2688,6 +2716,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       delivery_charge: o.delivery_charge,
       total_amount: o.total_amount,
       advance_paid_amount: advancePaidAmount,
+      customer_note: customerNote,
     };
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
@@ -4936,7 +4965,7 @@ RULES:
 2. Keep replies SHORT: 1-3 sentences maximum. Product cards are shown below your text, so never list prices or product details in your text.
 3. Only describe products returned by a tool call. NEVER invent product names, prices, stock, or availability.
 4. If asked about delivery, payment, returns, sizing, or contact info - call get_faq_answer with the matching topic.
-5. If the customer mentions an order number, call check_order_status (only for logged-in users).
+5. If the customer asks whether their order is confirmed, when it will arrive, or for order status, answer only from the order data given to you. Be warm and specific. Never say you cannot see orders when order data is present. If no order data is present, ask them to save the checkout mobile number on their profile.
 6. Politely decline questions unrelated to BigBazar products/services. Do not discuss competitor brands.
 7. If you cannot help, suggest: "আমাদের মেসেঞ্জারে যোগাযোগ করুন" (Contact us on Messenger).
 8. Never make up phone numbers, addresses, or policies. Use only tool-provided data.`;
@@ -5011,7 +5040,12 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
         'SELECT id, status, payment_status, total_amount, delivery_area, created_at FROM orders WHERE user_id = ? AND UPPER(id) LIKE ? ORDER BY created_at DESC LIMIT 1',
         [userId, `%${ref}%`]
       );
-      if (rows.length === 0) return { type: 'order_not_found', message: `No order found with reference "${ref}" for your account.` };
+      if (rows.length === 0) {
+        const mine = await loadCustomerOrderRows(conn, userId);
+        const hit = mine.find((row) => String(row.id || '').toUpperCase().includes(ref));
+        if (!hit) return { type: 'order_not_found', message: `No order found with reference "${ref}" for your account.` };
+        rows = [hit];
+      }
       const o = rows[0];
       return {
         type: 'order_status',
@@ -5040,6 +5074,55 @@ async function executeGroqTool(c, conn, toolName, args, userId) {
   }
 
   return { error: 'Tool not found' };
+}
+
+async function loadCustomerOrderRows(conn, userId) {
+  let phone = null;
+  try {
+    const users = await conn.execute('SELECT phone FROM users WHERE id = ? LIMIT 1', [userId]);
+    phone = users?.[0]?.phone || null;
+  } catch (_) {}
+
+  const raw = String(phone || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  const variants = new Set();
+  if (raw) variants.add(raw);
+  if (digits) variants.add(digits);
+  if (digits.startsWith('880') && digits.length >= 13) {
+    variants.add('0' + digits.slice(3));
+    variants.add(digits.slice(2));
+  }
+  if (digits.startsWith('0') && digits.length === 11) {
+    variants.add('88' + digits);
+    variants.add('880' + digits.slice(1));
+    variants.add('+' + '880' + digits.slice(1));
+  }
+  const last10 = digits.slice(-10);
+  const phoneList = [...variants].filter(Boolean);
+
+  const clauses = ['user_id = ?'];
+  const params = [userId];
+  if (phoneList.length) {
+    clauses.push(`customer_phone IN (${phoneList.map(() => '?').join(',')})`);
+    params.push(...phoneList);
+  }
+  if (last10.length === 10) {
+    clauses.push('customer_phone LIKE ?');
+    params.push('%' + last10);
+  }
+
+  const sql = `SELECT id, status, payment_status, is_advance_paid, product_name, delivery_area, created_at
+    FROM orders WHERE (${clauses.join(' OR ')}) AND (status IS NULL OR status <> 'Deleted')
+    ORDER BY created_at DESC LIMIT 3`;
+  const rows = await conn.execute(sql, params);
+  const seen = new Set();
+  const unique = [];
+  for (const row of rows || []) {
+    if (!row?.id || seen.has(row.id)) continue;
+    seen.add(row.id);
+    unique.push(row);
+  }
+  return unique;
 }
 
 // POST /api/assistant — AI Shopping Assistant (login required; continues by user_id)
@@ -5139,7 +5222,7 @@ app.post('/assistant', requireCustomerAuth, async (c) => {
 
   // ── Step 1: Category + customer-query routing ──
   const { matchedCategory, searchTerm } = detectCategoryMatch(lowerMsg, body.category_query);
-  const wantsCatalog = hasProductCatalogSearchIntent(lowerMsg, matchedCategory);
+  const wantsCatalog = hasProductCatalogSearchIntent(lowerMsg, matchedCategory) && !isOwnOrderStatusQuestion(userMessage);
   const faqReply = resolveFaqReply(userMessage, replyLang);
 
   let productsRes = [];
@@ -5161,12 +5244,21 @@ app.post('/assistant', requireCustomerAuth, async (c) => {
     }
   }
 
-  // ── Step 2: Determine Response (catalog → FAQ → AI → fallback) ──
+  // ── Step 2: Determine Response (own order → catalog → FAQ → AI → fallback) ──
   let replyText = '';
 
-  if (wantsCatalog) {
+  if (isOwnOrderStatusQuestion(userMessage)) {
+    try {
+      const orderRows = await loadCustomerOrderRows(conn, userId);
+      replyText = formatCustomerOrderReply(orderRows, replyLang);
+    } catch (err) {
+      console.error('customer order reply error:', err?.message || err);
+    }
+  }
+
+  if (!replyText && wantsCatalog) {
     replyText = getCatalogReplyText(productsRes.length, requestedOffset, replyLang);
-  } else if (faqReply) {
+  } else if (!replyText && faqReply) {
     replyText = faqReply;
   }
 

@@ -142,6 +142,35 @@ export const ProductCard = ({ product, onClick }) => {
             </span>
           </div>
         )}
+
+        {swatches.length > 1 && (
+          <div className="absolute bottom-1.5 left-1.5 right-1.5 z-20 flex flex-nowrap gap-1">
+            {swatches.slice(0, 6).map((swatch, i) => (
+              <button
+                key={`${swatch.image}-${i}`}
+                type="button"
+                aria-label={swatch.name || `${displayName} ${i + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveSwatch(i);
+                }}
+                className={`h-7 md:h-8 flex-1 min-w-0 max-w-[28px] md:max-w-[32px] rounded-md overflow-hidden border bg-white/90 ${
+                  activeSwatch === i
+                    ? 'border-[#ce112d] ring-1 ring-[#ce112d]'
+                    : 'border-white/80'
+                }`}
+              >
+                <img
+                  src={getOptimizedUrl(swatch.image, { w: 96, h: 120, q: 70 })}
+                  alt=""
+                  className="w-full h-full object-cover object-top"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       
       <div className="p-3.5 md:p-5 flex flex-col flex-1 gap-2.5">
@@ -165,35 +194,6 @@ export const ProductCard = ({ product, onClick }) => {
           </h2>
         </div>
 
-        {swatches.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {swatches.slice(0, 6).map((swatch, i) => (
-              <button
-                key={`${swatch.image}-${i}`}
-                type="button"
-                aria-label={swatch.name || `${displayName} ${i + 1}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveSwatch(i);
-                }}
-                className={`w-8 h-10 rounded-lg overflow-hidden border bg-neutral-100 shrink-0 ${
-                  activeSwatch === i
-                    ? 'border-[#ce112d] ring-2 ring-[#ce112d]/30'
-                    : 'border-neutral-200 hover:border-neutral-400'
-                }`}
-              >
-                <img
-                  src={getOptimizedUrl(swatch.image, { w: 96, h: 120, q: 70 })}
-                  alt=""
-                  className="w-full h-full object-cover object-top"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-        
         <div className="mt-auto flex flex-col gap-2.5 pt-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0 overflow-hidden">
             <span className="text-sm sm:text-base md:text-lg font-black text-[#ce112d] whitespace-nowrap">৳{price}</span>

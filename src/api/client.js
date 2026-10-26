@@ -470,7 +470,7 @@ class QueryBuilder {
                 let data = json.data;
                 const count = json.count || (Array.isArray(data) ? data.length : (data ? 1 : 0));
                 if (this._single) data = Array.isArray(data) ? data[0] || null : data;
-                return { data, error: null, count };
+                return { data, error: null, count, nav: json.nav || null };
             });
         }
 
@@ -489,7 +489,7 @@ class QueryBuilder {
             data = Array.isArray(data) ? data[0] || null : data;
         }
         
-        return { data, error: null, count };
+        return { data, error: null, count, nav: json.nav || null };
     }
 
     // Lazy action queueing

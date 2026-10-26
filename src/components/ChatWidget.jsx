@@ -50,7 +50,7 @@ const CHAT_COPY = {
   bn: {
     fab: 'চ্যাট করুন',
     subtitle: 'শপিং সহকারী',
-    welcome: 'আসসালামু আলাইকুম। Big Bazar শপিং অ্যাসিস্ট্যান্টে স্বাগতম। আপনি কোন ক্যাটাগরির কালেকশন দেখতে চান বা কী জানতে চান?',
+    welcome: 'আসসালামু আলাইকুম। কালেকশন দেখতে চান, নাকি অর্ডার কনফার্ম হয়েছে কিনা আর কবে পাবেন সেটা জানতে চান?',
     loginRequired: 'চ্যাট করতে লগইন করুন',
     loginHint: 'লগইন করলে আগের চ্যাট থাকবে।',
     loginBtn: 'লগইন করুন',
@@ -127,7 +127,7 @@ const CHAT_COPY = {
   en: {
     fab: 'Chat with us',
     subtitle: 'Shopping assistant',
-    welcome: 'Welcome to the Big Bazar shopping assistant. Which collection would you like to browse, or what can I help with?',
+    welcome: 'Assalamu Alaikum. Browse a collection, or ask whether your order is confirmed and when it will arrive.',
     loginRequired: 'Login to chat',
     loginHint: 'Sign in to keep your chat history.',
     loginBtn: 'Log in',
@@ -887,10 +887,11 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
           className={`chat-widget-fab bg-white text-zinc-900 px-4 py-3 sm:px-4.5 sm:py-3.5 rounded-full flex items-center gap-2.5 hover:shadow-xl hover:scale-[1.03] active:scale-95 transition-all duration-300 border border-zinc-200${onProductPage ? ' chat-widget-fab--product' : ''}`}
           aria-label={c.fab}
         >
-          <div className="w-7 h-7 rounded-full bg-[#ce112d] flex items-center justify-center text-white shrink-0">
+          <div className="hidden sm:flex w-7 h-7 rounded-full bg-[#ce112d] items-center justify-center text-white shrink-0">
             <MessageCircle size={15} strokeWidth={2.25} />
           </div>
-          <span className="hidden sm:inline text-xs font-bold text-zinc-900 leading-none">
+          <MessageCircle className="sm:hidden text-white" size={16} strokeWidth={2.25} />
+          <span className="text-xs font-bold leading-none sm:text-zinc-900">
             {c.fab}
           </span>
         </button>

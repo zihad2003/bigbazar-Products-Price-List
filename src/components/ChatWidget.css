@@ -61,23 +61,26 @@
   }
 }
 
-/* Mobile: icon only, sitting above the raised cart and clear of the banner. */
+/* Mobile: labeled chat pill on the left, above the tab bar, clear of Order Now. */
 @media (max-width: 640px) {
   .chat-widget-fab {
-    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
-    right: 12px;
-    left: auto;
-    width: 44px;
-    height: 44px;
-    padding: 0;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    right: auto;
+    width: auto;
+    height: 40px;
+    padding: 0 12px 0 10px;
     justify-content: center;
-    gap: 0;
+    gap: 6px;
+    background: #ce112d !important;
+    color: #ffffff !important;
+    border-color: #ce112d !important;
   }
 
   .chat-widget-fab--product {
     bottom: calc(118px + env(safe-area-inset-bottom, 0px));
-    right: 12px;
-    left: auto;
+    left: 12px;
+    right: auto;
   }
 }
 

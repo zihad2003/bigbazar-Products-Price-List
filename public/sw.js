@@ -161,8 +161,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Big Bazar', {
       body: data.body || '',
-      icon: '/b.jpg',
-      badge: '/b.jpg',
+      icon: '/push-icon.png',
+      badge: '/push-badge.png',
       data: { url: data.url || (data.product_id ? `/product/${data.product_id}` : '/') },
       vibrate: [120, 60, 120],
     })
