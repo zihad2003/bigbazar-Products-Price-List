@@ -81,7 +81,8 @@ function buildCloudinaryUrl(url, { w, h, q = 84, fit = 'cover' } = {}) {
   const t = ['f_auto', `q_${q}`];
   if (w) t.push(`w_${w}`);
   if (h) t.push(`h_${h}`);
-  t.push(fit === 'cover' ? 'c_fill,g_auto' : 'c_limit');
+  // Only force fill crop when both dimensions are requested; otherwise keep full frame.
+  if (w || h) t.push(fit === 'cover' && w && h ? 'c_fill,g_auto' : 'c_limit');
   return `${url.slice(0, i + marker.length)}${t.join(',')}/${cleaned.join('/')}`;
 }
 
@@ -149,7 +150,7 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
   }
 
   if (isTrustedDomain(url)) {
-    if ((options.w || options.h) && isCloudinaryUrl(url)) {
+    if (isCloudinaryUrl(url) && (options.w || options.h || options.q)) {
       return buildCloudinaryUrl(url, options);
     }
     // Still resize when dimensions requested (Unsplash supports w= natively; others via weserv)
@@ -183,7 +184,8 @@ export const mediaSizes = {
   thumbnail: { w: 400, h: 533, q: 82 },
   subcat: { w: 560, h: 720, q: 84 },
   subcatThumb: { w: 240, h: 240, q: 82 },
-  banner: { w: 1920, q: 85 },
-  bannerMobile: { w: 1080, q: 84 },
-  gallery: { w: 1200, q: 84 },
+  // Hero masters are already ~1920–2400; avoid a second resize proxy (slow + soft).
+  banner: { q: 90 },
+  bannerMobile: { q: 88 },
+  gallery: { w: 1200, q: 86 },
 };

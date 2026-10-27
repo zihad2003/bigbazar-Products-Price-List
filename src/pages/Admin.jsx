@@ -6,8 +6,8 @@ import {
   Settings, ShoppingBag, Edit, X, Play,
   AlertCircle, Instagram, CheckCircle2, Clock, Upload, Save, Download, Package, Box,
   Sun, Moon, Star, RotateCcw, Archive, MessageSquare, Users, User, Phone, MapPin, Truck, ShieldCheck, Menu, Copy, ExternalLink,
-  Pencil, ChevronDown, ArrowRight, ArrowLeft, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
-  Smartphone, Monitor, Tablet, Shield, ShoppingCart
+  Pencil, ChevronDown, ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Video, Eye, EyeOff, Sparkles, BarChart3, Filter,
+  Smartphone, Monitor, Tablet, Shield, ShoppingCart, Mail
 } from 'lucide-react';
 import { extractInstagramId } from '../utils/instagram';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
@@ -2335,9 +2335,9 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   <p className="text-xs font-medium text-zinc-500">Upload size</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { icon: <Monitor size={14} className="text-[#ce112d]" />, title: 'Desktop', size: '1920×800', note: '2.4:1' },
+                      { icon: <Monitor size={14} className="text-[#ce112d]" />, title: 'Desktop', size: '2400×1350', note: '16:9 HQ' },
                       { icon: <Tablet size={14} className="text-[#ce112d]" />, title: 'Tablet', size: '1600×900', note: '16:9' },
-                      { icon: <Smartphone size={14} className="text-[#ce112d]" />, title: 'Mobile', size: '1080×864', note: '5:4' },
+                      { icon: <Smartphone size={14} className="text-[#ce112d]" />, title: 'Mobile', size: '1200×960', note: '5:4' },
                     ].map(item => (
                       <div key={item.title} className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-2">
                         <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-300">
@@ -2381,17 +2381,48 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   <div key={slide.id || i} className="bg-black/30 border border-white/10 rounded-lg overflow-hidden">
                     <div className="relative aspect-[12/5] bg-black">
                       <img src={slide.image} className="w-full h-full object-cover" alt="" />
-                      <button
-                        type="button"
-                        onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
-                        className="absolute top-2 right-2 w-7 h-7 inline-flex items-center justify-center bg-black/75 text-white rounded-md hover:bg-[#ce112d] transition-colors"
-                        title="Delete slide"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={i === 0}
+                          onClick={() => {
+                            if (i === 0) return;
+                            const updated = [...siteSettings.main_slides];
+                            [updated[i - 1], updated[i]] = [updated[i], updated[i - 1]];
+                            setSiteSettings({ ...siteSettings, main_slides: updated });
+                          }}
+                          className="w-7 h-7 inline-flex items-center justify-center bg-black/75 text-white rounded-md hover:bg-white/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                          title="Move earlier (shows first)"
+                        >
+                          <ArrowUp size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={i >= (siteSettings.main_slides?.length || 0) - 1}
+                          onClick={() => {
+                            const last = (siteSettings.main_slides?.length || 0) - 1;
+                            if (i >= last) return;
+                            const updated = [...siteSettings.main_slides];
+                            [updated[i], updated[i + 1]] = [updated[i + 1], updated[i]];
+                            setSiteSettings({ ...siteSettings, main_slides: updated });
+                          }}
+                          className="w-7 h-7 inline-flex items-center justify-center bg-black/75 text-white rounded-md hover:bg-white/20 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                          title="Move later"
+                        >
+                          <ArrowDown size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSiteSettings({ ...siteSettings, main_slides: siteSettings.main_slides.filter((_, idx) => idx !== i) })}
+                          className="w-7 h-7 inline-flex items-center justify-center bg-black/75 text-white rounded-md hover:bg-[#ce112d] transition-colors"
+                          title="Delete slide"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                       <div className="absolute top-2 left-2">
                         <span className="h-7 px-2 inline-flex items-center bg-black/75 rounded-md text-[11px] font-medium text-white">
-                          Slide {i + 1}{slide.width && slide.height ? ` · ${slide.width}×${slide.height}` : ''}
+                          #{i + 1}{slide.width && slide.height ? ` · ${slide.width}×${slide.height}` : ''}
                         </span>
                       </div>
                     </div>
@@ -2483,11 +2514,15 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                   <span className="text-xs font-semibold">
                     {loading && uploadStatus !== 'idle'
                       ? (uploadStatus === 'compressing' ? 'Compressing...' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`)
-                      : 'Add a desktop slide · 1920×800'}
+                      : 'Add a desktop slide · 2400×1350 or 1920×800'}
                   </span>
                   <input type="file" className="hidden" accept="image/*" multiple disabled={loading} onChange={e => handleFileUpload(e, 'slider')} />
                 </label>
               </div>
+
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Use ↑ ↓ to set show order (Slide #1 plays first). Save after reordering. New uploads keep higher photo quality and load without an extra resize proxy.
+              </p>
 
               <div className="flex justify-end pt-3 border-t border-white/10">
                 <button
@@ -2498,7 +2533,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                     await bigBazarApi.from('site_settings').upsert({ key: 'slider_aspect', value: siteSettings.slider_aspect || 'auto' }, { onConflict: 'key' });
                     const { error } = await bigBazarApi.from('site_settings').upsert({ key: 'main_slides', value: siteSettings.main_slides }, { onConflict: 'key' });
                     if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-                    else setAlertModal({ isOpen: true, title: 'Live!', message: "Slider Engine & Display Settings Updated Successfully.", type: 'success' });
+                    else setAlertModal({ isOpen: true, title: 'Live!', message: 'Slider order and settings saved.', type: 'success' });
                     setLoading(false);
                   }}
                   className="inline-flex items-center gap-2 bg-[#ce112d] px-4 h-10 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
@@ -2508,6 +2543,69 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                 </button>
               </div>
             </section>
+
+            {session?.user?.role === 'superadmin' && (
+              <section className="lg:col-span-2 order-3 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-zinc-800 text-[#ce112d] flex items-center justify-center shrink-0">
+                      <Mail size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-white">Order email alert</h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        Needs Hostinger <code className="text-zinc-400">SMTP_USER</code> + Gmail App Password <code className="text-zinc-400">SMTP_PASS</code>, then restart.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const res = await fetch(`${API_URL}/api/admin/test-order-email`, {
+                          method: 'POST',
+                          headers: {
+                            Authorization: `Bearer ${getToken()}`,
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setAlertModal({
+                            isOpen: true,
+                            title: 'Email failed',
+                            message: data.error || `HTTP ${res.status}`,
+                            type: 'error',
+                          });
+                        } else {
+                          setAlertModal({
+                            isOpen: true,
+                            title: 'Test sent',
+                            message: data.message || 'Check inbox and Spam for the test order email.',
+                            type: 'success',
+                          });
+                        }
+                      } catch (err) {
+                        setAlertModal({
+                          isOpen: true,
+                          title: 'Email failed',
+                          message: err?.message || 'Could not reach the API.',
+                          type: 'error',
+                        });
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-white/15 bg-black/30 text-xs font-semibold text-white hover:border-[#ce112d]/40 disabled:opacity-50"
+                  >
+                    <Mail size={14} className="text-[#ce112d]" />
+                    Send test email
+                  </button>
+                </div>
+              </section>
+            )}
 
             <section className="lg:col-span-2 order-5 rounded-xl border border-white/10 bg-[#111113] p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between gap-3">

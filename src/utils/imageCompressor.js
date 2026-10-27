@@ -8,14 +8,16 @@
  */
 
 export const COMPRESS_PRESETS = {
-  product:       { maxW: 1800, maxH: 2250, quality: 0.88, format: 'webp' },
-  gallery:       { maxW: 1600, maxH: 2000, quality: 0.88, format: 'webp' },
-  color:         { maxW: 1200, maxH: 1500, quality: 0.88, format: 'webp' },
-  banner:        { maxW: 1920, maxH: 1080, quality: 0.88, format: 'webp' },
-  slider:        { maxW: 1920, maxH: 1080, quality: 0.88, format: 'webp' },
-  slider_mobile: { maxW: 1080, maxH: 1350, quality: 0.88, format: 'webp' },
-  subcat:        { maxW: 900,  maxH: 1200, quality: 0.88, format: 'webp' },
-  thumbnail:     { maxW: 480,  maxH: 480,  quality: 0.84, format: 'webp' },
+  // Higher quality masters — storefront still requests display sizes from CDN when needed.
+  // Hero/slider used to look soft after ~0.88 WebP + a second resize proxy hop.
+  product:       { maxW: 2000, maxH: 2500, quality: 0.92, format: 'webp' },
+  gallery:       { maxW: 1800, maxH: 2250, quality: 0.92, format: 'webp' },
+  color:         { maxW: 1400, maxH: 1750, quality: 0.90, format: 'webp' },
+  banner:        { maxW: 2400, maxH: 1350, quality: 0.93, format: 'webp' },
+  slider:        { maxW: 2400, maxH: 1350, quality: 0.93, format: 'webp' },
+  slider_mobile: { maxW: 1200, maxH: 1500, quality: 0.92, format: 'webp' },
+  subcat:        { maxW: 1000, maxH: 1330, quality: 0.90, format: 'webp' },
+  thumbnail:     { maxW: 480,  maxH: 480,  quality: 0.86, format: 'webp' },
 };
 
 async function decodeImageFile(file) {

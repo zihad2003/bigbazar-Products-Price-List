@@ -2539,36 +2539,10 @@ async function placeShopOrder(c, o, customerId = null) {
 
     await tx.commit();
 
-    // Never block or fail the customer's order because of geo lookup or email
+    // Never block the customer's order. Email first (SMTP must not wait on geo/fraud),
+    // then save risk signals for admin.
     const notifyJob = (async () => {
-      const geo = await lookupIpGeo(c.env, clientIp);
-      try {
-        await conn.execute(
-          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
-          [clientIp, userAgent, geo ? JSON.stringify(geo) : null, id]
-        );
-      } catch (err) {
-        console.error('order signals save error:', err?.message || err);
-      }
-
-      let risk = null;
-      try {
-        let courier = null;
-        try { courier = await steadfastFraudCheck(c.env, o.customer_phone); } catch (_) {}
-        risk = await computeOrderRisk(conn, {
-          id,
-          customer_name: o.customer_name,
-          customer_phone: o.customer_phone,
-          customer_address: o.customer_address,
-          customer_ip: clientIp,
-          ip_geo: geo,
-          courier,
-        });
-      } catch (err) {
-        console.error('order risk error:', err?.message || err);
-      }
-
-      await sendOrderNotificationEmail(c.env, {
+      const emailPayload = {
         id,
         customerName: o.customer_name,
         customerPhone: o.customer_phone,
@@ -2580,10 +2554,43 @@ async function placeShopOrder(c, o, customerId = null) {
         total: calculatedTotalAmount,
         paymentRef: o.last_four_digits || 'COD',
         lines: orderLines,
-        geo,
-        risk,
-      });
-    })().catch((err) => console.error('order email error:', err?.message || err));
+        geo: null,
+        risk: null,
+      };
+
+      try {
+        await sendOrderNotificationEmail(c.env, emailPayload);
+        console.log('order email sent for', id);
+      } catch (err) {
+        console.error('order email error:', err?.message || err);
+      }
+
+      const geo = await lookupIpGeo(c.env, clientIp);
+      try {
+        await conn.execute(
+          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
+          [clientIp, userAgent, geo ? JSON.stringify(geo) : null, id]
+        );
+      } catch (err) {
+        console.error('order signals save error:', err?.message || err);
+      }
+
+      try {
+        let courier = null;
+        try { courier = await steadfastFraudCheck(c.env, o.customer_phone); } catch (_) {}
+        await computeOrderRisk(conn, {
+          id,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          customer_address: o.customer_address,
+          customer_ip: clientIp,
+          ip_geo: geo,
+          courier,
+        });
+      } catch (err) {
+        console.error('order risk error:', err?.message || err);
+      }
+    })().catch((err) => console.error('order notify job error:', err?.message || err));
     try {
       c.executionCtx.waitUntil(notifyJob);
     } catch (_) {
@@ -4785,6 +4792,38 @@ app.get('/admin/users', requireAuth, requireAdmin, async (c) => {
 });
 
 // POST /admin/notify-product — in-app + browser push to subscribed devices
+/** POST /admin/test-order-email — verify SMTP_USER / SMTP_PASS on this Hostinger app. */
+app.post('/admin/test-order-email', requireAuth, requireSuperAdmin, async (c) => {
+  try {
+    const readEnv = (key) => c.env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+    if (!readEnv('SMTP_USER') || !readEnv('SMTP_PASS')) {
+      return c.json({
+        error: 'SMTP_USER / SMTP_PASS missing on the server. Add them to Hostinger .env and restart the Node app.',
+      }, 400);
+    }
+    await sendOrderNotificationEmail(c.env, {
+      id: `test-${Date.now()}`,
+      customerName: 'SMTP Test',
+      customerPhone: '01800000000',
+      customerAddress: 'Test address — ignore this order',
+      customerNote: 'This is a test email from Admin → Settings.',
+      deliveryArea: 'chattogram',
+      deliveryCharge: 100,
+      subtotal: 0,
+      total: 100,
+      paymentRef: 'TEST',
+      lines: [{ name: 'SMTP connectivity test', qty: 1, unitPrice: 0, color: null, size: null }],
+      geo: null,
+      risk: null,
+    });
+    const to = String(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(c.env).join(','));
+    return c.json({ success: true, message: `Test email sent toward: ${to}` });
+  } catch (err) {
+    console.error('test order email failed:', err?.message || err);
+    return c.json({ error: err?.message || 'SMTP send failed' }, 502);
+  }
+});
+
 app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const productId = body.product_id || null;
