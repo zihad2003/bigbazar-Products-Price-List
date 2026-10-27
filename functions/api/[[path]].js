@@ -2539,32 +2539,32 @@ async function placeShopOrder(c, o, customerId = null) {
 
     await tx.commit();
 
-    // Never block the customer's order. Email first (SMTP must not wait on geo/fraud),
-    // then save risk signals for admin.
-    const notifyJob = (async () => {
-      const emailPayload = {
-        id,
-        customerName: o.customer_name,
-        customerPhone: o.customer_phone,
-        customerAddress: o.customer_address,
-        customerNote: customerNoteText(o.customer_note),
-        deliveryArea: normalizedArea,
-        deliveryCharge: calculatedDeliveryCharge,
-        subtotal: calculatedSubtotal,
-        total: calculatedTotalAmount,
-        paymentRef: o.last_four_digits || 'COD',
-        lines: orderLines,
-        geo: null,
-        risk: null,
-      };
+    // Await SMTP before responding. Test email works because it awaits; fire-and-forget
+    // notify jobs were often dropped on Hostinger right after the HTTP response closed.
+    // Geo/fraud stay async so a slow IP lookup never blocks the customer.
+    const emailPayload = {
+      id,
+      customerName: o.customer_name,
+      customerPhone: o.customer_phone,
+      customerAddress: o.customer_address,
+      customerNote: customerNoteText(o.customer_note),
+      deliveryArea: normalizedArea,
+      deliveryCharge: calculatedDeliveryCharge,
+      subtotal: calculatedSubtotal,
+      total: calculatedTotalAmount,
+      paymentRef: o.last_four_digits || 'COD',
+      lines: orderLines,
+      geo: null,
+      risk: null,
+    };
+    try {
+      await sendOrderNotificationEmail(c.env, emailPayload);
+      console.log('order email sent for', id);
+    } catch (err) {
+      console.error('order email error:', err?.message || err);
+    }
 
-      try {
-        await sendOrderNotificationEmail(c.env, emailPayload);
-        console.log('order email sent for', id);
-      } catch (err) {
-        console.error('order email error:', err?.message || err);
-      }
-
+    runInBackground(c, async () => {
       const geo = await lookupIpGeo(c.env, clientIp);
       try {
         await conn.execute(
@@ -2590,12 +2590,7 @@ async function placeShopOrder(c, o, customerId = null) {
       } catch (err) {
         console.error('order risk error:', err?.message || err);
       }
-    })().catch((err) => console.error('order notify job error:', err?.message || err));
-    try {
-      c.executionCtx.waitUntil(notifyJob);
-    } catch (_) {
-      // Node (Hostinger) has no executionCtx; the promise keeps running on its own
-    }
+    });
 
     await bumpCatalogVersion(c);
     runInBackground(c, () => prewarmCatalogCache(c));
