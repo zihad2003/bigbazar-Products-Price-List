@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ShoppingBag, Truck, CreditCard, CheckCircle, X } from 'lucide-react';
+import { Search, ShoppingBag, Truck, CreditCard, CheckCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import HeroSlider from '../components/sliders/HeroSlider';
 import HomeReviews from '../components/HomeReviews';
@@ -60,6 +60,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
   const [subcategoriesData, setSubcategoriesData] = useState(null);
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
+  const subcatScrollRef = useRef(null);
   const [siteSettings, setSiteSettings] = useState(() => {
     try {
       const cached = localStorage.getItem('bb_site_settings_cache');
@@ -269,25 +270,26 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
       )}
 
       <div className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto mt-8 md:mt-12 space-y-10">
-        {/* Photo-Based Subcategory Grid — rounded portrait cards, ~30% larger */}
+        {/* Subcategories: phone grid (fills evenly) · PC horizontal strip (no empty last row) */}
         {activeSubcategories.length > 0 && (
           <Reveal>
             <section className="relative px-3 sm:px-5 md:px-12">
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-2.5 md:gap-3">
-                {activeSubcategories.map((sub) => (
+              {(() => {
+                const openSub = (sub) => {
+                  const targetCat = sub._category || selectedCategory || 'All';
+                  const cat = targetCat === 'All' ? sub._category : targetCat;
+                  if (cat && cat !== 'All') {
+                    navigate(`/products?category=${encodeURIComponent(cat)}&subcategory=${encodeURIComponent(sub.id)}`);
+                  } else {
+                    navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
+                  }
+                };
+                const card = (sub, className) => (
                   <button
                     key={sub.id}
                     type="button"
-                    onClick={() => {
-                      const targetCat = sub._category || selectedCategory || 'All';
-                      const cat = targetCat === 'All' ? sub._category : targetCat;
-                      if (cat && cat !== 'All') {
-                        navigate(`/products?category=${encodeURIComponent(cat)}&subcategory=${encodeURIComponent(sub.id)}`);
-                      } else {
-                        navigate(`/products?subcategory=${encodeURIComponent(sub.id)}`);
-                      }
-                    }}
-                    className="flex flex-col items-center gap-1.5 sm:gap-2 transition-all active:scale-95 group min-w-0"
+                    onClick={() => openSub(sub)}
+                    className={`flex flex-col items-center gap-1.5 sm:gap-2 transition-all active:scale-95 group min-w-0 ${className || ''}`}
                   >
                     <div className="w-full aspect-[3/4] rounded-[1.35rem] sm:rounded-[1.6rem] md:rounded-[1.85rem] overflow-hidden bg-zinc-900 shadow-sm ring-1 ring-black/[0.06] group-hover:ring-[#ce112d]/40 group-hover:shadow-md transition-all duration-300">
                       {resolveSubcategoryImage(sub) ? (
@@ -312,8 +314,52 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                       {formatTitleCase(language === 'bn' ? (sub.name_bn || sub.name_en) : (sub.name_en || sub.name_bn))}
                     </span>
                   </button>
-                ))}
-              </div>
+                );
+
+                const scrollByCards = (dir) => {
+                  const el = subcatScrollRef.current;
+                  if (!el) return;
+                  const step = Math.max(el.clientWidth * 0.7, 220);
+                  el.scrollBy({ left: dir * step, behavior: 'smooth' });
+                };
+
+                return (
+                  <>
+                    {/* Mobile / small tablet: 3-col grid */}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-2.5 md:hidden">
+                      {activeSubcategories.map((sub) => card(sub))}
+                    </div>
+
+                    {/* PC: one-row horizontal strip */}
+                    <div className="hidden md:block relative group/subcats">
+                      <button
+                        type="button"
+                        aria-label={language === 'bn' ? 'আগের সাবক্যাটাগরি' : 'Previous subcategories'}
+                        onClick={() => scrollByCards(-1)}
+                        className="absolute left-0 top-[38%] -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/95 border border-zinc-200 shadow-md text-zinc-700 hover:text-[#ce112d] hover:border-[#ce112d]/40 flex items-center justify-center opacity-0 group-hover/subcats:opacity-100 transition-opacity"
+                      >
+                        <ChevronLeft size={20} strokeWidth={2.25} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={language === 'bn' ? 'পরের সাবক্যাটাগরি' : 'Next subcategories'}
+                        onClick={() => scrollByCards(1)}
+                        className="absolute right-0 top-[38%] -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/95 border border-zinc-200 shadow-md text-zinc-700 hover:text-[#ce112d] hover:border-[#ce112d]/40 flex items-center justify-center opacity-0 group-hover/subcats:opacity-100 transition-opacity"
+                      >
+                        <ChevronRight size={20} strokeWidth={2.25} />
+                      </button>
+                      <div
+                        ref={subcatScrollRef}
+                        className="flex gap-3 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory pb-1 px-1"
+                      >
+                        {activeSubcategories.map((sub) =>
+                          card(sub, 'w-[148px] lg:w-[168px] xl:w-[180px] shrink-0 snap-start')
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </section>
           </Reveal>
         )}
