@@ -254,7 +254,10 @@ function PublicLayout() {
       />
 
       {!isCheckoutPage && !isConfirmationPage && (
-        <ChatWidget hidden={isCartOpen} onOpenAuth={() => openModal(setIsAuthOpen)} />
+        <ChatWidget
+          hidden={isCartOpen || isAuthOpen || isCategoryOpen}
+          onOpenAuth={() => openModal(setIsAuthOpen)}
+        />
       )}
       {!isCheckoutPage && !isConfirmationPage && promoPopup?.enabled && promoPopup?.image_url && (
         <PromoPopup

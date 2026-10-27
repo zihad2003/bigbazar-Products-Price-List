@@ -61,13 +61,15 @@
   }
 }
 
-/* Mobile: labeled chat pill on the left, above the tab bar, clear of Order Now. */
+/* Mobile: labeled chat pill on the RIGHT, above the bottom tab bar.
+   Product page sticky Order bar sits higher (≈176px) — keep chat lower so they don't overlap. */
 @media (max-width: 640px) {
   .chat-widget-fab {
-    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    right: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    left: auto;
     width: auto;
+    max-width: calc(100vw - 5.5rem); /* leave room for center cart FAB */
     height: 40px;
     padding: 0 12px 0 10px;
     justify-content: center;
@@ -78,9 +80,9 @@
   }
 
   .chat-widget-fab--product {
-    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    right: auto;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 12px;
+    left: auto;
   }
 }
 
