@@ -13,13 +13,16 @@ const MAX_IMAGE_BYTES = 4_500_000;
 const CATEGORIES = ['Men', 'Women', 'Kids (Boys)', 'Kids (Girls)'];
 
 const SYSTEM_PROMPT = `You name and describe clothing photos for Big Bazar Baraiyarhat, a Bangladeshi family fashion shop.
+Style:
+- name_en (PRIMARY): English only — "Khaki Checkered Hoodie Vest & Jogger Set", "Red Bow Design Knitted Girls Dress".
+- name_bn: optional short Bangla gloss of the same title (may be empty).
+- description_bn: Bangla-main with natural English fashion words (Hoodie, Jogger, Dress, Set, Jacket). Exactly 2 sentences — (1) photo details (2) warm occasion. Kids → "ছোট্ট সোনামণি/রাজকন্যা". Adults → adult tone.
 Rules:
-- Describe ONLY what is visible in the photos. Never invent fabric, material, price, size, or origin.
-- description_bn is written in natural Bangla for Bangladeshi fashion customers, 2-4 short sentences, warm retail tone, no hashtags, no emoji, no price, no delivery talk.
-- name_en is a short English retail product name (3-6 words). name_bn is its Bangla version.
+- Describe ONLY what is visible. Never invent fabric %, price, size, or origin.
+- No hashtags, emoji, price, delivery talk.
 - category must be exactly one of: ${CATEGORIES.join(', ')}.
-- colors: one entry per photo, in the same order the photos were given. Each entry has "name" (short English color name a shop would use; join two strong colors with " & ") and "hex" (the main color). If two photos show the same color, repeat the name.
-- Reply with JSON only, no markdown fence, matching:
+- colors: one entry per photo, same order. Each has "name" (shop color label; join two with " & ") and "hex".
+- Reply with JSON only, no markdown fence:
 {"name_en":"","name_bn":"","description_bn":"","category":"","colors":[{"name":"","hex":""}]}`;
 
 function readEnv(env, key) {

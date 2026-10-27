@@ -173,17 +173,15 @@ function parseAiJson(raw) {
 function sanitizeNames(names, ctx) {
   const base = humanizeLabel(ctx.subcategory_label || ctx.subcategory || ctx.category) || 'Fashion';
   const allowedColors = new Set(colorLabels(ctx.colors).map((c) => c.toLowerCase()));
-  return (Array.isArray(names) ? names : [])
+  const isMostlyBangla = (n) => (/[\u0980-\u09FF]/.test(n) && (n.match(/[\u0980-\u09FF]/g) || []).length >= (n.match(/[A-Za-z]/g) || []).length);
+  const cleaned = (Array.isArray(names) ? names : [])
     .map((n) => String(n || '').replace(/\s+/g, ' ').trim())
     .filter(Boolean)
-    .filter((n) => n.length <= 70)
+    .filter((n) => n.length <= 80)
     .filter((n) => !/^women collection$/i.test(n) && !/^men collection$/i.test(n) && !/^kids collection$/i.test(n))
+    // Product title must be English — drop Bangla-script names from the chip list
+    .filter((n) => !isMostlyBangla(n))
     .map((n) => {
-      // Strip color claims that were not in admin color list
-      if (!allowedColors.size && /\s[—\-–]\s*[A-Za-z\u0980-\u09FF]+$/.test(n)) {
-        // keep as-is if no colors provided — AI may have seen image; still ok
-        return n;
-      }
       if (allowedColors.size) {
         const m = n.match(/\s[—\-–]\s*([A-Za-z\u0980-\u09FF /]+)$/);
         if (m) {
@@ -195,8 +193,8 @@ function sanitizeNames(names, ctx) {
       }
       return n;
     })
-    .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i)
-    .slice(0, 5);
+    .filter((n, i, arr) => arr.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
+  return cleaned.slice(0, 5);
 }
 
 function sanitizeDescription(text, ctx) {
@@ -218,21 +216,30 @@ function sanitizeDescription(text, ctx) {
   return d;
 }
 
-const SYSTEM_PROMPT = `You are Big Bazar's expert fashion copywriter for a Bangladeshi family clothing store.
+const SYSTEM_PROMPT = `You are Big Bazar's expert fashion copywriter for a Bangladeshi family clothing store (Baraiyarhat).
+When a product photo is attached, LOOK AT THE PHOTO FIRST — colors, garment type, pattern, neckline, sleeve, buttons, bows, layers, pants/skirt — then write.
+
 Return ONLY valid JSON (no markdown):
-{"names":["...","...","...","...","..."],"description":"...","description_en":"..."}
+{"names":["English Name","...","...","...","..."],"description":"...","description_en":"..."}
+
+NAME (English only):
+- names[0] is the main product title — English only (Latin script). Formula: Color + design detail + garment (+ Set if multi-piece).
+- Example: "Khaki Checkered Hoodie Vest & Jogger Set", "Mustard Jacket & Black Jogger Set", "Red Bow Design Knitted Girls Dress".
+- names[1..4]: more English variants customers might search. Max ~60 chars. No Bangla script in names.
+
+DESCRIPTION (Bangla-main + natural English fashion words — NOT pure English, NOT stiff pure Bangla):
+- description: exactly 2 sentences in Bangla script, but keep common fashion words in English when natural (Hoodie, Jogger, Set, Dress, Jacket, T-Shirt, Bow, Ruffle, Knitted, Zipper, Collar).
+- Sentence 1: concrete photo details (colors, sleeves, print, buttons, bows, pants/skirt).
+- Sentence 2: who it suits + occasion (winter/casual/party), warm retail tone.
+- Style example: "খাকি রঙের stylish Hoodie Vest, কালো-ক্রিম checkered full sleeve ডিজাইন, ভেতরে সাদা T-Shirt এবং matching Jogger pant-এর সুন্দর combination। শীতের দিনে ছোট্ট সোনামণির casual ও trendy look-এর জন্য দারুণ একটি outfit।"
+- description_en: 1–2 full English sentences mirroring the same pitch (optional reference).
 
 STRICT RULES:
-1. names: exactly 4-5 short retail titles (max 55 chars). Specific fashion names customers search on Facebook/WhatsApp.
-2. NEVER use vague titles like "Women Collection", "Men Collection", "New Arrival", "Fashion Item".
-3. Anchor titles on the subcategory product type (Three Piece, Saree, Panjabi, Parshi, Two Piece, etc.).
-4. description: 2-3 natural Bangla sentences — look/feel, occasion, who it suits. No emojis.
-5. description_en: 1-2 English sentences mirroring the Bangla pitch.
-6. ONLY mention a color if it appears in the provided colors array OR you can clearly see it in the product photo. Never guess wrong colors (e.g. do not say Brown for a lavender outfit).
-7. Do NOT invent fabric composition, discounts, stock, or brand claims not given.
-8. Do NOT append store address, "Big Bazar", or "Baraiyarhat" in the description.
-9. If improving existing copy, keep truth and only polish clarity + appeal.
-10. Prefer searchable Bangla-English mix titles when natural (e.g. "রেডি পার্টি থ্রি পিস", "Premium Party Three Piece").`;
+1. NEVER vague titles: "Women Collection", "Men Collection", "New Arrival", "Fashion Item", "Kids Collection".
+2. ONLY mention colors visible in the photo or in colors_confirmed_by_admin.
+3. Do NOT invent fabric %, discounts, stock, brand, or store address. No "Big Bazar" / "Baraiyarhat" in description. No emoji, hashtags, or price.
+4. If subcategory and photo disagree, trust the PHOTO.
+5. Kids (Boys)/Kids (Girls): soft tone ("ছোট্ট সোনামণি" / "ছোট্ট রাজকন্যা"). Men/Women: adult tone.`;
 
 async function callGroq(apiKey, systemPrompt, userPrompt) {
   const models = ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b'];
@@ -250,8 +257,8 @@ async function callGroq(apiKey, systemPrompt, userPrompt) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 800,
-          temperature: 0.55,
+          max_tokens: 900,
+          temperature: 0.45,
         }),
       });
       const data = await res.json();
@@ -265,8 +272,10 @@ async function callGroq(apiKey, systemPrompt, userPrompt) {
 }
 
 async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  // Prefer current vision Flash models; keep 2.5/2.0 as fallbacks.
+  const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   const userParts = [{ text: userPrompt }];
+  let attachedImage = false;
 
   if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
     try {
@@ -279,7 +288,9 @@ async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
           for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
           const b64 = btoa(binary);
           const mime = imgRes.headers.get('content-type') || 'image/jpeg';
+          userParts.unshift({ text: 'Product photo attached. Describe and name THIS garment from the image.' });
           userParts.push({ inlineData: { mimeType: mime.split(';')[0], data: b64 } });
+          attachedImage = true;
         }
       }
     } catch (e) {
@@ -296,9 +307,18 @@ async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: userParts }],
-          generationConfig: { maxOutputTokens: 800, temperature: 0.5 },
+          generationConfig: {
+            maxOutputTokens: 900,
+            temperature: 0.4,
+            ...(attachedImage ? { responseMimeType: 'application/json' } : {}),
+          },
         }),
       });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        console.error(`product-copy Gemini ${model} HTTP ${res.status}:`, errBody?.error?.message || '');
+        continue;
+      }
       const data = await res.json();
       const text = cleanText(data.candidates?.[0]?.content?.parts?.[0]?.text);
       if (text) return text;

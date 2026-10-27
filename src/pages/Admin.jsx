@@ -1364,11 +1364,17 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
           };
         });
           setPreviewImage(uploadedUrls[0]);
-          // Assist only suggests. A failure here must never block the upload or Save.
-          runProductAssist([
+          const assistUrls = [
             ...uploadedUrls,
             ...(form.images || []).filter(img => !uploadedUrls.includes(img)),
-          ].slice(0, 4)).catch(() => setAssistBusy(false));
+          ].slice(0, 4);
+          // Color assist (optional flag) + vision copy for name/description — start as soon as upload finishes.
+          runProductAssist(assistUrls).catch(() => setAssistBusy(false));
+          requestProductCopy('both', {
+            imageUrl: uploadedUrls[0],
+            fillEmptyOnly: true,
+            auto: true,
+          }).catch(() => setCopyBusy(null));
         } else {
           setForm(prev => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
           setPreviewImage(uploadedUrls[uploadedUrls.length - 1]);
@@ -1550,7 +1556,7 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
 
     setAssistBusy(true);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), 45000);
     try {
       const endpoint = (!API_URL || API_URL === '/')
         ? '/api/admin/analyze-product'
@@ -1583,31 +1589,23 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         return;
       }
 
+      // Colors only here — name/description come from product-copy (vision) so they don't race.
       setForm(prev => {
-        const next = { ...prev };
-        if (!String(prev.name || '').trim() && data.name_en) next.name = data.name_en;
-        if (!String(prev.description || '').trim() && data.description_bn) {
-          next.description = descriptionWithVideoNote(data.description_bn, !!String(prev.video_url || '').trim());
-        }
-        if (prev._photoColors && Array.isArray(data.colors) && data.colors.length) {
-          next.available_colors = (prev.available_colors || []).map(row => {
+        if (!prev._photoColors || !Array.isArray(data.colors) || !data.colors.length) return prev;
+        return {
+          ...prev,
+          available_colors: (prev.available_colors || []).map(row => {
             const hit = data.colors.find(c => c.image_url === row.image && String(c.name || '').trim());
             return hit && !String(row.name || '').trim()
               ? { ...row, name: hit.name, hex: hit.hex || row.hex }
               : row;
-          });
-        }
-        return next;
+          }),
+        };
       });
       const nameChips = [data.name_en, data.name_bn].filter(Boolean);
       if (nameChips.length) {
         setNameSuggestions(prev => [...new Set([...nameChips, ...prev])].slice(0, 8));
       }
-      setFormAlert({
-        type: 'success',
-        title: 'AI read the photos',
-        message: `${data.category ? `Looks like: ${data.category}. ` : ''}Only empty fields were filled — everything stays editable.`,
-      });
     } catch (_) {
       setFormAlert({
         type: 'error',
@@ -1620,7 +1618,9 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
     }
   };
 
-  const requestProductCopy = async (mode = 'both') => {
+  const requestProductCopy = async (mode = 'both', opts = {}) => {
+    const fillEmptyOnly = !!opts.fillEmptyOnly;
+    const auto = !!opts.auto;
     setCopyBusy(mode);
     try {
       const endpoint = (!API_URL || API_URL === '/')
@@ -1640,7 +1640,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         return hit ? (hit.name_en || hit.en || hit.id) : form.subcategory;
       })();
 
-      const imageUrl = form.image_url || (Array.isArray(form.images) ? form.images[0] : '') || '';
+      const imageUrl = opts.imageUrl
+        || form.image_url
+        || (Array.isArray(form.images) ? form.images[0] : '')
+        || '';
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -1669,31 +1672,38 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
       if (mode === 'name' || mode === 'both') {
         const names = Array.isArray(data.names) ? data.names.filter(Boolean) : [];
         setNameSuggestions(names);
-        // Don't auto-overwrite a name the admin already typed unless empty
-        if (!form.name?.trim() && names[0]) {
-          setForm((prev) => ({ ...prev, name: names[0] }));
+        if (names[0]) {
+          setForm((prev) => {
+            if (fillEmptyOnly && String(prev.name || '').trim()) return prev;
+            return { ...prev, name: names[0] };
+          });
         }
       }
-      if (mode === 'description' || mode === 'both') {
-        if (data.description) {
-          setForm((prev) => ({ ...prev, description: data.description }));
-        }
+      if ((mode === 'description' || mode === 'both') && data.description) {
+        setForm((prev) => {
+          if (fillEmptyOnly && String(prev.description || '').trim()) return prev;
+          return { ...prev, description: data.description };
+        });
       }
       setFormAlert({
         title: data.source === 'ai'
           ? (data.used_image ? 'AI copy ready (photo read)' : 'AI copy ready')
           : 'Smart template ready',
         message: data.source === 'ai'
-          ? 'Pick a name chip, then tweak description if needed.'
+          ? (auto
+            ? 'Photo upload-এর পর AI নাম ও ডেসক্রিপশন লিখেছে — চাইলে এডিট করুন।'
+            : 'Pick a name chip, then tweak description if needed.')
           : 'AI key offline/failed — used smarter template from category + colors. Add a photo for better AI names.',
         type: 'success',
       });
     } catch (err) {
-      setFormAlert({
-        title: 'Copy helper failed',
-        message: err.message || 'Could not generate product copy',
-        type: 'error',
-      });
+      if (!auto) {
+        setFormAlert({
+          title: 'Copy helper failed',
+          message: err.message || 'Could not generate product copy',
+          type: 'error',
+        });
+      }
     } finally {
       setCopyBusy(null);
     }
@@ -3395,9 +3405,10 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                         <span className="text-[11px] text-[#ce112d]">
                           {uploadStatus === 'compressing' ? 'Compressing…' : `Uploading ${uploadProgress.current}/${uploadProgress.total}`}
                         </span>
-                      ) : assistBusy ? (
+                      ) : (assistBusy || copyBusy) ? (
                         <span className="text-[11px] text-amber-400 inline-flex items-center gap-1">
-                          <Sparkles size={11} /> Analyzing…
+                          <Sparkles size={11} />
+                          {copyBusy ? 'AI writing name & description…' : 'Analyzing photo…'}
                         </span>
                       ) : null}
                     </div>
