@@ -1646,10 +1646,16 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
         return hit ? (hit.name_en || hit.en || hit.id) : form.subcategory;
       })();
 
-      const imageUrl = opts.imageUrl
+      let imageUrl = opts.imageUrl
         || form.image_url
         || (Array.isArray(form.images) ? form.images[0] : '')
         || '';
+      // Always send absolute URL so the server can fetch vision bytes reliably
+      if (imageUrl && !/^https?:\/\//i.test(imageUrl) && !imageUrl.startsWith('data:')) {
+        try {
+          imageUrl = new URL(imageUrl, window.location.origin).href;
+        } catch (_) {}
+      }
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -1691,16 +1697,20 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
           return { ...prev, description: data.description };
         });
       }
+      const sawPhoto = !!data.used_image;
       setFormAlert({
         title: data.source === 'ai'
-          ? (data.used_image ? 'AI copy ready (photo read)' : 'AI copy ready')
+          ? (sawPhoto ? 'AI copy ready (photo read)' : 'AI copy ready (no photo)')
           : 'Smart template ready',
-        message: data.source === 'ai'
-          ? (auto
-            ? 'Photo upload-এর পর AI নাম ও ডেসক্রিপশন লিখেছে — চাইলে এডিট করুন।'
-            : 'Pick a name chip, then tweak description if needed.')
-          : 'AI key offline/failed — used smarter template from category + colors. Add a photo for better AI names.',
-        type: 'success',
+        message: data.warning
+          || (data.source === 'ai'
+            ? (sawPhoto
+              ? (auto
+                ? 'ফটো দেখে নাম ও ডেসক্রিপশন লেখা হয়েছে — চাইলে এডিট করুন।'
+                : 'Pick a name chip, then tweak description if needed.')
+              : 'Photo load হয়নি — subcategory থেকে লেখা। Improve desc আবার চাপুন।')
+            : 'AI key offline/failed — used template from category. Add a clear photo and retry.'),
+        type: sawPhoto || data.source === 'ai' ? 'success' : 'error',
       });
     } catch (err) {
       if (!auto) {

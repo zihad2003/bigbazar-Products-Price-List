@@ -7,6 +7,24 @@ function cleanText(s) {
   return String(s || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 }
 
+function bytesToBase64(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const CHUNK = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function mimeFromName(fileName) {
+  const ext = String(fileName || '').split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
 function colorLabels(colors) {
   if (!Array.isArray(colors)) return [];
   return colors
@@ -179,6 +197,9 @@ function sanitizeNames(names, ctx) {
     .filter(Boolean)
     .filter((n) => n.length <= 80)
     .filter((n) => !/^women collection$/i.test(n) && !/^men collection$/i.test(n) && !/^kids collection$/i.test(n))
+    .filter((n) => !/^(premium\s+)?kids\s+winter\s+collection$/i.test(n))
+    .filter((n) => !/^new\s+kids\s+winter\s+collection$/i.test(n))
+    .filter((n) => !/^kids\s*\(girls\)\s*kids\s+winter/i.test(n))
     // Product title must be English — drop Bangla-script names from the chip list
     .filter((n) => !isMostlyBangla(n))
     .map((n) => {
@@ -235,11 +256,12 @@ DESCRIPTION (Bangla-main + natural English fashion words — NOT pure English, N
 - description_en: 1–2 full English sentences mirroring the same pitch (optional reference).
 
 STRICT RULES:
-1. NEVER vague titles: "Women Collection", "Men Collection", "New Arrival", "Fashion Item", "Kids Collection".
-2. ONLY mention colors visible in the photo or in colors_confirmed_by_admin.
-3. Do NOT invent fabric %, discounts, stock, brand, or store address. No "Big Bazar" / "Baraiyarhat" in description. No emoji, hashtags, or price.
-4. If subcategory and photo disagree, trust the PHOTO.
-5. Kids (Boys)/Kids (Girls): soft tone ("ছোট্ট সোনামণি" / "ছোট্ট রাজকন্যা"). Men/Women: adult tone.`;
+1. NEVER vague titles: "Women Collection", "Men Collection", "New Arrival", "Fashion Item", "Kids Collection", "Kids Winter Collection", "Premium Kids Winter Collection", or any title that is only the subcategory name.
+2. When a photo is attached you MUST describe what is visible (color, neckline, sleeves, bows, flowers, vest/layer, dress/set). Generic "soft fabric winter wear" text without those details is forbidden.
+3. ONLY mention colors visible in the photo or in colors_confirmed_by_admin.
+4. Do NOT invent fabric %, discounts, stock, brand, or store address. No "Big Bazar" / "Baraiyarhat" in description. No emoji, hashtags, or price.
+5. If subcategory and photo disagree, trust the PHOTO.
+6. Kids (Boys)/Kids (Girls): soft tone ("ছোট্ট সোনামণি" / "ছোট্ট রাজকন্যা"). Men/Women: adult tone.`;
 
 async function callGroq(apiKey, systemPrompt, userPrompt) {
   const models = ['openai/gpt-oss-120b', 'groq/compound', 'qwen/qwen3.6-27b'];
@@ -271,31 +293,80 @@ async function callGroq(apiKey, systemPrompt, userPrompt) {
   return '';
 }
 
-async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
+async function loadProductImage(env, imageUrl) {
+  const raw = String(imageUrl || '').trim();
+  if (!raw || raw.startsWith('data:')) return null;
+
+  // Hostinger disk: /api/img/up-xxxx.webp → uploads/api/img/up-xxxx.webp
+  const relMatch = raw.match(/\/api\/img\/([^/?#]+)$/i) || raw.match(/^\/?([^/?#]+\.(?:webp|jpe?g|png|gif))$/i);
+  if (relMatch && typeof process !== 'undefined') {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const fileName = decodeURIComponent(relMatch[1]);
+      const candidates = [
+        path.resolve(process.cwd(), 'uploads', 'api', 'img', fileName),
+        path.resolve(process.cwd(), 'dist', 'api', 'img', fileName),
+        path.resolve(process.cwd(), 'public', 'api', 'img', fileName),
+      ];
+      for (const file of candidates) {
+        try {
+          if (!fs.existsSync(file)) continue;
+          const buf = fs.readFileSync(file);
+          if (buf.length > 0 && buf.length < 4_500_000) {
+            return { mimeType: mimeFromName(fileName), data: bytesToBase64(buf) };
+          }
+        } catch (e) {
+          console.error('product-copy disk read:', e?.message || e);
+        }
+      }
+    } catch (_) {
+      /* Workers / non-Node — fall through to HTTP fetch */
+    }
+  }
+
+  const site =
+    env?.PUBLIC_SITE_ORIGIN ||
+    env?.PUBLIC_SITE_URL ||
+    env?.SITE_URL ||
+    (typeof process !== 'undefined' && (process.env?.PUBLIC_SITE_ORIGIN || process.env?.PUBLIC_SITE_URL || process.env?.SITE_URL)) ||
+    'https://onlinebigbazar.com';
+  let absolute = raw;
+  if (!/^https?:\/\//i.test(raw)) {
+    try {
+      absolute = new URL(raw, String(site).replace(/\/$/, '') + '/').href;
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const imgRes = await fetch(absolute, { cf: { cacheTtl: 60 } });
+    if (!imgRes.ok) {
+      console.error('product-copy image HTTP', imgRes.status, absolute);
+      return null;
+    }
+    const buf = await imgRes.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength >= 4_500_000) return null;
+    const mime = (imgRes.headers.get('content-type') || mimeFromName(absolute)).split(';')[0];
+    return { mimeType: mime.startsWith('image/') ? mime : 'image/jpeg', data: bytesToBase64(buf) };
+  } catch (e) {
+    console.error('product-copy image fetch:', e?.message || e);
+    return null;
+  }
+}
+
+async function callGemini(apiKey, systemPrompt, userPrompt, imagePart) {
   // Prefer current vision Flash models; keep 2.5/2.0 as fallbacks.
   const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   const userParts = [{ text: userPrompt }];
-  let attachedImage = false;
+  const attachedImage = Boolean(imagePart?.data);
 
-  if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
-    try {
-      const imgRes = await fetch(imageUrl, { cf: { cacheTtl: 300 } });
-      if (imgRes.ok) {
-        const buf = await imgRes.arrayBuffer();
-        if (buf.byteLength > 0 && buf.byteLength < 4_500_000) {
-          const bytes = new Uint8Array(buf);
-          let binary = '';
-          for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
-          const b64 = btoa(binary);
-          const mime = imgRes.headers.get('content-type') || 'image/jpeg';
-          userParts.unshift({ text: 'Product photo attached. Describe and name THIS garment from the image.' });
-          userParts.push({ inlineData: { mimeType: mime.split(';')[0], data: b64 } });
-          attachedImage = true;
-        }
-      }
-    } catch (e) {
-      console.error('product-copy image fetch:', e);
-    }
+  if (attachedImage) {
+    userParts.unshift({
+      text: 'Product photo is attached as inline image. You MUST name and describe THIS exact garment from the photo (colors, layers, bows, flowers, sleeves). Do not write generic subcategory copy.',
+    });
+    userParts.push({ inlineData: { mimeType: imagePart.mimeType || 'image/jpeg', data: imagePart.data } });
   }
 
   for (const model of models) {
@@ -309,7 +380,7 @@ async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
           contents: [{ role: 'user', parts: userParts }],
           generationConfig: {
             maxOutputTokens: 900,
-            temperature: 0.4,
+            temperature: 0.35,
             ...(attachedImage ? { responseMimeType: 'application/json' } : {}),
           },
         }),
@@ -321,29 +392,12 @@ async function callGemini(apiKey, systemPrompt, userPrompt, imageUrl) {
       }
       const data = await res.json();
       const text = cleanText(data.candidates?.[0]?.content?.parts?.[0]?.text);
-      if (text) return text;
+      if (text) return { text, usedImage: attachedImage };
     } catch (e) {
       console.error(`product-copy Gemini ${model}:`, e);
     }
   }
-  return '';
-}
-
-function absoluteImageUrl(env, imageUrl) {
-  const raw = String(imageUrl || '').trim();
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith('data:')) return '';
-  const site =
-    env?.PUBLIC_SITE_URL ||
-    env?.SITE_URL ||
-    (typeof process !== 'undefined' && (process.env?.PUBLIC_SITE_URL || process.env?.SITE_URL)) ||
-    'https://onlinebigbazar.com';
-  try {
-    return new URL(raw, String(site).replace(/\/$/, '') + '/').href;
-  } catch {
-    return '';
-  }
+  return { text: '', usedImage: false };
 }
 
 export async function generateProductCopy(env, ctx = {}) {
@@ -358,14 +412,14 @@ export async function generateProductCopy(env, ctx = {}) {
   const sizes = sizeLabels(ctx.sizes);
   const subcategory = humanizeLabel(ctx.subcategory_label || ctx.subcategory);
   const category = humanizeLabel(ctx.category);
-  const imageUrl = absoluteImageUrl(env, ctx.image_url);
+  const imagePart = ctx.image_url ? await loadProductImage(env, ctx.image_url) : null;
 
   const userPrompt = JSON.stringify({
     task: mode === 'name'
-      ? 'Suggest retail product names only (still return full JSON; description can be short polish of current).'
+      ? 'Suggest retail product names from the PHOTO (still return full JSON).'
       : mode === 'description'
-        ? 'Write a better product description; still return name options anchored on subcategory.'
-        : 'Suggest names and write description.',
+        ? 'Write a photo-accurate product description; names must also match the photo, not only subcategory.'
+        : 'Suggest names and write description from the product PHOTO.',
     current_name: ctx.name || '',
     current_description: ctx.description || '',
     category,
@@ -376,19 +430,37 @@ export async function generateProductCopy(env, ctx = {}) {
     colors_confirmed_by_admin: colors,
     sizes,
     is_exclusive: Boolean(ctx.is_exclusive),
-    has_product_photo: Boolean(imageUrl),
+    has_product_photo: Boolean(imagePart),
     notes: ctx.notes || '',
-    reminder: 'If colors_confirmed_by_admin is empty, do not invent color names unless clearly visible in the photo.',
+    reminder: imagePart
+      ? 'Photo is attached. Describe visible details. Never output only the subcategory name.'
+      : 'No photo attached — use category/subcategory carefully; avoid inventing unseen details.',
   });
 
   let raw = '';
-  // Prefer Gemini when we have a photo (vision) or always try Gemini first for copy quality
-  if (geminiApiKey) raw = await callGemini(geminiApiKey, SYSTEM_PROMPT, userPrompt, imageUrl);
-  if (!raw && groqApiKey) raw = await callGroq(groqApiKey, SYSTEM_PROMPT, userPrompt);
-  if (!raw) return fallback;
+  let usedImage = false;
+  if (geminiApiKey) {
+    const gem = await callGemini(geminiApiKey, SYSTEM_PROMPT, userPrompt, imagePart);
+    raw = gem.text;
+    usedImage = gem.usedImage;
+  }
+  // Groq has no vision — only use when there is no photo to describe
+  if (!raw && groqApiKey && !imagePart) {
+    raw = await callGroq(groqApiKey, SYSTEM_PROMPT, userPrompt);
+  }
+  if (!raw) {
+    return {
+      ...fallback,
+      source: 'template',
+      used_image: false,
+      warning: ctx.image_url && !imagePart
+        ? 'Photo could not be loaded for AI vision — used template. Redeploy/check /api/img path.'
+        : (imagePart ? 'Vision model failed — used template.' : undefined),
+    };
+  }
 
   const parsed = parseAiJson(raw);
-  if (!parsed) return { ...fallback, source: 'template', ai_raw: raw.slice(0, 200) };
+  if (!parsed) return { ...fallback, source: 'template', used_image: usedImage, ai_raw: raw.slice(0, 200) };
 
   const names = sanitizeNames(parsed.names, ctx);
   const description = sanitizeDescription(parsed.description, ctx);
@@ -399,6 +471,6 @@ export async function generateProductCopy(env, ctx = {}) {
     description: description || fallback.description,
     description_en: descriptionEn || fallback.description_en,
     source: 'ai',
-    used_image: Boolean(imageUrl),
+    used_image: usedImage,
   };
 }
