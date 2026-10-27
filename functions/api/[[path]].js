@@ -4916,6 +4916,7 @@ app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
       if (subs?.length) {
         const origin = new URL(c.req.url).origin;
         const url = productId ? `${origin}/product/${productId}` : `${origin}/products`;
+        const productImage = String(body.image_url || body.product_image || '').trim();
         push = await sendWebPushBatch(
           subs,
           {
@@ -4923,6 +4924,9 @@ app.post('/admin/notify-product', requireAuth, requireAdmin, async (c) => {
             body: notifBody,
             url,
             product_id: productId,
+            icon: `${origin}/push-icon.png`,
+            badge: `${origin}/push-badge.png`,
+            ...(productImage && /^https?:\/\//i.test(productImage) ? { image: productImage } : {}),
           },
           vapid,
           {

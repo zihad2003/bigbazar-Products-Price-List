@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bigbazar-cache-v3';
-const API_CACHE_NAME = 'bigbazar-api-v3';
-const IMG_CACHE_NAME = 'bigbazar-img-v3';
+const CACHE_NAME = 'bigbazar-cache-v4';
+const API_CACHE_NAME = 'bigbazar-api-v4';
+const IMG_CACHE_NAME = 'bigbazar-img-v4';
 
 // Install event — activate immediately without waiting
 self.addEventListener('install', (event) => {
@@ -158,11 +158,17 @@ self.addEventListener('push', (event) => {
     } catch (__) {}
   }
 
+  const origin = self.location.origin;
+  const icon = data.icon || `${origin}/push-icon.png`;
+  const badge = data.badge || `${origin}/push-badge.png`;
+  const image = data.image || undefined;
+
   event.waitUntil(
     self.registration.showNotification(data.title || 'Big Bazar', {
       body: data.body || '',
-      icon: '/push-icon.png',
-      badge: '/push-badge.png',
+      icon,
+      badge,
+      ...(image ? { image } : {}),
       data: { url: data.url || (data.product_id ? `/product/${data.product_id}` : '/') },
       vibrate: [120, 60, 120],
     })
