@@ -1104,7 +1104,13 @@ ${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.custom
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ product_id: newId, product_name: productData.name }),
+              body: JSON.stringify({
+                product_id: newId,
+                product_name: productData.name,
+                image_url: productData.image_url
+                  || (Array.isArray(productData.images) ? productData.images[0] : '')
+                  || '',
+              }),
             });
             const text = await res.text();
             let data = {};
