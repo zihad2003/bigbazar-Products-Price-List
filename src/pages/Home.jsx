@@ -286,7 +286,7 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
                 };
                 const card = (sub, className) => (
                   <button
-                    key={sub.id}
+                    key={`${sub._category || selectedCategory || 'All'}::${sub.id}`}
                     type="button"
                     onClick={() => openSub(sub)}
                     className={`flex flex-col items-center gap-1.5 sm:gap-2 transition-all active:scale-95 group min-w-0 ${className || ''}`}

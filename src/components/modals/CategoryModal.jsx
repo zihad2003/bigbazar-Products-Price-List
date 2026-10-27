@@ -17,7 +17,6 @@ const CategoryModal = ({
     const navigate = useNavigate();
     const [expandedCat, setExpandedCat] = useState(null);
     const [subcategoriesData, setSubcategoriesData] = useState(null);
-    const [subCounts, setSubCounts] = useState({});
 
     useEffect(() => {
         if (!isOpen) return;
@@ -29,15 +28,6 @@ const CategoryModal = ({
                 : data.subcategories;
             if (subcats && typeof subcats === 'object') {
                 setSubcategoriesData(subcats);
-            }
-        });
-        bigBazarApi.from('subcategory-counts').select('*').then(({ data }) => {
-            if (data && Array.isArray(data)) {
-                const countsMap = {};
-                data.forEach(item => {
-                    if (item.subcategory) countsMap[item.subcategory] = item.count;
-                });
-                setSubCounts(countsMap);
             }
         });
     }, [isOpen]);
@@ -101,10 +91,8 @@ const CategoryModal = ({
 
                         <div className="overflow-y-auto no-scrollbar scrollbar-hide p-4 pt-2 space-y-2 flex-1 bg-white">
                             {categories.map((cat) => {
-                                const allSubcategories = getSubcategoriesForCategory(cat.id, subcategoriesData);
-                                const subcategories = Object.keys(subCounts).length > 0
-                                    ? allSubcategories.filter(sub => (subCounts[sub.id] || 0) > 0)
-                                    : allSubcategories;
+                                // Always show admin-configured subs (don't hide Kids Girls etc. when stock is 0)
+                                const subcategories = getSubcategoriesForCategory(cat.id, subcategoriesData);
                                 const isExpanded = expandedCat === cat.id;
                                 const isSelected = selectedCategory === cat.id;
 

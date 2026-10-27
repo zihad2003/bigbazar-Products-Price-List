@@ -94,7 +94,7 @@ export function getSubcategoriesForCategory(categoryKey, dynamicData) {
 
 /**
  * Get a flat list of all subcategories across all categories (for "All" view).
- * Deduplicates by id, takes first N.
+ * Deduplicates by category+id so Kids Boys/Girls can share an id but both show.
  * @param {object|null} dynamicData — from site_settings
  * @param {number} maxItems — max items to return
  * @returns {Array} — array of { ...subcategory, _category }
@@ -105,8 +105,9 @@ export function getAllSubcategories(dynamicData, maxItems = 8) {
   const result = [];
   for (const cat of Object.keys(merged)) {
     for (const sub of merged[cat]) {
-      if (!seen.has(sub.id)) {
-        seen.add(sub.id);
+      const key = `${cat}::${sub.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
         result.push({ ...sub, _category: cat });
       }
       if (result.length >= maxItems) return result;
