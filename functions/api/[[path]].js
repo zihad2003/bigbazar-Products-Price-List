@@ -988,10 +988,15 @@ async function sendOrderConfirmedSms(env, order) {
 }
 
 /**
- * Email the superadmin(s) about a new order over SMTP (Gmail App Password by default).
- * Node only (Hostinger); on Cloudflare the dynamic nodemailer import fails and the email is skipped.
- * Env: SMTP_USER + SMTP_PASS (required), SMTP_HOST / SMTP_PORT (default smtp.gmail.com:587),
- * ORDER_NOTIFY_EMAILS (optional, comma separated, defaults to SUPERADMIN_EMAILS).
+ * Email the shop owner(s) about a new order over SMTP (Gmail App Password by default).
+ * Node only (Hostinger).
+ *
+ * Env:
+ *   SMTP_USER + SMTP_PASS (required) — login account that actually sends
+ *   SMTP_FROM_NAME (optional, default "Big Bazar") — display name in inbox
+ *   SMTP_REPLY_TO (optional) — e.g. shop Gmail; Reply goes here
+ *   ORDER_NOTIFY_EMAILS (optional) — who receives alerts; defaults to SUPERADMIN_EMAILS
+ *   SMTP_HOST / SMTP_PORT (default smtp.gmail.com:587)
  */
 async function sendOrderNotificationEmail(env, order) {
   const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
@@ -1008,25 +1013,29 @@ async function sendOrderNotificationEmail(env, order) {
     .filter(Boolean);
   if (!to.length) return;
 
-  const from = `Big Bazar Orders <${smtpUser}>`;
+  const fromName = (readEnv('SMTP_FROM_NAME') || 'Big Bazar').replace(/[<>\n\r]/g, '').trim() || 'Big Bazar';
+  const from = `${fromName} <${smtpUser}>`;
+  const replyTo = String(readEnv('SMTP_REPLY_TO') || smtpUser).trim();
   const siteOrigin = String(readEnv('PUBLIC_SITE_ORIGIN') || 'https://onlinebigbazar.com').replace(/\/$/, '');
+  const helpline = String(readEnv('SHOP_PHONE') || '01857045449').trim();
   const shortId = String(order.id).slice(-8).toUpperCase();
   const taka = (n) => `৳${Math.round(Number(n) || 0).toLocaleString('en-US')}`;
   const areaLabel = { mirsarai: 'Mirsarai (free)', chattogram: 'Chattogram', outside: 'Outside Chattogram' }[order.deliveryArea] || order.deliveryArea;
+  const placedAt = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Dhaka', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) + ' (BD)';
 
   const lineText = (l) =>
     `${l.name} x${l.qty}${l.color ? `, ${l.color}` : ''}${l.size ? `, ${l.size}` : ''} (${taka(l.unitPrice * l.qty)})`;
 
-  const rowsHtml = order.lines
+  const rowsHtml = (Array.isArray(order.lines) ? order.lines : [])
     .map(
       (l) => `<tr>
-        <td style="padding:8px 0;border-bottom:1px solid #eee">${escapeEmailHtml(l.name)}${
+        <td style="padding:12px 8px;border-bottom:1px solid #f0f0f0;font-size:14px;color:#1f1d1b">${escapeEmailHtml(l.name)}${
           l.color || l.size
-            ? `<div style="color:#777;font-size:12px">${escapeEmailHtml([l.color, l.size].filter(Boolean).join(' / '))}</div>`
+            ? `<div style="color:#777;font-size:12px;margin-top:2px">${escapeEmailHtml([l.color, l.size].filter(Boolean).join(' · '))}</div>`
             : ''
         }</td>
-        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center">${l.qty}</td>
-        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">${taka(l.unitPrice * l.qty)}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:14px;color:#555">${l.qty}</td>
+        <td style="padding:12px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-size:14px;font-weight:600;color:#1f1d1b">${taka(l.unitPrice * l.qty)}</td>
       </tr>`
     )
     .join('');
@@ -1040,43 +1049,102 @@ async function sendOrderNotificationEmail(env, order) {
   const riskStyle = risk ? RISK_STYLE[risk.level] : null;
   const geoLine = order.geo
     ? [order.geo.city, order.geo.region, order.geo.country].filter(Boolean).join(', ') + (order.geo.org ? ` (${order.geo.org})` : '')
-    : 'Unknown';
-  const riskNotes = risk ? [...risk.reasons, ...risk.positives] : [];
+    : '';
+  const riskNotes = risk ? [...(risk.reasons || []), ...(risk.positives || [])] : [];
   const riskHtml = riskStyle
-    ? `<div style="margin:0 0 16px;padding:10px 12px;border-radius:8px;background:${riskStyle.bg};color:${riskStyle.color};font-size:13px">
-        <strong>Fraud check: ${riskStyle.label}</strong>
-        <div style="margin-top:4px;color:#444">IP location (approx.): ${escapeEmailHtml(geoLine)}</div>
-        ${riskNotes.length ? `<ul style="margin:6px 0 0;padding-left:18px;color:#444">${riskNotes.map((r) => `<li>${escapeEmailHtml(r)}</li>`).join('')}</ul>` : ''}
+    ? `<div style="margin:0 0 20px;padding:12px 14px;border-radius:10px;background:${riskStyle.bg};color:${riskStyle.color};font-size:13px;line-height:1.45">
+        <strong style="display:block;margin-bottom:4px">Fraud check · ${riskStyle.label}</strong>
+        ${geoLine ? `<div style="color:#444">IP (approx.): ${escapeEmailHtml(geoLine)}</div>` : ''}
+        ${riskNotes.length ? `<ul style="margin:8px 0 0;padding-left:18px;color:#444">${riskNotes.map((r) => `<li>${escapeEmailHtml(r)}</li>`).join('')}</ul>` : ''}
       </div>`
     : '';
 
-  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f1d1b">
-    <h2 style="color:#ce112d;margin:0 0 4px">New order #${shortId}</h2>
-    <p style="margin:0 0 16px;color:#555">Total <strong>${taka(order.total)}</strong> · Payment: ${escapeEmailHtml(order.paymentRef)}</p>
-    ${riskHtml}
-    <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <tr><th style="text-align:left;padding-bottom:6px">Product</th><th style="padding-bottom:6px">Qty</th><th style="text-align:right;padding-bottom:6px">Price</th></tr>
-      ${rowsHtml}
-      <tr><td colspan="2" style="padding-top:8px">Delivery (${escapeEmailHtml(areaLabel)})</td><td style="padding-top:8px;text-align:right">${taka(order.deliveryCharge)}</td></tr>
-      <tr><td colspan="2" style="padding-top:4px"><strong>Total</strong></td><td style="padding-top:4px;text-align:right"><strong>${taka(order.total)}</strong></td></tr>
-    </table>
-    <h3 style="margin:20px 0 6px;font-size:15px">Customer</h3>
-    <p style="margin:0;line-height:1.6;font-size:14px">
-      ${escapeEmailHtml(order.customerName)}<br>
-      <a href="tel:${escapeEmailHtml(order.customerPhone)}">${escapeEmailHtml(order.customerPhone)}</a><br>
-      ${escapeEmailHtml(order.customerAddress)}
-      ${order.customerNote ? `<br><em style="color:#777">Note: ${escapeEmailHtml(order.customerNote)}</em>` : ''}
-    </p>
-    <p style="margin:24px 0 0"><a href="${siteOrigin}/admin" style="background:#ce112d;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open admin panel</a></p>
-  </div>`;
+  const giftHtml = order.isGift
+    ? `<div style="margin:0 0 20px;padding:12px 14px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;font-size:13px;color:#9f1239;line-height:1.5">
+        <strong>Gift order</strong>
+        <div style="margin-top:4px;color:#444">Recipient: ${escapeEmailHtml(order.recipientName || '—')} · ${escapeEmailHtml(order.recipientPhone || '')}</div>
+      </div>`
+    : '';
+
+  const subjectPrefix = risk?.level === 'high' ? '[Likely fake] ' : '';
+  const subject = `${subjectPrefix}New order ${taka(order.total)} · ${order.customerName || 'Customer'} · #${shortId}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f5;padding:24px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e4e4e7">
+        <tr><td style="background:#0a0a0c;padding:22px 24px">
+          <div style="font-size:20px;font-weight:900;letter-spacing:-0.02em;font-style:italic">
+            <span style="color:#ce112d">BIG</span><span style="color:#ffffff"> BAZAR</span>
+          </div>
+          <div style="margin-top:6px;font-size:12px;color:#a1a1aa;letter-spacing:0.04em;text-transform:uppercase">New website order</div>
+        </td></tr>
+        <tr><td style="padding:24px">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:20px">
+            <tr>
+              <td>
+                <div style="font-size:13px;color:#71717a;margin-bottom:4px">Order ID</div>
+                <div style="font-size:22px;font-weight:800;color:#1f1d1b;letter-spacing:-0.02em">#${shortId}</div>
+              </td>
+              <td align="right">
+                <div style="font-size:13px;color:#71717a;margin-bottom:4px">Total</div>
+                <div style="font-size:22px;font-weight:800;color:#ce112d">${taka(order.total)}</div>
+              </td>
+            </tr>
+          </table>
+          <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:#f4f4f5;font-size:12px;color:#52525b;margin-bottom:8px">
+            Payment: <strong style="color:#1f1d1b">${escapeEmailHtml(order.paymentRef || 'COD')}</strong>
+          </div>
+          <div style="font-size:12px;color:#a1a1aa;margin-bottom:20px">${escapeEmailHtml(placedAt)}</div>
+          ${giftHtml}
+          ${riskHtml}
+          <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#a1a1aa;margin:0 0 8px">Items</div>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #f0f0f0;border-radius:12px;overflow:hidden">
+            <tr style="background:#fafafa">
+              <th align="left" style="padding:10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#71717a">Product</th>
+              <th style="padding:10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#71717a">Qty</th>
+              <th align="right" style="padding:10px 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#71717a">Amount</th>
+            </tr>
+            ${rowsHtml}
+            <tr>
+              <td colspan="2" style="padding:10px 8px;font-size:13px;color:#52525b">Delivery (${escapeEmailHtml(areaLabel)})</td>
+              <td align="right" style="padding:10px 8px;font-size:13px;color:#52525b">${taka(order.deliveryCharge)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:12px 8px;border-top:1px solid #eee;font-size:15px;font-weight:800;color:#1f1d1b">Total</td>
+              <td align="right" style="padding:12px 8px;border-top:1px solid #eee;font-size:15px;font-weight:800;color:#ce112d">${taka(order.total)}</td>
+            </tr>
+          </table>
+          <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#a1a1aa;margin:24px 0 8px">Customer</div>
+          <div style="padding:14px 16px;border-radius:12px;background:#fafafa;border:1px solid #f0f0f0;font-size:14px;line-height:1.65;color:#1f1d1b">
+            <strong>${escapeEmailHtml(order.customerName || '—')}</strong><br>
+            <a href="tel:${escapeEmailHtml(order.customerPhone || '')}" style="color:#ce112d;text-decoration:none;font-weight:700">${escapeEmailHtml(order.customerPhone || '')}</a><br>
+            <span style="color:#52525b">${escapeEmailHtml(order.customerAddress || '')}</span>
+            ${order.customerNote ? `<div style="margin-top:8px;color:#777;font-style:italic">Note: ${escapeEmailHtml(order.customerNote)}</div>` : ''}
+          </div>
+          <div style="margin:28px 0 8px;text-align:center">
+            <a href="${siteOrigin}/admin" style="display:inline-block;background:#ce112d;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:14px;letter-spacing:0.02em">Open admin panel</a>
+          </div>
+          <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;line-height:1.5">
+            Helpline ${escapeEmailHtml(helpline)} · <a href="${siteOrigin}" style="color:#71717a">${escapeEmailHtml(siteOrigin.replace(/^https?:\/\//, ''))}</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
 
   const text = [
-    `New order #${shortId}`,
+    `BIG BAZAR — New website order #${shortId}`,
+    `Placed: ${placedAt}`,
     `Total: ${taka(order.total)} | Payment: ${order.paymentRef}`,
-    riskStyle ? `Fraud check: ${riskStyle.label} | IP location (approx.): ${geoLine}` : '',
+    order.isGift ? `Gift → ${order.recipientName || ''} ${order.recipientPhone || ''}` : '',
+    riskStyle ? `Fraud check: ${riskStyle.label}${geoLine ? ` | IP: ${geoLine}` : ''}` : '',
     ...riskNotes.map((r) => `- ${r}`),
     '',
-    ...order.lines.map(lineText),
+    ...(Array.isArray(order.lines) ? order.lines.map(lineText) : []),
     `Delivery (${areaLabel}): ${taka(order.deliveryCharge)}`,
     '',
     `Customer: ${order.customerName}`,
@@ -1085,12 +1153,13 @@ async function sendOrderNotificationEmail(env, order) {
     order.customerNote ? `Note: ${order.customerNote}` : '',
     '',
     `Admin: ${siteOrigin}/admin`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   await deliverSmtpMail(readEnv, smtpUser, smtpPass, {
     from,
+    replyTo,
     to: to.join(', '),
-    subject: `${risk?.level === 'high' ? '[Likely fake] ' : ''}New order ${taka(order.total)} from ${order.customerName || 'customer'} (#${shortId})`,
+    subject,
     html,
     text,
   });
@@ -2554,6 +2623,9 @@ async function placeShopOrder(c, o, customerId = null) {
       total: calculatedTotalAmount,
       paymentRef: o.last_four_digits || 'COD',
       lines: orderLines,
+      isGift: asGift,
+      recipientName: asGift ? recipientName : null,
+      recipientPhone: asGift ? recipientPhone : null,
       geo: null,
       risk: null,
     };
