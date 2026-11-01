@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, Package, Gift } from 'lucide-react';
+import { ArrowLeft, Truck, MapPin, CreditCard, AlertCircle, ShoppingBag, User, Phone, Home, Copy, Check, Package, Gift, Mail } from 'lucide-react';
 import { bigBazarApi, API_URL, getCustomerToken } from '../api/client';
 import { allDistricts, formatLocation, getDeliveryInfo, localityName, matchLocality, placeLabel } from '../data/bdLocations';
 import { localityOptionList, localityPrompt } from '../components/LocalityOptions';
@@ -67,6 +67,7 @@ export default function Checkout() {
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
+        email: '',
         address: '',
         district: '',
         upazila: '',
@@ -399,6 +400,7 @@ export default function Checkout() {
                     product_price: subtotal,
                     customer_name: formData.name,
                     customer_phone: formData.phone,
+                    customer_email: String(formData.email || '').trim() || null,
                     customer_address: `${formData.address} | ${locationStr}`,
                     delivery_area: deliveryInfo.area,
                     delivery_charge: deliveryCharge,
@@ -549,6 +551,13 @@ export default function Checkout() {
                                     className={`w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white ${fieldError === 'phone' ? 'border-[#ce112d] ring-2 ring-[#ce112d]/25' : 'border-neutral-200'}`} />
                                 {fieldError === 'phone' && <p className="mt-1.5 text-[#ce112d] text-xs font-bold px-1">{String(error)}</p>}
                             </div>
+                        </div>
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                            <input type="email" name="email" inputMode="email" autoComplete="email"
+                                placeholder={language === 'bn' ? 'ইমেইল (ঐচ্ছিক) — অর্ডার কনফার্মেশন' : 'Email (optional) — order confirmation'}
+                                value={formData.email} onChange={handleInputChange}
+                                className="w-full border border-neutral-200 rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all bg-white" />
                         </div>
                     </div>
 

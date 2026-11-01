@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, Package, Gift } from 'lucide-react';
+import { X, Truck, MapPin, CreditCard, AlertCircle, CheckCircle2, ShoppingBag, User, Phone, Home, Copy, Check, Wallet, Package, Gift, Mail } from 'lucide-react';
 import { bigBazarApi } from '../../api/client';
 import { allDistricts, formatLocation, getDeliveryInfo, localityName, placeLabel } from '../../data/bdLocations';
 import { localityOptionList, localityPrompt } from '../LocalityOptions';
@@ -53,6 +53,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
+        email: '',
         address: '',
         district: '',
         upazila: '',
@@ -193,6 +194,7 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                     product_price: cartTotal,
                     customer_name: formData.name,
                     customer_phone: formData.phone,
+                    customer_email: String(formData.email || '').trim() || null,
                     customer_address: `${formData.address} | ${locationStr}`,
                     delivery_area: deliveryInfo.area,
                     delivery_charge: deliveryCharge,
@@ -441,6 +443,14 @@ const MultiOrderModal = ({ isOpen, onClose }) => {
                                                 className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
                                                 style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                         </div>
+                                    </div>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--text-muted)' }} />
+                                        <input type="email" name="email" inputMode="email" autoComplete="email"
+                                            placeholder={language === 'bn' ? 'ইমেইল (ঐচ্ছিক) — অর্ডার কনফার্মেশন' : 'Email (optional) — order confirmation'}
+                                            value={formData.email} onChange={handleInputChange}
+                                            className="w-full border rounded-xl py-3.5 pl-11 pr-4 text-[16px] sm:text-sm focus:border-[#ce112d] outline-none transition-all"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                                     </div>
                                 </div>
 

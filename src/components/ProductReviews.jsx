@@ -34,7 +34,7 @@ export default function ProductReviews({ productId, productName }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!comment.trim()) {
-      setError(language === 'bn' ? 'মতামত লিখুন' : 'Please write a review');
+      setError(language === 'bn' ? 'অনুগ্রহ করে আপনার মতামত লিখুন' : 'Please write a review');
       return;
     }
     setSubmitting(true);
@@ -46,7 +46,7 @@ export default function ProductReviews({ productId, productName }) {
         body: JSON.stringify({
           rating,
           comment: comment.trim(),
-          customer_name: name.trim() || (language === 'bn' ? 'কাস্টমার' : 'Customer'),
+          customer_name: name.trim() || (language === 'bn' ? 'গ্রাহক' : 'Customer'),
           product_id: productId,
           product_name: productName || '',
         }),
@@ -59,7 +59,7 @@ export default function ProductReviews({ productId, productName }) {
       setRating(5);
       await load();
     } catch (err) {
-      setError(err.message || (language === 'bn' ? 'জমা দিতে ব্যর্থ' : 'Submit failed'));
+      setError(err.message || (language === 'bn' ? 'মতামত জমা দেওয়া যায়নি' : 'Submit failed'));
     } finally {
       setSubmitting(false);
     }
@@ -75,13 +75,13 @@ export default function ProductReviews({ productId, productName }) {
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-zinc-100 pb-4">
         <div>
           <h2 className="text-lg md:text-xl font-semibold text-zinc-900 tracking-tight">
-            {language === 'bn' ? 'কাস্টমার রিভিউ' : 'Customer reviews'}
+            {language === 'bn' ? 'গ্রাহকদের মতামত' : 'Customer reviews'}
           </h2>
           <p className="text-xs text-zinc-500 mt-1">
             {reviews.length > 0
-              ? `${avg.toFixed(1)} / 5 · ${reviews.length} ${language === 'bn' ? 'টি রিভিউ' : 'reviews'}`
+              ? `${avg.toFixed(1)} / 5 · ${reviews.length} ${language === 'bn' ? 'টি মতামত' : 'reviews'}`
               : language === 'bn'
-                ? 'এখনো কোনো রিভিউ নেই — প্রথমটি আপনিই দিন'
+                ? 'এখনো কোনো মতামত নেই — আপনিই প্রথম লিখুন'
                 : 'No reviews yet — be the first'}
           </p>
         </div>
@@ -117,7 +117,7 @@ export default function ProductReviews({ productId, productName }) {
 
       <form onSubmit={submit} className="rounded-2xl border border-zinc-200 bg-white p-4 md:p-5 space-y-3 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          {language === 'bn' ? 'রিভিউ লিখুন' : 'Write a review'}
+          {language === 'bn' ? 'আপনার মতামত লিখুন' : 'Write a review'}
         </p>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((s) => (
@@ -142,13 +142,13 @@ export default function ProductReviews({ productId, productName }) {
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={3}
-          placeholder={language === 'bn' ? 'আপনার মতামত লিখুন...' : 'Share your experience...'}
+          placeholder={language === 'bn' ? 'পণ্যটি কেমন লেগেছে লিখুন...' : 'Share your experience...'}
           className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:border-[#ce112d]/40 resize-none"
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
         {done && (
           <p className="text-xs text-emerald-600">
-            {language === 'bn' ? 'ধন্যবাদ! আপনার রিভিউ যোগ হয়েছে।' : 'Thanks! Your review was added.'}
+            {language === 'bn' ? 'ধন্যবাদ! আপনার মতামত যোগ হয়েছে।' : 'Thanks! Your review was added.'}
           </p>
         )}
         <button
@@ -162,7 +162,7 @@ export default function ProductReviews({ productId, productName }) {
               ? 'পাঠানো হচ্ছে...'
               : 'Sending...'
             : language === 'bn'
-              ? 'জমা দিন'
+              ? 'মতামত জমা দিন'
               : 'Submit review'}
         </button>
       </form>

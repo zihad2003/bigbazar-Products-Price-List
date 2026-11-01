@@ -91,6 +91,17 @@ async function ensureOrderGiftColumns(conn) {
   orderGiftColumnsReady = true;
 }
 
+let orderCustomerEmailReady = false;
+async function ensureOrderCustomerEmailColumn(conn) {
+  if (orderCustomerEmailReady) return;
+  try {
+    await conn.execute('ALTER TABLE orders ADD COLUMN customer_email VARCHAR(255) NULL');
+  } catch (_) {
+    /* column already exists */
+  }
+  orderCustomerEmailReady = true;
+}
+
 function isGiftOrderPayload(o) {
   return o?.is_gift === true || o?.is_gift === 1 || o?.is_gift === '1';
 }
@@ -881,16 +892,40 @@ const requireSuperAdmin = async (c, next) => {
   await next();
 };
 
+/**
+ * Parse comma/semicolon/newline email lists. Trims spaces, strips accidental
+ * quotes/angle brackets, keeps valid addresses, de-dupes case-insensitively.
+ * Does NOT require uppercase — casing of the local part is preserved for SMTP `to`.
+ */
+function parseEmailList(raw) {
+  const seen = new Set();
+  const out = [];
+  for (const part of String(raw || '').replace(/[\n\r;|]+/g, ',').split(',')) {
+    let email = part.trim().replace(/^["'\s<]+|["'\s>]+$/g, '').trim();
+    if (!email || !email.includes('@')) continue;
+    // Drop trailing punctuation left by copy-paste
+    email = email.replace(/[.,;:]+$/g, '');
+    const key = email.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(email);
+  }
+  return out;
+}
+
+/** Optional customer email from checkout forms — null if empty/invalid. */
+function normalizeOptionalEmail(raw) {
+  const list = parseEmailList(raw);
+  return list[0] || null;
+}
+
 /** Comma-separated owner emails that must always receive superadmin (Hostinger bootstrap). */
 function getSuperadminEmails(env) {
   const raw =
     env?.SUPERADMIN_EMAILS ||
     (typeof process !== 'undefined' && process.env?.SUPERADMIN_EMAILS) ||
     'zihadlaptopasus@gmail.com';
-  return String(raw)
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
+  return parseEmailList(raw).map((e) => e.toLowerCase());
 }
 
 function escapeEmailHtml(value) {
@@ -1007,11 +1042,13 @@ async function sendOrderNotificationEmail(env, order) {
     return;
   }
 
-  const to = String(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(env).join(','))
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (!to.length) return;
+  const notifyRaw = readEnv('ORDER_NOTIFY_EMAILS');
+  const to = parseEmailList(notifyRaw || getSuperadminEmails(env).join(','));
+  if (!to.length) {
+    console.warn('Order email skipped: no recipients in ORDER_NOTIFY_EMAILS / SUPERADMIN_EMAILS');
+    return;
+  }
+  console.log('order notify recipients:', to.length, to.map((e) => e.replace(/(.{2}).*(@.*)/, '$1***$2')).join(', '));
 
   const fromName = (readEnv('SMTP_FROM_NAME') || 'Big Bazar').replace(/[<>\n\r]/g, '').trim() || 'Big Bazar';
   const from = `${fromName} <${smtpUser}>`;
@@ -1158,7 +1195,83 @@ async function sendOrderNotificationEmail(env, order) {
   await deliverSmtpMail(readEnv, smtpUser, smtpPass, {
     from,
     replyTo,
-    to: to.join(', '),
+    // Nodemailer accepts a comma-separated string or an array — pass array so every recipient is delivered.
+    to,
+    subject,
+    html,
+    text,
+  });
+}
+
+/**
+ * Email the customer when admin confirms advance / marks order confirmed.
+ * Non-blocking caller should catch errors. Skips if no customer_email or SMTP unset.
+ */
+async function sendCustomerOrderConfirmedEmail(env, order) {
+  const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+  const smtpUser = readEnv('SMTP_USER');
+  const smtpPass = String(readEnv('SMTP_PASS')).replace(/\s+/g, '');
+  if (!smtpUser || !smtpPass) {
+    console.warn('Customer confirm email skipped: SMTP_USER / SMTP_PASS not set');
+    return;
+  }
+  const to = normalizeOptionalEmail(order.customer_email);
+  if (!to) return;
+
+  const fromName = (readEnv('SMTP_FROM_NAME') || 'Big Bazar').replace(/[<>\n\r]/g, '').trim() || 'Big Bazar';
+  const from = `${fromName} <${smtpUser}>`;
+  const replyTo = String(readEnv('SMTP_REPLY_TO') || smtpUser).trim();
+  const siteOrigin = String(readEnv('PUBLIC_SITE_ORIGIN') || 'https://onlinebigbazar.com').replace(/\/$/, '');
+  const helpline = String(readEnv('SHOP_PHONE') || '01857045449').trim();
+  const shortId = String(order.id || '').slice(-6).toUpperCase();
+  const taka = (n) => `৳${Math.round(Number(n) || 0).toLocaleString('en-US')}`;
+  const customerName = String(order.customer_name || 'Customer').trim();
+  const productSummary = String(order.product_name || 'Your items').trim().slice(0, 400);
+  const total = taka(order.total_amount);
+
+  const subject = `Big Bazar — Order #${shortId} confirmed / অর্ডার কনফার্ম হয়েছে`;
+  const html = `<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f5;padding:24px 12px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e4e4e7">
+        <tr><td style="background:#0a0a0c;padding:20px 24px">
+          <div style="font-size:18px;font-weight:900;font-style:italic"><span style="color:#ce112d">BIG</span><span style="color:#fff"> BAZAR</span></div>
+          <div style="margin-top:6px;font-size:12px;color:#a1a1aa">Order confirmed</div>
+        </td></tr>
+        <tr><td style="padding:24px;color:#1f1d1b;font-size:14px;line-height:1.65">
+          <p style="margin:0 0 12px">প্রিয় ${escapeEmailHtml(customerName)},</p>
+          <p style="margin:0 0 12px">আপনার অর্ডার <strong>#${escapeEmailHtml(shortId)}</strong> কনফার্ম হয়েছে। ডেলিভারি চার্জ/অ্যাডভান্স পেয়েছি — ধন্যবাদ!</p>
+          <div style="padding:14px 16px;border-radius:12px;background:#fafafa;border:1px solid #f0f0f0;margin:16px 0">
+            <div style="font-size:12px;color:#71717a;margin-bottom:4px">Items</div>
+            <div style="font-weight:600">${escapeEmailHtml(productSummary)}</div>
+            <div style="margin-top:10px;font-size:12px;color:#71717a">Total</div>
+            <div style="font-size:20px;font-weight:800;color:#ce112d">${total}</div>
+          </div>
+          <p style="margin:0 0 8px;font-size:13px;color:#52525b">কোনো প্রশ্ন থাকলে হেল্পলাইনে কল করুন।</p>
+          <p style="margin:0;font-size:14px;font-weight:700">Helpline: <a href="tel:${escapeEmailHtml(helpline)}" style="color:#ce112d;text-decoration:none">${escapeEmailHtml(helpline)}</a></p>
+          <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa"><a href="${siteOrigin}" style="color:#71717a">${escapeEmailHtml(siteOrigin.replace(/^https?:\/\//, ''))}</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = [
+    `Big Bazar — Order #${shortId} confirmed`,
+    `Priyo ${customerName},`,
+    `Apnar order #${shortId} confirm hoyeche. Delivery charge/advance pawa geche — dhonyobad!`,
+    `Items: ${productSummary}`,
+    `Total: ${total}`,
+    `Helpline: ${helpline}`,
+    siteOrigin,
+  ].join('\n');
+
+  await deliverSmtpMail(readEnv, smtpUser, smtpPass, {
+    from,
+    replyTo,
+    to,
     subject,
     html,
     text,
@@ -2424,6 +2537,8 @@ async function placeShopOrder(c, o, customerId = null) {
   await ensureOrderRiskColumns(conn);
   await ensureOrderTrackCodeColumn(conn);
   await ensureOrderGiftColumns(conn);
+  await ensureOrderCustomerEmailColumn(conn);
+  const customerEmail = normalizeOptionalEmail(o.customer_email);
   let issuedTrackCode = await mintTrackCode(conn, o.customer_phone);
 
   const tx = await conn.begin();
@@ -2562,12 +2677,16 @@ async function placeShopOrder(c, o, customerId = null) {
     const giftVals = asGift
       ? [1, recipientName, recipientPhone]
       : [0, null, null];
-    const insertWith = async (includeTrack, includeUser, includeGift) => {
+    const insertWith = async (includeTrack, includeUser, includeGift, includeEmail) => {
       let colsSql = orderCols;
       const vals = [...orderVals];
       if (includeGift) {
         colsSql += giftCols;
         vals.push(...giftVals);
+      }
+      if (includeEmail && customerEmail) {
+        colsSql += ', customer_email';
+        vals.push(customerEmail);
       }
       if (includeTrack) {
         colsSql += ', track_code';
@@ -2584,25 +2703,27 @@ async function placeShopOrder(c, o, customerId = null) {
     };
 
     try {
-      await insertWith(true, true, true);
+      await insertWith(true, true, true, true);
     } catch (insertErr) {
       const msg = String(insertErr.message || '');
       const unknown = /unknown column/i.test(msg);
       const namedTrack = /track_code/i.test(msg);
       const namedUser = /user_id/i.test(msg);
       const namedGift = /is_gift|recipient_name|recipient_phone/i.test(msg);
-      if (!unknown && !namedTrack && !namedUser && !namedGift) throw insertErr;
-      const dropTrack = namedTrack || (unknown && !namedUser && !namedGift);
-      const dropUser = namedUser || (unknown && !namedTrack && !namedGift);
-      const dropGift = namedGift || (unknown && !namedTrack && !namedUser);
+      const namedEmail = /customer_email/i.test(msg);
+      if (!unknown && !namedTrack && !namedUser && !namedGift && !namedEmail) throw insertErr;
+      const dropTrack = namedTrack || (unknown && !namedUser && !namedGift && !namedEmail);
+      const dropUser = namedUser || (unknown && !namedTrack && !namedGift && !namedEmail);
+      const dropGift = namedGift || (unknown && !namedTrack && !namedUser && !namedEmail);
+      const dropEmail = namedEmail || (unknown && !namedTrack && !namedUser && !namedGift);
       if (dropTrack) issuedTrackCode = '';
       try {
-        await insertWith(!dropTrack, !dropUser, !dropGift);
+        await insertWith(!dropTrack, !dropUser, !dropGift, !dropEmail);
       } catch (retryErr) {
         const retryMsg = String(retryErr.message || '');
-        if (!/unknown column|user_id|track_code|is_gift|recipient_/i.test(retryMsg)) throw retryErr;
+        if (!/unknown column|user_id|track_code|is_gift|recipient_|customer_email/i.test(retryMsg)) throw retryErr;
         issuedTrackCode = '';
-        await insertWith(false, false, false);
+        await insertWith(false, false, false, false);
       }
     }
 
@@ -2876,6 +2997,11 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       runInBackground(c, () =>
         sendOrderConfirmedSms(c.env, currentOrder).catch((err) =>
           console.error('order sms error:', err?.message || err)
+        )
+      );
+      runInBackground(c, () =>
+        sendCustomerOrderConfirmedEmail(c.env, currentOrder).catch((err) =>
+          console.error('customer confirm email error:', err?.message || err)
         )
       );
     }
@@ -4883,8 +5009,8 @@ app.post('/admin/test-order-email', requireAuth, requireSuperAdmin, async (c) =>
       geo: null,
       risk: null,
     });
-    const to = String(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(c.env).join(','));
-    return c.json({ success: true, message: `Test email sent toward: ${to}` });
+    const to = parseEmailList(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(c.env).join(','));
+    return c.json({ success: true, message: `Test email sent toward: ${to.join(', ')}`, recipients: to });
   } catch (err) {
     console.error('test order email failed:', err?.message || err);
     return c.json({ error: err?.message || 'SMTP send failed' }, 502);

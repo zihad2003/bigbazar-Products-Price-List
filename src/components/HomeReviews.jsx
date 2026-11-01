@@ -46,7 +46,7 @@ export default function HomeReviews() {
   return (
     <section className="w-full max-w-[1920px] 2xl:max-w-[2560px] mx-auto px-4 md:px-12 mt-16 md:mt-24">
       <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-400 mb-4">
-        {language === 'bn' ? 'কাস্টমারের কথা' : 'From customers'}
+        {language === 'bn' ? 'গ্রাহকদের মতামত' : 'From customers'}
       </p>
       <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
         {shots.map((r, i) => (
@@ -58,7 +58,7 @@ export default function HomeReviews() {
           >
             <img
               src={r.image_url}
-              alt={language === 'bn' ? 'কাস্টমার রিভিউ' : 'Customer review'}
+              alt={language === 'bn' ? 'গ্রাহকের মতামত' : 'Customer review'}
               className="w-full aspect-[3/5] object-cover object-top"
               loading="lazy"
             />

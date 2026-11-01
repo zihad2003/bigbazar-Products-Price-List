@@ -240,6 +240,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
   const [orderForm, setOrderForm] = useState({
     name: '',
     phone: '',
+    email: '',
     district: CHATTOGRAM_DISTRICT,
     upazila: `u:${FREE_UPAZILA}`,
     address: '',
@@ -742,6 +743,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
     setOrderForm({
       name: '',
       phone: '',
+      email: '',
       district: CHATTOGRAM_DISTRICT,
       upazila: `u:${FREE_UPAZILA}`,
       address: '',
@@ -821,6 +823,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
       product_price: productPrice,
       customer_name: orderForm.name.trim(),
       customer_phone: cleanPhone,
+      customer_email: String(orderForm.email || '').trim() || null,
       customer_address: `${orderForm.address.trim()} | ${formatLocation(orderForm.district, orderForm.upazila)}`,
       customer_note: orderForm.notes || `Chat order · advance ৳${advanceAmount} via bKash`,
       delivery_area: deliveryInfo.area || 'outside',
@@ -1491,6 +1494,15 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
                       className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
                     />
                   </div>
+                  <input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder={language === 'bn' ? 'ইমেইল (ঐচ্ছিক) — অর্ডার কনফার্মেশন' : 'Email (optional) — order confirmation'}
+                    value={orderForm.email}
+                    onChange={e => setOrderForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-zinc-200 rounded-xl text-[16px] font-medium focus:outline-none focus:border-[#ce112d]"
+                  />
 
                   {orderForm.isGift && (
                     <div className="space-y-2 rounded-xl border border-[#ce112d]/20 bg-[#ce112d]/5 p-2.5">

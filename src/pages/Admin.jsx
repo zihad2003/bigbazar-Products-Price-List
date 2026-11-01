@@ -272,26 +272,61 @@ export default function Admin() {
     const advance = receivedAdvance(order);
     const total = orderTotal(order);
     const due = balanceDue(order);
-
     const isGift = order.is_gift === true || order.is_gift === 1 || order.is_gift === '1';
-    const text = `BIG BAZAR ORDER DETAILS
-━━━━━━━━━━━━━━━━━━━━
-Order Ref: #${order.id.toString().slice(-6).toUpperCase()}
-Date: ${new Date(order.created_at).toLocaleDateString()}
-${isGift ? 'Type: GIFT\n' : ''}Buyer: ${order.customer_name || 'N/A'}
-Buyer phone: ${order.customer_phone || 'N/A'}
-${isGift ? `Recipient: ${order.recipient_name || 'N/A'}\nRecipient phone: ${order.recipient_phone || 'N/A'}\n` : ''}Address: ${splitOrderAddress(order.customer_address).street || 'N/A'}
-Place: ${splitOrderAddress(order.customer_address).selected || 'N/A'}
-Area: ${order.delivery_area || 'N/A'}
-━━━━━━━━━━━━━━━━━━━━
-Product(s): ${order.product_name || 'N/A'}
-${order.size ? `Size: ${order.size}\n` : ''}${order.color ? `Color: ${order.color}\n` : ''}Total Price: ৳${total.toLocaleString()}
-Advance Paid: ৳${advance.toLocaleString()}
-Balance Due: ৳${due.toLocaleString()}
-Payment Ref: ${order.last_four_digits || 'COD'}
-${customerNoteText(order.customer_note) ? `Note: ${customerNoteText(order.customer_note)}` : ''}`.trim();
+    const addr = splitOrderAddress(order.customer_address);
+    const note = customerNoteText(order.customer_note);
+    const shortId = String(order.id).slice(-6).toUpperCase();
+    const dateStr = order.created_at
+      ? new Date(order.created_at).toLocaleDateString('en-GB')
+      : 'N/A';
 
-    copyToClipboard(text, "Order Details");
+    const productParts = String(order.product_name || '')
+      .split(' + ')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const productLines = (productParts.length ? productParts : [order.product_name || 'N/A']).map((part, i) => {
+      const colorMatch = part.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+      const sizeMatch = part.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
+      const qtyMatch = part.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
+      const name = part.split('(')[0].trim() || part;
+      const bits = [];
+      const size = sizeMatch?.[1]?.trim() || (i === 0 ? order.size : null);
+      const color = colorMatch?.[1]?.trim() || (i === 0 ? order.color : null);
+      if (size) bits.push(`সাইজ: ${size}`);
+      if (color) bits.push(`রঙ: ${color}`);
+      if (qtyMatch) bits.push(`Qty: ${qtyMatch[1]}`);
+      return bits.length ? `${i + 1}. ${name} (${bits.join(', ')})` : `${i + 1}. ${name}`;
+    });
+
+    const lines = [
+      '📦 Big Bazar — অর্ডার ডিটেইলস',
+      '━━━━━━━━━━━━━━━━━━━━',
+      `অর্ডার: #${shortId}`,
+      `তারিখ: ${dateStr}`,
+      order.track_code ? `ট্র্যাক কোড: ${order.track_code}` : null,
+      isGift ? 'ধরন: গিফট অর্ডার' : null,
+      '',
+      `কাস্টমার: ${order.customer_name || 'N/A'}`,
+      `মোবাইল: ${order.customer_phone || 'N/A'}`,
+      order.customer_email ? `ইমেইল: ${order.customer_email}` : null,
+      `ঠিকানা: ${addr.street || order.customer_address || 'N/A'}`,
+      addr.selected ? `স্থান: ${addr.selected}` : null,
+      `এরিয়া: ${order.delivery_area || 'N/A'}`,
+      isGift ? `প্রাপক: ${order.recipient_name || 'N/A'}` : null,
+      isGift ? `প্রাপক মোবাইল: ${order.recipient_phone || 'N/A'}` : null,
+      '',
+      '━━━━━━━━━━━━━━━━━━━━',
+      'প্রোডাক্ট:',
+      ...productLines,
+      '',
+      `মোট: ৳${total.toLocaleString()}`,
+      `অ্যাডভান্স: ৳${advance.toLocaleString()}`,
+      `বাকি: ৳${due.toLocaleString()}`,
+      `পেমেন্ট: ${order.last_four_digits || 'COD'}`,
+      note ? `নোট: ${note}` : null,
+    ].filter((line) => line != null);
+
+    copyToClipboard(lines.join('\n').trim(), 'Order Details');
   };
 
   const [formStep, setFormStep] = useState(1);
