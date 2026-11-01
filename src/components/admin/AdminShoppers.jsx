@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare, Gift, MessageCircle } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 import { getOptimizedUrl } from '../../utils/media';
+import { formatLocation, localityName, placeLabel } from '../../data/bdLocations';
 
 function isContacted(row) {
   return Boolean(row?.contacted_at);
@@ -95,22 +96,22 @@ function followUpWhatsAppHref(row) {
 }
 
 function ItemRow({ item, photo }) {
-  const src = photo ? getOptimizedUrl(photo, { w: 160, h: 200 }) : '';
+  const src = photo ? getOptimizedUrl(photo, { w: 120, h: 150 }) : '';
   const meta = [item.color, item.size].filter(Boolean).join(' · ');
   return (
-    <div className="flex items-center gap-3 min-w-0">
-      <div className="w-14 h-[4.5rem] rounded-lg overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="w-9 h-11 rounded-md overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
         {src ? (
           <img src={src} alt="" className="w-full h-full object-cover object-top" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-600">
-            <ShoppingBag size={16} />
+            <ShoppingBag size={12} />
           </div>
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-white truncate">{item.name || 'Item'}</p>
-        <p className="text-xs text-zinc-400 mt-0.5">
+        <p className="text-[12px] font-semibold text-white truncate">{item.name || 'Item'}</p>
+        <p className="text-[10px] text-zinc-400 mt-0.5 truncate">
           {item.quantity || 1} pcs{meta ? ` · ${meta}` : ''}
         </p>
       </div>
@@ -119,26 +120,38 @@ function ItemRow({ item, photo }) {
 }
 
 function paymentLabel(method, option) {
-  const name = method === 'bkash' ? 'bKash' : method === 'bangla_qr' ? 'Bangla QR' : method === 'cod' ? 'Cash on delivery' : method;
+  const name = method === 'bkash' ? 'bKash' : method === 'bangla_qr' ? 'Bangla QR' : method === 'cod' ? 'COD' : method;
   if (!name) return '';
-  if (option === 'full') return `${name} · full payment`;
+  if (option === 'full') return `${name} · full`;
   if (option === 'advance') return `${name} · advance`;
   return name;
+}
+
+function englishPlace(form) {
+  if (!form) return '';
+  const raw = form.upazila || form.thana || form.city || '';
+  const fromFmt = formatLocation(form.district, raw, 'en');
+  if (fromFmt) return fromFmt;
+  const parts = [
+    placeLabel(localityName(raw), 'en'),
+    placeLabel(form.district, 'en'),
+  ].filter(Boolean);
+  return parts.join(', ');
 }
 
 function DetailLine({ label, value }) {
   if (!value) return null;
   return (
-    <div className="grid grid-cols-[4.75rem_1fr] gap-x-3 gap-y-0.5 text-xs">
-      <span className="text-zinc-500">{label}</span>
-      <span className="text-zinc-200 break-words">{value}</span>
+    <div className="grid grid-cols-[3.25rem_1fr] gap-x-2 text-[10px] leading-snug">
+      <span className="text-zinc-500 shrink-0">{label}</span>
+      <span className="text-zinc-200 break-words line-clamp-2">{value}</span>
     </div>
   );
 }
 
 function FormDetails({ form }) {
   if (!form) return null;
-  const place = [form.upazila, form.district].filter(Boolean).join(', ');
+  const place = englishPlace(form);
   const pay = paymentLabel(form.payment_method, form.payment_option);
   const isGift = form.is_gift === true || form.is_gift === 1 || form.is_gift === '1';
   const giftLine = isGift
@@ -147,16 +160,16 @@ function FormDetails({ form }) {
   const hasAny = form.address || place || pay || form.sender_number || form.note || giftLine;
   if (!hasAny) return null;
   return (
-    <div className="space-y-1.5 border-t border-white/10 pt-3">
+    <div className="space-y-1 border-t border-white/10 pt-2">
       <DetailLine label="Address" value={form.address} />
       <DetailLine label="Place" value={place} />
       <DetailLine label="Payment" value={pay} />
       <DetailLine label="Sender" value={form.sender_number} />
       <DetailLine label="Note" value={form.note} />
       {isGift && (
-        <div className="grid grid-cols-[4.75rem_1fr] gap-x-3 gap-y-0.5 text-xs">
-          <span className="text-zinc-500 inline-flex items-center gap-1"><Gift size={10} /> Gift</span>
-          <span className="text-zinc-200 break-words">{giftLine || 'Recipient details filled'}</span>
+        <div className="grid grid-cols-[3.25rem_1fr] gap-x-2 text-[10px] leading-snug">
+          <span className="text-zinc-500 inline-flex items-center gap-0.5"><Gift size={9} /> Gift</span>
+          <span className="text-zinc-200 break-words line-clamp-2">{giftLine || 'Recipient filled'}</span>
         </div>
       )}
     </div>
@@ -170,9 +183,12 @@ function SessionCard({
   const telHref = row.phone ? `tel:${String(row.phone).replace(/[^\d+]/g, '')}` : '';
   const isGift = row.form?.is_gift === true || row.form?.is_gift === 1 || row.form?.is_gift === '1';
   const contacted = isContacted(row);
+  const area = hasRealVisitorIp(row.ip) ? String(row.area || '').trim() : '';
+  const shownItems = items.slice(0, 2);
+  const extraItems = items.length - shownItems.length;
 
   return (
-    <article className={`rounded-xl border p-4 space-y-3 ${
+    <article className={`rounded-xl border px-3 py-2.5 flex flex-col gap-2 h-full min-w-0 ${
       contacted
         ? 'border-sky-500/30 bg-sky-500/[0.04]'
         : followUp
@@ -181,47 +197,47 @@ function SessionCard({
             ? 'border-emerald-500/25 bg-emerald-500/[0.04]'
             : 'border-white/10 bg-black/30'
     }`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-white truncate">{row.name || 'Guest'}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1 flex-wrap">
+            <p className="text-[13px] font-semibold text-white truncate">{row.name || 'Guest'}</p>
             {ready && !row.order_id && (
-              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
                 Ready
               </span>
             )}
             {followUp && (
-              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                ফলোআপ
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                Follow-up
               </span>
             )}
             {contacted && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-300">
-                <MessageCircle size={10} /> কথা হয়েছে
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                <MessageCircle size={9} /> Contacted
               </span>
             )}
             {Number(row.prior_orders) > 0 && (
-              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/30 text-violet-300">
-                Returning · {row.prior_orders} order{Number(row.prior_orders) > 1 ? 's' : ''}
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 border border-violet-500/30 text-violet-300">
+                Returning · {row.prior_orders}
               </span>
             )}
             {isGift && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#ce112d]/10 border border-[#ce112d]/25 text-[#ce112d]">
-                <Gift size={10} /> Gift
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#ce112d]/10 border border-[#ce112d]/25 text-[#ce112d]">
+                <Gift size={9} /> Gift
               </span>
             )}
           </div>
           {row.phone && (
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-xs text-zinc-300">{row.phone}</p>
-              <div className="flex gap-1">
+            <div className="flex items-center gap-1.5 mt-1">
+              <p className="text-[11px] text-zinc-300 tabular-nums truncate">{row.phone}</p>
+              <div className="flex gap-0.5 shrink-0">
                 {telHref && (
                   <a
                     href={telHref}
-                    className="w-7 h-7 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 inline-flex items-center justify-center"
+                    className="w-6 h-6 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 inline-flex items-center justify-center"
                     title="Call"
                   >
-                    <Phone size={12} />
+                    <Phone size={11} />
                   </a>
                 )}
                 {waHref ? (
@@ -229,62 +245,48 @@ function SessionCard({
                     href={waHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-7 h-7 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 inline-flex items-center justify-center"
+                    className="w-6 h-6 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 inline-flex items-center justify-center"
                     title="WhatsApp"
                   >
-                    <MessageSquare size={12} />
+                    <MessageSquare size={11} />
                   </a>
                 ) : null}
               </div>
             </div>
           )}
         </div>
-        <div className="text-right shrink-0 space-y-1">
-          <p className="text-[11px] text-zinc-500">{formatWhen(row.last_seen_at)}</p>
+        <div className="text-right shrink-0 space-y-0.5">
+          <p className="text-[10px] text-zinc-500 tabular-nums leading-tight">{formatWhen(row.last_seen_at)}</p>
           {badge && (
-            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
+            <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400">
               {badge}
             </span>
           )}
         </div>
       </div>
-      {items.length > 0 && (
-        <div className="space-y-2.5">
-          {items.map((item, index) => (
+
+      {shownItems.length > 0 && (
+        <div className="space-y-1.5">
+          {shownItems.map((item, index) => (
             <ItemRow key={`${item.id || item.name}-${index}`} item={item} photo={photos(item)} />
           ))}
+          {extraItems > 0 && (
+            <p className="text-[10px] text-zinc-500 pl-0.5">+{extraItems} more item{extraItems > 1 ? 's' : ''}</p>
+          )}
         </div>
       )}
+
       <FormDetails form={row.form} />
-      {(() => {
-        // Edge/proxy IP (e.g. Hostinger 5.90.143.78 → "Near Bologna") must not show.
-        // Location only — never show IP or coordinates on this line.
-        const area = hasRealVisitorIp(row.ip) ? String(row.area || '').trim() : '';
-        if (!area) return null;
-        return (
-          <p className="text-[11px] text-zinc-500">
-            Near {area}
-          </p>
-        );
-      })()}
-      <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          disabled={contactBusy}
-          onClick={() => onToggleContacted?.(row)}
-          className={`w-full h-9 rounded-lg text-xs font-semibold border inline-flex items-center justify-center gap-1.5 disabled:opacity-50 ${
-            contacted
-              ? 'bg-sky-500/15 border-sky-500/30 text-sky-300 hover:bg-sky-500/25'
-              : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:border-white/25'
-          }`}
-        >
-          <MessageCircle size={14} />
-          {contactBusy ? 'Saving…' : contacted ? 'কথা হয়েছে · Undo' : 'কথা হয়েছে / Contacted'}
-        </button>
+
+      {area ? (
+        <p className="text-[10px] text-zinc-500 truncate">Near {area}</p>
+      ) : null}
+
+      <div className="mt-auto flex flex-col gap-1.5 pt-0.5">
         {row.order_id ? (
-          <p className="w-full h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
-            <CheckCircle2 size={14} />
-            Converted to order #{String(row.order_id).slice(0, 8)}
+          <p className="w-full h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-[11px] font-semibold inline-flex items-center justify-center gap-1">
+            <CheckCircle2 size={12} />
+            Converted · #{String(row.order_id).slice(0, 8)}
           </p>
         ) : (
           <>
@@ -292,15 +294,28 @@ function SessionCard({
               type="button"
               disabled={busy || !canConvert}
               onClick={() => onConvert(row)}
-              className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-8 rounded-lg bg-[#ce112d] text-white text-[11px] font-semibold hover:bg-[#b00e26] disabled:opacity-45 disabled:cursor-not-allowed"
             >
-              {busy ? 'Sending…' : 'Convert to order'}
+              {busy ? 'Sending…' : 'Convert'}
             </button>
             {!canConvert && missing && (
-              <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
+              <p className="text-[10px] text-zinc-500 line-clamp-2">Needs {missing}</p>
             )}
           </>
         )}
+        <button
+          type="button"
+          disabled={contactBusy}
+          onClick={() => onToggleContacted?.(row)}
+          className={`w-full h-7 rounded-lg text-[10px] font-medium border inline-flex items-center justify-center gap-1 disabled:opacity-50 ${
+            contacted
+              ? 'bg-sky-500/10 border-sky-500/25 text-sky-300 hover:bg-sky-500/20'
+              : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200 hover:border-white/20'
+          }`}
+        >
+          <MessageCircle size={12} />
+          {contactBusy ? 'Saving…' : contacted ? 'Contacted · Undo' : 'Mark contacted'}
+        </button>
       </div>
     </article>
   );
@@ -310,23 +325,201 @@ function byRecent(a, b) {
   return new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0);
 }
 
-function Column({ title, hint, rows, empty, render, accent }) {
+function Column({ title, hint, rows, empty, render, accent, grid = true }) {
   return (
-    <section className="space-y-3 min-w-0">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h3 className={`text-base font-semibold ${accent || 'text-white'}`}>{title}</h3>
-          <p className="text-xs text-zinc-500">{hint}</p>
+    <section className="space-y-2.5 min-w-0">
+      <div className="flex items-end justify-between gap-3 pb-1 border-b border-white/[0.06]">
+        <div className="min-w-0">
+          <h3 className={`text-sm font-semibold tracking-tight ${accent || 'text-white'}`}>{title}</h3>
+          {hint ? <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug">{hint}</p> : null}
         </div>
-        <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 rounded-md px-2 py-1">{rows.length}</span>
+        <span className="text-[11px] font-semibold tabular-nums text-zinc-400 bg-white/5 border border-white/10 rounded-md px-2 py-0.5 shrink-0">
+          {rows.length}
+        </span>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-zinc-500 py-8 text-center border border-white/10 rounded-xl">{empty}</p>
+        <p className="text-xs text-zinc-500 py-7 text-center border border-dashed border-white/10 rounded-xl">{empty}</p>
       ) : (
-        <div className="space-y-3">
+        <div className={grid
+          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5'
+          : 'space-y-2.5'}
+        >
           {rows.map(render)}
         </div>
       )}
+    </section>
+  );
+}
+
+/** Compact interest report for Browsing — not convert cards. */
+function BrowsingReport({ rows, photos, loading }) {
+  const stats = useMemo(() => {
+    let withPhone = 0;
+    let withName = 0;
+    let followUp = 0;
+    const productMap = new Map();
+    rows.forEach((entry) => {
+      if (String(entry.row.phone || '').trim()) withPhone += 1;
+      if (String(entry.row.name || '').trim()) withName += 1;
+      if (entry.followUp) followUp += 1;
+      (entry.items || []).forEach((item) => {
+        const key = String(item.id || item.name || '');
+        if (!key) return;
+        const prev = productMap.get(key) || {
+          id: item.id,
+          name: item.name || 'Item',
+          qty: 0,
+          sessions: 0,
+          photo: photos?.(item) || '',
+        };
+        prev.qty += Number(item.quantity) || 1;
+        prev.sessions += 1;
+        if (!prev.photo && photos) prev.photo = photos(item) || '';
+        productMap.set(key, prev);
+      });
+    });
+    const topProducts = [...productMap.values()]
+      .sort((a, b) => b.sessions - a.sessions || b.qty - a.qty)
+      .slice(0, 12);
+    return {
+      total: rows.length,
+      withPhone,
+      withName,
+      followUp,
+      missingPhone: rows.length - withPhone,
+      topProducts,
+    };
+  }, [rows, photos]);
+
+  const recent = rows.slice(0, 40);
+
+  if (loading) {
+    return (
+      <section className="rounded-xl border border-white/10 bg-black/25 px-4 py-8 text-center text-sm text-zinc-500">
+        Loading browsing report…
+      </section>
+    );
+  }
+
+  if (!rows.length) {
+    return (
+      <section className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-zinc-500">
+        No browsing sessions in the last 30 days.
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-4 min-w-0">
+      <div className="flex items-end justify-between gap-3 pb-1 border-b border-white/[0.06]">
+        <div>
+          <h3 className="text-sm font-semibold tracking-tight text-white">Browsing report</h3>
+          <p className="text-[11px] text-zinc-500 mt-0.5">
+            Interest summary only — partial carts without full convert details.
+          </p>
+        </div>
+        <span className="text-[11px] font-semibold tabular-nums text-zinc-400 bg-white/5 border border-white/10 rounded-md px-2 py-0.5">
+          {stats.total}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[
+          { label: 'Sessions', value: stats.total },
+          { label: 'With phone', value: stats.withPhone },
+          { label: 'Missing phone', value: stats.missingPhone },
+          { label: 'Need follow-up', value: stats.followUp },
+        ].map((card) => (
+          <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215]/80 px-3 py-2.5">
+            <p className="text-[10px] font-medium text-zinc-500">{card.label}</p>
+            <p className="text-lg font-semibold text-white mt-0.5 tabular-nums">{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-black/25 overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/[0.06]">
+          <h4 className="text-xs font-semibold text-zinc-300">Top products in browsing carts</h4>
+        </div>
+        {stats.topProducts.length === 0 ? (
+          <p className="text-xs text-zinc-500 px-3 py-4">No products in browsing sessions.</p>
+        ) : (
+          <ul className="divide-y divide-white/[0.05]">
+            {stats.topProducts.map((product) => {
+              const src = product.photo ? getOptimizedUrl(product.photo, { w: 80, h: 100 }) : '';
+              return (
+                <li key={product.id || product.name} className="flex items-center gap-2.5 px-3 py-2">
+                  <div className="w-8 h-10 rounded overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+                    {src ? (
+                      <img src={src} alt="" className="w-full h-full object-cover object-top" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                        <ShoppingBag size={12} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-medium text-white truncate">{product.name}</p>
+                    <p className="text-[10px] text-zinc-500">
+                      {product.sessions} session{product.sessions === 1 ? '' : 's'} · {product.qty} pcs
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-black/25 overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/[0.06] flex items-center justify-between gap-2">
+          <h4 className="text-xs font-semibold text-zinc-300">Recent activity</h4>
+          <span className="text-[10px] text-zinc-500">Showing {Math.min(recent.length, 40)} of {stats.total}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[11px]">
+            <thead>
+              <tr className="text-zinc-500 border-b border-white/[0.05]">
+                <th className="font-medium px-3 py-2">Shopper</th>
+                <th className="font-medium px-3 py-2">Interest</th>
+                <th className="font-medium px-3 py-2 hidden sm:table-cell">Missing</th>
+                <th className="font-medium px-3 py-2 text-right">Seen</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {recent.map((entry) => {
+                const names = (entry.items || []).slice(0, 2).map((i) => i.name).filter(Boolean).join(', ');
+                const extra = Math.max(0, (entry.items || []).length - 2);
+                return (
+                  <tr key={`br-${entry.row.id}`} className="text-zinc-300">
+                    <td className="px-3 py-2 align-top min-w-[7rem]">
+                      <p className="font-medium text-white truncate max-w-[10rem]">{entry.row.name || 'Guest'}</p>
+                      <p className="text-zinc-500 tabular-nums truncate">{entry.row.phone || 'No phone'}</p>
+                      {entry.followUp && (
+                        <span className="inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                          Follow-up
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <p className="line-clamp-2 text-zinc-300">
+                        {names || '—'}{extra ? ` +${extra}` : ''}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{entry.badge}</p>
+                    </td>
+                    <td className="px-3 py-2 align-top text-zinc-500 hidden sm:table-cell">
+                      {(entry.missing || []).join(', ') || '—'}
+                    </td>
+                    <td className="px-3 py-2 align-top text-right text-zinc-500 tabular-nums whitespace-nowrap">
+                      {formatWhen(entry.row.last_seen_at)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   );
 }
@@ -338,7 +531,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState('');
   const [contactBusyId, setContactBusyId] = useState('');
-  const [filter, setFilter] = useState('ready'); // 'ready' | 'browsing' | 'followup' | 'contacted' | 'all'
+  const [filter, setFilter] = useState('ready'); // ready | browsing | followup | contacted | converted | all
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -480,28 +673,46 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const contactedOpen = openSessions.filter((entry) => isContacted(entry.row));
   const contactedConverted = converted.filter((row) => isContacted(row));
   const contactedCount = contactedOpen.length + contactedConverted.length;
+  const allCount = openSessions.length + converted.length;
 
-  const visibleReady = filter === 'browsing' || filter === 'contacted'
-    ? []
-    : filter === 'followup'
-      ? readyRows.filter((entry) => entry.followUp)
-      : readyRows;
-  const visibleBrowsing = filter === 'ready' || filter === 'contacted'
-    ? []
+  const convertedEntries = converted.map((row) => ({
+    row,
+    kind: 'converted',
+    items: sessionItems(row),
+    missing: [],
+    ready: false,
+    followUp: false,
+    badge: row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : 'Converted',
+  }));
+
+  const visibleReady = filter === 'followup'
+    ? readyRows.filter((entry) => entry.followUp)
+    : filter === 'ready' || filter === 'all'
+      ? readyRows
+      : [];
+
+  const visibleBrowsing = filter === 'browsing' || filter === 'all'
+    ? browsingRows
     : filter === 'followup'
       ? browsingRows.filter((entry) => entry.followUp)
-      : browsingRows;
+      : [];
+
   const visibleContacted = filter === 'contacted'
-    ? [...contactedOpen, ...contactedConverted.map((row) => ({
-        row,
-        kind: 'converted',
-        items: sessionItems(row),
-        missing: [],
-        ready: false,
-        followUp: false,
-        badge: row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : 'Converted',
-      }))]
+    ? [
+        ...contactedOpen,
+        ...contactedConverted.map((row) => ({
+          row,
+          kind: 'converted',
+          items: sessionItems(row),
+          missing: [],
+          ready: false,
+          followUp: false,
+          badge: row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : 'Converted',
+        })),
+      ]
     : [];
+
+  const visibleConverted = filter === 'converted' || filter === 'all' ? convertedEntries : [];
 
   const renderEntry = (entry) => (
     <SessionCard
@@ -521,152 +732,145 @@ export default function AdminShoppers({ products = [], onConverted }) {
     />
   );
 
+  // Same chip pattern as Orders admin filters (solid selected, neutral idle hover).
   const filters = [
-    { id: 'ready', label: 'Ready to convert', count: readyRows.length, active: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300' },
-    { id: 'browsing', label: 'Browsing', count: browsingRows.length, active: 'bg-white/10 border-white/20 text-white' },
-    { id: 'followup', label: 'Follow-up', count: followUpCount, active: 'bg-amber-500/15 border-amber-500/35 text-amber-300' },
-    { id: 'contacted', label: 'কথা হয়েছে', count: contactedCount, active: 'bg-sky-500/15 border-sky-500/35 text-sky-300' },
-    { id: 'all', label: 'All', count: openSessions.length, active: 'bg-white/10 border-white/20 text-white' },
+    { id: 'ready', label: 'Ready', count: readyRows.length },
+    { id: 'browsing', label: 'Browsing', count: browsingRows.length },
+    { id: 'followup', label: 'Follow-up', count: followUpCount },
+    { id: 'contacted', label: 'Contacted', count: contactedCount },
+    { id: 'converted', label: 'Converted', count: converted.length },
+    { id: 'all', label: 'All', count: allCount },
   ];
 
+  const filterHint = {
+    ready: 'Name, phone, and address complete — convert is available.',
+    browsing: 'Interest report for partial carts — not the convert card grid.',
+    followup: 'Idle 30+ min with cart or checkout, no order yet.',
+    contacted: 'Marked after you spoke with the shopper.',
+    converted: 'Sessions already sent to Orders — kept for follow-up history.',
+    all: 'Ready cards, browsing report, and converted sessions.',
+  }[filter] || '';
+
   return (
-    <div className="max-w-6xl space-y-5 pb-16">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-white tracking-tight">
+    <div className="max-w-[90rem] space-y-4 pb-16">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-white tracking-tight">
             Carts & <span className="text-[#ce112d]">Checkouts</span>
           </h2>
-          <p className="text-[11px] text-zinc-500 mt-1">
-            Convert-ready shoppers (name, phone, address) first. Gift recipient details carry into the order.
+          <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
+            Ready shoppers first · converted sessions stay listed
           </p>
         </div>
         <button
           type="button"
           onClick={load}
-          className="h-9 px-3 rounded-lg border border-white/10 text-xs font-semibold text-zinc-300 hover:text-white inline-flex items-center gap-1.5"
+          className="h-8 px-2.5 rounded-lg border border-white/10 text-[11px] font-semibold text-zinc-300 hover:text-white inline-flex items-center gap-1.5 shrink-0"
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           Refresh
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
-          { label: 'Ready to convert', value: readyRows.length },
+          { label: 'Ready', value: readyRows.length },
+          { label: 'Browsing', value: browsingRows.length },
           { label: 'Checkouts today', value: shoppers.today.checkouts },
-          { label: 'Carts today', value: shoppers.today.carts },
-          { label: 'Converted (30 days)', value: converted.length },
+          { label: 'Converted · 30d', value: converted.length },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215] px-3 py-3">
-            <p className="text-[10px] font-medium text-zinc-500">{card.label}</p>
-            <p className="text-2xl font-semibold text-white mt-1">{loading ? '…' : card.value}</p>
+          <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215]/80 px-3 py-2.5">
+            <p className="text-[10px] font-medium text-zinc-500 truncate">{card.label}</p>
+            <p className="text-xl font-semibold text-white mt-0.5 tabular-nums">{loading ? '…' : card.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {filters.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => setFilter(chip.id)}
-            className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
-              filter === chip.id
-                ? chip.active
-                : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            {chip.label}
-            <span className={`min-w-[1.25rem] h-5 px-1.5 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
-              filter === chip.id ? 'bg-black/30 text-current' : 'bg-white/5 text-zinc-500'
-            }`}>
-              {loading ? '…' : chip.count}
-            </span>
-          </button>
-        ))}
-        {filter === 'followup' && (
-          <p className="text-[11px] text-zinc-500 ml-1">30+ min idle, no order yet</p>
-        )}
-        {filter === 'contacted' && (
-          <p className="text-[11px] text-zinc-500 ml-1">Admin marked কথা হয়েছে</p>
-        )}
+      <div className="rounded-xl border border-white/10 bg-black/25 px-2.5 py-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {filters.map((chip) => {
+            const selected = filter === chip.id;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setFilter(chip.id)}
+                className={`group h-8 px-2.5 rounded-md text-[11px] font-semibold border inline-flex items-center gap-1.5 cursor-pointer select-none transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-0 ${
+                  selected
+                    ? 'bg-[#ce112d] border-[#ce112d] text-white hover:bg-[#b00e26] hover:border-[#b00e26]'
+                    : 'bg-[#121215] border-white/10 text-zinc-400 hover:bg-zinc-800 hover:border-white/25 hover:text-white'
+                }`}
+              >
+                {chip.label}
+                <span
+                  className={`text-[10px] font-bold tabular-nums transition-colors duration-150 ${
+                    selected ? 'text-white/80' : 'text-zinc-600 group-hover:text-zinc-300'
+                  }`}
+                >
+                  {loading ? '…' : chip.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-zinc-500 mt-1.5 px-1">{filterHint}</p>
       </div>
 
       {notice && (
-        <p className="text-sm text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{notice}</p>
+        <p className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{notice}</p>
       )}
       {error && (
         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
       )}
 
-      {filter === 'contacted' ? (
-        <Column
-          title="কথা হয়েছে / Contacted"
-          hint="Carts and checkouts you already spoke with — follow-up or convert when ready."
-          accent="text-sky-300"
-          rows={visibleContacted}
-          empty={loading ? 'Loading…' : 'No contacted shoppers yet. Mark a card after you call.'}
-          render={renderEntry}
-        />
-      ) : (
-        <>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-            {(filter === 'ready' || filter === 'all' || filter === 'followup') && (
-              <Column
-                title="Ready to convert"
-                hint="Full name, phone, and address — Convert is active. Gift fields included when filled."
-                accent="text-emerald-300"
-                rows={visibleReady}
-                empty={loading
-                  ? 'Loading…'
-                  : filter === 'followup'
-                    ? 'No convert-ready shoppers need follow-up right now.'
-                    : 'No convert-ready carts yet.'}
-                render={renderEntry}
-              />
-            )}
-            {(filter === 'browsing' || filter === 'all' || filter === 'followup') && (
-              <Column
-                title="Browsing / interest"
-                hint="Partial info — track what they liked. Call/WhatsApp when a phone is present."
-                rows={visibleBrowsing}
-                empty={loading
-                  ? 'Loading…'
-                  : filter === 'followup'
-                    ? 'No browsing sessions need follow-up right now.'
-                    : 'No browsing carts in the last 30 days.'}
-                render={renderEntry}
-              />
-            )}
-          </div>
+      <div className="space-y-5">
+        {(filter === 'ready' || filter === 'followup' || filter === 'all') && (
+          <Column
+            title="Ready to convert"
+            hint="Four-across on desktop · name, phone, and address complete."
+            accent="text-emerald-300"
+            rows={visibleReady}
+            empty={loading
+              ? 'Loading…'
+              : filter === 'followup'
+                ? 'No convert-ready shoppers need follow-up right now.'
+                : 'No convert-ready carts yet.'}
+            render={renderEntry}
+          />
+        )}
 
-          {(filter === 'all' || filter === 'ready') && (
-            <Column
-              title="Converted to orders"
-              hint="Carts and checkouts that were confirmed as orders in the last 30 days."
-              rows={converted}
-              empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
-              render={(row) => (
-                <SessionCard
-                  key={`cv-${row.id}`}
-                  row={row}
-                  badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
-                  followUp={false}
-                  ready={false}
-                  items={sessionItems(row)}
-                  photos={photos}
-                  canConvert={false}
-                  missing=""
-                  busy={false}
-                  contactBusy={contactBusyId === row.id}
-                  onConvert={() => {}}
-                  onToggleContacted={toggleContacted}
-                />
-              )}
-            />
-          )}
-        </>
-      )}
+        {(filter === 'browsing'
+          || ((filter === 'all' || filter === 'followup') && (loading || visibleBrowsing.length > 0))) && (
+          <BrowsingReport
+            rows={visibleBrowsing}
+            photos={photos}
+            loading={loading}
+          />
+        )}
+
+        {filter === 'contacted' && (
+          <Column
+            title="Contacted"
+            hint="Already spoken with — follow up or convert when ready."
+            accent="text-sky-300"
+            rows={visibleContacted}
+            empty={loading ? 'Loading…' : 'No contacted shoppers yet. Mark a card after you call.'}
+            render={renderEntry}
+          />
+        )}
+
+        {(filter === 'converted' || filter === 'all') && (
+          <Column
+            title="Converted"
+            hint="Already sent to Orders — kept here so nothing disappears after convert."
+            accent="text-emerald-400"
+            rows={visibleConverted}
+            empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
+            render={renderEntry}
+          />
+        )}
+      </div>
     </div>
   );
 }

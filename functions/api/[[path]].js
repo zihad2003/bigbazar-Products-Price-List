@@ -4741,7 +4741,7 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
      FROM shopper_sessions
      WHERE last_seen_at >= (NOW() - INTERVAL 30 DAY)
      ORDER BY last_seen_at DESC
-     LIMIT 200`
+     LIMIT 400`
   );
 
   const list = (rows || []).map((row) => {
@@ -4926,9 +4926,10 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
     return c.json(result?.body || { error: 'Could not create the order.' }, result?.status || 500);
   }
 
+  // Keep cart/checkout JSON so Converted filter can still show what was ordered.
   await conn.execute(
     `UPDATE shopper_sessions
-     SET order_id = ?, cart_count = 0, last_seen_at = NOW()
+     SET order_id = ?, last_seen_at = NOW()
      WHERE browser_id = ? AND (order_id IS NULL OR order_id = '')`,
     [result.body.order_id, browserId]
   );
@@ -4936,7 +4937,7 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
   return c.json({ success: true, order_id: result.body.order_id });
 });
 
-// POST /admin/shoppers/:browserId/contacted — mark/unmark "কথা হয়েছে"
+// POST /admin/shoppers/:browserId/contacted — mark/unmark Contacted
 app.post('/admin/shoppers/:browserId/contacted', requireAuth, requireAdmin, async (c) => {
   const browserId = String(c.req.param('browserId') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
   if (browserId.length < 8) return c.json({ error: 'Invalid shopper session.' }, 400);

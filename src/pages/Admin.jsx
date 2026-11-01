@@ -36,7 +36,7 @@ const ORDER_LIST_FILTERS = [
   { id: 'Shipped', label: 'Shipped' },
   { id: 'Delivered', label: 'Delivered' },
   { id: 'Canceled', label: 'Cancelled' },
-  { id: 'contacted', label: 'কথা হয়েছে' },
+  { id: 'contacted', label: 'Contacted' },
   { id: 'advance_refunded', label: 'Advance refunded' },
 ];
 
@@ -4162,7 +4162,7 @@ export default function Admin() {
                               <p className="text-[11px] text-zinc-500 truncate mt-0.5">{o.customer_name}</p>
                               {isOrderContacted(o) && (
                                 <p className="text-[9px] font-semibold text-sky-300 mt-1 inline-flex items-center gap-1">
-                                  <MessageSquare size={9} /> কথা হয়েছে
+                                  <MessageSquare size={9} /> Contacted
                                 </p>
                               )}
                               {orderNearArea(o) && (
@@ -4271,7 +4271,7 @@ export default function Admin() {
                           </div>
                           {isOrderContacted(o) && (
                             <p className="text-[9px] font-semibold text-sky-300 mt-1 inline-flex items-center gap-1">
-                              <MessageSquare size={9} /> কথা হয়েছে
+                              <MessageSquare size={9} /> Contacted
                             </p>
                           )}
                           {orderNearArea(o) && (

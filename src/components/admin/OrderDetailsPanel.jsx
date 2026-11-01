@@ -612,7 +612,7 @@ export default function OrderDetailsPanel({
             )}
             {contacted && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/25">
-                <MessageCircle size={10} /> কথা হয়েছে
+                <MessageCircle size={10} /> Contacted
               </span>
             )}
             {nearArea && (
@@ -635,7 +635,7 @@ export default function OrderDetailsPanel({
             title={contacted ? 'Undo contacted mark' : 'Mark spoken with customer'}
           >
             <MessageCircle size={13} />
-            {contactBusy ? '…' : contacted ? 'কথা হয়েছে' : 'Contact'}
+            {contactBusy ? '…' : contacted ? 'Contacted' : 'Contact'}
           </button>
           <button
             type="button"
