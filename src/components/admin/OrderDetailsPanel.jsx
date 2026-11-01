@@ -1,6 +1,6 @@
 import {
   User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon, Truck, RefreshCw, ExternalLink,
-  ShieldCheck, ShieldAlert, ShieldX, Gift, MessageCircle, ChevronDown, Package,
+  ShieldCheck, ShieldAlert, ShieldX, Gift, MessageCircle, ChevronDown, Package, Mail,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -10,6 +10,7 @@ import {
   advanceRefunded, orderTotal, paymentConfirmed,
   receivedAdvance, recordedAdvanceAmount, suggestedAdvance,
 } from '../../utils/orderMoney';
+import { productPhotosPreferColor } from '../../utils/productImage';
 import { splitOrderAddress } from '../../data/bdLocations';
 
 const IGNORE_VISITOR_IPS = new Set(['5.90.143.78']);
@@ -46,24 +47,6 @@ function parseOrderLine(str) {
   if (qtyMatch) res.qty = qtyMatch[1];
   res.name = str.split('(')[0].trim();
   return res;
-}
-
-function productPhotos(product) {
-  const list = [];
-  const push = (url) => {
-    if (url && !list.includes(url)) list.push(url);
-  };
-  if (Array.isArray(product?.images)) product.images.forEach(push);
-  else if (typeof product?.images === 'string') {
-    try {
-      const parsed = JSON.parse(product.images);
-      if (Array.isArray(parsed)) parsed.forEach(push);
-    } catch {
-      push(product.images);
-    }
-  }
-  push(product?.image_url);
-  return list;
 }
 
 function hasCustomerPaymentClaim(order) {
@@ -699,6 +682,31 @@ export default function OrderDetailsPanel({
                 )}
               </div>
             </div>
+            <div>
+              <p className="text-[10px] text-zinc-500 mb-0.5 flex items-center gap-1">
+                <Mail size={10} /> Email
+              </p>
+              {order.customer_email ? (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`mailto:${order.customer_email}`}
+                    className="text-sm font-semibold text-white hover:text-[#ce112d] truncate flex-1"
+                  >
+                    {order.customer_email}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onCopy?.(order.customer_email, 'Email')}
+                    className="w-8 h-8 rounded-md bg-white/5 text-zinc-400 border border-white/10 flex items-center justify-center hover:text-white"
+                    title="Copy email"
+                  >
+                    <Copy size={12} />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-500">Not provided</p>
+              )}
+            </div>
             {nearArea && (
               <p className="text-[11px] text-zinc-500">Near {nearArea}</p>
             )}
@@ -762,7 +770,8 @@ export default function OrderDetailsPanel({
           <div className="p-3 space-y-2.5">
             {items.map((item, idx) => {
               const p = findProduct(item, idx);
-              const photos = productPhotos(p);
+              const orderedColor = item.color || (idx === 0 ? order.color : null);
+              const photos = productPhotosPreferColor(p, orderedColor);
               const thumb = getOptimizedUrl(photos[0], mediaSizes.thumbnail);
               const openPhoto = () => {
                 if (!photos.length) return;

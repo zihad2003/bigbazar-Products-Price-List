@@ -28,6 +28,12 @@ import { extractProductColors, combinedColorLabel } from '../utils/productColorE
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { advanceRefunded, balanceDue, orderTotal, paymentConfirmed, receivedAdvance } from '../utils/orderMoney';
+import { productImageForColor } from '../utils/productImage';
+
+function orderLineColor(order) {
+  const match = String(order?.product_name || '').match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+  return match?.[1]?.trim() || order?.color || null;
+}
 
 const ORDER_LIST_FILTERS = [
   { id: 'all', label: 'All' },
@@ -3906,7 +3912,7 @@ export default function Admin() {
                       {(() => {
                         const itemNames = orderItemNames(order.product_name);
                         const product = products.find(p => p.id == order.product_id);
-                        const thumb = getOptimizedUrl(product?.image_url || product?.images?.[0], mediaSizes.thumbnail);
+                        const thumb = getOptimizedUrl(productImageForColor(product, orderLineColor(order)), mediaSizes.thumbnail);
                         return (
                           <>
                             <div className="relative w-12 h-14 shrink-0">
@@ -4109,7 +4115,7 @@ export default function Admin() {
                       products.find(p => firstItemSku && (p.platform_id == firstItemSku || p.serial_no == firstItemSku)) ||
                       products.find(p => p.name === firstItemName) ||
                       products.find(p => p.name && firstItemName && p.name.toLowerCase().includes(firstItemName.toLowerCase()));
-                    const thumb = getOptimizedUrl(targetProduct?.image_url || targetProduct?.images?.[0], mediaSizes.thumbnail);
+                    const thumb = getOptimizedUrl(productImageForColor(targetProduct, orderLineColor(o)), mediaSizes.thumbnail);
 
                     return (
                       <button
@@ -4224,7 +4230,7 @@ export default function Admin() {
 
                 return orders.filter(o => matchesOrderListFilter(o, orderListFilter)).map(o => {
                   const product = productMap[o.product_id];
-                  let productThumb = product?.image_url || product?.images?.[0];
+                  let productThumb = productImageForColor(product, orderLineColor(o));
                   const itemNames = orderItemNames(o.product_name);
                   const amount = typeof o.total_amount === 'string'
                     ? parseFloat(o.total_amount.replace(/[^0-9.]/g, ''))
@@ -4330,7 +4336,7 @@ export default function Admin() {
 
                 return orders.filter(o => o && o.status === 'Deleted').map(o => {
                   const product = productMap[o.product_id];
-                  let productThumb = product?.image_url || product?.images?.[0];
+                  let productThumb = productImageForColor(product, orderLineColor(o));
 
                   return (
                     <div

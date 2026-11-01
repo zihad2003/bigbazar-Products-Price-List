@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL } from '../api/client';
 import { rememberGuestOrder } from '../utils/guestOrders';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { productImageForColor } from '../utils/productImage';
 
 const STATUS_STEPS = [
     { key: 'Pending', icon: Clock, labelBn: 'অর্ডার পেয়েছি', labelEn: 'Order received' },
@@ -46,7 +47,7 @@ function statusStepIndex(status) {
     return Math.max(0, STATUS_STEPS.findIndex((step) => step.key === key));
 }
 
-async function fetchProductImageMap(ids) {
+async function fetchProductMap(ids) {
     const unique = [...new Set((ids || []).filter(Boolean))];
     if (!unique.length) return {};
     try {
@@ -59,11 +60,7 @@ async function fetchProductImageMap(ids) {
         const map = {};
         for (const row of rows) {
             if (!row?.id) continue;
-            let images = row.images;
-            if (typeof images === 'string') {
-                try { images = JSON.parse(images); } catch (_) { images = []; }
-            }
-            map[row.id] = row.image_url || (Array.isArray(images) ? images[0] : null) || null;
+            map[row.id] = row;
         }
         return map;
     } catch (_) {
@@ -124,7 +121,7 @@ function parseOrderLine(str) {
     return resItem;
 }
 
-function mapDbOrder(dbOrder, imageMap = {}) {
+function mapDbOrder(dbOrder, productMap = {}) {
     const addressParts = (dbOrder.customer_address || '').split(' | ');
     const address = addressParts[0] || '';
     const locationParts = addressParts[1] ? addressParts[1].split(', ') : [];
@@ -135,6 +132,7 @@ function mapDbOrder(dbOrder, imageMap = {}) {
     if (parsedItems.length === 1) {
         parsedItems[0].price = (parseFloat(dbOrder.product_price) || 0) / (parsedItems[0].quantity || 1);
         if (!parsedItems[0].id && dbOrder.product_id) parsedItems[0].id = dbOrder.product_id;
+        if (!parsedItems[0].selectedColor && dbOrder.color) parsedItems[0].selectedColor = dbOrder.color;
     } else {
         const qtySum = parsedItems.reduce((acc, i) => acc + i.quantity, 0) || 1;
         parsedItems.forEach((item) => {
@@ -142,8 +140,9 @@ function mapDbOrder(dbOrder, imageMap = {}) {
         });
     }
     parsedItems.forEach((item) => {
-        if (item.id && imageMap[item.id]) item.image = imageMap[item.id];
-        else if (!item.image && dbOrder.product_id && imageMap[dbOrder.product_id]) item.image = imageMap[dbOrder.product_id];
+        const product = (item.id && productMap[item.id]) || productMap[dbOrder.product_id];
+        const color = item.selectedColor || dbOrder.color || null;
+        item.image = productImageForColor(product, color) || item.image || null;
     });
 
     const rawLastDigits = dbOrder.last_four_digits || '';
@@ -219,8 +218,8 @@ export default function OrderConfirmation() {
                 const m = line.match(/\((?:PID):\s*([^)]*)\)/i);
                 if (m?.[1]) idHints.push(m[1].trim());
             });
-            const imageMap = await fetchProductImageMap(idHints);
-            const mapped = mapDbOrder(dbOrder, imageMap);
+            const productMap = await fetchProductMap(idHints);
+            const mapped = mapDbOrder(dbOrder, productMap);
 
             setOrder((prev) => {
                 if (!prev) return mapped;

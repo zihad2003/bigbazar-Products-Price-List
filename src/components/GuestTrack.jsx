@@ -9,6 +9,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { API_URL } from '../api/client';
 import { readGuestOrders, toAsciiDigits } from '../utils/guestOrders';
 import { getOptimizedUrl, mediaSizes } from '../utils/media';
+import { productImageForColor } from '../utils/productImage';
 
 const STATUS_STEPS = [
     { key: 'Pending', icon: Clock, labelBn: 'অর্ডার পেয়েছি', labelEn: 'Order received' },
@@ -48,7 +49,7 @@ function parseOrderLine(str) {
     return resItem;
 }
 
-async function fetchProductImageMap(ids) {
+async function fetchProductMap(ids) {
     const unique = [...new Set((ids || []).filter(Boolean))];
     if (!unique.length) return {};
     try {
@@ -61,11 +62,7 @@ async function fetchProductImageMap(ids) {
         const map = {};
         for (const row of rows) {
             if (!row?.id) continue;
-            let images = row.images;
-            if (typeof images === 'string') {
-                try { images = JSON.parse(images); } catch (_) { images = []; }
-            }
-            map[row.id] = row.image_url || (Array.isArray(images) ? images[0] : null) || null;
+            map[row.id] = row;
         }
         return map;
     } catch (_) {
@@ -73,7 +70,7 @@ async function fetchProductImageMap(ids) {
     }
 }
 
-function mapTrackOrder(row, imageMap = {}) {
+function mapTrackOrder(row, productMap = {}) {
     const addressParts = String(row.customer_address || '').split(' | ');
     const address = addressParts[0] || '';
     const locationParts = addressParts[1] ? addressParts[1].split(', ') : [];
@@ -84,6 +81,7 @@ function mapTrackOrder(row, imageMap = {}) {
     if (parsedItems.length === 1) {
         parsedItems[0].price = (parseFloat(row.product_price) || 0) / (parsedItems[0].quantity || 1);
         if (!parsedItems[0].id && row.product_id) parsedItems[0].id = row.product_id;
+        if (!parsedItems[0].selectedColor && row.color) parsedItems[0].selectedColor = row.color;
     } else if (parsedItems.length > 1) {
         const qtySum = parsedItems.reduce((acc, i) => acc + i.quantity, 0) || 1;
         parsedItems.forEach((item) => {
@@ -91,8 +89,9 @@ function mapTrackOrder(row, imageMap = {}) {
         });
     }
     parsedItems.forEach((item) => {
-        if (item.id && imageMap[item.id]) item.image = imageMap[item.id];
-        else if (!item.image && row.product_id && imageMap[row.product_id]) item.image = imageMap[row.product_id];
+        const product = (item.id && productMap[item.id]) || productMap[row.product_id];
+        const color = item.selectedColor || row.color || null;
+        item.image = productImageForColor(product, color) || item.image || null;
     });
 
     const rawLastDigits = row.last_four_digits || '';
@@ -291,8 +290,8 @@ export default function GuestTrack() {
                 const m = line.match(/\((?:PID):\s*([^)]*)\)/i);
                 if (m?.[1]) idHints.push(m[1].trim());
             });
-            const imageMap = await fetchProductImageMap(idHints);
-            setOrder(mapTrackOrder(row, imageMap));
+            const productMap = await fetchProductMap(idHints);
+            setOrder(mapTrackOrder(row, productMap));
             setStatusPulse((n) => n + 1);
             setError('');
         } catch (_) {

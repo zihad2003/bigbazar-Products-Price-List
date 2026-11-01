@@ -2849,7 +2849,19 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
   await ensureOrderTrackCodeColumn(conn);
   await ensureOrderGiftColumns(conn);
   await ensureOrderCustomerEmailColumn(conn);
-  const customerEmail = normalizeOptionalEmail(o.customer_email);
+  // Prefer checkout email; else signed-in account email (Google JWT / users table).
+  let customerEmail = normalizeOptionalEmail(o.customer_email);
+  const authedCustomer = c.get?.('customer') || null;
+  if (!customerEmail) {
+    customerEmail = normalizeOptionalEmail(authedCustomer?.email);
+  }
+  if (!customerEmail && customerId) {
+    try {
+      const userRows = await conn.execute('SELECT email FROM users WHERE id = ? LIMIT 1', [customerId]);
+      const row = Array.isArray(userRows) ? userRows[0] : userRows?.rows?.[0];
+      customerEmail = normalizeOptionalEmail(row?.email);
+    } catch (_) { /* optional */ }
+  }
   let issuedTrackCode = await mintTrackCode(conn, o.customer_phone);
 
   const tx = await conn.begin();
@@ -3419,17 +3431,42 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     const wasAdvancePaid = Boolean(currentOrder.is_advance_paid);
     const nowAdvancePaid = o.is_advance_paid !== undefined ? Boolean(o.is_advance_paid) : wasAdvancePaid;
     const refundApplied = cancelWithAdvance || (fields.advance_refunded === 1 && !alreadyRefunded);
-    if (!wasAdvancePaid && nowAdvancePaid && !refundApplied) {
-      runInBackground(c, () =>
-        sendOrderConfirmedSms(c.env, currentOrder).catch((err) =>
-          console.error('order sms error:', err?.message || err)
-        )
-      );
-      runInBackground(c, () =>
-        sendCustomerOrderConfirmedEmail(c.env, currentOrder).catch((err) =>
-          console.error('customer confirm email error:', err?.message || err)
-        )
-      );
+    const prevStatus = String(currentOrder.status || '');
+    const nextStatus = o.status !== undefined ? String(o.status || '') : prevStatus;
+    const becameConfirmed =
+      nextStatus === 'Confirmed'
+      && prevStatus !== 'Confirmed'
+      && !isCancelOrderStatus(nextStatus);
+    const advanceJustPaid = !wasAdvancePaid && nowAdvancePaid && !refundApplied;
+    // Customer confirm mail: advance marked paid OR status moved to Confirmed.
+    // Await SMTP — Hostinger often drops fire-and-forget after the HTTP response.
+    if (advanceJustPaid || becameConfirmed) {
+      const notifyOrder = {
+        ...currentOrder,
+        status: nextStatus || currentOrder.status,
+        is_advance_paid: nowAdvancePaid ? 1 : currentOrder.is_advance_paid,
+        payment_status: o.payment_status !== undefined ? o.payment_status : currentOrder.payment_status,
+        advance_paid_amount: advancePaidAmount !== undefined ? advancePaidAmount : currentOrder.advance_paid_amount,
+        total_amount: o.total_amount !== undefined ? o.total_amount : currentOrder.total_amount,
+        customer_email: currentOrder.customer_email,
+      };
+      if (advanceJustPaid) {
+        runInBackground(c, () =>
+          sendOrderConfirmedSms(c.env, notifyOrder).catch((err) =>
+            console.error('order sms error:', err?.message || err)
+          )
+        );
+      }
+      try {
+        if (!normalizeOptionalEmail(notifyOrder.customer_email)) {
+          console.warn('customer confirm email skipped: no customer_email on order', id);
+        } else {
+          await sendCustomerOrderConfirmedEmail(c.env, notifyOrder);
+          console.log('customer confirm email sent for', id);
+        }
+      } catch (err) {
+        console.error('customer confirm email error:', err?.message || err);
+      }
     }
     return c.json({ success: true });
   } catch (err) {
@@ -3521,6 +3558,28 @@ function firstProductImage(row) {
   return '';
 }
 
+function colorVariantImageFromProduct(row, colorName) {
+  const want = String(colorName || '').trim().toLowerCase();
+  if (!row || !want) return '';
+  let colors = row.available_colors;
+  if (typeof colors === 'string') {
+    try { colors = JSON.parse(colors); } catch (_) { colors = []; }
+  }
+  if (!Array.isArray(colors)) return '';
+  const matched = colors.find((entry) => {
+    const name = typeof entry === 'object' ? entry?.name : entry;
+    return name && String(name).trim().toLowerCase() === want;
+  });
+  if (matched && typeof matched === 'object') {
+    return String(matched.image || matched.image_url || '') || '';
+  }
+  return '';
+}
+
+function productImageForOrderColor(row, colorName) {
+  return colorVariantImageFromProduct(row, colorName) || firstProductImage(row);
+}
+
 /**
  * GET /orders/:id/history — previous orders for the same phone (admin ops).
  * One phone-tail query + one products IN (...) lookup (no N+1).
@@ -3566,16 +3625,16 @@ app.get('/orders/:id/history', requireAuth, requireAdmin, async (c) => {
     }
   }
 
-  const photoById = new Map();
+  const productById = new Map();
   const ids = [...productIds].slice(0, 80);
   if (ids.length) {
     try {
       const products = await conn.execute(
-        `SELECT id, image_url, images FROM products WHERE id IN (${ids.map(() => '?').join(',')})`,
+        `SELECT id, image_url, images, available_colors FROM products WHERE id IN (${ids.map(() => '?').join(',')})`,
         ids
       );
       for (const product of products || []) {
-        photoById.set(String(product.id), firstProductImage(product));
+        productById.set(String(product.id), product);
       }
     } catch (_) {}
   }
@@ -3592,12 +3651,15 @@ app.get('/orders/:id/history', requireAuth, requireAdmin, async (c) => {
     if (stLower !== 'canceled' && stLower !== 'cancelled' && stLower !== 'deleted') {
       summary.spent += amount;
     }
-    const items = parseOrderProductLines(order.product_name).map((item) => ({
-      ...item,
-      image: (item.pid && photoById.get(String(item.pid)))
-        || (order.product_id && photoById.get(String(order.product_id)))
-        || '',
-    }));
+    const items = parseOrderProductLines(order.product_name).map((item) => {
+      const product = (item.pid && productById.get(String(item.pid)))
+        || (order.product_id && productById.get(String(order.product_id)))
+        || null;
+      return {
+        ...item,
+        image: productImageForOrderColor(product, item.color) || '',
+      };
+    });
     return {
       id: order.id,
       status: order.status || 'Pending',
