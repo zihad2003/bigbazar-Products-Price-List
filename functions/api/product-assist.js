@@ -6,6 +6,8 @@
  * browser-canvas colors and the admin types the rest.
  */
 
+import { isAllowedImageFetchUrl, safePathUnder } from './safe-url.js';
+
 const MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash'];
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 4_500_000;
@@ -45,14 +47,58 @@ function bytesToBase64(buf) {
   return btoa(binary);
 }
 
-async function fetchImagePart(url) {
+function mimeFromName(fileName) {
+  const ext = String(fileName || '').split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+async function loadLocalApiImg(url) {
+  const raw = String(url || '');
+  const relMatch = raw.match(/\/api\/img\/([^/?#]+)$/i);
+  if (!relMatch || typeof process === 'undefined') return null;
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const fileName = decodeURIComponent(relMatch[1]);
+    const baseDirs = [
+      path.resolve(process.cwd(), 'uploads', 'api', 'img'),
+      path.resolve(process.cwd(), 'dist', 'api', 'img'),
+      path.resolve(process.cwd(), 'public', 'api', 'img'),
+    ];
+    for (const dir of baseDirs) {
+      const file = safePathUnder(path, dir, fileName);
+      if (!file || !fs.existsSync(file)) continue;
+      const buf = fs.readFileSync(file);
+      if (buf.length > 0 && buf.length <= MAX_IMAGE_BYTES) {
+        return { inlineData: { mimeType: mimeFromName(fileName), data: bytesToBase64(buf) } };
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function fetchImagePart(url, env) {
+  const local = await loadLocalApiImg(url);
+  if (local) return local;
+
+  if (!isAllowedImageFetchUrl(url, env)) {
+    console.error('product-assist image blocked (SSRF allowlist):', url);
+    return null;
+  }
   const res = await fetch(url);
   if (!res.ok) return null;
   const buf = await res.arrayBuffer();
   if (!buf.byteLength || buf.byteLength > MAX_IMAGE_BYTES) return null;
   const mime = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
-  if (!mime.startsWith('image/')) return null;
-  return { inlineData: { mimeType: mime, data: bytesToBase64(buf) } };
+  if (!/^image\/(jpeg|jpg|png|webp)$/i.test(mime)) return null;
+  return {
+    inlineData: {
+      mimeType: mime.toLowerCase().replace('image/jpg', 'image/jpeg'),
+      data: bytesToBase64(buf),
+    },
+  };
 }
 
 function parseModelJson(text) {
@@ -106,7 +152,7 @@ export async function analyzeProductImages(env, imageUrls) {
   const parts = [{ text: `There are ${urls.length} photo(s) of one product, in order.` }];
   for (const url of urls) {
     try {
-      const part = await fetchImagePart(url);
+      const part = await fetchImagePart(url, env);
       if (part) parts.push(part);
     } catch (_) {}
   }

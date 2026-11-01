@@ -3,6 +3,8 @@
  * Prefer AI (Gemini vision when image available, then Groq); smart template fallback.
  */
 
+import { isAllowedImageFetchUrl, safePathUnder } from './safe-url.js';
+
 function cleanText(s) {
   return String(s || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 }
@@ -297,21 +299,22 @@ async function loadProductImage(env, imageUrl) {
   const raw = String(imageUrl || '').trim();
   if (!raw || raw.startsWith('data:')) return null;
 
-  // Hostinger disk: /api/img/up-xxxx.webp → uploads/api/img/up-xxxx.webp
-  const relMatch = raw.match(/\/api\/img\/([^/?#]+)$/i) || raw.match(/^\/?([^/?#]+\.(?:webp|jpe?g|png|gif))$/i);
+  // Prefer local disk for /api/img/... (avoids SSRF and self-HTTP).
+  const relMatch = raw.match(/\/api\/img\/([^/?#]+)$/i) || raw.match(/^\/?([^/?#]+\.(?:webp|jpe?g|png))$/i);
   if (relMatch && typeof process !== 'undefined') {
     try {
       const fs = await import('fs');
       const path = await import('path');
       const fileName = decodeURIComponent(relMatch[1]);
-      const candidates = [
-        path.resolve(process.cwd(), 'uploads', 'api', 'img', fileName),
-        path.resolve(process.cwd(), 'dist', 'api', 'img', fileName),
-        path.resolve(process.cwd(), 'public', 'api', 'img', fileName),
+      const baseDirs = [
+        path.resolve(process.cwd(), 'uploads', 'api', 'img'),
+        path.resolve(process.cwd(), 'dist', 'api', 'img'),
+        path.resolve(process.cwd(), 'public', 'api', 'img'),
       ];
-      for (const file of candidates) {
+      for (const dir of baseDirs) {
         try {
-          if (!fs.existsSync(file)) continue;
+          const file = safePathUnder(path, dir, fileName);
+          if (!file || !fs.existsSync(file)) continue;
           const buf = fs.readFileSync(file);
           if (buf.length > 0 && buf.length < 4_500_000) {
             return { mimeType: mimeFromName(fileName), data: bytesToBase64(buf) };
@@ -340,6 +343,11 @@ async function loadProductImage(env, imageUrl) {
     }
   }
 
+  if (!isAllowedImageFetchUrl(absolute, env)) {
+    console.error('product-copy image blocked (SSRF allowlist):', absolute);
+    return null;
+  }
+
   try {
     const imgRes = await fetch(absolute, { cf: { cacheTtl: 60 } });
     if (!imgRes.ok) {
@@ -349,7 +357,8 @@ async function loadProductImage(env, imageUrl) {
     const buf = await imgRes.arrayBuffer();
     if (!buf.byteLength || buf.byteLength >= 4_500_000) return null;
     const mime = (imgRes.headers.get('content-type') || mimeFromName(absolute)).split(';')[0];
-    return { mimeType: mime.startsWith('image/') ? mime : 'image/jpeg', data: bytesToBase64(buf) };
+    if (!/^image\/(jpeg|jpg|png|webp)$/i.test(mime)) return null;
+    return { mimeType: mime.toLowerCase().replace('image/jpg', 'image/jpeg'), data: bytesToBase64(buf) };
   } catch (e) {
     console.error('product-copy image fetch:', e?.message || e);
     return null;

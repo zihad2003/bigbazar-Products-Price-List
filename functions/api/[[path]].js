@@ -221,21 +221,37 @@ function publicOrderRow(row, full) {
   };
 }
 
-/** Real visitor IP. Prefer the customer in X-Forwarded-For, not the Hostinger edge. */
+/**
+ * Rate-limit IP: prefer CF-Connecting-IP or socket remoteAddress; never trust
+ * leftmost X-Forwarded-For (clients can rotate spoofed hops to bypass limits).
+ */
 function getClientIp(c) {
-  const candidates = [];
-  const push = (value) => {
-    for (const part of String(value || '').split(',')) {
-      const ip = part.trim().replace(/^::ffff:/, '');
-      if (ip) candidates.push(ip);
-    }
-  };
-  push(c.req.header('CF-Connecting-IP'));
-  push(c.req.header('True-Client-IP'));
-  push(c.req.header('X-Forwarded-For'));
-  push(c.req.header('X-Real-IP'));
-  push(c.env?.incoming?.socket?.remoteAddress);
-  return candidates.find((ip) => !isPrivateIp(ip)) || candidates[0] || '127.0.0.1';
+  const normalize = (value) => String(value || '').trim().replace(/^::ffff:/i, '');
+  const cf = normalize(c.req.header('CF-Connecting-IP'));
+  if (cf) return cf;
+
+  const remote = normalize(
+    c.env?.incoming?.socket?.remoteAddress ||
+      c.req?.raw?.socket?.remoteAddress ||
+      c.req?.raw?.connection?.remoteAddress ||
+      ''
+  );
+  if (remote && !isPrivateIp(remote)) return remote;
+
+  // XFF: take the rightmost public hop (leftmost is client-controlled).
+  const xff = String(c.req.header('X-Forwarded-For') || '')
+    .split(',')
+    .map((part) => normalize(part))
+    .filter(Boolean);
+  for (let i = xff.length - 1; i >= 0; i -= 1) {
+    if (!isPrivateIp(xff[i])) return xff[i];
+  }
+
+  const realIp = normalize(c.req.header('X-Real-IP') || c.req.header('True-Client-IP'));
+  if (realIp) return realIp;
+  if (remote) return remote;
+  if (xff.length) return xff[xff.length - 1];
+  return '127.0.0.1';
 }
 
 function isPrivateIp(ip) {
@@ -919,13 +935,38 @@ function normalizeOptionalEmail(raw) {
   return list[0] || null;
 }
 
-/** Comma-separated owner emails that must always receive superadmin (Hostinger bootstrap). */
+function isProductionLikeEnv(env) {
+  const nodeEnv = String(
+    env?.NODE_ENV || (typeof process !== 'undefined' && process.env?.NODE_ENV) || ''
+  ).toLowerCase();
+  if (nodeEnv === 'production') return true;
+  if (env?.HOSTINGER || (typeof process !== 'undefined' && process.env?.HOSTINGER)) return true;
+  // Hostinger Node often omits NODE_ENV; treat live site host as production-like.
+  const site = String(
+    env?.PUBLIC_SITE_URL ||
+      env?.SITE_URL ||
+      (typeof process !== 'undefined' && (process.env?.PUBLIC_SITE_URL || process.env?.SITE_URL)) ||
+      ''
+  ).toLowerCase();
+  if (site.includes('onlinebigbazar.com')) return true;
+  return false;
+}
+
+/** Owner emails that receive superadmin. Production requires SUPERADMIN_EMAILS env. */
 function getSuperadminEmails(env) {
   const raw =
     env?.SUPERADMIN_EMAILS ||
     (typeof process !== 'undefined' && process.env?.SUPERADMIN_EMAILS) ||
-    'zihadlaptopasus@gmail.com';
-  return parseEmailList(raw).map((e) => e.toLowerCase());
+    '';
+  if (raw) return parseEmailList(raw).map((e) => e.toLowerCase());
+  if (isProductionLikeEnv(env)) {
+    console.error(
+      '[security] SUPERADMIN_EMAILS is unset in production — bootstrap superadmin list is empty. Set SUPERADMIN_EMAILS on Hostinger.'
+    );
+    return [];
+  }
+  // Local/dev bootstrap only — never silent hardcoded prod default.
+  return parseEmailList('zihadlaptopasus@gmail.com').map((e) => e.toLowerCase());
 }
 
 function escapeEmailHtml(value) {
@@ -1366,19 +1407,28 @@ app.get('/health', async (c) => {
   try {
     const conn = getDb(c.env);
     const r = await conn.execute('SELECT 1 as ok');
+    const revealSchema = await isAdminUser(c);
     let tables = [];
-    try {
-      const t = await conn.execute('SHOW TABLES');
-      tables = Array.isArray(t) ? t.map(row => Object.values(row)[0]) : [];
-    } catch (_) {}
+    let tablesCount = undefined;
+    if (revealSchema) {
+      try {
+        const t = await conn.execute('SHOW TABLES');
+        tables = Array.isArray(t) ? t.map((row) => Object.values(row)[0]) : [];
+        tablesCount = tables.length;
+      } catch (_) {}
+    }
 
-    return c.json({
+    const body = {
       status: 'ok',
       database: 'connected',
       db_response: r[0],
-      tables_count: tables.length,
-      tables: tables
-    });
+    };
+    // Strip table inventory in production for anonymous callers.
+    if (revealSchema) {
+      body.tables_count = tablesCount;
+      body.tables = tables;
+    }
+    return c.json(body);
   } catch (err) {
     return c.json({
       status: 'error',
@@ -1393,6 +1443,31 @@ app.get('/health', async (c) => {
 // IMAGE CDN ENDPOINT — zero database queries, instant static asset delivery
 // ============================================
 const IMG_EXT_RE = /\.(jpe?g|png|webp)$/i;
+/** Allowlisted image filename / id segment (no path separators or traversal). */
+const SAFE_IMG_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
+
+/** Resolve fileName under baseDir; null if traversal / absolute / unsafe name. */
+function safePathUnder(pathMod, baseDir, fileName) {
+  const name = String(fileName || '');
+  if (!SAFE_IMG_NAME_RE.test(name)) return null;
+  if (name.includes('..') || /%2e/i.test(name) || name.includes('/') || name.includes('\\')) return null;
+  const resolved = pathMod.resolve(baseDir, name);
+  const rel = pathMod.relative(pathMod.resolve(baseDir), resolved);
+  if (!rel || rel.startsWith('..') || pathMod.isAbsolute(rel)) return null;
+  return resolved;
+}
+
+/** Sniff image magic bytes; returns image/jpeg|png|webp or null (rejects SVG/HTML). */
+function sniffImageMime(buf) {
+  if (!buf || buf.length < 12) return null;
+  const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  const riff = String.fromCharCode(b[0], b[1], b[2], b[3]);
+  const webp = String.fromCharCode(b[8], b[9], b[10], b[11]);
+  if (riff === 'RIFF' && webp === 'WEBP') return 'image/webp';
+  return null;
+}
 
 /** Lost Hostinger upload ids → static files already live at /img/subcats/ */
 const UPLOAD_ID_TO_SUBCAT_STATIC = {
@@ -1416,10 +1491,30 @@ const SUBCAT_ID_TO_STATIC = {
 };
 
 app.get('/img/:id', async (c) => {
-  const rawId = c.req.param('id');
+  let rawId = String(c.req.param('id') || '');
+  try {
+    rawId = decodeURIComponent(rawId);
+  } catch {
+    return c.json({ error: 'Invalid image id' }, 400);
+  }
+  // Reject path traversal / absolute / encoded-dot tricks before any disk read.
+  if (
+    !rawId ||
+    rawId.includes('..') ||
+    /%2e/i.test(rawId) ||
+    rawId.includes('/') ||
+    rawId.includes('\\') ||
+    rawId.startsWith('.') ||
+    !SAFE_IMG_NAME_RE.test(rawId)
+  ) {
+    return c.json({ error: 'Invalid image id' }, 400);
+  }
   const hadExt = IMG_EXT_RE.test(rawId);
   // Strip extension so KV / DB lookups use the bare upload or product id
   const id = hadExt ? rawId.replace(IMG_EXT_RE, '') : rawId;
+  if (!SAFE_IMG_NAME_RE.test(id)) {
+    return c.json({ error: 'Invalid image id' }, 400);
+  }
   const kv = c.env?.BIGBAZAR_CACHE;
 
   // 0. MySQL media_assets — permanent store (Hostinger redeploy-safe)
@@ -1443,7 +1538,7 @@ app.get('/img/:id', async (c) => {
     return c.redirect(UPLOAD_ID_TO_SUBCAT_STATIC[id], 302);
   }
 
-  // 0c. Disk cache (uploads/ + dist/ + public/)
+  // 0c. Disk cache (uploads/ + dist/ + public/) — path-traversal safe
   try {
     const fs = await import('fs');
     const path = await import('path');
@@ -1457,7 +1552,8 @@ app.get('/img/:id', async (c) => {
       : [`${id}.webp`, `${id}.jpg`, `${id}.jpeg`, `${id}.png`];
     for (const dir of baseDirs) {
       for (const name of names) {
-        const file = path.join(dir, name);
+        const file = safePathUnder(path, dir, name);
+        if (!file) continue;
         if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
         const buf = fs.readFileSync(file);
         const ext = path.extname(file).toLowerCase();
@@ -2118,14 +2214,21 @@ app.get('/products', async (c) => {
   }
 
   const isNoCache = await isAdminOrNoCache(c);
+  const isAdmin = await isAdminUser(c);
   const { status, category, subcategory, search, page = 0, limit = 12, id, ids, order_by = 'created_at', ascending = 'false' } = c.req.query();
+
+  // Public: always published only (ignore client ?status=draft|pending). Admins keep JWT filters.
+  const effectiveStatus = isAdmin
+    ? (status || null)
+    : 'published';
   
   const pageNum = Math.max(0, parseInt(page) || 0);
   const limitNum = Math.max(1, Math.min(parseInt(limit) || 12, 100));
 
-  // Sanitize cache key to prevent bot cache-busting
+  // Sanitize cache key to prevent bot cache-busting / draft-cache poisoning
   const safeParams = new URLSearchParams();
-  if (status) safeParams.set('status', status);
+  if (effectiveStatus) safeParams.set('status', effectiveStatus);
+  else if (isAdmin) safeParams.set('status', 'all');
   if (category) safeParams.set('category', category);
   if (subcategory) safeParams.set('subcategory', subcategory);
   if (search) safeParams.set('search', search);
@@ -2151,7 +2254,6 @@ app.get('/products', async (c) => {
   const conn = getDb(c.env);
 
   try {
-    const isAdmin = await isAdminUser(c);
 
     if (id) {
       // Bug #2 fix: only authenticated admins can view deleted/unpublished products
@@ -2202,12 +2304,10 @@ app.get('/products', async (c) => {
     let whereSql = ' WHERE (is_deleted = 0 OR is_deleted IS NULL)';
     const params = [];
 
-    // Public catalog: default to published only. Admins (JWT) may omit status to see drafts.
-    if (status) {
+    // Public: always published. Admins (JWT) may filter by status or omit to see drafts.
+    if (effectiveStatus) {
       whereSql += ' AND status = ?';
-      params.push(status);
-    } else if (!isAdmin) {
-      whereSql += " AND status = 'published'";
+      params.push(effectiveStatus);
     }
     if (category && category !== 'All') {
       if (category === 'New') {
@@ -2649,6 +2749,12 @@ async function placeShopOrder(c, o, customerId = null) {
       normalizedArea = 'outside';
     } else {
       normalizedArea = rawArea || 'outside';
+    }
+
+    // Free Mirsarai only when address text also suggests Mirsarai (stops area-only spoof).
+    const addressText = String(o.customer_address || '');
+    if (normalizedArea === 'mirsarai' && !/mirsarai|মীরসরাই|মিরসরাই/i.test(addressText)) {
+      normalizedArea = 'chattogram';
     }
 
     let calculatedDeliveryCharge = 150;
@@ -3731,7 +3837,8 @@ app.get('/orders/track', async (c) => {
   const empty = { data: [] };
   const notDeleted = `(status IS NULL OR status <> 'Deleted')`;
 
-  // Confirmation links keep working with the full order id and no phone.
+  // UUID / order-id alone: slim status only (no name/phone/address/payment PII).
+  // Full publicOrderRow requires matching phone (or phone + track_code).
   if (isStoredOrderId(query) && !phone && !code) {
     const rows = await conn.execute(
       `SELECT * FROM orders WHERE id = ? AND ${notDeleted} LIMIT 1`,
@@ -3739,7 +3846,7 @@ app.get('/orders/track', async (c) => {
     );
     const row = rows?.[0];
     if (!row) return c.json(empty);
-    return c.json({ data: [publicOrderRow(row, true)] });
+    return c.json({ data: [publicOrderRow(row, false)] });
   }
 
   const tail = phoneTail(phone);
@@ -3762,7 +3869,8 @@ app.get('/orders/track', async (c) => {
         [lookupId, tail]
       );
 
-  return c.json({ data: (rows || []).map((row) => publicOrderRow(row, false)) });
+  // Phone (+ track_code or order id) verified → full row for guest track UI.
+  return c.json({ data: (rows || []).map((row) => publicOrderRow(row, true)) });
 });
 
 // ============================================
@@ -4336,6 +4444,21 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
       return c.json({ error: `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 10 MB.` }, 413);
     }
 
+    const declared = String(file.type || '').toLowerCase().split(';')[0].trim();
+    if (declared && !['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(declared)) {
+      return c.json({ error: 'Only JPEG, PNG, or WebP images are allowed.' }, 415);
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const sniffed = sniffImageMime(buffer);
+    if (!sniffed) {
+      return c.json({ error: 'File content is not a valid JPEG, PNG, or WebP image.' }, 415);
+    }
+    // Store/serve with sniffed type (never trust client MIME / SVG/HTML).
+    const mimeType = sniffed;
+    const ext = mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
+
     // ── Cloudinary upload (primary path) ──────────────────────────────────
     const cloudName  = c.env.CLOUDINARY_CLOUD_NAME;
     const apiKey     = c.env.CLOUDINARY_API_KEY;
@@ -4351,7 +4474,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
         const signature = await sha1Hex(paramsToSign + apiSecret);
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', new Blob([buffer], { type: mimeType }), `upload.${ext}`);
         formData.append('api_key', apiKey);
         formData.append('timestamp', timestamp);
         formData.append('signature', signature);
@@ -4380,14 +4503,7 @@ app.post('/upload', requireAuth, requireAdmin, async (c) => {
     }
 
     // ── MySQL media_assets (permanent — survives Hostinger redeploy) ──
-    const arrayBuffer = await file.arrayBuffer();
     const uploadId = 'up-' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-    const mimeType = file.type || 'image/jpeg';
-    const ext =
-      mimeType.includes('webp') ? 'webp'
-      : mimeType.includes('png') ? 'png'
-      : 'jpg';
-    const buffer = Buffer.from(arrayBuffer);
     const fileName = `${uploadId}.${ext}`;
 
     try {
@@ -4765,6 +4881,8 @@ app.get('/account/me', requireCustomerAuth, async (c) => {
 });
 
 // PUT /account/me — Update customer phone (the only editable field for now)
+// Known risk: phone is not OTP-verified; binding enables order lookup by phone.
+// Phone OTP / claim verification intentionally skipped for now (product decision).
 app.put('/account/me', requireCustomerAuth, async (c) => {
   const customer = c.get('customer');
   const { phone } = await c.req.json();
@@ -4779,6 +4897,7 @@ app.put('/account/me', requireCustomerAuth, async (c) => {
 });
 
 // GET /account/orders — Customer's orders by user_id and/or profile phone
+// Known risk: orders matched by unverified profile phone (OTP claim deferred).
 app.get('/account/orders', requireCustomerAuth, async (c) => {
   const customer = c.get('customer');
   const page = parseInt(c.req.query('page') || '0', 10) || 0;
