@@ -6,7 +6,24 @@ export function suggestedAdvance(order) {
   return charge;
 }
 
+/** Advance was returned to the customer after cancel. */
+export function advanceRefunded(order) {
+  return Boolean(order?.advance_refunded)
+    || order?.payment_status === 'Advance Refunded';
+}
+
+/** Customer had paid advance/full at some point (including later refunded). */
+export function hadAdvancePayment(order) {
+  if (advanceRefunded(order)) return true;
+  return Boolean(order?.is_advance_paid)
+    || order?.payment_status === 'Advance Paid'
+    || order?.payment_status === 'Fully Paid'
+    || (Number(order?.advance_paid_amount) > 0);
+}
+
+/** Advance money is still held (not refunded). */
 export function paymentConfirmed(order) {
+  if (advanceRefunded(order)) return false;
   return Boolean(order?.is_advance_paid)
     || order?.payment_status === 'Advance Paid'
     || order?.payment_status === 'Fully Paid';
@@ -22,6 +39,16 @@ export function receivedAdvance(order) {
   return suggestedAdvance(order);
 }
 
+/** Historical advance amount (still useful after refund). */
+export function recordedAdvanceAmount(order) {
+  const raw = order?.advance_paid_amount;
+  if (raw !== null && raw !== undefined && raw !== '' && Number.isFinite(Number(raw))) {
+    return Math.max(0, Number(raw));
+  }
+  if (hadAdvancePayment(order)) return suggestedAdvance(order);
+  return 0;
+}
+
 export function orderTotal(order) {
   if (typeof order?.total_amount === 'string') {
     return Number(String(order.total_amount).replace(/[^0-9.]/g, '')) || 0;
@@ -30,6 +57,7 @@ export function orderTotal(order) {
 }
 
 export function balanceDue(order) {
+  if (advanceRefunded(order)) return 0;
   if (order?.payment_status === 'Fully Paid') return 0;
   return Math.max(0, orderTotal(order) - receivedAdvance(order));
 }

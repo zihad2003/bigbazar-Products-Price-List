@@ -150,7 +150,10 @@ function mapDbOrder(dbOrder, imageMap = {}) {
     const ref = String(rawLastDigits).trim();
     const hasPaymentRef = Boolean(ref) && !/^cod$/i.test(ref);
     const isFullyPaid = dbOrder.payment_status === 'Fully Paid';
-    const isAdvancePaid = isFullyPaid || Boolean(dbOrder.is_advance_paid) || dbOrder.payment_status === 'Advance Paid';
+    const advanceWasRefunded = Boolean(dbOrder.advance_refunded) || dbOrder.payment_status === 'Advance Refunded';
+    const isAdvancePaid = !advanceWasRefunded && (
+      isFullyPaid || Boolean(dbOrder.is_advance_paid) || dbOrder.payment_status === 'Advance Paid'
+    );
     const paymentPendingVerify = hasPaymentRef && !isAdvancePaid && !isFullyPaid;
     const subtotalVal = parseFloat(dbOrder.product_price) || 0;
     const deliveryChargeVal = parseFloat(dbOrder.delivery_charge) || 0;

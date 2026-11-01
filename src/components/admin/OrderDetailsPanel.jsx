@@ -6,7 +6,10 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { API_URL, getToken } from '../../api/client';
-import { orderTotal, paymentConfirmed, receivedAdvance, suggestedAdvance } from '../../utils/orderMoney';
+import {
+  advanceRefunded, hadAdvancePayment, orderTotal, paymentConfirmed,
+  receivedAdvance, recordedAdvanceAmount, suggestedAdvance,
+} from '../../utils/orderMoney';
 import { splitOrderAddress } from '../../data/bdLocations';
 
 function parseOrderLine(str) {
@@ -234,6 +237,7 @@ export default function OrderDetailsPanel({
   onTogglePayment,
   onRecordAdvance,
   onUpdateStatus,
+  onMarkAdvanceRefunded,
   onEditNote,
   onOrderPatched,
 }) {
@@ -276,16 +280,24 @@ export default function OrderDetailsPanel({
   const ref = order.id.toString().slice(-6).toUpperCase();
   const items = (order.product_name || '').split(' + ').map(parseOrderLine);
   const pay = paymentRef(order);
-  const adv = receivedAdvance(order);
+  const refunded = advanceRefunded(order);
+  const adv = refunded ? 0 : receivedAdvance(order);
   const typedAdvance = Number(advanceInput);
-  const shownAdvance = Number.isFinite(typedAdvance) && typedAdvance >= 0 ? Math.round(typedAdvance) : adv;
+  const shownAdvance = refunded
+    ? recordedAdvanceAmount(order)
+    : (Number.isFinite(typedAdvance) && typedAdvance >= 0 ? Math.round(typedAdvance) : adv);
   const total = orderTotal(order);
-  const due = Math.max(0, total - shownAdvance);
+  const due = refunded || order.status === 'Canceled' || order.status === 'Cancelled'
+    ? 0
+    : Math.max(0, total - shownAdvance);
   const suggested = suggestedAdvance(order);
   const paid = paymentConfirmed(order);
   const noteText = customerNoteText(order.customer_note);
   const addressParts = splitOrderAddress(order.customer_address);
   const isModal = variant === 'modal';
+  const canMarkRefund = !refunded
+    && hadAdvancePayment(order)
+    && (order.status === 'Canceled' || order.status === 'Cancelled');
 
   const bookSteadfast = async () => {
     if (!window.confirm(`Book Steadfast courier for #${ref}?\nCOD: ৳${due}`)) return;
@@ -360,6 +372,11 @@ export default function OrderDetailsPanel({
           <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
             {new Date(order.created_at).toLocaleString()} · {order.status || '—'}
           </p>
+          {refunded && (
+            <p className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25">
+              Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
@@ -540,7 +557,11 @@ export default function OrderDetailsPanel({
               { label: 'Product', value: `৳${Number(order.product_price || 0).toLocaleString()}` },
               { label: 'Delivery', value: `৳${parseFloat(order.delivery_charge) || 0}` },
               { label: 'Total', value: `৳${total.toLocaleString()}`, accent: true },
-              { label: 'Advance', value: `৳${shownAdvance}`, accent: true },
+              {
+                label: refunded ? 'Advance (refunded)' : 'Advance',
+                value: `৳${shownAdvance}`,
+                accent: true,
+              },
             ].map((cell) => (
               <div key={cell.label} className={`rounded-md border p-2.5 min-w-0 ${cell.accent ? 'border-[#ce112d]/25 bg-[#ce112d]/5' : 'border-white/10 bg-black/20'}`}>
                 <p className="text-[10px] text-zinc-500 mb-0.5 truncate">{cell.label}</p>
@@ -551,9 +572,17 @@ export default function OrderDetailsPanel({
 
           <div className="rounded-lg bg-[#ce112d] p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 items-center">
             <div className="min-w-0">
-              <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">Due on delivery</p>
-              <p className="mt-1 text-[1.75rem] leading-none font-bold text-white whitespace-nowrap">৳{due.toLocaleString()}</p>
-              <p className="text-[11px] text-white/80 mt-2">Total ৳{total.toLocaleString()}</p>
+              <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">
+                {refunded ? 'Held advance' : 'Due on delivery'}
+              </p>
+              <p className="mt-1 text-[1.75rem] leading-none font-bold text-white whitespace-nowrap">
+                ৳{(refunded ? shownAdvance : due).toLocaleString()}
+              </p>
+              <p className="text-[11px] text-white/80 mt-2">
+                {refunded
+                  ? 'অ্যাডভান্স ফেরত দেওয়া হয়েছে — money no longer held'
+                  : `Total ৳${total.toLocaleString()}`}
+              </p>
               <div className="mt-3 pt-3 border-t border-white/25 flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-medium text-white/70 uppercase tracking-wider">{pay.label}</p>
@@ -570,50 +599,73 @@ export default function OrderDetailsPanel({
                   </button>
                 )}
               </div>
-              {hasCustomerPaymentClaim(order) && (
+              {hasCustomerPaymentClaim(order) && !refunded && (
                 <p className="text-[10px] text-white/80 mt-1">
                   Customer sent a payment ref. Check it, then confirm the amount.
                 </p>
               )}
             </div>
             <div className="flex flex-col gap-2 min-w-0">
-              <label className="text-[10px] text-white/70" htmlFor={`advance-${order.id}`}>
-                Amount received
-              </label>
-              <input
-                id={`advance-${order.id}`}
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={advanceInput}
-                onChange={(e) => setAdvanceInput(e.target.value)}
-                className="h-10 w-full rounded-md bg-white text-neutral-900 px-3 text-sm font-semibold outline-none"
-              />
-              <p className="text-[10px] text-white/75 leading-snug">Usual for this order: ৳{suggested}. Type what arrived.</p>
-              <button
-                type="button"
-                disabled={savingAdvance}
-                onClick={async () => {
-                  const n = Number(advanceInput);
-                  if (!Number.isFinite(n) || n <= 0) return;
-                  setSavingAdvance(true);
-                  try {
-                    await onRecordAdvance?.(order, Math.round(n));
-                  } finally {
-                    setSavingAdvance(false);
-                  }
-                }}
-                className="h-10 w-full rounded-md text-[12px] font-semibold bg-white text-[#ce112d] disabled:opacity-60"
-              >
-                {savingAdvance ? 'Saving…' : paid ? 'Update amount' : 'Confirm order'}
-              </button>
-              {paid && (
+              {refunded ? (
+                <div className="rounded-md bg-black/25 border border-white/15 p-3 space-y-1">
+                  <p className="text-[11px] font-semibold text-white">Advance refunded</p>
+                  <p className="text-[10px] text-white/75 leading-snug">
+                    অ্যাডভান্স ফেরত দেওয়া হয়েছে
+                    {order.advance_refunded_at
+                      ? ` · ${new Date(order.advance_refunded_at).toLocaleString()}`
+                      : ''}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <label className="text-[10px] text-white/70" htmlFor={`advance-${order.id}`}>
+                    Amount received
+                  </label>
+                  <input
+                    id={`advance-${order.id}`}
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={advanceInput}
+                    onChange={(e) => setAdvanceInput(e.target.value)}
+                    className="h-10 w-full rounded-md bg-white text-neutral-900 px-3 text-sm font-semibold outline-none"
+                  />
+                  <p className="text-[10px] text-white/75 leading-snug">Usual for this order: ৳{suggested}. Type what arrived.</p>
+                  <button
+                    type="button"
+                    disabled={savingAdvance}
+                    onClick={async () => {
+                      const n = Number(advanceInput);
+                      if (!Number.isFinite(n) || n <= 0) return;
+                      setSavingAdvance(true);
+                      try {
+                        await onRecordAdvance?.(order, Math.round(n));
+                      } finally {
+                        setSavingAdvance(false);
+                      }
+                    }}
+                    className="h-10 w-full rounded-md text-[12px] font-semibold bg-white text-[#ce112d] disabled:opacity-60"
+                  >
+                    {savingAdvance ? 'Saving…' : paid ? 'Update amount' : 'Confirm order'}
+                  </button>
+                  {paid && (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePayment?.(order, 'Unpaid')}
+                      className="h-8 text-[10px] font-semibold text-white/80 underline"
+                    >
+                      Undo payment
+                    </button>
+                  )}
+                </>
+              )}
+              {canMarkRefund && (
                 <button
                   type="button"
-                  onClick={() => onTogglePayment?.(order, 'Unpaid')}
-                  className="h-8 text-[10px] font-semibold text-white/80 underline"
+                  onClick={() => onMarkAdvanceRefunded?.(order)}
+                  className="h-9 w-full rounded-md text-[11px] font-semibold bg-violet-500/20 border border-violet-400/30 text-violet-100 hover:bg-violet-500/30"
                 >
-                  Undo payment
+                  Mark advance refunded
                 </button>
               )}
             </div>

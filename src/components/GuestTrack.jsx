@@ -99,7 +99,10 @@ function mapTrackOrder(row, imageMap = {}) {
     const ref = String(rawLastDigits).trim();
     const hasPaymentRef = Boolean(ref) && !/^cod$/i.test(ref);
     const isFullyPaid = row.payment_status === 'Fully Paid';
-    const isAdvancePaid = isFullyPaid || Boolean(row.is_advance_paid) || row.payment_status === 'Advance Paid';
+    const advanceWasRefunded = Boolean(row.advance_refunded) || row.payment_status === 'Advance Refunded';
+    const isAdvancePaid = !advanceWasRefunded && (
+      isFullyPaid || Boolean(row.is_advance_paid) || row.payment_status === 'Advance Paid'
+    );
     const paymentPendingVerify = hasPaymentRef && !isAdvancePaid && !isFullyPaid;
     const subtotal = parseFloat(row.product_price) || 0;
     const deliveryCharge = parseFloat(row.delivery_charge) || 0;

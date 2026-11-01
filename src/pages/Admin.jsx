@@ -27,7 +27,29 @@ import { compressImage, compressImages, COMPRESS_PRESETS, formatFileSize } from 
 import { extractProductColors, combinedColorLabel } from '../utils/productColorExtract';
 import { TOP_CATEGORIES, SEED_SUBCATEGORIES, mergeWithDynamic, getSubcategoriesForCategory, resolveSubcategoryImage, subcategoryImageFallback } from '../data/categories';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { balanceDue, orderTotal, receivedAdvance } from '../utils/orderMoney';
+import { advanceRefunded, balanceDue, orderTotal, paymentConfirmed, receivedAdvance } from '../utils/orderMoney';
+
+const ORDER_LIST_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'Pending', label: 'Pending' },
+  { id: 'Confirmed', label: 'Confirmed' },
+  { id: 'Shipped', label: 'Shipped' },
+  { id: 'Delivered', label: 'Delivered' },
+  { id: 'Canceled', label: 'Cancelled' },
+  { id: 'advance_refunded', label: 'Advance refunded' },
+];
+
+function isCanceledStatus(s) {
+  return s === 'Canceled' || s === 'Cancelled';
+}
+
+function matchesOrderListFilter(order, filter) {
+  if (!order || order.status === 'Deleted') return false;
+  if (!filter || filter === 'all') return true;
+  if (filter === 'advance_refunded') return advanceRefunded(order);
+  if (filter === 'Canceled') return isCanceledStatus(order.status);
+  return order.status === filter;
+}
 
 function shiftProductNav(prev, product, fields) {
   if (!prev || !product) return prev;
@@ -130,6 +152,7 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderListFilter, setOrderListFilter] = useState('all');
   const [reviews, setReviews] = useState([]);
   const [navCounts, setNavCounts] = useState({ users: null, conversations: null });
   const [productNav, setProductNav] = useState(null);
@@ -665,19 +688,64 @@ export default function Admin() {
   };
 
   const updateOrderStatus = async (id, status) => {
+    const order = orders.find((o) => o.id === id) || (selectedOrder?.id === id ? selectedOrder : null);
+    const canceling = isCanceledStatus(status);
+    const needsAdvanceRefund = canceling && order && paymentConfirmed(order) && !advanceRefunded(order);
+
+    const patch = { status: canceling ? 'Canceled' : status };
+    if (needsAdvanceRefund) {
+      patch.advance_refunded = 1;
+      patch.advance_refunded_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      patch.payment_status = 'Advance Refunded';
+      patch.refund_advance = 1;
+      // Keep advance history markers so admin can see it was paid then returned
+      if (order?.is_advance_paid || order?.payment_status === 'Advance Paid' || order?.payment_status === 'Fully Paid') {
+        patch.is_advance_paid = 1;
+      }
+    }
+
     setConfirmation({
       isOpen: true,
-      title: 'Update Order Status',
-      message: `আপনি কি পরিবর্তন করে "${status}" করতে চান?`,
-      confirmText: 'Update Status',
+      title: needsAdvanceRefund ? 'Cancel & refund advance' : 'Update Order Status',
+      message: needsAdvanceRefund
+        ? 'এই অর্ডারে অ্যাডভান্স নেওয়া হয়েছে। ক্যান্সেল করলে অ্যাডভান্স গ্রাহককে ফেরত দেওয়া হয়েছে বলে মার্ক হবে। নিশ্চিত?'
+        : `আপনি কি পরিবর্তন করে "${status}" করতে চান?`,
+      confirmText: needsAdvanceRefund ? 'Cancel & Refund' : 'Update Status',
       onConfirm: async () => {
-        const { error } = await bigBazarApi.from('orders').update({ status }).eq('id', id);
+        const { error } = await bigBazarApi.from('orders').update(patch).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else {
           fetchOrders();
           if (selectedOrder?.id === id) {
-            setSelectedOrder({ ...selectedOrder, status });
+            setSelectedOrder({ ...selectedOrder, ...patch });
           }
+          setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+        }
+      }
+    });
+  };
+
+  const markAdvanceRefunded = async (order) => {
+    if (!order?.id || advanceRefunded(order)) return;
+    setConfirmation({
+      isOpen: true,
+      title: 'Mark advance refunded',
+      message: 'অ্যাডভান্স গ্রাহককে ফেরত দেওয়া হয়েছে বলে মার্ক করবেন?',
+      confirmText: 'Mark Refunded',
+      onConfirm: async () => {
+        const patch = {
+          advance_refunded: 1,
+          advance_refunded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          payment_status: 'Advance Refunded',
+          refund_advance: 1,
+          is_advance_paid: 1,
+        };
+        const { error } = await bigBazarApi.from('orders').update(patch).eq('id', order.id);
+        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
+        else {
+          fetchOrders();
+          if (selectedOrder?.id === order.id) setSelectedOrder({ ...selectedOrder, ...patch });
+          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...patch } : o)));
         }
       }
     });
@@ -3926,11 +3994,36 @@ export default function Admin() {
               </button>
             </div>
 
+            {/* Status / refund filters */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mr-1 inline-flex items-center gap-1">
+                <Filter size={11} /> Filter
+              </span>
+              {ORDER_LIST_FILTERS.map((f) => {
+                const active = orderListFilter === f.id;
+                const count = orders.filter((o) => matchesOrderListFilter(o, f.id)).length;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setOrderListFilter(f.id)}
+                    className={`h-8 px-2.5 rounded-md text-[11px] font-semibold border transition-colors ${
+                      active
+                        ? 'bg-[#ce112d] border-[#ce112d] text-white'
+                        : 'bg-[#121215] border-white/10 text-zinc-400 hover:text-white hover:border-white/25'
+                    }`}
+                  >
+                    {f.label}
+                    <span className={`ml-1.5 ${active ? 'text-white/80' : 'text-zinc-600'}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Compact stats */}
             {(() => {
-              const isCanceled = (s) => s === 'Canceled' || s === 'Cancelled';
               const listed = orders.filter(o => o && o.status !== 'Deleted');
-              const open = listed.filter(o => !isCanceled(o.status));
+              const open = listed.filter(o => !isCanceledStatus(o.status));
               const revenue = open.reduce((acc, o) => acc + orderTotal(o), 0);
               const advance = open.reduce((acc, o) => acc + receivedAdvance(o), 0);
               const stillDue = (order) => {
@@ -3984,6 +4077,7 @@ export default function Admin() {
                     onTogglePayment={togglePaymentStatus}
                     onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
+                    onMarkAdvanceRefunded={markAdvanceRefunded}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
                   />
@@ -3996,12 +4090,12 @@ export default function Admin() {
               {/* LEFT: order list */}
               <div className="col-span-4 flex flex-col gap-2 overflow-y-auto pr-1">
                 {(() => {
-                  const filteredOrders = orders.filter(o => o && o.status !== 'Deleted');
+                  const filteredOrders = orders.filter(o => matchesOrderListFilter(o, orderListFilter));
                   if (filteredOrders.length === 0) {
                     return (
                       <div className="flex flex-col items-center justify-center py-16 rounded-lg border border-white/10 bg-zinc-900/50 text-zinc-600">
                         <ShoppingBag size={28} />
-                        <p className="mt-2 text-xs font-medium">No active orders</p>
+                        <p className="mt-2 text-xs font-medium">No matching orders</p>
                       </div>
                     );
                   }
@@ -4071,6 +4165,11 @@ export default function Admin() {
                                 )}
                               </div>
                               <p className="text-[11px] text-zinc-500 truncate mt-0.5">{o.customer_name}</p>
+                              {advanceRefunded(o) && (
+                                <p className="text-[9px] font-semibold text-violet-300 mt-1">
+                                  Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-white/5">
                               <p className="text-[12px] font-semibold text-[#ce112d]">৳{(amount || 0).toLocaleString()}</p>
@@ -4107,6 +4206,7 @@ export default function Admin() {
                     onTogglePayment={togglePaymentStatus}
                     onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
+                    onMarkAdvanceRefunded={markAdvanceRefunded}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
                   />
@@ -4120,7 +4220,7 @@ export default function Admin() {
                 const productMap = {};
                 products.forEach(p => { productMap[p.id] = p; });
 
-                return orders.filter(o => o && o.status !== 'Deleted').map(o => {
+                return orders.filter(o => matchesOrderListFilter(o, orderListFilter)).map(o => {
                   const product = productMap[o.product_id];
                   let productThumb = product?.image_url || product?.images?.[0];
                   const itemNames = orderItemNames(o.product_name);
@@ -4167,6 +4267,11 @@ export default function Admin() {
                               </span>
                             )}
                           </div>
+                          {advanceRefunded(o) && (
+                            <p className="text-[9px] font-semibold text-violet-300 mt-1">
+                              Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
+                            </p>
+                          )}
                           <div className="flex items-center justify-between mt-1">
                             <p className="text-[12px] font-semibold text-[#ce112d]">৳{(amount || 0).toLocaleString()}</p>
                             <p className="text-[10px] text-zinc-500 uppercase">{o.delivery_area}</p>
@@ -4178,7 +4283,7 @@ export default function Admin() {
                 });
               })()}
             </div>
-            {orders.filter(o => o && o.status !== 'Deleted').length === 0 && !loading && (
+            {orders.filter(o => matchesOrderListFilter(o, orderListFilter)).length === 0 && !loading && (
               <div className="py-16 text-center space-y-2">
                 <div className="w-14 h-14 bg-zinc-900 rounded-xl flex items-center justify-center mx-auto border border-white/5">
                   <ShoppingBag className="text-zinc-600" size={22} />

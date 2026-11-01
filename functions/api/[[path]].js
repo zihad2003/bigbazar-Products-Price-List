@@ -102,6 +102,40 @@ async function ensureOrderCustomerEmailColumn(conn) {
   orderCustomerEmailReady = true;
 }
 
+let orderAdvanceRefundReady = false;
+async function ensureOrderAdvanceRefundColumns(conn) {
+  if (orderAdvanceRefundReady) return;
+  for (const sql of [
+    'ALTER TABLE orders ADD COLUMN advance_refunded TINYINT(1) NOT NULL DEFAULT 0',
+    'ALTER TABLE orders ADD COLUMN advance_refunded_at DATETIME NULL',
+    'ALTER TABLE orders ADD COLUMN advance_refund_note VARCHAR(500) NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/duplicate column|already exists/i.test(msg)) {
+        /* ignore missing-permission / other transient */
+      }
+    }
+  }
+  orderAdvanceRefundReady = true;
+}
+
+function orderHadAdvanceHeld(order) {
+  if (!order) return false;
+  if (order.advance_refunded === true || order.advance_refunded === 1 || order.advance_refunded === '1') return false;
+  if (order.payment_status === 'Advance Refunded') return false;
+  return Boolean(order.is_advance_paid)
+    || order.payment_status === 'Advance Paid'
+    || order.payment_status === 'Fully Paid'
+    || (Number(order.advance_paid_amount) > 0);
+}
+
+function isCancelOrderStatus(s) {
+  return s === 'Cancelled' || s === 'Canceled';
+}
+
 function isGiftOrderPayload(o) {
   return o?.is_gift === true || o?.is_gift === 1 || o?.is_gift === '1';
 }
@@ -2650,6 +2684,7 @@ app.get('/orders', requireAuth, requireAdmin, async (c) => {
   const { status, search, page = 0, limit = 20, ascending = 'false' } = c.req.query();
   const conn = getDb(c.env);
   await ensureOrderPaymentColumns(conn);
+  await ensureOrderAdvanceRefundColumns(conn);
   let sql = 'SELECT * FROM orders WHERE 1=1';
   const params = [];
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -3090,6 +3125,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const id = c.req.param('id');
   const conn = getDb(c.env);
   await ensureOrderPaymentColumns(conn);
+  await ensureOrderAdvanceRefundColumns(conn);
 
   let advancePaidAmount;
   if (o.advance_paid_amount !== undefined) {
@@ -3115,12 +3151,31 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     const currentOrder = currentOrders[0];
 
     // 2. Restore stock when moving to Cancelled OR Deleted (trash), if not already restored
-    const isCancelStatus = (s) => s === 'Cancelled' || s === 'Canceled';
-    const stockAlreadyRestored = isCancelStatus(currentOrder.status) || currentOrder.status === 'Deleted';
-    const isTransitioningToCancelled = isCancelStatus(o.status) && !stockAlreadyRestored;
+    const stockAlreadyRestored = isCancelOrderStatus(currentOrder.status) || currentOrder.status === 'Deleted';
+    const isTransitioningToCancelled = isCancelOrderStatus(o.status) && !stockAlreadyRestored;
     const isTransitioningToDeleted = o.status === 'Deleted' && !stockAlreadyRestored;
     if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await restoreOrderStock(tx, currentOrder);
+    }
+
+    // Advance refund: admin cancel of an advance-paid order (or explicit mark)
+    const wantsRefund =
+      o.advance_refunded === true || o.advance_refunded === 1 || o.advance_refunded === '1'
+      || o.refund_advance === true || o.refund_advance === 1 || o.refund_advance === '1'
+      || o.payment_status === 'Advance Refunded';
+    const alreadyRefunded =
+      currentOrder.advance_refunded === 1
+      || currentOrder.advance_refunded === true
+      || currentOrder.payment_status === 'Advance Refunded';
+    const cancelWithAdvance =
+      isCancelOrderStatus(o.status || currentOrder.status)
+      && orderHadAdvanceHeld(currentOrder)
+      && wantsRefund
+      && !alreadyRefunded;
+
+    let refundNote;
+    if (o.advance_refund_note !== undefined) {
+      refundNote = String(o.advance_refund_note || '').trim().slice(0, 500) || null;
     }
 
     // 3. Update fields
@@ -3139,12 +3194,56 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       advance_paid_amount: advancePaidAmount,
       customer_note: customerNote,
     };
+
+    if (cancelWithAdvance || (wantsRefund && !alreadyRefunded && orderHadAdvanceHeld(currentOrder))) {
+      fields.advance_refunded = 1;
+      fields.advance_refunded_at = o.advance_refunded_at
+        ? String(o.advance_refunded_at).slice(0, 19).replace('T', ' ')
+        : new Date().toISOString().slice(0, 19).replace('T', ' ');
+      fields.payment_status = 'Advance Refunded';
+      // Keep is_advance_paid / advance_paid_amount as history of what was held
+      if (fields.is_advance_paid === undefined) fields.is_advance_paid = 1;
+      if (refundNote !== undefined) fields.advance_refund_note = refundNote;
+    } else if (o.advance_refunded !== undefined) {
+      fields.advance_refunded = o.advance_refunded ? 1 : 0;
+      if (o.advance_refunded_at !== undefined) {
+        fields.advance_refunded_at = o.advance_refunded_at
+          ? String(o.advance_refunded_at).slice(0, 19).replace('T', ' ')
+          : null;
+      }
+      if (refundNote !== undefined) fields.advance_refund_note = refundNote;
+    } else if (refundNote !== undefined) {
+      fields.advance_refund_note = refundNote;
+    }
+
     for (const [key, val] of Object.entries(fields)) {
       if (val !== undefined) { setClauses.push(`${key} = ?`); params.push(val); }
     }
     if (setClauses.length > 0) {
       params.push(id);
-      await tx.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
+      try {
+        await tx.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
+      } catch (updateErr) {
+        const msg = String(updateErr?.message || '');
+        if (!/unknown column|advance_refund/i.test(msg)) throw updateErr;
+        // Older schema without refund columns — retry core fields only
+        const core = {};
+        for (const [key, val] of Object.entries(fields)) {
+          if (val === undefined) continue;
+          if (/^advance_refund/.test(key)) continue;
+          core[key] = val;
+        }
+        const coreClauses = [];
+        const coreParams = [];
+        for (const [key, val] of Object.entries(core)) {
+          coreClauses.push(`${key} = ?`);
+          coreParams.push(val);
+        }
+        if (coreClauses.length > 0) {
+          coreParams.push(id);
+          await tx.execute(`UPDATE orders SET ${coreClauses.join(', ')} WHERE id = ?`, coreParams);
+        }
+      }
     }
 
     await tx.commit();
@@ -3154,7 +3253,8 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
     const wasAdvancePaid = Boolean(currentOrder.is_advance_paid);
     const nowAdvancePaid = o.is_advance_paid !== undefined ? Boolean(o.is_advance_paid) : wasAdvancePaid;
-    if (!wasAdvancePaid && nowAdvancePaid) {
+    const refundApplied = cancelWithAdvance || (fields.advance_refunded === 1 && !alreadyRefunded);
+    if (!wasAdvancePaid && nowAdvancePaid && !refundApplied) {
       runInBackground(c, () =>
         sendOrderConfirmedSms(c.env, currentOrder).catch((err) =>
           console.error('order sms error:', err?.message || err)
@@ -3826,7 +3926,7 @@ app.delete('/orders', requireAuth, requireAdmin, async (c) => {
     let restoredAny = false;
     for (const order of orders) {
       // Cancelled/Deleted already restored stock on status transition — do not double-restore
-      if (order.status !== 'Cancelled' && order.status !== 'Deleted') {
+      if (!isCancelOrderStatus(order.status) && order.status !== 'Deleted') {
         await restoreOrderStock(tx, order);
         restoredAny = true;
       }
@@ -3857,7 +3957,7 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
       const order = orders[0];
 
       // 2. Restore stock unless already restored via Cancelled/Deleted transition
-      if (order.status !== 'Cancelled' && order.status !== 'Deleted') {
+      if (!isCancelOrderStatus(order.status) && order.status !== 'Deleted') {
         await restoreOrderStock(tx, order);
         stockWasRestored = true;
       }
