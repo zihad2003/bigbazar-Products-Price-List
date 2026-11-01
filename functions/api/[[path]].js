@@ -674,23 +674,23 @@ async function kvGet(c, key) {
     const kv = c.env?.BIGBAZAR_CACHE;
     if (!kv) return memCacheGet(key);
     const val = await kv.get(key, { type: 'json' });
-    return val;
-  } catch (_) {
-    return memCacheGet(key);
-  }
+    // Warm isolate memory so repeated hits in the same worker skip KV round-trips
+    if (val != null) {
+      memCacheSet(key, val);
+      return val;
+    }
+  } catch (_) {}
+  return memCacheGet(key);
 }
 
 async function kvSet(c, key, value, ttlSeconds = 86400) {
+  // Always write isolate memory first — Hostinger/CF may drop background KV puts
+  memCacheSet(key, value);
   try {
     const kv = c.env?.BIGBAZAR_CACHE;
-    if (!kv) {
-      memCacheSet(key, value);
-      return;
-    }
+    if (!kv) return;
     await kv.put(key, JSON.stringify(value), { expirationTtl: Math.max(60, ttlSeconds) });
-  } catch (_) {
-    memCacheSet(key, value);
-  }
+  } catch (_) {}
 }
 
 async function kvDelete(c, key) {
@@ -2128,6 +2128,69 @@ const SUB_KEYWORDS_MAP = {
   'lehenga/gown': ['lehenga', 'gown', 'লেহেঙ্গা', 'গাউন'],
 };
 
+/**
+ * Bangla shoppers type native terms; product names are mostly English.
+ * Expand common Bangla/romanized queries into English tokens so LIKE matches.
+ */
+const SEARCH_SYNONYMS = {
+  'শাড়ি': ['saree', 'sari', 'sharee'],
+  'শাড়ি': ['saree', 'sari', 'sharee'],
+  'শারি': ['saree', 'sari', 'sharee'],
+  'থ্রি পিস': ['three-piece', 'three piece', '3 piece', 'threepiece'],
+  'থ্রিপিস': ['three-piece', 'three piece', '3 piece'],
+  'থ্রি-পিস': ['three-piece', 'three piece', '3 piece'],
+  'পাঞ্জাবি': ['panjabi', 'punjabi'],
+  'পাঞ্জাবী': ['panjabi', 'punjabi'],
+  'কুর্তি': ['kurti', 'kurta'],
+  'শার্ট': ['shirt'],
+  'ব্লেজার': ['blazer'],
+  'ফারসি': ['parshi', 'farsi'],
+  'পারশি': ['parshi', 'farsi'],
+  'বোরকা': ['borka', 'burkha', 'abaya'],
+  'হিজাব': ['hijab'],
+  'জিন্স': ['jeans'],
+  'প্যান্ট': ['pant', 'pants', 'trouser'],
+  'গাউন': ['gown'],
+  'লেহেঙ্গা': ['lehenga'],
+  'ফ্রক': ['frock', 'dress'],
+  'টি-শার্ট': ['t-shirt', 'tshirt', 'polo'],
+  'পোলো': ['polo', 't-shirt'],
+};
+
+const CATEGORY_ALIAS_MAP = {
+  'Men': ['Men', 'ছেলেদের'],
+  'Women': ['Women', 'মেয়েদের'],
+  'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
+  'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'],
+  // Bare "Kids" / Bangla umbrella — previously returned zero products
+  'Kids': ['Kids (Boys)', 'Kids (Girls)', 'বাচ্চাদের (ছেলে)', 'বাচ্চাদের (মেয়ে)', 'Kids'],
+  'বাচ্চাদের': ['Kids (Boys)', 'Kids (Girls)', 'বাচ্চাদের (ছেলে)', 'বাচ্চাদের (মেয়ে)'],
+};
+
+function expandSearchTerms(raw) {
+  const q = String(raw || '').trim();
+  if (!q) return [];
+  const terms = new Set([q]);
+  const lower = q.toLowerCase();
+  for (const [key, aliases] of Object.entries(SEARCH_SYNONYMS)) {
+    if (q.includes(key) || lower.includes(key.toLowerCase())) {
+      aliases.forEach((a) => terms.add(a));
+    }
+  }
+  // Cap to keep SQL OR lists bounded
+  return [...terms].slice(0, 8);
+}
+
+function resolveCategoryAliases(catList) {
+  const allCats = new Set();
+  catList.forEach((c) => {
+    const mapped = CATEGORY_ALIAS_MAP[c];
+    if (mapped) mapped.forEach((m) => allCats.add(m));
+    else allCats.add(c);
+  });
+  return [...allCats];
+}
+
 // ── Subcategory Counts Endpoint ──
 app.get('/products/subcategory-counts', async (c) => {
   if (!(await checkRateLimitKV(c, 'subcounts', 60, 60000))) {
@@ -2152,20 +2215,8 @@ app.get('/products/subcategory-counts', async (c) => {
              WHERE status = 'published' AND (is_deleted = 0 OR is_deleted IS NULL)`;
   const params = [];
   if (category && category !== 'All') {
-    const maps = {
-      'Men': ['Men', 'ছেলেদের'],
-      'Women': ['Women', 'মেয়েদের'],
-      'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-      'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
-    };
     const catList = category.split(',').map(c => c.trim()).filter(Boolean);
-    const allCats = new Set();
-    catList.forEach(c => {
-      const mapped = maps[c];
-      if (mapped) mapped.forEach(m => allCats.add(m));
-      else allCats.add(c);
-    });
-    const cats = [...allCats];
+    const cats = resolveCategoryAliases(catList);
     sql += ` AND category IN (${cats.map(() => '?').join(',')})`;
     params.push(...cats);
   }
@@ -2318,19 +2369,7 @@ app.get('/products', async (c) => {
         whereSql += ' AND is_exclusive = 1';
       } else {
         const catList = category.split(',').map(c => c.trim()).filter(Boolean);
-        const maps = { 
-          'Men': ['Men', 'ছেলেদের'], 
-          'Women': ['Women', 'মেয়েদের'], 
-          'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'], 
-          'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'] 
-        };
-        const allCats = new Set();
-        catList.forEach(c => {
-          const mapped = maps[c];
-          if (mapped) mapped.forEach(m => allCats.add(m));
-          else allCats.add(c);
-        });
-        const cats = [...allCats];
+        const cats = resolveCategoryAliases(catList);
         whereSql += ` AND category IN (${cats.map(() => '?').join(',')})`;
         params.push(...cats);
       }
@@ -2353,8 +2392,24 @@ app.get('/products', async (c) => {
       whereSql += ` AND (${conditions.join(' OR ')})`;
     }
     if (search) {
-      whereSql += ' AND (name LIKE ? OR description LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      // Synonyms + serial/platform + subcategory so Bangla queries and SKU lookups find products
+      const terms = expandSearchTerms(search);
+      const conditions = [];
+      for (const term of terms) {
+        const like = `%${term.toLowerCase()}%`;
+        conditions.push('LOWER(name) LIKE ?', 'LOWER(description) LIKE ?', 'LOWER(IFNULL(subcategory, \'\')) LIKE ?');
+        params.push(like, like, like);
+        if (/^\d+$/.test(term)) {
+          conditions.push('serial_no = ?', 'CAST(serial_no AS CHAR) LIKE ?', 'platform_id LIKE ?');
+          params.push(Number(term), like, like);
+        } else if (term.length >= 3) {
+          conditions.push('LOWER(IFNULL(platform_id, \'\')) LIKE ?');
+          params.push(like);
+        }
+      }
+      if (conditions.length) {
+        whereSql += ` AND (${conditions.join(' OR ')})`;
+      }
     }
 
     const dir = ascending === 'true' ? 'ASC' : 'DESC';

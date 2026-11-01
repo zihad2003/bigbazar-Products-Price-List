@@ -93,21 +93,23 @@ export default function Products() {
         .order('created_at', { ascending: false })
         .range(start, end);
 
-      if (selectedCategory && selectedCategory !== 'All') {
+      const cleanSearch = sanitizeInput(debouncedSearchQuery);
+      // Search is global — keep category/subcategory only when not searching
+      if (!cleanSearch && selectedCategory && selectedCategory !== 'All') {
         const catMap = {
           'Men':          ['Men', 'ছেলেদের'],
           'Women':        ['Women', 'মেয়েদের'],
           'Kids (Boys)':  ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
           'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'],
+          'Kids':         ['Kids (Boys)', 'Kids (Girls)', 'বাচ্চাদের (ছেলে)', 'বাচ্চাদের (মেয়ে)'],
         };
         query = query.in('category', catMap[selectedCategory] || [selectedCategory]);
       }
 
-      if (selectedSubcategory) {
+      if (!cleanSearch && selectedSubcategory) {
         query = query.eq('subcategory', selectedSubcategory);
       }
 
-      const cleanSearch = sanitizeInput(debouncedSearchQuery);
       if (cleanSearch) {
         query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }

@@ -181,11 +181,12 @@ export const getOptimizedUrl = (originalUrl, options = {}) => {
 };
 
 export const mediaSizes = {
-  thumbnail: { w: 400, h: 533, q: 82 },
+  // Card slots are ~170–220px CSS; 360w covers 2x DPR without shipping 50KB+ originals.
+  thumbnail: { w: 360, h: 480, q: 80 },
   subcat: { w: 560, h: 720, q: 84 },
   subcatThumb: { w: 240, h: 240, q: 82 },
-  // Hero masters are already ~1920–2400; avoid a second resize proxy (slow + soft).
-  banner: { q: 90 },
-  bannerMobile: { q: 88 },
+  // Hero masters are often 1500–2400px / 200–300KB; resize via weserv for LCP (fit=inside keeps framing).
+  banner: { w: 1400, q: 86, fit: 'inside' },
+  bannerMobile: { w: 900, q: 84, fit: 'inside' },
   gallery: { w: 1200, q: 86 },
 };

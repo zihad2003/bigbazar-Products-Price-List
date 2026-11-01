@@ -1,6 +1,6 @@
-const CACHE_NAME = 'bigbazar-cache-v4';
-const API_CACHE_NAME = 'bigbazar-api-v4';
-const IMG_CACHE_NAME = 'bigbazar-img-v4';
+const CACHE_NAME = 'bigbazar-cache-v5';
+const API_CACHE_NAME = 'bigbazar-api-v5';
+const IMG_CACHE_NAME = 'bigbazar-img-v5';
 
 // Install event — activate immediately without waiting
 self.addEventListener('install', (event) => {
@@ -86,15 +86,15 @@ self.addEventListener('fetch', (event) => {
 
   // 2. Read APIs (/api/products, /api/settings, /api/products/subcategory-counts):
   //    Network-First with cache fallback (fixes "always one visit behind" stale-while-revalidate bug).
-  //    - Try network with a short timeout (3s); on success update cache and return fresh data.
+  //    - Try network with an 8s timeout (Hostinger MySQL often takes 0.8–2.5s; 3s caused false
+  //      timeouts → stale/empty product lists that looked like "products not found").
   //    - On network failure, fall back to cache so the page still works offline.
   //    - If both fail, return a 503 JSON error (prevents respondWith(null) crash).
   if (url.pathname.startsWith('/api/products') || url.pathname.startsWith('/api/settings')) {
     event.respondWith(
       caches.open(API_CACHE_NAME).then(async (cache) => {
-        // Wrap fetch with a 3-second timeout so we don't stall a fast cached fallback
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('SW network timeout')), 3000)
+          setTimeout(() => reject(new Error('SW network timeout')), 8000)
         );
         try {
           const networkResponse = await Promise.race([fetch(request), timeoutPromise]);

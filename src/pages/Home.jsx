@@ -160,7 +160,10 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
         .order('created_at', { ascending: false })
         .range(start, end);
 
-      if (selectedCategory && selectedCategory !== 'All') {
+      const cleanSearch = sanitizeInput(debouncedSearchQuery);
+      // When the shopper is typing a search, search the whole catalog.
+      // Category AND search previously returned empty (e.g. Women + "shirt" / "শার্ট").
+      if (!cleanSearch && selectedCategory && selectedCategory !== 'All') {
         if (selectedCategory === 'New') {
           query = query.eq('is_new', true);
         } else if (selectedCategory === 'Sale') {
@@ -172,14 +175,14 @@ const Home = ({ selectedCategory, setSelectedCategory, searchQuery, onSearchChan
             'Men': ['Men', 'ছেলেদের'],
             'Women': ['Women', 'মেয়েদের'],
             'Kids (Boys)': ['Kids (Boys)', 'বাচ্চাদের (ছেলে)'],
-            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)']
+            'Kids (Girls)': ['Kids (Girls)', 'বাচ্চাদের (মেয়ে)'],
+            'Kids': ['Kids (Boys)', 'Kids (Girls)', 'বাচ্চাদের (ছেলে)', 'বাচ্চাদের (মেয়ে)'],
           };
           const searchCats = catMap[selectedCategory] || [selectedCategory];
           query = query.in('category', searchCats);
         }
       }
 
-      const cleanSearch = sanitizeInput(debouncedSearchQuery);
       if (cleanSearch) {
         query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }
