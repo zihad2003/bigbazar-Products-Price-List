@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingBag, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 import { getOptimizedUrl } from '../../utils/media';
+
+const FOLLOW_UP_MS = 30 * 60 * 1000;
 
 function productPhoto(product) {
   if (!product) return '';
@@ -15,6 +17,50 @@ function formatWhen(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleString('en-BD', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
+function sessionItems(row) {
+  if (row.checkout_items && row.checkout_items.length) return row.checkout_items;
+  return row.cart || [];
+}
+
+/** Abandoned cart/checkout: no order, activity older than 30 minutes. */
+function needsFollowUp(row, now = Date.now()) {
+  if (!row || row.order_id) return false;
+  const hasCart = (row.cart_count > 0) || (Array.isArray(row.cart) && row.cart.length > 0);
+  const hasCheckout = Boolean(row.checkout_source);
+  if (!hasCart && !hasCheckout) return false;
+  const seen = new Date(row.last_seen_at || row.created_at || 0).getTime();
+  if (!seen || Number.isNaN(seen)) return false;
+  return now - seen >= FOLLOW_UP_MS;
+}
+
+/** BD local `01…` → `8801…` for wa.me */
+function waMeNumber(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 10) return '';
+  if (digits.startsWith('880')) return digits;
+  if (digits.startsWith('88')) return digits;
+  if (digits.startsWith('0')) return `88${digits}`;
+  if (digits.length === 10) return `880${digits}`;
+  return `88${digits}`;
+}
+
+function followUpWhatsAppHref(row) {
+  const num = waMeNumber(row.phone);
+  if (!num) return '';
+  const items = sessionItems(row);
+  const names = items
+    .slice(0, 3)
+    .map((item) => item.name)
+    .filter(Boolean)
+    .join(', ');
+  const kind = row.checkout_source ? 'চেকআউট' : 'কার্ট';
+  let text = `আসসালামু আলাইকুম${row.name ? ` ${row.name}` : ''}!\nBigBazar থেকে বলছি। `;
+  text += `আপনি আমাদের সাইটে ${kind} শুরু করেছিলেন`;
+  if (names) text += ` (${names})`;
+  text += `, কিন্তু অর্ডার সম্পন্ন হয়নি। সাহায্য লাগলে এখানে জানান।`;
+  return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
 }
 
 function ItemRow({ item, photo }) {
@@ -76,13 +122,49 @@ function FormDetails({ form }) {
   );
 }
 
-function SessionCard({ row, items, badge, photos, canConvert, missing, busy, onConvert }) {
+function SessionCard({ row, items, badge, followUp, photos, canConvert, missing, busy, onConvert }) {
+  const waHref = followUpWhatsAppHref(row);
+  const telHref = row.phone ? `tel:${String(row.phone).replace(/[^\d+]/g, '')}` : '';
+
   return (
-    <article className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-3">
+    <article className={`rounded-xl border p-4 space-y-3 ${followUp ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'border-white/10 bg-black/30'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{row.name || 'Guest'}</p>
-          {row.phone && <p className="text-xs text-zinc-300 mt-0.5">{row.phone}</p>}
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-white truncate">{row.name || 'Guest'}</p>
+            {followUp && (
+              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                ফলোআপ
+              </span>
+            )}
+          </div>
+          {row.phone && (
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs text-zinc-300">{row.phone}</p>
+              <div className="flex gap-1">
+                {telHref && (
+                  <a
+                    href={telHref}
+                    className="w-7 h-7 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/20 inline-flex items-center justify-center"
+                    title="Call"
+                  >
+                    <Phone size={12} />
+                  </a>
+                )}
+                {waHref ? (
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-7 h-7 rounded-md bg-green-500/15 text-green-400 border border-green-500/20 inline-flex items-center justify-center"
+                    title="WhatsApp"
+                  >
+                    <MessageSquare size={12} />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          )}
         </div>
         <div className="text-right shrink-0 space-y-1">
           <p className="text-[11px] text-zinc-500">{formatWhen(row.last_seen_at)}</p>
@@ -157,6 +239,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState('');
+  const [filter, setFilter] = useState('all'); // 'all' | 'followup'
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -236,10 +319,22 @@ export default function AdminShoppers({ products = [], onConverted }) {
       .finally(() => setBusyId(''));
   };
 
-  const checkouts = [...shoppers.checkouts].sort(byRecent);
-  const checkoutIds = new Set(checkouts.map((row) => row.id));
-  const carts = shoppers.carts.filter((row) => !checkoutIds.has(row.id)).sort(byRecent);
+  const now = Date.now();
+  const checkoutsAll = [...shoppers.checkouts].sort(byRecent);
+  const checkoutIds = new Set(checkoutsAll.map((row) => row.id));
+  const cartsAll = shoppers.carts.filter((row) => !checkoutIds.has(row.id)).sort(byRecent);
   const converted = [...(shoppers.converted || [])].sort(byRecent);
+
+  const followUpCount =
+    checkoutsAll.filter((row) => needsFollowUp(row, now)).length +
+    cartsAll.filter((row) => needsFollowUp(row, now)).length;
+
+  const checkouts = filter === 'followup'
+    ? checkoutsAll.filter((row) => needsFollowUp(row, now))
+    : checkoutsAll;
+  const carts = filter === 'followup'
+    ? cartsAll.filter((row) => needsFollowUp(row, now))
+    : cartsAll;
 
   return (
     <div className="max-w-6xl space-y-5 pb-16">
@@ -274,6 +369,39 @@ export default function AdminShoppers({ products = [], onConverted }) {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setFilter('all')}
+          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors ${
+            filter === 'all'
+              ? 'bg-white/10 border-white/20 text-white'
+              : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter('followup')}
+          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
+            filter === 'followup'
+              ? 'bg-amber-500/15 border-amber-500/35 text-amber-300'
+              : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          Follow-up
+          <span className={`min-w-[1.25rem] h-5 px-1.5 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
+            followUpCount > 0 ? 'bg-amber-500/25 text-amber-200' : 'bg-white/5 text-zinc-500'
+          }`}>
+            {loading ? '…' : followUpCount}
+          </span>
+        </button>
+        <p className="text-[11px] text-zinc-500 ml-1">
+          30+ min idle, no order yet
+        </p>
+      </div>
+
       {notice && (
         <p className="text-sm text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">{notice}</p>
       )}
@@ -286,30 +414,35 @@ export default function AdminShoppers({ products = [], onConverted }) {
           title="Opened checkout"
           hint="Started checkout and has not ordered. Newest first."
           rows={checkouts}
-          empty={loading ? 'Loading…' : 'No unfinished checkouts in the last 30 days.'}
-          render={(row) => (
-            <SessionCard
-              key={`co-${row.id}`}
-              row={row}
-              badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
-              items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
-              photos={photos}
-              canConvert={!missingToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
-              missing={missingToOrder(row, (row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || []))}
-              busy={busyId === row.id}
-              onConvert={convertToOrder}
-            />
-          )}
+          empty={loading ? 'Loading…' : filter === 'followup' ? 'No checkouts need follow-up right now.' : 'No unfinished checkouts in the last 30 days.'}
+          render={(row) => {
+            const items = sessionItems(row);
+            return (
+              <SessionCard
+                key={`co-${row.id}`}
+                row={row}
+                badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
+                followUp={needsFollowUp(row, now)}
+                items={items}
+                photos={photos}
+                canConvert={!missingToOrder(row, items)}
+                missing={missingToOrder(row, items)}
+                busy={busyId === row.id}
+                onConvert={convertToOrder}
+              />
+            );
+          }}
         />
         <Column
           title="In the cart"
           hint="Still in the bag. Anyone who opened checkout is listed only there."
           rows={carts}
-          empty={loading ? 'Loading…' : 'No open carts in the last 30 days.'}
+          empty={loading ? 'Loading…' : filter === 'followup' ? 'No carts need follow-up right now.' : 'No open carts in the last 30 days.'}
           render={(row) => (
             <SessionCard
               key={row.id}
               row={row}
+              followUp={needsFollowUp(row, now)}
               items={row.cart || []}
               photos={photos}
               canConvert={!missingToOrder(row, row.cart || [])}
@@ -321,25 +454,28 @@ export default function AdminShoppers({ products = [], onConverted }) {
         />
       </div>
 
-      <Column
-        title="Converted to orders"
-        hint="Carts and checkouts that were confirmed as orders in the last 30 days."
-        rows={converted}
-        empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
-        render={(row) => (
-          <SessionCard
-            key={`cv-${row.id}`}
-            row={row}
-            badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
-            items={(row.checkout_items && row.checkout_items.length) ? row.checkout_items : (row.cart || [])}
-            photos={photos}
-            canConvert={false}
-            missing=""
-            busy={false}
-            onConvert={() => {}}
-          />
-        )}
-      />
+      {filter === 'all' && (
+        <Column
+          title="Converted to orders"
+          hint="Carts and checkouts that were confirmed as orders in the last 30 days."
+          rows={converted}
+          empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
+          render={(row) => (
+            <SessionCard
+              key={`cv-${row.id}`}
+              row={row}
+              badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
+              followUp={false}
+              items={sessionItems(row)}
+              photos={photos}
+              canConvert={false}
+              missing=""
+              busy={false}
+              onConvert={() => {}}
+            />
+          )}
+        />
+      )}
     </div>
   );
 }
