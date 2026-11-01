@@ -122,6 +122,53 @@ async function ensureOrderAdvanceRefundColumns(conn) {
   orderAdvanceRefundReady = true;
 }
 
+let orderContactedReady = false;
+async function ensureOrderContactedColumns(conn) {
+  if (orderContactedReady) return;
+  for (const sql of [
+    'ALTER TABLE orders ADD COLUMN contacted_at DATETIME NULL',
+    'ALTER TABLE orders ADD COLUMN contacted_by VARCHAR(255) NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/duplicate column|already exists/i.test(msg)) {
+        /* ignore missing-permission / other transient */
+      }
+    }
+  }
+  orderContactedReady = true;
+}
+
+function adminActorLabel(c) {
+  const user = c.get('user') || {};
+  return String(user.email || user.id || 'admin').trim().slice(0, 255) || 'admin';
+}
+
+function mysqlDateTime(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 19).replace('T', ' ');
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/** Same "Near {area}" label carts use — only when customer IP is real (not edge/proxy). */
+function visitorNearArea(env, ip, geoRaw, remoteHint = '') {
+  if (!customerIpOrEmpty(env, ip, remoteHint)) return '';
+  const parsed = withBdPlace(parseIpGeo(geoRaw));
+  if (!parsed) return '';
+  if (parsed.upazila && parsed.district) return `${parsed.upazila}, ${parsed.district}`;
+  return parsed.district || parsed.city || parsed.region || parsed.country || '';
+}
+
+function withAdminOrderExtras(env, row) {
+  if (!row) return row;
+  return {
+    ...row,
+    area: visitorNearArea(env, row.customer_ip, row.ip_geo),
+  };
+}
+
 function orderHadAdvanceHeld(order) {
   if (!order) return false;
   if (order.advance_refunded === true || order.advance_refunded === 1 || order.advance_refunded === '1') return false;
@@ -255,33 +302,97 @@ function publicOrderRow(row, full) {
   };
 }
 
-/**
- * Rate-limit IP: prefer CF-Connecting-IP or socket remoteAddress; never trust
- * leftmost X-Forwarded-For (clients can rotate spoofed hops to bypass limits).
- */
-function getClientIp(c) {
-  const normalize = (value) => String(value || '').trim().replace(/^::ffff:/i, '');
-  const cf = normalize(c.req.header('CF-Connecting-IP'));
-  if (cf) return cf;
+function normalizeIp(value) {
+  return String(value || '').trim().replace(/^::ffff:/i, '');
+}
 
-  const remote = normalize(
+function socketRemoteIp(c) {
+  return normalizeIp(
     c.env?.incoming?.socket?.remoteAddress ||
       c.req?.raw?.socket?.remoteAddress ||
       c.req?.raw?.connection?.remoteAddress ||
       ''
   );
-  if (remote && !isPrivateIp(remote)) return remote;
+}
 
-  // XFF: take the rightmost public hop (leftmost is client-controlled).
+/** Known Hostinger edge hop previously mis-attributed as every shopper's IP. */
+const DEFAULT_IGNORE_IPS = ['5.90.143.78'];
+
+/** Comma-separated edge/proxy IPs that must never be shown as customer IPs (IGNORE_IPS=...). */
+function ignoredIpSet(env) {
+  const raw = env?.IGNORE_IPS || (typeof process !== 'undefined' && process.env?.IGNORE_IPS) || '';
+  const fromEnv = String(raw)
+    .split(',')
+    .map((part) => normalizeIp(part))
+    .filter(Boolean);
+  return new Set([...DEFAULT_IGNORE_IPS, ...fromEnv]);
+}
+
+function isIgnoredCustomerIp(env, ip, remoteHint = '') {
+  const value = normalizeIp(ip);
+  if (!value || isPrivateIp(value)) return true;
+  if (ignoredIpSet(env).has(value)) return true;
+  // Socket peer on Hostinger/Cloudflare is the reverse proxy, not the shopper.
+  const remote = normalizeIp(remoteHint);
+  if (remote && value === remote) return true;
+  return false;
+}
+
+/** IP suitable for admin display / DB customer_ip — empty when only edge/proxy noise. */
+function customerIpOrEmpty(env, ip, remoteHint = '') {
+  const value = normalizeIp(ip);
+  if (!value || isIgnoredCustomerIp(env, value, remoteHint)) return '';
+  return value;
+}
+
+/**
+ * Shopper/order visitor IP. Prefer headers the trusted edge sets for the
+ * original client — never Hostinger/Cloudflare socket remoteAddress (that is
+ * the proxy hop, e.g. 5.90.x, and was cluttering admin carts/orders).
+ */
+function getClientIp(c) {
+  const cf = normalizeIp(c.req.header('CF-Connecting-IP'));
+  if (cf && !isPrivateIp(cf)) return cf;
+
+  const trueClient = normalizeIp(c.req.header('True-Client-IP'));
+  if (trueClient && !isPrivateIp(trueClient)) return trueClient;
+
+  const realIp = normalizeIp(c.req.header('X-Real-IP'));
+  if (realIp && !isPrivateIp(realIp)) return realIp;
+
+  // Proxies append; leftmost public hop is the original client.
   const xff = String(c.req.header('X-Forwarded-For') || '')
     .split(',')
-    .map((part) => normalize(part))
+    .map((part) => normalizeIp(part))
+    .filter(Boolean);
+  for (let i = 0; i < xff.length; i += 1) {
+    if (!isPrivateIp(xff[i])) return xff[i];
+  }
+
+  // No usable client header — do not fall back to socket remote (edge IP).
+  return '';
+}
+
+/**
+ * Rate-limit identity: prefer CF / socket / rightmost XFF so clients cannot
+ * rotate spoofed leftmost X-Forwarded-For hops to bypass limits.
+ */
+function getRateLimitIp(c) {
+  const cf = normalizeIp(c.req.header('CF-Connecting-IP'));
+  if (cf) return cf;
+
+  const remote = socketRemoteIp(c);
+  if (remote && !isPrivateIp(remote)) return remote;
+
+  const xff = String(c.req.header('X-Forwarded-For') || '')
+    .split(',')
+    .map((part) => normalizeIp(part))
     .filter(Boolean);
   for (let i = xff.length - 1; i >= 0; i -= 1) {
     if (!isPrivateIp(xff[i])) return xff[i];
   }
 
-  const realIp = normalize(c.req.header('X-Real-IP') || c.req.header('True-Client-IP'));
+  const realIp = normalizeIp(c.req.header('X-Real-IP') || c.req.header('True-Client-IP'));
   if (realIp) return realIp;
   if (remote) return remote;
   if (xff.length) return xff[xff.length - 1];
@@ -792,7 +903,7 @@ async function runInBackground(c, promiseFn) {
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   const kv = c.env?.BIGBAZAR_CACHE;
   if (!kv) {
     return checkRateLimit(ip, endpoint, limit, windowMs);
@@ -2293,7 +2404,7 @@ app.get('/products/subcategory-counts', async (c) => {
 });
 
 app.get('/products', async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'products', 150, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
@@ -2505,7 +2616,7 @@ app.get('/products', async (c) => {
 });
 
 app.get('/products/:id', async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'product_details', 100, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
@@ -2685,6 +2796,8 @@ app.get('/orders', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await ensureOrderPaymentColumns(conn);
   await ensureOrderAdvanceRefundColumns(conn);
+  await ensureOrderContactedColumns(conn);
+  await ensureOrderRiskColumns(conn);
   let sql = 'SELECT * FROM orders WHERE 1=1';
   const params = [];
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -2698,7 +2811,8 @@ app.get('/orders', requireAuth, requireAdmin, async (c) => {
   sql += ` ORDER BY created_at ${ascending === 'true' ? 'ASC' : 'DESC'} LIMIT ? OFFSET ?`;
   params.push(parseInt(limit), parseInt(page) * parseInt(limit));
   const res = await conn.execute(sql, params);
-  return c.json({ data: res, count: total });
+  const data = (res || []).map((row) => withAdminOrderExtras(c.env, row));
+  return c.json({ data, count: total });
 });
 
 async function placeShopOrder(c, o, customerId = null, signals = null) {
@@ -2722,12 +2836,15 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
     }
   }
 
-  // Prefer shopper-session IP when admin converts; otherwise request client IP.
-  const overrideIp = String(signals?.customerIp || '').trim().slice(0, 64);
-  const clientIp = overrideIp || getClientIp(c);
+  // Prefer shopper-session IP when admin converts; never store edge/proxy noise.
+  // lockIp: admin convert must not attribute the admin's request IP to the customer.
+  const remoteHint = socketRemoteIp(c);
+  const overrideIp = customerIpOrEmpty(c.env, signals?.customerIp, remoteHint);
+  const requestIp = customerIpOrEmpty(c.env, getClientIp(c), remoteHint);
+  const clientIp = signals?.lockIp ? (overrideIp || null) : (overrideIp || requestIp || null);
   const overrideUa = String(signals?.userAgent || '').trim().slice(0, 255);
   const userAgent = overrideUa || String(c.req.header('User-Agent') || '').slice(0, 255) || null;
-  const seededGeo = parseIpGeo(signals?.ipGeo);
+  const seededGeo = (overrideIp || !signals?.lockIp) ? parseIpGeo(signals?.ipGeo) : null;
   await ensureOrderRiskColumns(conn);
   await ensureOrderTrackCodeColumn(conn);
   await ensureOrderGiftColumns(conn);
@@ -2929,27 +3046,28 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
 
     await tx.commit();
 
-    // Persist IP/UA immediately so admin order view shows them even if Hostinger
-    // drops waitUntil / background work after the response.
-    try {
-      if (seededGeo) {
-        await conn.execute(
-          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
-          [clientIp || null, userAgent, JSON.stringify(seededGeo), id]
-        );
-      } else {
-        await conn.execute(
-          'UPDATE orders SET customer_ip = ?, user_agent = ? WHERE id = ?',
-          [clientIp || null, userAgent, id]
-        );
+    // Persist IP/UA/geo immediately so admin "Near {area}" matches carts even if
+    // Hostinger drops waitUntil / background work after the response.
+    let storedGeo = seededGeo;
+    if (!storedGeo && clientIp && !isPrivateIp(clientIp)) {
+      try {
+        storedGeo = await lookupIpGeo(c.env, clientIp);
+      } catch (err) {
+        console.error('order geo lookup error:', err?.message || err);
       }
+    }
+    try {
+      await conn.execute(
+        'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
+        [clientIp || null, userAgent, storedGeo ? JSON.stringify(storedGeo) : null, id]
+      );
     } catch (err) {
       console.error('order ip save error:', err?.message || err);
     }
 
     // Await SMTP before responding. Test email works because it awaits; fire-and-forget
     // notify jobs were often dropped on Hostinger right after the HTTP response closed.
-    // Geo enrich + fraud stay async so a slow IP lookup never blocks the customer.
+    // Fraud enrich stays async so a slow courier lookup never blocks the customer.
     const emailPayload = {
       id,
       customerName: o.customer_name,
@@ -2965,7 +3083,7 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
       isGift: asGift,
       recipientName: asGift ? recipientName : null,
       recipientPhone: asGift ? recipientPhone : null,
-      geo: seededGeo || null,
+      geo: storedGeo || null,
       risk: null,
     };
     try {
@@ -2976,11 +3094,11 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
     }
 
     runInBackground(c, async () => {
-      let geo = seededGeo;
+      let geo = storedGeo;
       if (!geo && clientIp && !isPrivateIp(clientIp)) {
         geo = await lookupIpGeo(c.env, clientIp);
       }
-      if (geo) {
+      if (geo && !storedGeo) {
         try {
           await conn.execute(
             'UPDATE orders SET ip_geo = ? WHERE id = ?',
@@ -3153,6 +3271,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await ensureOrderPaymentColumns(conn);
   await ensureOrderAdvanceRefundColumns(conn);
+  await ensureOrderContactedColumns(conn);
 
   let advancePaidAmount;
   if (o.advance_paid_amount !== undefined) {
@@ -3185,7 +3304,8 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       await restoreOrderStock(tx, currentOrder);
     }
 
-    // Advance refund: admin cancel of an advance-paid order (or explicit mark)
+    // Advance refund: cancel of an advance-held order auto-deducts from Advance totals.
+    // Idempotent via alreadyRefunded — no manual "Mark advance refunded" needed.
     const wantsRefund =
       o.advance_refunded === true || o.advance_refunded === 1 || o.advance_refunded === '1'
       || o.refund_advance === true || o.refund_advance === 1 || o.refund_advance === '1'
@@ -3194,10 +3314,11 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       currentOrder.advance_refunded === 1
       || currentOrder.advance_refunded === true
       || currentOrder.payment_status === 'Advance Refunded';
+    const becomingCanceled =
+      isCancelOrderStatus(o.status) && !isCancelOrderStatus(currentOrder.status);
     const cancelWithAdvance =
-      isCancelOrderStatus(o.status || currentOrder.status)
+      becomingCanceled
       && orderHadAdvanceHeld(currentOrder)
-      && wantsRefund
       && !alreadyRefunded;
 
     let refundNote;
@@ -3221,6 +3342,23 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       advance_paid_amount: advancePaidAmount,
       customer_note: customerNote,
     };
+
+    // Admin "কথা হয়েছে" / Contacted toggle (spoken with customer)
+    if (o.contacted !== undefined || o.contacted_at !== undefined) {
+      const markContacted = o.contacted === true || o.contacted === 1 || o.contacted === '1'
+        || (o.contacted_at !== undefined && o.contacted_at !== null && o.contacted_at !== '');
+      const clearContacted = o.contacted === false || o.contacted === 0 || o.contacted === '0'
+        || o.contacted_at === null || o.contacted_at === '';
+      if (clearContacted && !markContacted) {
+        fields.contacted_at = null;
+        fields.contacted_by = null;
+      } else if (markContacted) {
+        fields.contacted_at = o.contacted_at
+          ? String(o.contacted_at).slice(0, 19).replace('T', ' ')
+          : mysqlDateTime();
+        fields.contacted_by = String(o.contacted_by || adminActorLabel(c)).trim().slice(0, 255) || adminActorLabel(c);
+      }
+    }
 
     if (cancelWithAdvance || (wantsRefund && !alreadyRefunded && orderHadAdvanceHeld(currentOrder))) {
       fields.advance_refunded = 1;
@@ -3310,9 +3448,10 @@ app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
   const order = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
   if (!order) return c.json({ error: 'Order not found' }, 404);
 
-  let geo = parseIpGeo(order.ip_geo);
-  if (!geo && order.customer_ip && !isPrivateIp(order.customer_ip)) {
-    geo = await lookupIpGeo(c.env, order.customer_ip);
+  const displayIp = customerIpOrEmpty(c.env, order.customer_ip);
+  let geo = displayIp ? parseIpGeo(order.ip_geo) : null;
+  if (!geo && displayIp && !isPrivateIp(displayIp)) {
+    geo = await lookupIpGeo(c.env, displayIp);
     if (geo) {
       try {
         await conn.execute('UPDATE orders SET ip_geo = ? WHERE id = ?', [JSON.stringify(geo), id]);
@@ -3327,15 +3466,155 @@ app.get('/orders/:id/risk', requireAuth, requireAdmin, async (c) => {
     courier = { configured: true, error: err?.message || 'Courier check failed' };
   }
   const placed = withBdPlace(geo);
-  const risk = await computeOrderRisk(conn, { ...order, ip_geo: placed, courier });
+  const risk = await computeOrderRisk(conn, {
+    ...order,
+    customer_ip: displayIp || null,
+    ip_geo: placed,
+    courier,
+  });
   return c.json({
     ...risk,
-    ip: order.customer_ip || null,
+    ip: displayIp || null,
     user_agent: order.user_agent || null,
-    geo: placed,
+    geo: displayIp ? placed : null,
     place: orderPlace(order.customer_address),
-    tracked: Boolean(order.customer_ip),
+    tracked: Boolean(displayIp || order.user_agent),
     courier,
+  });
+});
+
+function parseOrderProductLines(productName) {
+  return String(productName || '')
+    .split(' + ')
+    .map((part) => {
+      const line = String(part || '').trim();
+      if (!line) return null;
+      const color = line.match(/\((?:Color|রঙ):\s*([^)]*)\)/i)?.[1]?.trim() || null;
+      const size = line.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i)?.[1]?.trim() || null;
+      const qtyRaw = line.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i)?.[1];
+      const pid = line.match(/\(PID:\s*([^)]+)\)/i)?.[1]?.trim() || null;
+      const sku = line.match(/\(SKU:\s*([^)]*)\)/i)?.[1]?.trim() || null;
+      return {
+        name: line.split('(')[0].trim() || 'Item',
+        quantity: Math.max(1, parseInt(qtyRaw, 10) || 1),
+        color,
+        size,
+        pid,
+        sku,
+      };
+    })
+    .filter(Boolean);
+}
+
+function firstProductImage(row) {
+  if (!row) return '';
+  if (row.image_url) return String(row.image_url);
+  if (Array.isArray(row.images) && row.images[0]) return String(row.images[0]);
+  if (typeof row.images === 'string') {
+    try {
+      const parsed = JSON.parse(row.images);
+      if (Array.isArray(parsed) && parsed[0]) return String(parsed[0]);
+    } catch (_) {
+      if (row.images) return String(row.images);
+    }
+  }
+  return '';
+}
+
+/**
+ * GET /orders/:id/history — previous orders for the same phone (admin ops).
+ * One phone-tail query + one products IN (...) lookup (no N+1).
+ */
+app.get('/orders/:id/history', requireAuth, requireAdmin, async (c) => {
+  const id = c.req.param('id');
+  const conn = getDb(c.env);
+  const rows = await conn.execute(
+    'SELECT id, customer_phone, customer_name FROM orders WHERE id = ? LIMIT 1',
+    [id]
+  );
+  const current = Array.isArray(rows) ? rows[0] : rows?.rows?.[0];
+  if (!current) return c.json({ error: 'Order not found' }, 404);
+
+  const phone = normalizeBdPhone(current.customer_phone);
+  const last10 = phone.slice(-10);
+  if (last10.length < 10) {
+    return c.json({
+      phone: current.customer_phone || '',
+      summary: { total: 0, delivered: 0, canceled: 0, pending: 0, spent: 0 },
+      orders: [],
+    });
+  }
+
+  const past = await conn.execute(
+    `SELECT id, product_id, product_name, total_amount, status, created_at, delivery_area,
+            customer_name, customer_phone, is_gift, recipient_name
+     FROM orders
+     WHERE id <> ?
+       AND status <> 'Deleted'
+       AND RIGHT(REPLACE(REPLACE(REPLACE(IFNULL(customer_phone,''), ' ', ''), '-', ''), '+', ''), 10) = ?
+     ORDER BY created_at DESC
+     LIMIT 25`,
+    [id, last10]
+  );
+
+  const list = past || [];
+  const productIds = new Set();
+  for (const order of list) {
+    if (order.product_id) productIds.add(String(order.product_id));
+    for (const item of parseOrderProductLines(order.product_name)) {
+      if (item.pid) productIds.add(String(item.pid));
+    }
+  }
+
+  const photoById = new Map();
+  const ids = [...productIds].slice(0, 80);
+  if (ids.length) {
+    try {
+      const products = await conn.execute(
+        `SELECT id, image_url, images FROM products WHERE id IN (${ids.map(() => '?').join(',')})`,
+        ids
+      );
+      for (const product of products || []) {
+        photoById.set(String(product.id), firstProductImage(product));
+      }
+    } catch (_) {}
+  }
+
+  const summary = { total: 0, delivered: 0, canceled: 0, pending: 0, spent: 0 };
+  const orders = list.map((order) => {
+    summary.total += 1;
+    const st = String(order.status || '');
+    const stLower = st.toLowerCase();
+    if (stLower === 'delivered' || stLower === 'completed') summary.delivered += 1;
+    else if (stLower === 'canceled' || stLower === 'cancelled') summary.canceled += 1;
+    else if (stLower !== 'deleted') summary.pending += 1;
+    const amount = Number(String(order.total_amount || '').replace(/[^0-9.]/g, '')) || 0;
+    if (stLower !== 'canceled' && stLower !== 'cancelled' && stLower !== 'deleted') {
+      summary.spent += amount;
+    }
+    const items = parseOrderProductLines(order.product_name).map((item) => ({
+      ...item,
+      image: (item.pid && photoById.get(String(item.pid)))
+        || (order.product_id && photoById.get(String(order.product_id)))
+        || '',
+    }));
+    return {
+      id: order.id,
+      status: order.status || 'Pending',
+      created_at: order.created_at,
+      total_amount: order.total_amount,
+      delivery_area: order.delivery_area || '',
+      customer_name: order.customer_name || '',
+      is_gift: order.is_gift === true || order.is_gift === 1 || order.is_gift === '1' ? 1 : 0,
+      items,
+    };
+  });
+
+  return c.json({
+    phone: current.customer_phone || '',
+    customer_name: current.customer_name || '',
+    summary,
+    orders,
   });
 });
 
@@ -4281,11 +4560,17 @@ async function ensureShopperSessionsTable(conn) {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
-  try {
-    await conn.execute('ALTER TABLE shopper_sessions ADD COLUMN checkout_form TEXT NULL');
-  } catch (err) {
-    const msg = String(err?.message || '');
-    if (!/duplicate column|already exists/i.test(msg)) throw err;
+  for (const sql of [
+    'ALTER TABLE shopper_sessions ADD COLUMN checkout_form TEXT NULL',
+    'ALTER TABLE shopper_sessions ADD COLUMN contacted_at DATETIME NULL',
+    'ALTER TABLE shopper_sessions ADD COLUMN contacted_by VARCHAR(255) NULL',
+  ]) {
+    try {
+      await conn.execute(sql);
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/duplicate column|already exists/i.test(msg)) throw err;
+    }
   }
   shopperSessionsReady = true;
 }
@@ -4353,6 +4638,10 @@ function shopperArea(geo) {
   return parsed.district || parsed.city || parsed.region || parsed.country || '';
 }
 
+function isContactedValue(value) {
+  return value !== null && value !== undefined && value !== '' && value !== 0 && value !== '0' && value !== false;
+}
+
 app.post('/shopper/activity', async (c) => {
   if (!(await checkRateLimitKV(c, 'shopper-activity', 20, 60000))) {
     return c.json({ success: true });
@@ -4375,7 +4664,8 @@ app.post('/shopper/activity', async (c) => {
   const incomingForm = shopperFormPayload(body.form);
   const orderId = String(body.order_id || '').trim().slice(0, 64);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const clientIp = getClientIp(c);
+  const remoteHint = socketRemoteIp(c);
+  const clientIp = customerIpOrEmpty(c.env, getClientIp(c), remoteHint);
   const conn = getDb(c.env);
   await ensureShopperSessionsTable(conn);
 
@@ -4384,14 +4674,18 @@ app.post('/shopper/activity', async (c) => {
     [browserId]
   );
   const existing = existingRows?.[0] || null;
-  let geo = parseIpGeo(existing?.ip_geo);
+  const existingIp = customerIpOrEmpty(c.env, existing?.customer_ip, remoteHint);
+  let geo = existingIp ? parseIpGeo(existing?.ip_geo) : null;
   if (!geo && clientIp && !isPrivateIp(clientIp)) {
     geo = await lookupIpGeo(c.env, clientIp);
   }
 
+  const storedIp = clientIp || existingIp || null;
   const cartJson = JSON.stringify(cartItems);
   const checkoutJson = JSON.stringify(checkoutItems);
-  const geoJson = geo ? JSON.stringify(geo) : (existing?.ip_geo || null);
+  const geoJson = storedIp
+    ? (geo ? JSON.stringify(geo) : (existingIp ? existing?.ip_geo || null : null))
+    : null;
   const storedForm = mergeShopperForm(parseShopperJson(existing?.checkout_form, null), incomingForm);
   const formJson = storedForm ? JSON.stringify(storedForm) : null;
 
@@ -4408,8 +4702,8 @@ app.post('/shopper/activity', async (c) => {
       customer_name = IF(VALUES(customer_name) = '', customer_name, VALUES(customer_name)),
       checkout_form = COALESCE(VALUES(checkout_form), checkout_form),
       order_id = COALESCE(NULLIF(VALUES(order_id), ''), order_id),
-      customer_ip = COALESCE(VALUES(customer_ip), customer_ip),
-      ip_geo = COALESCE(VALUES(ip_geo), ip_geo),
+      customer_ip = VALUES(customer_ip),
+      ip_geo = VALUES(ip_geo),
       last_seen_at = NOW()`,
     [
       browserId,
@@ -4421,7 +4715,7 @@ app.post('/shopper/activity', async (c) => {
       customerName,
       formJson,
       orderId || null,
-      clientIp || existing?.customer_ip || null,
+      storedIp,
       geoJson,
       hasCart ? 1 : 0,
       hasCart ? 1 : 0,
@@ -4443,7 +4737,7 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await ensureShopperSessionsTable(conn);
   const rows = await conn.execute(
-    `SELECT browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, checkout_form, order_id, customer_ip, ip_geo, last_seen_at, created_at
+    `SELECT browser_id, cart_items, cart_count, checkout_source, checkout_items, phone, customer_name, checkout_form, order_id, customer_ip, ip_geo, contacted_at, contacted_by, last_seen_at, created_at
      FROM shopper_sessions
      WHERE last_seen_at >= (NOW() - INTERVAL 30 DAY)
      ORDER BY last_seen_at DESC
@@ -4453,6 +4747,7 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
   const list = (rows || []).map((row) => {
     const cart = parseShopperJson(row.cart_items, []);
     const checkout = parseShopperJson(row.checkout_items, []);
+    const ip = customerIpOrEmpty(c.env, row.customer_ip);
     return {
       id: row.browser_id,
       cart,
@@ -4463,12 +4758,40 @@ app.get('/admin/shoppers', requireAuth, requireAdmin, async (c) => {
       name: row.customer_name || '',
       form: shopperFormPayload(parseShopperJson(row.checkout_form, null)) || null,
       order_id: row.order_id || null,
-      ip: row.customer_ip || '',
-      area: shopperArea(row.ip_geo) || '',
+      ip,
+      area: ip ? (shopperArea(row.ip_geo) || '') : '',
+      contacted_at: isContactedValue(row.contacted_at) ? row.contacted_at : null,
+      contacted_by: isContactedValue(row.contacted_at) ? (row.contacted_by || null) : null,
+      prior_orders: 0,
       last_seen_at: row.last_seen_at,
       created_at: row.created_at,
     };
   });
+
+  // Batch returning-customer counts by phone tail (one query, no N+1).
+  const tails = [...new Set(
+    list
+      .map((row) => phoneTail(row.phone))
+      .filter((tail) => tail.length >= 10)
+  )].slice(0, 120);
+  if (tails.length) {
+    try {
+      const counts = await conn.execute(
+        `SELECT RIGHT(REPLACE(REPLACE(REPLACE(IFNULL(customer_phone,''), ' ', ''), '-', ''), '+', ''), 10) AS phone_tail,
+                COUNT(*) AS cnt
+         FROM orders
+         WHERE status <> 'Deleted'
+           AND RIGHT(REPLACE(REPLACE(REPLACE(IFNULL(customer_phone,''), ' ', ''), '-', ''), '+', ''), 10) IN (${tails.map(() => '?').join(',')})
+         GROUP BY phone_tail`,
+        tails
+      );
+      const byTail = new Map((counts || []).map((row) => [String(row.phone_tail || ''), Number(row.cnt) || 0]));
+      for (const row of list) {
+        const tail = phoneTail(row.phone);
+        row.prior_orders = byTail.get(tail) || 0;
+      }
+    } catch (_) {}
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -4594,8 +4917,9 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
     recipient_name: asGift ? (form.recipient_name || null) : null,
     recipient_phone: asGift ? (form.recipient_phone || null) : null,
   }, null, {
-    customerIp: row.customer_ip || null,
-    ipGeo: row.ip_geo || null,
+    customerIp: customerIpOrEmpty(c.env, row.customer_ip) || null,
+    ipGeo: customerIpOrEmpty(c.env, row.customer_ip) ? row.ip_geo || null : null,
+    lockIp: true,
   });
 
   if (!result || result.status >= 400) {
@@ -4610,6 +4934,37 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
   );
 
   return c.json({ success: true, order_id: result.body.order_id });
+});
+
+// POST /admin/shoppers/:browserId/contacted — mark/unmark "কথা হয়েছে"
+app.post('/admin/shoppers/:browserId/contacted', requireAuth, requireAdmin, async (c) => {
+  const browserId = String(c.req.param('browserId') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+  if (browserId.length < 8) return c.json({ error: 'Invalid shopper session.' }, 400);
+
+  const body = await c.req.json().catch(() => ({}));
+  const mark = !(body.contacted === false || body.contacted === 0 || body.contacted === '0');
+  const conn = getDb(c.env);
+  await ensureShopperSessionsTable(conn);
+
+  const rows = await conn.execute(
+    'SELECT browser_id FROM shopper_sessions WHERE browser_id = ? LIMIT 1',
+    [browserId]
+  );
+  if (!rows?.[0]) return c.json({ error: 'Shopper session not found.' }, 404);
+
+  const contactedAt = mark ? mysqlDateTime() : null;
+  const contactedBy = mark ? adminActorLabel(c) : null;
+  await conn.execute(
+    'UPDATE shopper_sessions SET contacted_at = ?, contacted_by = ? WHERE browser_id = ?',
+    [contactedAt, contactedBy, browserId]
+  );
+
+  return c.json({
+    success: true,
+    contacted: mark,
+    contacted_at: contactedAt,
+    contacted_by: contactedBy,
+  });
 });
 
 // ============================================
@@ -4883,7 +5238,7 @@ async function verifyGoogleIdToken(idToken, googleClientId) {
 
 // POST /auth/google — "Continue with Google" login
 app.post('/auth/google', async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'google-auth', 10, 60000)) {
     return c.json({ error: 'Too many login attempts. Please try again later.' }, 429);
   }
@@ -4966,7 +5321,7 @@ async function ensureAdminGoogleIdColumn(conn) {
 
 // POST /auth/admin/google — Continue with Google for admin panel (whitelist only)
 app.post('/auth/admin/google', async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'admin-google-auth', 8, 60000)) {
     return c.json({ error: 'Too many login attempts. Please try again later.' }, 429);
   }
@@ -5760,7 +6115,7 @@ async function loadCustomerOrderRows(conn, userId) {
 
 // POST /api/assistant — AI Shopping Assistant (login required; continues by user_id)
 app.post('/assistant', requireCustomerAuth, async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'assistant', 30, 60000)) {
     return c.json({
       reply: 'আপনি খুব বেশি মেসেজ পাঠাচ্ছেন। ১ মিনিট পর আবার চেষ্টা করুন।',
@@ -6179,7 +6534,7 @@ app.post('/admin/analyze-product', requireAuth, requireAdmin, async (c) => {
   if (!productAssistEnabled(c.env)) {
     return c.json({ error: 'Product assist is off' }, 404);
   }
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'analyze-product', 8, 60000)) {
     return c.json({ ok: false, error: 'Too many analyze requests. Try again in a minute.' }, 429);
   }
@@ -6198,7 +6553,7 @@ app.post('/admin/analyze-product', requireAuth, requireAdmin, async (c) => {
 
 // Admin Conversation Dashboard APIs (Part 3b)
 app.post('/admin/product-copy', requireAuth, requireAdmin, async (c) => {
-  const ip = getClientIp(c);
+  const ip = getRateLimitIp(c);
   if (!checkRateLimit(ip, 'product-copy', 20, 60000)) {
     return c.json({ error: 'Too many copy requests. Try again in a minute.' }, 429);
   }

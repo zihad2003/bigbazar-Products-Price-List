@@ -1,16 +1,36 @@
 import {
   User, Phone, MessageSquare, MapPin, Copy, Trash2, X, Check, Image as ImageIcon, Truck, RefreshCw, ExternalLink,
-  ShieldCheck, ShieldAlert, ShieldX, Gift,
+  ShieldCheck, ShieldAlert, ShieldX, Gift, MessageCircle, ChevronDown, Package,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getOptimizedUrl, mediaSizes } from '../../utils/media';
 import { API_URL, getToken } from '../../api/client';
 import {
-  advanceRefunded, hadAdvancePayment, orderTotal, paymentConfirmed,
+  advanceRefunded, orderTotal, paymentConfirmed,
   receivedAdvance, recordedAdvanceAmount, suggestedAdvance,
 } from '../../utils/orderMoney';
 import { splitOrderAddress } from '../../data/bdLocations';
+
+const IGNORE_VISITOR_IPS = new Set(['5.90.143.78']);
+
+function orderNearArea(order) {
+  const area = String(order?.area || '').trim();
+  if (area) return area;
+  const ip = String(order?.customer_ip || '').trim().replace(/^::ffff:/i, '');
+  if (!ip || IGNORE_VISITOR_IPS.has(ip)) return '';
+  let geo = order?.ip_geo;
+  if (typeof geo === 'string') {
+    try { geo = JSON.parse(geo); } catch { return ''; }
+  }
+  if (!geo || typeof geo !== 'object') return '';
+  if (geo.upazila && geo.district) return `${geo.upazila}, ${geo.district}`;
+  return geo.district || geo.city || geo.region || geo.country || '';
+}
+
+function isOrderContacted(order) {
+  return Boolean(order?.contacted_at);
+}
 
 function parseOrderLine(str) {
   const res = { name: str, size: null, color: null, sku: null, pid: null, qty: 1 };
@@ -106,6 +126,179 @@ const RISK_UI = {
   high: { label: 'Likely fake', Icon: ShieldX, cls: 'border-red-500/30 bg-red-500/10 text-red-400' },
 };
 
+const HISTORY_STATUS = {
+  Pending: 'bg-yellow-500/15 text-yellow-400',
+  Confirmed: 'bg-emerald-500/15 text-emerald-400',
+  Shipped: 'bg-blue-500/15 text-blue-400',
+  Delivered: 'bg-green-500/15 text-green-400',
+  Canceled: 'bg-red-500/15 text-red-400',
+  Cancelled: 'bg-red-500/15 text-red-400',
+};
+
+/** Previous orders for this phone — one clear section under FraudCheck. */
+function PreviousOrdersHistory({ orderId }) {
+  const [state, setState] = useState({ loading: true, data: null, error: '' });
+  const [openId, setOpenId] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setState({ loading: true, data: null, error: '' });
+    setOpenId('');
+    if (!orderId) return undefined;
+    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+    fetch(`${base}/api/orders/${orderId}/history`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (!res.ok) setState({ loading: false, data: null, error: data.error || 'Could not load history' });
+        else setState({ loading: false, data, error: '' });
+      })
+      .catch((err) => alive && setState({ loading: false, data: null, error: err.message || 'Network error' }));
+    return () => { alive = false; };
+  }, [orderId]);
+
+  if (state.loading) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 text-[11px] text-zinc-500">
+        Loading previous orders…
+      </section>
+    );
+  }
+  if (state.error) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 text-[11px] text-zinc-500">
+        {state.error}
+      </section>
+    );
+  }
+
+  const summary = state.data?.summary || { total: 0, delivered: 0, canceled: 0, pending: 0, spent: 0 };
+  const orders = Array.isArray(state.data?.orders) ? state.data.orders : [];
+
+  if (summary.total === 0) {
+    return (
+      <section className="rounded-lg border border-white/10 bg-black/30 p-3.5">
+        <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+          <Package size={12} className="text-[#ce112d]" /> Previous orders
+        </div>
+        <p className="text-[11px] text-zinc-500 mt-2">First order from this phone — no earlier products.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-white/10 bg-black/30 p-3.5 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+            <Package size={12} className="text-[#ce112d]" /> Previous orders
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1">
+            Same phone · what they bought from BigBazar before
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/25 text-violet-300">
+          {summary.total} past
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {[
+          { label: 'Orders', value: summary.total },
+          { label: 'Delivered', value: summary.delivered },
+          { label: 'Canceled', value: summary.canceled },
+          { label: 'Spent', value: `৳${Math.round(summary.spent || 0).toLocaleString()}` },
+        ].map((card) => (
+          <div key={card.label} className="rounded-md bg-black/30 border border-white/10 px-2.5 py-2">
+            <p className="text-[9px] text-zinc-500 uppercase tracking-wider">{card.label}</p>
+            <p className="text-sm font-semibold text-white mt-0.5 truncate">{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        {orders.map((past) => {
+          const open = openId === past.id;
+          const amount = typeof past.total_amount === 'string'
+            ? parseFloat(String(past.total_amount).replace(/[^0-9.]/g, ''))
+            : Number(past.total_amount);
+          const items = Array.isArray(past.items) ? past.items : [];
+          return (
+            <div key={past.id} className="rounded-lg border border-white/10 bg-[#0a0a0c]/60 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? '' : past.id)}
+                className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-white/[0.03] transition-colors"
+              >
+                <div className="flex -space-x-1.5 shrink-0">
+                  {(items.slice(0, 3)).map((item, idx) => {
+                    const src = item.image ? getOptimizedUrl(item.image, mediaSizes.thumbnail) : '';
+                    return (
+                      <div
+                        key={`${past.id}-t-${idx}`}
+                        className="w-8 h-10 rounded border border-white/15 bg-zinc-900 overflow-hidden"
+                      >
+                        {src ? <img src={src} alt="" className="w-full h-full object-cover object-top" /> : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-600"><ImageIcon size={10} /></div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-[12px] font-semibold text-white truncate">
+                      {items[0]?.name || 'Order'}
+                      {items.length > 1 ? ` +${items.length - 1}` : ''}
+                    </p>
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${HISTORY_STATUS[past.status] || 'bg-white/5 text-zinc-400'}`}>
+                      {past.status}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-0.5 truncate">
+                    {past.created_at ? new Date(past.created_at).toLocaleDateString() : '—'}
+                    {past.delivery_area ? ` · ${past.delivery_area}` : ''}
+                    {Number.isFinite(amount) ? ` · ৳${amount.toLocaleString()}` : ''}
+                  </p>
+                </div>
+                <ChevronDown size={14} className={`text-zinc-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+              </button>
+              {open && (
+                <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
+                  {items.map((item, idx) => {
+                    const src = item.image ? getOptimizedUrl(item.image, mediaSizes.thumbnail) : '';
+                    const meta = [item.color, item.size].filter(Boolean).join(' · ');
+                    return (
+                      <div key={`${past.id}-i-${idx}`} className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-11 h-14 rounded-md overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
+                          {src ? <img src={src} alt="" className="w-full h-full object-cover object-top" /> : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-600"><ShoppingBagFallback /></div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-semibold text-white truncate">{item.name}</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">
+                            {item.quantity || 1} pcs{meta ? ` · ${meta}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[10px] text-zinc-600 font-mono">#{String(past.id).slice(0, 8)}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ShoppingBagFallback() {
+  return <ImageIcon size={12} />;
+}
+
 function FraudCheck({ orderId }) {
   const [state, setState] = useState({ loading: true, data: null, error: '' });
 
@@ -141,9 +334,15 @@ function FraudCheck({ orderId }) {
 
   const d = state.data;
   const ui = RISK_UI[d.level] || RISK_UI.low;
-  const ipArea = d.geo?.upazila
-    ? `${d.geo.upazila}, ${d.geo.district}`
-    : d.geo?.district || [d.geo?.city, d.geo?.region, d.geo?.country].filter(Boolean).join(', ');
+  // Never show Hostinger edge hop as customer IP / geo (same scrub as carts).
+  const EDGE_IPS = new Set(['5.90.143.78']);
+  const rawIp = String(d.ip || '').trim().replace(/^::ffff:/i, '');
+  const visitorIp = rawIp && !EDGE_IPS.has(rawIp) ? rawIp : '';
+  const ipArea = visitorIp
+    ? (d.geo?.upazila
+      ? `${d.geo.upazila}, ${d.geo.district}`
+      : d.geo?.district || [d.geo?.city, d.geo?.region, d.geo?.country].filter(Boolean).join(', '))
+    : '';
   const orderArea = d.place?.upazila
     ? `${d.place.upazila}, ${d.place.district}`
     : d.place?.district || null;
@@ -163,19 +362,17 @@ function FraudCheck({ orderId }) {
       </div>
 
       {d.tracked ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
-            <p className="text-zinc-500 text-[10px]">Customer IP</p>
-            <p className="text-white font-medium font-mono truncate" title={d.ip || ''}>{d.ip || 'Unknown'}</p>
-          </div>
-          <div className="rounded-md bg-black/30 border border-white/10 p-2">
-            <p className="text-zinc-500 text-[10px]">IP upazila / district</p>
-            <p className="text-white font-medium truncate">{ipArea || 'Unknown'}</p>
+            <p className="text-zinc-500 text-[10px]">Location</p>
+            <p className="text-white font-medium truncate">{ipArea || (visitorIp ? 'Unknown' : '—')}</p>
             {orderArea && <p className="text-zinc-500 truncate">Order: {orderArea}</p>}
           </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">Network</p>
-            <p className="text-white font-medium truncate" title={d.geo?.org || ''}>{d.geo?.org || 'Unknown'}</p>
+            <p className="text-white font-medium truncate" title={visitorIp ? (d.geo?.org || '') : ''}>
+              {visitorIp ? (d.geo?.org || 'Unknown') : '—'}
+            </p>
           </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">Device</p>
@@ -183,7 +380,7 @@ function FraudCheck({ orderId }) {
           </div>
         </div>
       ) : (
-        <p className="text-[11px] text-zinc-500">IP and device were not recorded for this order (placed before tracking started).</p>
+        <p className="text-[11px] text-zinc-500">Location and device were not recorded for this order (placed before tracking started).</p>
       )}
 
       {(d.courier?.configured && !d.courier.error && d.courier.total > 0) && (
@@ -241,7 +438,6 @@ export default function OrderDetailsPanel({
   onTogglePayment,
   onRecordAdvance,
   onUpdateStatus,
-  onMarkAdvanceRefunded,
   onEditNote,
   onOrderPatched,
 }) {
@@ -250,6 +446,7 @@ export default function OrderDetailsPanel({
   const [advanceInput, setAdvanceInput] = useState('');
   const [savingAdvance, setSavingAdvance] = useState(false);
   const [photo, setPhoto] = useState(null);
+  const [contactBusy, setContactBusy] = useState(false);
 
   useEffect(() => {
     if (!order) return;
@@ -299,9 +496,6 @@ export default function OrderDetailsPanel({
   const noteText = customerNoteText(order.customer_note);
   const addressParts = splitOrderAddress(order.customer_address);
   const isModal = variant === 'modal';
-  const canMarkRefund = !refunded
-    && hadAdvancePayment(order)
-    && (order.status === 'Canceled' || order.status === 'Cancelled');
 
   const bookSteadfast = async () => {
     if (!window.confirm(`Book Steadfast courier for #${ref}?\nCOD: ৳${due}`)) return;
@@ -365,6 +559,40 @@ export default function OrderDetailsPanel({
     products.find((p) => p.name === item.name) ||
     products.find((p) => p.name && item.name && p.name.toLowerCase().includes(item.name.toLowerCase()));
 
+  const contacted = isOrderContacted(order);
+  const nearArea = orderNearArea(order);
+
+  const toggleContacted = async () => {
+    if (!order?.id || contactBusy) return;
+    setContactBusy(true);
+    const next = !contacted;
+    const patch = next
+      ? { contacted: true, contacted_at: new Date().toISOString().slice(0, 19).replace('T', ' ') }
+      : { contacted: false, contacted_at: null, contacted_by: null };
+    try {
+      const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+      const res = await fetch(`${base}/api/orders/${order.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not update contacted mark');
+      onOrderPatched?.({
+        ...order,
+        contacted_at: next ? (patch.contacted_at || new Date().toISOString()) : null,
+        contacted_by: next ? (order.contacted_by || 'admin') : null,
+      });
+    } catch (_) {
+      /* parent alert optional — keep silent to avoid modal noise */
+    } finally {
+      setContactBusy(false);
+    }
+  };
+
   return (
     <div className={`flex flex-col bg-[#0a0a0c] ${isModal ? 'h-full max-h-[100dvh] md:max-h-[90vh]' : 'h-full'}`}>
       {/* Header */}
@@ -376,13 +604,39 @@ export default function OrderDetailsPanel({
           <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
             {new Date(order.created_at).toLocaleString()} · {order.status || '—'}
           </p>
-          {refunded && (
-            <p className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25">
-              Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
-            </p>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            {refunded && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/25">
+                Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
+              </span>
+            )}
+            {contacted && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/25">
+                <MessageCircle size={10} /> কথা হয়েছে
+              </span>
+            )}
+            {nearArea && (
+              <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-md bg-white/5 text-zinc-400 border border-white/10">
+                Near {nearArea}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            disabled={contactBusy}
+            onClick={toggleContacted}
+            className={`h-9 px-2.5 rounded-lg text-[11px] font-medium border transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 ${
+              contacted
+                ? 'bg-sky-500/15 text-sky-300 border-sky-500/25 hover:bg-sky-500/25'
+                : 'bg-white/5 text-zinc-300 border-white/10 hover:text-white hover:border-white/25'
+            }`}
+            title={contacted ? 'Undo contacted mark' : 'Mark spoken with customer'}
+          >
+            <MessageCircle size={13} />
+            {contactBusy ? '…' : contacted ? 'কথা হয়েছে' : 'Contact'}
+          </button>
           <button
             type="button"
             onClick={() => onCopyFull?.(order)}
@@ -413,6 +667,7 @@ export default function OrderDetailsPanel({
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
         <FraudCheck orderId={order.id} />
+        <PreviousOrdersHistory orderId={order.id} />
 
         {/* Customer + Delivery */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -444,6 +699,9 @@ export default function OrderDetailsPanel({
                 )}
               </div>
             </div>
+            {nearArea && (
+              <p className="text-[11px] text-zinc-500">Near {nearArea}</p>
+            )}
             {(order.is_gift === true || order.is_gift === 1 || order.is_gift === '1') && (
               <div className="pt-2 border-t border-white/10 space-y-2">
                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1">
@@ -662,15 +920,6 @@ export default function OrderDetailsPanel({
                     </button>
                   )}
                 </>
-              )}
-              {canMarkRefund && (
-                <button
-                  type="button"
-                  onClick={() => onMarkAdvanceRefunded?.(order)}
-                  className="h-9 w-full rounded-md text-[11px] font-semibold bg-violet-500/20 border border-violet-400/30 text-violet-100 hover:bg-violet-500/30"
-                >
-                  Mark advance refunded
-                </button>
               )}
             </div>
           </div>

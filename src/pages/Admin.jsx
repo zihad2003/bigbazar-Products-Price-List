@@ -36,17 +36,39 @@ const ORDER_LIST_FILTERS = [
   { id: 'Shipped', label: 'Shipped' },
   { id: 'Delivered', label: 'Delivered' },
   { id: 'Canceled', label: 'Cancelled' },
+  { id: 'contacted', label: 'কথা হয়েছে' },
   { id: 'advance_refunded', label: 'Advance refunded' },
 ];
 
+const IGNORE_ORDER_IPS = new Set(['5.90.143.78']);
+
 function isCanceledStatus(s) {
   return s === 'Canceled' || s === 'Cancelled';
+}
+
+function isOrderContacted(order) {
+  return Boolean(order?.contacted_at);
+}
+
+function orderNearArea(order) {
+  const area = String(order?.area || '').trim();
+  if (area) return area;
+  const ip = String(order?.customer_ip || '').trim().replace(/^::ffff:/i, '');
+  if (!ip || IGNORE_ORDER_IPS.has(ip)) return '';
+  let geo = order?.ip_geo;
+  if (typeof geo === 'string') {
+    try { geo = JSON.parse(geo); } catch { return ''; }
+  }
+  if (!geo || typeof geo !== 'object') return '';
+  if (geo.upazila && geo.district) return `${geo.upazila}, ${geo.district}`;
+  return geo.district || geo.city || geo.region || geo.country || '';
 }
 
 function matchesOrderListFilter(order, filter) {
   if (!order || order.status === 'Deleted') return false;
   if (!filter || filter === 'all') return true;
   if (filter === 'advance_refunded') return advanceRefunded(order);
+  if (filter === 'contacted') return isOrderContacted(order);
   if (filter === 'Canceled') return isCanceledStatus(order.status);
   return order.status === filter;
 }
@@ -720,32 +742,6 @@ export default function Admin() {
             setSelectedOrder({ ...selectedOrder, ...patch });
           }
           setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
-        }
-      }
-    });
-  };
-
-  const markAdvanceRefunded = async (order) => {
-    if (!order?.id || advanceRefunded(order)) return;
-    setConfirmation({
-      isOpen: true,
-      title: 'Mark advance refunded',
-      message: 'অ্যাডভান্স গ্রাহককে ফেরত দেওয়া হয়েছে বলে মার্ক করবেন?',
-      confirmText: 'Mark Refunded',
-      onConfirm: async () => {
-        const patch = {
-          advance_refunded: 1,
-          advance_refunded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          payment_status: 'Advance Refunded',
-          refund_advance: 1,
-          is_advance_paid: 1,
-        };
-        const { error } = await bigBazarApi.from('orders').update(patch).eq('id', order.id);
-        if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
-        else {
-          fetchOrders();
-          if (selectedOrder?.id === order.id) setSelectedOrder({ ...selectedOrder, ...patch });
-          setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...patch } : o)));
         }
       }
     });
@@ -4077,7 +4073,6 @@ export default function Admin() {
                     onTogglePayment={togglePaymentStatus}
                     onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
-                    onMarkAdvanceRefunded={markAdvanceRefunded}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
                   />
@@ -4165,6 +4160,14 @@ export default function Admin() {
                                 )}
                               </div>
                               <p className="text-[11px] text-zinc-500 truncate mt-0.5">{o.customer_name}</p>
+                              {isOrderContacted(o) && (
+                                <p className="text-[9px] font-semibold text-sky-300 mt-1 inline-flex items-center gap-1">
+                                  <MessageSquare size={9} /> কথা হয়েছে
+                                </p>
+                              )}
+                              {orderNearArea(o) && (
+                                <p className="text-[9px] text-zinc-500 mt-0.5 truncate">Near {orderNearArea(o)}</p>
+                              )}
                               {advanceRefunded(o) && (
                                 <p className="text-[9px] font-semibold text-violet-300 mt-1">
                                   Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে
@@ -4206,7 +4209,6 @@ export default function Admin() {
                     onTogglePayment={togglePaymentStatus}
                     onRecordAdvance={recordAdvance}
                     onUpdateStatus={updateOrderStatus}
-                    onMarkAdvanceRefunded={markAdvanceRefunded}
                     onEditNote={updateOrderNote}
                     onOrderPatched={patchSelectedOrder}
                   />
@@ -4267,6 +4269,14 @@ export default function Admin() {
                               </span>
                             )}
                           </div>
+                          {isOrderContacted(o) && (
+                            <p className="text-[9px] font-semibold text-sky-300 mt-1 inline-flex items-center gap-1">
+                              <MessageSquare size={9} /> কথা হয়েছে
+                            </p>
+                          )}
+                          {orderNearArea(o) && (
+                            <p className="text-[9px] text-zinc-500 mt-0.5 truncate">Near {orderNearArea(o)}</p>
+                          )}
                           {advanceRefunded(o) && (
                             <p className="text-[9px] font-semibold text-violet-300 mt-1">
                               Advance refunded · অ্যাডভান্স ফেরত দেওয়া হয়েছে

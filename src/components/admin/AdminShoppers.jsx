@@ -1,9 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare, Gift } from 'lucide-react';
+import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare, Gift, MessageCircle } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 import { getOptimizedUrl } from '../../utils/media';
 
+function isContacted(row) {
+  return Boolean(row?.contacted_at);
+}
+
 const FOLLOW_UP_MS = 30 * 60 * 1000;
+
+/** Hostinger/proxy hops — never treat as a real visitor (blocks fake "Near Bologna" etc.). */
+const IGNORE_VISITOR_IPS = new Set(['5.90.143.78']);
+
+/** True when API gave a real customer IP (not empty / edge hop). Used only to gate location display. */
+function hasRealVisitorIp(ip) {
+  const value = String(ip || '').trim().replace(/^::ffff:/i, '');
+  return Boolean(value && !IGNORE_VISITOR_IPS.has(value));
+}
 
 function productPhoto(product) {
   if (!product) return '';
@@ -150,18 +163,23 @@ function FormDetails({ form }) {
   );
 }
 
-function SessionCard({ row, items, badge, followUp, ready, photos, canConvert, missing, busy, onConvert }) {
+function SessionCard({
+  row, items, badge, followUp, ready, photos, canConvert, missing, busy, contactBusy, onConvert, onToggleContacted,
+}) {
   const waHref = followUpWhatsAppHref(row);
   const telHref = row.phone ? `tel:${String(row.phone).replace(/[^\d+]/g, '')}` : '';
   const isGift = row.form?.is_gift === true || row.form?.is_gift === 1 || row.form?.is_gift === '1';
+  const contacted = isContacted(row);
 
   return (
     <article className={`rounded-xl border p-4 space-y-3 ${
-      followUp
-        ? 'border-amber-500/30 bg-amber-500/[0.04]'
-        : ready
-          ? 'border-emerald-500/25 bg-emerald-500/[0.04]'
-          : 'border-white/10 bg-black/30'
+      contacted
+        ? 'border-sky-500/30 bg-sky-500/[0.04]'
+        : followUp
+          ? 'border-amber-500/30 bg-amber-500/[0.04]'
+          : ready
+            ? 'border-emerald-500/25 bg-emerald-500/[0.04]'
+            : 'border-white/10 bg-black/30'
     }`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -175,6 +193,16 @@ function SessionCard({ row, items, badge, followUp, ready, photos, canConvert, m
             {followUp && (
               <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
                 ফলোআপ
+              </span>
+            )}
+            {contacted && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                <MessageCircle size={10} /> কথা হয়েছে
+              </span>
+            )}
+            {Number(row.prior_orders) > 0 && (
+              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-violet-500/15 border border-violet-500/30 text-violet-300">
+                Returning · {row.prior_orders} order{Number(row.prior_orders) > 1 ? 's' : ''}
               </span>
             )}
             {isGift && (
@@ -228,33 +256,52 @@ function SessionCard({ row, items, badge, followUp, ready, photos, canConvert, m
         </div>
       )}
       <FormDetails form={row.form} />
-      {(row.area || row.ip) && (
-        <p className="text-[11px] text-zinc-500">
-          {row.area ? `Near ${row.area}` : ''}
-          {row.area && row.ip ? ' · ' : ''}
-          {row.ip ? <span className="font-mono text-zinc-400">{row.ip}</span> : null}
-        </p>
-      )}
-      {row.order_id ? (
-        <p className="w-full h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
-          <CheckCircle2 size={14} />
-          Converted to order #{String(row.order_id).slice(0, 8)}
-        </p>
-      ) : (
-        <>
-          <button
-            type="button"
-            disabled={busy || !canConvert}
-            onClick={() => onConvert(row)}
-            className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {busy ? 'Sending…' : 'Convert to order'}
-          </button>
-          {!canConvert && missing && (
-            <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
-          )}
-        </>
-      )}
+      {(() => {
+        // Edge/proxy IP (e.g. Hostinger 5.90.143.78 → "Near Bologna") must not show.
+        // Location only — never show IP or coordinates on this line.
+        const area = hasRealVisitorIp(row.ip) ? String(row.area || '').trim() : '';
+        if (!area) return null;
+        return (
+          <p className="text-[11px] text-zinc-500">
+            Near {area}
+          </p>
+        );
+      })()}
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={contactBusy}
+          onClick={() => onToggleContacted?.(row)}
+          className={`w-full h-9 rounded-lg text-xs font-semibold border inline-flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+            contacted
+              ? 'bg-sky-500/15 border-sky-500/30 text-sky-300 hover:bg-sky-500/25'
+              : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:border-white/25'
+          }`}
+        >
+          <MessageCircle size={14} />
+          {contactBusy ? 'Saving…' : contacted ? 'কথা হয়েছে · Undo' : 'কথা হয়েছে / Contacted'}
+        </button>
+        {row.order_id ? (
+          <p className="w-full h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
+            <CheckCircle2 size={14} />
+            Converted to order #{String(row.order_id).slice(0, 8)}
+          </p>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={busy || !canConvert}
+              onClick={() => onConvert(row)}
+              className="w-full h-9 rounded-lg bg-[#ce112d] text-white text-xs font-semibold hover:bg-[#b00e26] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {busy ? 'Sending…' : 'Convert to order'}
+            </button>
+            {!canConvert && missing && (
+              <p className="text-[11px] text-zinc-500 -mt-1">Needs {missing} before it can be sent to orders.</p>
+            )}
+          </>
+        )}
+      </div>
     </article>
   );
 }
@@ -290,7 +337,8 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState('');
-  const [filter, setFilter] = useState('ready'); // 'ready' | 'browsing' | 'followup' | 'all'
+  const [contactBusyId, setContactBusyId] = useState('');
+  const [filter, setFilter] = useState('ready'); // 'ready' | 'browsing' | 'followup' | 'contacted' | 'all'
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -359,6 +407,43 @@ export default function AdminShoppers({ products = [], onConverted }) {
       .finally(() => setBusyId(''));
   };
 
+  const patchShopperContacted = (id, patch) => {
+    const apply = (list) => (list || []).map((row) => (row.id === id ? { ...row, ...patch } : row));
+    setShoppers((prev) => ({
+      ...prev,
+      carts: apply(prev.carts),
+      checkouts: apply(prev.checkouts),
+      converted: apply(prev.converted),
+    }));
+  };
+
+  const toggleContacted = (row) => {
+    if (!row?.id || contactBusyId) return;
+    const next = !isContacted(row);
+    setContactBusyId(row.id);
+    setError('');
+    const base = (!API_URL || API_URL === '/') ? '' : String(API_URL).replace(/\/$/, '');
+    const token = getToken();
+    fetch(`${base}/api/admin/shoppers/${encodeURIComponent(row.id)}/contacted`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ contacted: next }),
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'Could not update contacted mark');
+        patchShopperContacted(row.id, {
+          contacted_at: json.contacted_at || null,
+          contacted_by: json.contacted_by || null,
+        });
+      })
+      .catch((err) => setError(err.message || 'Could not update contacted mark'))
+      .finally(() => setContactBusyId(''));
+  };
+
   const now = Date.now();
   const checkoutsAll = [...shoppers.checkouts].sort(byRecent);
   const checkoutIds = new Set(checkoutsAll.map((row) => row.id));
@@ -392,17 +477,31 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const readyRows = openSessions.filter((entry) => entry.ready);
   const browsingRows = openSessions.filter((entry) => !entry.ready);
   const followUpCount = openSessions.filter((entry) => entry.followUp).length;
+  const contactedOpen = openSessions.filter((entry) => isContacted(entry.row));
+  const contactedConverted = converted.filter((row) => isContacted(row));
+  const contactedCount = contactedOpen.length + contactedConverted.length;
 
-  const visibleReady = filter === 'browsing'
+  const visibleReady = filter === 'browsing' || filter === 'contacted'
     ? []
     : filter === 'followup'
       ? readyRows.filter((entry) => entry.followUp)
       : readyRows;
-  const visibleBrowsing = filter === 'ready'
+  const visibleBrowsing = filter === 'ready' || filter === 'contacted'
     ? []
     : filter === 'followup'
       ? browsingRows.filter((entry) => entry.followUp)
       : browsingRows;
+  const visibleContacted = filter === 'contacted'
+    ? [...contactedOpen, ...contactedConverted.map((row) => ({
+        row,
+        kind: 'converted',
+        items: sessionItems(row),
+        missing: [],
+        ready: false,
+        followUp: false,
+        badge: row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : 'Converted',
+      }))]
+    : [];
 
   const renderEntry = (entry) => (
     <SessionCard
@@ -413,10 +512,12 @@ export default function AdminShoppers({ products = [], onConverted }) {
       ready={entry.ready}
       items={entry.items}
       photos={photos}
-      canConvert={entry.ready}
+      canConvert={entry.ready && !entry.row.order_id}
       missing={entry.missing.join(', ')}
       busy={busyId === entry.row.id}
+      contactBusy={contactBusyId === entry.row.id}
       onConvert={convertToOrder}
+      onToggleContacted={toggleContacted}
     />
   );
 
@@ -424,6 +525,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
     { id: 'ready', label: 'Ready to convert', count: readyRows.length, active: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300' },
     { id: 'browsing', label: 'Browsing', count: browsingRows.length, active: 'bg-white/10 border-white/20 text-white' },
     { id: 'followup', label: 'Follow-up', count: followUpCount, active: 'bg-amber-500/15 border-amber-500/35 text-amber-300' },
+    { id: 'contacted', label: 'কথা হয়েছে', count: contactedCount, active: 'bg-sky-500/15 border-sky-500/35 text-sky-300' },
     { id: 'all', label: 'All', count: openSessions.length, active: 'bg-white/10 border-white/20 text-white' },
   ];
 
@@ -485,6 +587,9 @@ export default function AdminShoppers({ products = [], onConverted }) {
         {filter === 'followup' && (
           <p className="text-[11px] text-zinc-500 ml-1">30+ min idle, no order yet</p>
         )}
+        {filter === 'contacted' && (
+          <p className="text-[11px] text-zinc-500 ml-1">Admin marked কথা হয়েছে</p>
+        )}
       </div>
 
       {notice && (
@@ -494,58 +599,73 @@ export default function AdminShoppers({ products = [], onConverted }) {
         <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{error}</p>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        {(filter === 'ready' || filter === 'all' || filter === 'followup') && (
-          <Column
-            title="Ready to convert"
-            hint="Full name, phone, and address — Convert is active. Gift fields included when filled."
-            accent="text-emerald-300"
-            rows={visibleReady}
-            empty={loading
-              ? 'Loading…'
-              : filter === 'followup'
-                ? 'No convert-ready shoppers need follow-up right now.'
-                : 'No convert-ready carts yet.'}
-            render={renderEntry}
-          />
-        )}
-        {(filter === 'browsing' || filter === 'all' || filter === 'followup') && (
-          <Column
-            title="Browsing / interest"
-            hint="Partial info — track what they liked. Call/WhatsApp when a phone is present."
-            rows={visibleBrowsing}
-            empty={loading
-              ? 'Loading…'
-              : filter === 'followup'
-                ? 'No browsing sessions need follow-up right now.'
-                : 'No browsing carts in the last 30 days.'}
-            render={renderEntry}
-          />
-        )}
-      </div>
-
-      {(filter === 'all' || filter === 'ready') && (
+      {filter === 'contacted' ? (
         <Column
-          title="Converted to orders"
-          hint="Carts and checkouts that were confirmed as orders in the last 30 days."
-          rows={converted}
-          empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
-          render={(row) => (
-            <SessionCard
-              key={`cv-${row.id}`}
-              row={row}
-              badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
-              followUp={false}
-              ready={false}
-              items={sessionItems(row)}
-              photos={photos}
-              canConvert={false}
-              missing=""
-              busy={false}
-              onConvert={() => {}}
+          title="কথা হয়েছে / Contacted"
+          hint="Carts and checkouts you already spoke with — follow-up or convert when ready."
+          accent="text-sky-300"
+          rows={visibleContacted}
+          empty={loading ? 'Loading…' : 'No contacted shoppers yet. Mark a card after you call.'}
+          render={renderEntry}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            {(filter === 'ready' || filter === 'all' || filter === 'followup') && (
+              <Column
+                title="Ready to convert"
+                hint="Full name, phone, and address — Convert is active. Gift fields included when filled."
+                accent="text-emerald-300"
+                rows={visibleReady}
+                empty={loading
+                  ? 'Loading…'
+                  : filter === 'followup'
+                    ? 'No convert-ready shoppers need follow-up right now.'
+                    : 'No convert-ready carts yet.'}
+                render={renderEntry}
+              />
+            )}
+            {(filter === 'browsing' || filter === 'all' || filter === 'followup') && (
+              <Column
+                title="Browsing / interest"
+                hint="Partial info — track what they liked. Call/WhatsApp when a phone is present."
+                rows={visibleBrowsing}
+                empty={loading
+                  ? 'Loading…'
+                  : filter === 'followup'
+                    ? 'No browsing sessions need follow-up right now.'
+                    : 'No browsing carts in the last 30 days.'}
+                render={renderEntry}
+              />
+            )}
+          </div>
+
+          {(filter === 'all' || filter === 'ready') && (
+            <Column
+              title="Converted to orders"
+              hint="Carts and checkouts that were confirmed as orders in the last 30 days."
+              rows={converted}
+              empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
+              render={(row) => (
+                <SessionCard
+                  key={`cv-${row.id}`}
+                  row={row}
+                  badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
+                  followUp={false}
+                  ready={false}
+                  items={sessionItems(row)}
+                  photos={photos}
+                  canConvert={false}
+                  missing=""
+                  busy={false}
+                  contactBusy={contactBusyId === row.id}
+                  onConvert={() => {}}
+                  onToggleContacted={toggleContacted}
+                />
+              )}
             />
           )}
-        />
+        </>
       )}
     </div>
   );
