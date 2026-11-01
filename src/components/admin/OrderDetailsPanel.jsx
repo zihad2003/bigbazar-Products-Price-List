@@ -163,7 +163,11 @@ function FraudCheck({ orderId }) {
       </div>
 
       {d.tracked ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+          <div className="rounded-md bg-black/30 border border-white/10 p-2">
+            <p className="text-zinc-500 text-[10px]">Customer IP</p>
+            <p className="text-white font-medium font-mono truncate" title={d.ip || ''}>{d.ip || 'Unknown'}</p>
+          </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">IP upazila / district</p>
             <p className="text-white font-medium truncate">{ipArea || 'Unknown'}</p>
@@ -171,7 +175,7 @@ function FraudCheck({ orderId }) {
           </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">Network</p>
-            <p className="text-white font-medium truncate" title={d.ip || ''}>{d.geo?.org || d.ip || 'Unknown'}</p>
+            <p className="text-white font-medium truncate" title={d.geo?.org || ''}>{d.geo?.org || 'Unknown'}</p>
           </div>
           <div className="rounded-md bg-black/30 border border-white/10 p-2">
             <p className="text-zinc-500 text-[10px]">Device</p>

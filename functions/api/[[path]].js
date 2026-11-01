@@ -2701,7 +2701,7 @@ app.get('/orders', requireAuth, requireAdmin, async (c) => {
   return c.json({ data: res, count: total });
 });
 
-async function placeShopOrder(c, o, customerId = null) {
+async function placeShopOrder(c, o, customerId = null, signals = null) {
   const conn = getDb(c.env);
   const id = crypto.randomUUID();
 
@@ -2722,8 +2722,12 @@ async function placeShopOrder(c, o, customerId = null) {
     }
   }
 
-  const clientIp = getClientIp(c);
-  const userAgent = String(c.req.header('User-Agent') || '').slice(0, 255) || null;
+  // Prefer shopper-session IP when admin converts; otherwise request client IP.
+  const overrideIp = String(signals?.customerIp || '').trim().slice(0, 64);
+  const clientIp = overrideIp || getClientIp(c);
+  const overrideUa = String(signals?.userAgent || '').trim().slice(0, 255);
+  const userAgent = overrideUa || String(c.req.header('User-Agent') || '').slice(0, 255) || null;
+  const seededGeo = parseIpGeo(signals?.ipGeo);
   await ensureOrderRiskColumns(conn);
   await ensureOrderTrackCodeColumn(conn);
   await ensureOrderGiftColumns(conn);
@@ -2925,9 +2929,27 @@ async function placeShopOrder(c, o, customerId = null) {
 
     await tx.commit();
 
+    // Persist IP/UA immediately so admin order view shows them even if Hostinger
+    // drops waitUntil / background work after the response.
+    try {
+      if (seededGeo) {
+        await conn.execute(
+          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
+          [clientIp || null, userAgent, JSON.stringify(seededGeo), id]
+        );
+      } else {
+        await conn.execute(
+          'UPDATE orders SET customer_ip = ?, user_agent = ? WHERE id = ?',
+          [clientIp || null, userAgent, id]
+        );
+      }
+    } catch (err) {
+      console.error('order ip save error:', err?.message || err);
+    }
+
     // Await SMTP before responding. Test email works because it awaits; fire-and-forget
     // notify jobs were often dropped on Hostinger right after the HTTP response closed.
-    // Geo/fraud stay async so a slow IP lookup never blocks the customer.
+    // Geo enrich + fraud stay async so a slow IP lookup never blocks the customer.
     const emailPayload = {
       id,
       customerName: o.customer_name,
@@ -2943,7 +2965,7 @@ async function placeShopOrder(c, o, customerId = null) {
       isGift: asGift,
       recipientName: asGift ? recipientName : null,
       recipientPhone: asGift ? recipientPhone : null,
-      geo: null,
+      geo: seededGeo || null,
       risk: null,
     };
     try {
@@ -2954,14 +2976,19 @@ async function placeShopOrder(c, o, customerId = null) {
     }
 
     runInBackground(c, async () => {
-      const geo = await lookupIpGeo(c.env, clientIp);
-      try {
-        await conn.execute(
-          'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
-          [clientIp, userAgent, geo ? JSON.stringify(geo) : null, id]
-        );
-      } catch (err) {
-        console.error('order signals save error:', err?.message || err);
+      let geo = seededGeo;
+      if (!geo && clientIp && !isPrivateIp(clientIp)) {
+        geo = await lookupIpGeo(c.env, clientIp);
+      }
+      if (geo) {
+        try {
+          await conn.execute(
+            'UPDATE orders SET ip_geo = ? WHERE id = ?',
+            [JSON.stringify(geo), id]
+          );
+        } catch (err) {
+          console.error('order geo save error:', err?.message || err);
+        }
       }
 
       try {
@@ -4266,6 +4293,7 @@ async function ensureShopperSessionsTable(conn) {
 function shopperFormPayload(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const text = (value, max) => String(value || '').trim().slice(0, max);
+  const isGift = raw.is_gift === true || raw.is_gift === 1 || raw.is_gift === '1';
   const form = {
     address: text(raw.address, 300),
     district: text(raw.district, 80),
@@ -4274,8 +4302,14 @@ function shopperFormPayload(raw) {
     payment_method: text(raw.payment_method, 20),
     sender_number: text(raw.sender_number, 40),
     payment_option: text(raw.payment_option, 20),
+    is_gift: isGift ? 1 : 0,
+    recipient_name: text(raw.recipient_name, 120),
+    recipient_phone: text(raw.recipient_phone, 20),
   };
-  return Object.values(form).some(Boolean) ? form : null;
+  const hasCore = form.address || form.district || form.upazila || form.note
+    || form.payment_method || form.sender_number || form.payment_option;
+  const hasGift = form.is_gift || form.recipient_name || form.recipient_phone;
+  return (hasCore || hasGift) ? form : null;
 }
 
 function mergeShopperForm(previous, next) {
@@ -4283,7 +4317,13 @@ function mergeShopperForm(previous, next) {
   const incoming = next || {};
   const merged = { ...base };
   Object.entries(incoming).forEach(([key, value]) => {
-    if (String(value || '').trim()) merged[key] = value;
+    if (key === 'is_gift') {
+      if (value === true || value === 1 || value === '1' || value === false || value === 0 || value === '0') {
+        merged[key] = (value === true || value === 1 || value === '1') ? 1 : 0;
+      }
+      return;
+    }
+    if (String(value ?? '').trim()) merged[key] = value;
   });
   return Object.keys(merged).length ? merged : null;
 }
@@ -4467,7 +4507,7 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
   await ensureShopperSessionsTable(conn);
   const rows = await conn.execute(
-    `SELECT browser_id, cart_items, checkout_items, phone, customer_name, checkout_form, order_id
+    `SELECT browser_id, cart_items, checkout_items, phone, customer_name, checkout_form, order_id, customer_ip, ip_geo
      FROM shopper_sessions WHERE browser_id = ? LIMIT 1`,
     [browserId]
   );
@@ -4481,6 +4521,15 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
   const address = String(form.address || '').trim();
   if (!name || !phone || !address) {
     return c.json({ error: 'Name, phone, and address are required.' }, 400);
+  }
+  const asGift = form.is_gift === true || form.is_gift === 1 || form.is_gift === '1';
+  if (asGift) {
+    const giftName = String(form.recipient_name || '').trim();
+    const giftPhone = normalizeBdPhone(form.recipient_phone);
+    if (!giftName) return c.json({ error: 'Gift recipient name is required.' }, 400);
+    if (giftPhone.length !== 11 || !giftPhone.startsWith('01')) {
+      return c.json({ error: 'Valid gift recipient phone is required.' }, 400);
+    }
   }
 
   const checkout = parseShopperJson(row.checkout_items, []);
@@ -4541,10 +4590,13 @@ app.post('/admin/shoppers/convert', requireAuth, requireAdmin, async (c) => {
     last_four_digits: paymentRef,
     is_exclusive_order: exclusive,
     moderator_reference: 'Converted from checkout',
-    is_gift: form.is_gift === true || form.is_gift === 1 || form.is_gift === '1' ? 1 : 0,
-    recipient_name: form.recipient_name || null,
-    recipient_phone: form.recipient_phone || null,
-  }, null);
+    is_gift: asGift ? 1 : 0,
+    recipient_name: asGift ? (form.recipient_name || null) : null,
+    recipient_phone: asGift ? (form.recipient_phone || null) : null,
+  }, null, {
+    customerIp: row.customer_ip || null,
+    ipGeo: row.ip_geo || null,
+  });
 
   if (!result || result.status >= 400) {
     return c.json(result?.body || { error: 'Could not create the order.' }, result?.status || 500);

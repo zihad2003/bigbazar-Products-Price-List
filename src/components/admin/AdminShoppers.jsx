@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare } from 'lucide-react';
+import { ShoppingBag, RefreshCw, CheckCircle2, Phone, MessageSquare, Gift } from 'lucide-react';
 import { API_URL, getToken } from '../../api/client';
 import { getOptimizedUrl } from '../../utils/media';
 
@@ -33,6 +33,24 @@ function needsFollowUp(row, now = Date.now()) {
   const seen = new Date(row.last_seen_at || row.created_at || 0).getTime();
   if (!seen || Number.isNaN(seen)) return false;
   return now - seen >= FOLLOW_UP_MS;
+}
+
+function missingToOrder(row, items) {
+  const missing = [];
+  if (!String(row.name || '').trim()) missing.push('name');
+  if (!String(row.phone || '').trim()) missing.push('phone');
+  if (!String(row.form?.address || '').trim()) missing.push('address');
+  if (!items.length) missing.push('a product');
+  const gift = row.form?.is_gift === true || row.form?.is_gift === 1 || row.form?.is_gift === '1';
+  if (gift) {
+    if (!String(row.form?.recipient_name || '').trim()) missing.push('gift recipient name');
+    if (!String(row.form?.recipient_phone || '').trim()) missing.push('gift recipient phone');
+  }
+  return missing;
+}
+
+function isReadyToConvert(row, items) {
+  return missingToOrder(row, items).length === 0;
 }
 
 /** BD local `01…` → `8801…` for wa.me */
@@ -109,7 +127,11 @@ function FormDetails({ form }) {
   if (!form) return null;
   const place = [form.upazila, form.district].filter(Boolean).join(', ');
   const pay = paymentLabel(form.payment_method, form.payment_option);
-  const hasAny = form.address || place || pay || form.sender_number || form.note;
+  const isGift = form.is_gift === true || form.is_gift === 1 || form.is_gift === '1';
+  const giftLine = isGift
+    ? [form.recipient_name, form.recipient_phone].filter(Boolean).join(' · ')
+    : '';
+  const hasAny = form.address || place || pay || form.sender_number || form.note || giftLine;
   if (!hasAny) return null;
   return (
     <div className="space-y-1.5 border-t border-white/10 pt-3">
@@ -118,23 +140,46 @@ function FormDetails({ form }) {
       <DetailLine label="Payment" value={pay} />
       <DetailLine label="Sender" value={form.sender_number} />
       <DetailLine label="Note" value={form.note} />
+      {isGift && (
+        <div className="grid grid-cols-[4.75rem_1fr] gap-x-3 gap-y-0.5 text-xs">
+          <span className="text-zinc-500 inline-flex items-center gap-1"><Gift size={10} /> Gift</span>
+          <span className="text-zinc-200 break-words">{giftLine || 'Recipient details filled'}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function SessionCard({ row, items, badge, followUp, photos, canConvert, missing, busy, onConvert }) {
+function SessionCard({ row, items, badge, followUp, ready, photos, canConvert, missing, busy, onConvert }) {
   const waHref = followUpWhatsAppHref(row);
   const telHref = row.phone ? `tel:${String(row.phone).replace(/[^\d+]/g, '')}` : '';
+  const isGift = row.form?.is_gift === true || row.form?.is_gift === 1 || row.form?.is_gift === '1';
 
   return (
-    <article className={`rounded-xl border p-4 space-y-3 ${followUp ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'border-white/10 bg-black/30'}`}>
+    <article className={`rounded-xl border p-4 space-y-3 ${
+      followUp
+        ? 'border-amber-500/30 bg-amber-500/[0.04]'
+        : ready
+          ? 'border-emerald-500/25 bg-emerald-500/[0.04]'
+          : 'border-white/10 bg-black/30'
+    }`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-white truncate">{row.name || 'Guest'}</p>
+            {ready && !row.order_id && (
+              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                Ready
+              </span>
+            )}
             {followUp && (
               <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
                 ফলোআপ
+              </span>
+            )}
+            {isGift && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#ce112d]/10 border border-[#ce112d]/25 text-[#ce112d]">
+                <Gift size={10} /> Gift
               </span>
             )}
           </div>
@@ -183,7 +228,13 @@ function SessionCard({ row, items, badge, followUp, photos, canConvert, missing,
         </div>
       )}
       <FormDetails form={row.form} />
-      {row.area && <p className="text-[11px] text-zinc-500">Near {row.area}</p>}
+      {(row.area || row.ip) && (
+        <p className="text-[11px] text-zinc-500">
+          {row.area ? `Near ${row.area}` : ''}
+          {row.area && row.ip ? ' · ' : ''}
+          {row.ip ? <span className="font-mono text-zinc-400">{row.ip}</span> : null}
+        </p>
+      )}
       {row.order_id ? (
         <p className="w-full h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-xs font-semibold inline-flex items-center justify-center gap-1.5">
           <CheckCircle2 size={14} />
@@ -212,12 +263,12 @@ function byRecent(a, b) {
   return new Date(b.last_seen_at || 0) - new Date(a.last_seen_at || 0);
 }
 
-function Column({ title, hint, rows, empty, render }) {
+function Column({ title, hint, rows, empty, render, accent }) {
   return (
     <section className="space-y-3 min-w-0">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-white">{title}</h3>
+          <h3 className={`text-base font-semibold ${accent || 'text-white'}`}>{title}</h3>
           <p className="text-xs text-zinc-500">{hint}</p>
         </div>
         <span className="text-[11px] font-semibold text-zinc-400 bg-white/5 border border-white/10 rounded-md px-2 py-1">{rows.length}</span>
@@ -239,7 +290,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all' | 'followup'
+  const [filter, setFilter] = useState('ready'); // 'ready' | 'browsing' | 'followup' | 'all'
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -277,17 +328,8 @@ export default function AdminShoppers({ products = [], onConverted }) {
 
   useEffect(() => { load(); }, []);
 
-  const missingToOrder = (row, items) => {
-    const missing = [];
-    if (!String(row.name || '').trim()) missing.push('name');
-    if (!String(row.phone || '').trim()) missing.push('phone');
-    if (!String(row.form?.address || '').trim()) missing.push('address');
-    if (!items.length) missing.push('a product');
-    return missing.join(', ');
-  };
-
   const convertToOrder = (row) => {
-    if (busyId) return; // ignore double clicks while one conversion is running
+    if (busyId) return;
     setBusyId(row.id);
     setError('');
     setNotice('');
@@ -304,14 +346,12 @@ export default function AdminShoppers({ products = [], onConverted }) {
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
         if (res.status === 409) {
-          // The order already exists — that is a success for the admin, not a warning
           setNotice('Already sent to orders.');
         } else if (!res.ok) {
           throw new Error(json.error || 'Could not create the order');
         } else {
           setNotice('Sent to orders.');
         }
-        // Refresh failures must not look like a failed conversion
         try { if (onConverted) onConverted(); } catch (_) {}
         load();
       })
@@ -325,16 +365,67 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const cartsAll = shoppers.carts.filter((row) => !checkoutIds.has(row.id)).sort(byRecent);
   const converted = [...(shoppers.converted || [])].sort(byRecent);
 
-  const followUpCount =
-    checkoutsAll.filter((row) => needsFollowUp(row, now)).length +
-    cartsAll.filter((row) => needsFollowUp(row, now)).length;
+  const annotate = (row, kind) => {
+    const items = kind === 'checkout' ? sessionItems(row) : (row.cart || []);
+    const missing = missingToOrder(row, items);
+    return {
+      row,
+      kind,
+      items,
+      missing,
+      ready: missing.length === 0,
+      followUp: needsFollowUp(row, now),
+      badge: kind === 'checkout'
+        ? (row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart')
+        : 'In cart',
+    };
+  };
+  const openSessions = [
+    ...checkoutsAll.map((row) => annotate(row, 'checkout')),
+    ...cartsAll.map((row) => annotate(row, 'cart')),
+  ].sort((a, b) => {
+    if (a.ready !== b.ready) return a.ready ? -1 : 1;
+    if (a.followUp !== b.followUp) return a.followUp ? -1 : 1;
+    return byRecent(a.row, b.row);
+  });
 
-  const checkouts = filter === 'followup'
-    ? checkoutsAll.filter((row) => needsFollowUp(row, now))
-    : checkoutsAll;
-  const carts = filter === 'followup'
-    ? cartsAll.filter((row) => needsFollowUp(row, now))
-    : cartsAll;
+  const readyRows = openSessions.filter((entry) => entry.ready);
+  const browsingRows = openSessions.filter((entry) => !entry.ready);
+  const followUpCount = openSessions.filter((entry) => entry.followUp).length;
+
+  const visibleReady = filter === 'browsing'
+    ? []
+    : filter === 'followup'
+      ? readyRows.filter((entry) => entry.followUp)
+      : readyRows;
+  const visibleBrowsing = filter === 'ready'
+    ? []
+    : filter === 'followup'
+      ? browsingRows.filter((entry) => entry.followUp)
+      : browsingRows;
+
+  const renderEntry = (entry) => (
+    <SessionCard
+      key={`${entry.kind}-${entry.row.id}`}
+      row={entry.row}
+      badge={entry.badge}
+      followUp={entry.followUp}
+      ready={entry.ready}
+      items={entry.items}
+      photos={photos}
+      canConvert={entry.ready}
+      missing={entry.missing.join(', ')}
+      busy={busyId === entry.row.id}
+      onConvert={convertToOrder}
+    />
+  );
+
+  const filters = [
+    { id: 'ready', label: 'Ready to convert', count: readyRows.length, active: 'bg-emerald-500/15 border-emerald-500/35 text-emerald-300' },
+    { id: 'browsing', label: 'Browsing', count: browsingRows.length, active: 'bg-white/10 border-white/20 text-white' },
+    { id: 'followup', label: 'Follow-up', count: followUpCount, active: 'bg-amber-500/15 border-amber-500/35 text-amber-300' },
+    { id: 'all', label: 'All', count: openSessions.length, active: 'bg-white/10 border-white/20 text-white' },
+  ];
 
   return (
     <div className="max-w-6xl space-y-5 pb-16">
@@ -343,7 +434,9 @@ export default function AdminShoppers({ products = [], onConverted }) {
           <h2 className="text-xl font-semibold text-white tracking-tight">
             Carts & <span className="text-[#ce112d]">Checkouts</span>
           </h2>
-          <p className="text-[11px] text-zinc-500 mt-1">Name, phone, address, district, note, and payment fields they type before ordering.</p>
+          <p className="text-[11px] text-zinc-500 mt-1">
+            Convert-ready shoppers (name, phone, address) first. Gift recipient details carry into the order.
+          </p>
         </div>
         <button
           type="button"
@@ -357,9 +450,9 @@ export default function AdminShoppers({ products = [], onConverted }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
+          { label: 'Ready to convert', value: readyRows.length },
           { label: 'Checkouts today', value: shoppers.today.checkouts },
           { label: 'Carts today', value: shoppers.today.carts },
-          { label: 'Orders today', value: shoppers.today.orders },
           { label: 'Converted (30 days)', value: converted.length },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215] px-3 py-3">
@@ -370,36 +463,28 @@ export default function AdminShoppers({ products = [], onConverted }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setFilter('all')}
-          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors ${
-            filter === 'all'
-              ? 'bg-white/10 border-white/20 text-white'
-              : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter('followup')}
-          className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
-            filter === 'followup'
-              ? 'bg-amber-500/15 border-amber-500/35 text-amber-300'
-              : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          Follow-up
-          <span className={`min-w-[1.25rem] h-5 px-1.5 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
-            followUpCount > 0 ? 'bg-amber-500/25 text-amber-200' : 'bg-white/5 text-zinc-500'
-          }`}>
-            {loading ? '…' : followUpCount}
-          </span>
-        </button>
-        <p className="text-[11px] text-zinc-500 ml-1">
-          30+ min idle, no order yet
-        </p>
+        {filters.map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            onClick={() => setFilter(chip.id)}
+            className={`h-8 px-3 rounded-lg text-xs font-semibold border transition-colors inline-flex items-center gap-1.5 ${
+              filter === chip.id
+                ? chip.active
+                : 'bg-transparent border-white/10 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            {chip.label}
+            <span className={`min-w-[1.25rem] h-5 px-1.5 rounded-md inline-flex items-center justify-center text-[10px] font-bold ${
+              filter === chip.id ? 'bg-black/30 text-current' : 'bg-white/5 text-zinc-500'
+            }`}>
+              {loading ? '…' : chip.count}
+            </span>
+          </button>
+        ))}
+        {filter === 'followup' && (
+          <p className="text-[11px] text-zinc-500 ml-1">30+ min idle, no order yet</p>
+        )}
       </div>
 
       {notice && (
@@ -410,51 +495,36 @@ export default function AdminShoppers({ products = [], onConverted }) {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        <Column
-          title="Opened checkout"
-          hint="Started checkout and has not ordered. Newest first."
-          rows={checkouts}
-          empty={loading ? 'Loading…' : filter === 'followup' ? 'No checkouts need follow-up right now.' : 'No unfinished checkouts in the last 30 days.'}
-          render={(row) => {
-            const items = sessionItems(row);
-            return (
-              <SessionCard
-                key={`co-${row.id}`}
-                row={row}
-                badge={row.checkout_source === 'buy_now' ? 'Buy Now' : 'From cart'}
-                followUp={needsFollowUp(row, now)}
-                items={items}
-                photos={photos}
-                canConvert={!missingToOrder(row, items)}
-                missing={missingToOrder(row, items)}
-                busy={busyId === row.id}
-                onConvert={convertToOrder}
-              />
-            );
-          }}
-        />
-        <Column
-          title="In the cart"
-          hint="Still in the bag. Anyone who opened checkout is listed only there."
-          rows={carts}
-          empty={loading ? 'Loading…' : filter === 'followup' ? 'No carts need follow-up right now.' : 'No open carts in the last 30 days.'}
-          render={(row) => (
-            <SessionCard
-              key={row.id}
-              row={row}
-              followUp={needsFollowUp(row, now)}
-              items={row.cart || []}
-              photos={photos}
-              canConvert={!missingToOrder(row, row.cart || [])}
-              missing={missingToOrder(row, row.cart || [])}
-              busy={busyId === row.id}
-              onConvert={convertToOrder}
-            />
-          )}
-        />
+        {(filter === 'ready' || filter === 'all' || filter === 'followup') && (
+          <Column
+            title="Ready to convert"
+            hint="Full name, phone, and address — Convert is active. Gift fields included when filled."
+            accent="text-emerald-300"
+            rows={visibleReady}
+            empty={loading
+              ? 'Loading…'
+              : filter === 'followup'
+                ? 'No convert-ready shoppers need follow-up right now.'
+                : 'No convert-ready carts yet.'}
+            render={renderEntry}
+          />
+        )}
+        {(filter === 'browsing' || filter === 'all' || filter === 'followup') && (
+          <Column
+            title="Browsing / interest"
+            hint="Partial info — track what they liked. Call/WhatsApp when a phone is present."
+            rows={visibleBrowsing}
+            empty={loading
+              ? 'Loading…'
+              : filter === 'followup'
+                ? 'No browsing sessions need follow-up right now.'
+                : 'No browsing carts in the last 30 days.'}
+            render={renderEntry}
+          />
+        )}
       </div>
 
-      {filter === 'all' && (
+      {(filter === 'all' || filter === 'ready') && (
         <Column
           title="Converted to orders"
           hint="Carts and checkouts that were confirmed as orders in the last 30 days."
@@ -466,6 +536,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
               row={row}
               badge={row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : ''}
               followUp={false}
+              ready={false}
               items={sessionItems(row)}
               photos={photos}
               canConvert={false}
