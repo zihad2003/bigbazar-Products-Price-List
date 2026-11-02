@@ -1208,6 +1208,72 @@ async function sendOrderConfirmedSms(env, order) {
   }
 }
 
+let orderNotifyTableReady = false;
+
+async function ensureOrderNotifyEmailsTable(conn) {
+  if (orderNotifyTableReady || !conn) return;
+  try {
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS order_notify_emails (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        label VARCHAR(120) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_order_notify_email (email)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  } catch (err) {
+    console.warn('order_notify_emails table ensure:', err?.message || err);
+  }
+  orderNotifyTableReady = true;
+}
+
+/**
+ * Recipients for new-order SMTP alerts.
+ * Prefers Superadmin UI list (order_notify_emails). Falls back to ORDER_NOTIFY_EMAILS / SUPERADMIN_EMAILS.
+ * Seeds the table once from env when empty so Hostinger keeps working after first deploy.
+ */
+async function resolveOrderNotifyEmails(env, conn) {
+  const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
+  const envFallback = parseEmailList(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(env).join(','));
+
+  if (conn) {
+    try {
+      await ensureOrderNotifyEmailsTable(conn);
+      const rows = await conn.execute(
+        'SELECT email FROM order_notify_emails ORDER BY id ASC'
+      );
+      const list = [];
+      const seen = new Set();
+      for (const row of rows || []) {
+        const email = normalizeOptionalEmail(row.email);
+        if (!email) continue;
+        const key = email.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(email);
+      }
+      if (list.length) return list;
+
+      // First run: copy env recipients into DB so Superadmin UI can manage them.
+      if (envFallback.length) {
+        for (const email of envFallback) {
+          try {
+            await conn.execute(
+              'INSERT IGNORE INTO order_notify_emails (email, label) VALUES (?, ?)',
+              [email, 'From env']
+            );
+          } catch (_) {}
+        }
+        return envFallback;
+      }
+    } catch (err) {
+      console.warn('resolveOrderNotifyEmails DB fallback:', err?.message || err);
+    }
+  }
+  return envFallback;
+}
+
 /**
  * Email the shop owner(s) about a new order over SMTP (Gmail App Password by default).
  * Node only (Hostinger).
@@ -1216,10 +1282,12 @@ async function sendOrderConfirmedSms(env, order) {
  *   SMTP_USER + SMTP_PASS (required) — login account that actually sends
  *   SMTP_FROM_NAME (optional, default "Big Bazar") — display name in inbox
  *   SMTP_REPLY_TO (optional) — e.g. shop Gmail; Reply goes here
- *   ORDER_NOTIFY_EMAILS (optional) — who receives alerts; defaults to SUPERADMIN_EMAILS
+ *   ORDER_NOTIFY_EMAILS (optional fallback) — used until Superadmin UI list is set
  *   SMTP_HOST / SMTP_PORT (default smtp.gmail.com:587)
+ *
+ * @param {object} [conn] DB connection — when provided, recipients come from order_notify_emails
  */
-async function sendOrderNotificationEmail(env, order) {
+async function sendOrderNotificationEmail(env, order, conn = null) {
   const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
   const smtpUser = readEnv('SMTP_USER');
   const smtpPass = String(readEnv('SMTP_PASS')).replace(/\s+/g, '');
@@ -1228,10 +1296,9 @@ async function sendOrderNotificationEmail(env, order) {
     return;
   }
 
-  const notifyRaw = readEnv('ORDER_NOTIFY_EMAILS');
-  const to = parseEmailList(notifyRaw || getSuperadminEmails(env).join(','));
+  const to = await resolveOrderNotifyEmails(env, conn);
   if (!to.length) {
-    console.warn('Order email skipped: no recipients in ORDER_NOTIFY_EMAILS / SUPERADMIN_EMAILS');
+    console.warn('Order email skipped: no recipients in order_notify_emails / ORDER_NOTIFY_EMAILS');
     return;
   }
   console.log('order notify recipients:', to.length, to.map((e) => e.replace(/(.{2}).*(@.*)/, '$1***$2')).join(', '));
@@ -3099,7 +3166,7 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
       risk: null,
     };
     try {
-      await sendOrderNotificationEmail(c.env, emailPayload);
+      await sendOrderNotificationEmail(c.env, emailPayload, conn);
       console.log('order email sent for', id);
     } catch (err) {
       console.error('order email error:', err?.message || err);
@@ -5738,6 +5805,7 @@ app.post('/admin/test-order-email', requireAuth, requireSuperAdmin, async (c) =>
         error: 'SMTP_USER / SMTP_PASS missing on the server. Add them to Hostinger .env and restart the Node app.',
       }, 400);
     }
+    const conn = getDb(c.env);
     await sendOrderNotificationEmail(c.env, {
       id: `test-${Date.now()}`,
       customerName: 'SMTP Test',
@@ -5752,12 +5820,72 @@ app.post('/admin/test-order-email', requireAuth, requireSuperAdmin, async (c) =>
       lines: [{ name: 'SMTP connectivity test', qty: 1, unitPrice: 0, color: null, size: null }],
       geo: null,
       risk: null,
-    });
-    const to = parseEmailList(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(c.env).join(','));
+    }, conn);
+    const to = await resolveOrderNotifyEmails(c.env, conn);
     return c.json({ success: true, message: `Test email sent toward: ${to.join(', ')}`, recipients: to });
   } catch (err) {
     console.error('test order email failed:', err?.message || err);
     return c.json({ error: err?.message || 'SMTP send failed' }, 502);
+  }
+});
+
+/** GET /admin/order-notify-emails — Superadmin list of order alert recipients */
+app.get('/admin/order-notify-emails', requireAuth, requireSuperAdmin, async (c) => {
+  const conn = getDb(c.env);
+  try {
+    await ensureOrderNotifyEmailsTable(conn);
+    // Seed from env if empty so UI shows current production recipients
+    await resolveOrderNotifyEmails(c.env, conn);
+    const rows = await conn.execute(
+      'SELECT id, email, label, created_at FROM order_notify_emails ORDER BY id ASC'
+    );
+    return c.json({ data: rows || [] });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to load recipients', data: [] }, 500);
+  }
+});
+
+/** POST /admin/order-notify-emails — add recipient */
+app.post('/admin/order-notify-emails', requireAuth, requireSuperAdmin, async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const email = normalizeOptionalEmail(body.email);
+  const label = String(body.label || '').trim().slice(0, 120) || null;
+  if (!email) return c.json({ error: 'Valid email required' }, 400);
+  const conn = getDb(c.env);
+  try {
+    await ensureOrderNotifyEmailsTable(conn);
+    try {
+      await conn.execute(
+        'INSERT INTO order_notify_emails (email, label) VALUES (?, ?)',
+        [email, label]
+      );
+    } catch (insertErr) {
+      if (/Duplicate entry/i.test(String(insertErr?.message || ''))) {
+        return c.json({ error: 'This email is already on the list' }, 400);
+      }
+      throw insertErr;
+    }
+    const rows = await conn.execute(
+      'SELECT id, email, label, created_at FROM order_notify_emails WHERE email = ? LIMIT 1',
+      [email]
+    );
+    return c.json({ success: true, data: rows?.[0] || { email, label } });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to add recipient' }, 500);
+  }
+});
+
+/** DELETE /admin/order-notify-emails/:id */
+app.delete('/admin/order-notify-emails/:id', requireAuth, requireSuperAdmin, async (c) => {
+  const id = parseInt(c.req.param('id'), 10);
+  if (!Number.isFinite(id) || id < 1) return c.json({ error: 'Invalid id' }, 400);
+  const conn = getDb(c.env);
+  try {
+    await ensureOrderNotifyEmailsTable(conn);
+    await conn.execute('DELETE FROM order_notify_emails WHERE id = ?', [id]);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: err.message || 'Failed to remove recipient' }, 500);
   }
 });
 
