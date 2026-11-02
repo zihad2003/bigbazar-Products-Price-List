@@ -882,7 +882,8 @@ async function bumpCatalogVersion(c) {
   return newVer;
 }
 
-// Background task execution helper (Cloudflare waitUntil or reliable async fallback)
+// Background task helper. Never block the HTTP response on Node/Hostinger —
+// awaiting here caused proxy HTML timeouts ("Unexpected token '<' … JSON").
 async function runInBackground(c, promiseFn) {
   const waitFn = (c.executionCtx && typeof c.executionCtx.waitUntil === 'function')
     ? c.executionCtx.waitUntil.bind(c.executionCtx)
@@ -890,16 +891,20 @@ async function runInBackground(c, promiseFn) {
       ? c.env.eventContext.waitUntil.bind(c.env.eventContext)
       : null;
 
+  const run = () => Promise.resolve().then(promiseFn).catch((err) => console.error('BG err:', err?.message || err));
+
   if (waitFn) {
     try {
-      waitFn(Promise.resolve().then(promiseFn).catch(err => console.error('BG err:', err)));
+      waitFn(run());
       return;
     } catch (_) {}
   }
-  // Safe fallback: execute directly so cache write is never lost
-  try {
-    await promiseFn();
-  } catch (_) {}
+  // Node (Hostinger): schedule after response can flush — do NOT await.
+  if (typeof setImmediate === 'function') {
+    setImmediate(run);
+  } else {
+    setTimeout(run, 0);
+  }
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
@@ -1137,26 +1142,30 @@ async function loadNodemailer() {
   return smtpModulePromise;
 }
 
+function createSmtpTransport(nodemailer, readEnv, smtpUser, smtpPass, port) {
+  return nodemailer.createTransport({
+    host: readEnv('SMTP_HOST') || 'smtp.gmail.com',
+    port,
+    secure: port === 465,
+    requireTLS: port !== 465,
+    auth: { user: smtpUser, pass: smtpPass },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
+  });
+}
+
 /** Hostinger often blocks port 465. Try the configured port, then 587, then 465. */
 async function deliverSmtpMail(readEnv, smtpUser, smtpPass, mail) {
   const nodemailer = await loadNodemailer();
-  const host = readEnv('SMTP_HOST') || 'smtp.gmail.com';
   const preferred = parseInt(readEnv('SMTP_PORT') || '587', 10);
   const ports = [...new Set([preferred, 587, 465])];
   let lastErr;
   for (const port of ports) {
-    const transport = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      requireTLS: port !== 465,
-      auth: { user: smtpUser, pass: smtpPass },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 20000,
-    });
+    const transport = createSmtpTransport(nodemailer, readEnv, smtpUser, smtpPass, port);
     try {
       await transport.sendMail(mail);
+      try { transport.close(); } catch (_) {}
       return;
     } catch (err) {
       lastErr = err;
@@ -1165,6 +1174,51 @@ async function deliverSmtpMail(readEnv, smtpUser, smtpPass, mail) {
     }
   }
   throw lastErr;
+}
+
+/**
+ * Send the same mail to many inboxes one-by-one on one SMTP connection.
+ * Gmail App Password often drops / fails parallel multi-To sends (only first arrives).
+ */
+async function deliverSmtpMailEach(readEnv, smtpUser, smtpPass, mailBase, recipients) {
+  const list = [...new Set((recipients || []).map((e) => String(e || '').trim()).filter(Boolean))];
+  if (!list.length) return { sent: [], failed: [] };
+
+  const nodemailer = await loadNodemailer();
+  const preferred = parseInt(readEnv('SMTP_PORT') || '587', 10);
+  const ports = [...new Set([preferred, 587, 465])];
+  const sent = [];
+  const failed = [];
+  let lastErr = null;
+
+  for (const port of ports) {
+    const transport = createSmtpTransport(nodemailer, readEnv, smtpUser, smtpPass, port);
+    try {
+      // Probe with first recipient on this port; then finish the rest on same connection.
+      await transport.sendMail({ ...mailBase, to: list[0] });
+      sent.push(list[0]);
+      console.log('order email delivered to', list[0].replace(/(.{2}).*(@.*)/, '$1***$2'));
+      for (let i = 1; i < list.length; i += 1) {
+        const recipient = list[i];
+        try {
+          await transport.sendMail({ ...mailBase, to: recipient });
+          sent.push(recipient);
+          console.log('order email delivered to', recipient.replace(/(.{2}).*(@.*)/, '$1***$2'));
+        } catch (err) {
+          failed.push(recipient);
+          console.error('order email failed for', recipient, err?.message || err);
+        }
+      }
+      try { transport.close(); } catch (_) {}
+      return { sent, failed };
+    } catch (err) {
+      lastErr = err;
+      console.error(`order email batch failed on port ${port}:`, err?.message || err);
+      try { transport.close(); } catch (_) {}
+    }
+  }
+  if (!sent.length && lastErr) throw lastErr;
+  return { sent, failed };
 }
 
 function toBdMsisdn(phone) {
@@ -1230,47 +1284,55 @@ async function ensureOrderNotifyEmailsTable(conn) {
 
 /**
  * Recipients for new-order SMTP alerts.
- * Prefers Superadmin UI list (order_notify_emails). Falls back to ORDER_NOTIFY_EMAILS / SUPERADMIN_EMAILS.
- * Seeds the table once from env when empty so Hostinger keeps working after first deploy.
+ * Source of truth = Superadmin UI table `order_notify_emails` (DB).
+ * Env ORDER_NOTIFY_EMAILS is only used to seed an empty table once, then ignored.
  */
 async function resolveOrderNotifyEmails(env, conn) {
   const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
   const envFallback = parseEmailList(readEnv('ORDER_NOTIFY_EMAILS') || getSuperadminEmails(env).join(','));
 
-  if (conn) {
-    try {
-      await ensureOrderNotifyEmailsTable(conn);
-      const rows = await conn.execute(
-        'SELECT email FROM order_notify_emails ORDER BY id ASC'
-      );
-      const list = [];
-      const seen = new Set();
-      for (const row of rows || []) {
-        const email = normalizeOptionalEmail(row.email);
-        if (!email) continue;
-        const key = email.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        list.push(email);
-      }
-      if (list.length) return list;
-
-      // First run: copy env recipients into DB so Superadmin UI can manage them.
-      if (envFallback.length) {
-        for (const email of envFallback) {
-          try {
-            await conn.execute(
-              'INSERT IGNORE INTO order_notify_emails (email, label) VALUES (?, ?)',
-              [email, 'From env']
-            );
-          } catch (_) {}
-        }
-        return envFallback;
-      }
-    } catch (err) {
-      console.warn('resolveOrderNotifyEmails DB fallback:', err?.message || err);
-    }
+  if (!conn) {
+    console.warn('order notify: no DB conn — using env fallback only');
+    return envFallback;
   }
+
+  try {
+    await ensureOrderNotifyEmailsTable(conn);
+    const rows = await conn.execute(
+      'SELECT email FROM order_notify_emails ORDER BY id ASC'
+    );
+    const list = [];
+    const seen = new Set();
+    for (const row of rows || []) {
+      const email = normalizeOptionalEmail(row?.email);
+      if (!email) continue;
+      const key = email.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(email);
+    }
+    if (list.length) {
+      console.log('order notify source=db count=', list.length);
+      return list;
+    }
+
+    // First run only: copy env → DB so Superadmin can manage afterwards.
+    if (envFallback.length) {
+      for (const email of envFallback) {
+        try {
+          await conn.execute(
+            'INSERT IGNORE INTO order_notify_emails (email, label) VALUES (?, ?)',
+            [email, 'From env']
+          );
+        } catch (_) {}
+      }
+      console.log('order notify source=env-seed count=', envFallback.length);
+      return envFallback;
+    }
+  } catch (err) {
+    console.warn('resolveOrderNotifyEmails DB error, env fallback:', err?.message || err);
+  }
+  console.log('order notify source=env-fallback count=', envFallback.length);
   return envFallback;
 }
 
@@ -1445,32 +1507,21 @@ async function sendOrderNotificationEmail(env, order, conn = null) {
     `Admin: ${siteOrigin}/admin`,
   ].filter(Boolean).join('\n');
 
-  // Gmail SMTP often delivers multi-`to` poorly (only the first inbox reliably).
-  // Send one message per recipient so every Superadmin-listed email gets the alert.
-  const results = await Promise.allSettled(
-    to.map((recipient) =>
-      deliverSmtpMail(readEnv, smtpUser, smtpPass, {
-        from,
-        replyTo,
-        to: recipient,
-        subject,
-        html,
-        text,
-      })
-    )
+  // One SMTP connection, one recipient at a time (DB list from Superadmin UI).
+  const { sent, failed } = await deliverSmtpMailEach(
+    readEnv,
+    smtpUser,
+    smtpPass,
+    { from, replyTo, subject, html, text },
+    to
   );
-  const failed = [];
-  results.forEach((result, i) => {
-    if (result.status === 'rejected') {
-      failed.push(to[i]);
-      console.error('order email failed for', to[i], result.reason?.message || result.reason);
-    }
-  });
-  if (failed.length === to.length) {
+  if (!sent.length) {
     throw new Error(`Order email failed for all recipients: ${failed.join(', ')}`);
   }
   if (failed.length) {
-    console.warn('order email partial failure:', failed.join(', '));
+    console.warn('order email partial failure:', failed.join(', '), '| sent:', sent.length);
+  } else {
+    console.log('order email ok to all', sent.length, 'recipients');
   }
 }
 
@@ -3523,8 +3574,9 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       && prevStatus !== 'Confirmed'
       && !isCancelOrderStatus(nextStatus);
     const advanceJustPaid = !wasAdvancePaid && nowAdvancePaid && !refundApplied;
-    // Customer confirm mail: advance marked paid OR status moved to Confirmed.
-    // Await SMTP — Hostinger often drops fire-and-forget after the HTTP response.
+    // Customer confirm mail: advance marked paid OR status → Confirmed.
+    // Do not await SMTP here — Hostinger proxies return HTML on slow responses,
+    // and the admin UI then shows "Unexpected token '<' … is not valid JSON".
     if (advanceJustPaid || becameConfirmed) {
       const notifyOrder = {
         ...currentOrder,
@@ -3536,21 +3588,15 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
         customer_email: currentOrder.customer_email,
       };
       if (advanceJustPaid) {
-        runInBackground(c, () =>
-          sendOrderConfirmedSms(c.env, notifyOrder).catch((err) =>
-            console.error('order sms error:', err?.message || err)
-          )
-        );
+        runInBackground(c, () => sendOrderConfirmedSms(c.env, notifyOrder));
       }
-      try {
-        if (!normalizeOptionalEmail(notifyOrder.customer_email)) {
-          console.warn('customer confirm email skipped: no customer_email on order', id);
-        } else {
+      if (!normalizeOptionalEmail(notifyOrder.customer_email)) {
+        console.warn('customer confirm email skipped: no customer_email on order', id);
+      } else {
+        runInBackground(c, async () => {
           await sendCustomerOrderConfirmedEmail(c.env, notifyOrder);
           console.log('customer confirm email sent for', id);
-        }
-      } catch (err) {
-        console.error('customer confirm email error:', err?.message || err);
+        });
       }
     }
     return c.json({ success: true });

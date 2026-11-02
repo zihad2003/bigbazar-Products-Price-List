@@ -537,8 +537,25 @@ class QueryBuilder {
             cache: 'no-store',
             body: JSON.stringify(this._values)
         });
-        const json = await res.json();
-        if (!res.ok) return { data: null, error: { message: json.error } };
+        const text = await res.text();
+        if (!text) {
+            return { data: null, error: { message: 'The server did not respond. Please try again.' } };
+        }
+        let json;
+        try {
+            json = JSON.parse(text);
+        } catch {
+            // Proxy/timeout HTML (e.g. "<!DOCTYPE …>") — never throw raw JSON parse errors in admin UI
+            return {
+                data: null,
+                error: {
+                    message: res.ok
+                        ? 'The server sent an unreadable reply. Please try again.'
+                        : `Update failed (HTTP ${res.status}). Restart the API if this keeps happening.`,
+                },
+            };
+        }
+        if (!res.ok) return { data: null, error: { message: json.error || 'Update failed' } };
         return { data: json.data, error: null };
     }
 
