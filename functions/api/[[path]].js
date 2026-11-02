@@ -1445,15 +1445,33 @@ async function sendOrderNotificationEmail(env, order, conn = null) {
     `Admin: ${siteOrigin}/admin`,
   ].filter(Boolean).join('\n');
 
-  await deliverSmtpMail(readEnv, smtpUser, smtpPass, {
-    from,
-    replyTo,
-    // Nodemailer accepts a comma-separated string or an array — pass array so every recipient is delivered.
-    to,
-    subject,
-    html,
-    text,
+  // Gmail SMTP often delivers multi-`to` poorly (only the first inbox reliably).
+  // Send one message per recipient so every Superadmin-listed email gets the alert.
+  const results = await Promise.allSettled(
+    to.map((recipient) =>
+      deliverSmtpMail(readEnv, smtpUser, smtpPass, {
+        from,
+        replyTo,
+        to: recipient,
+        subject,
+        html,
+        text,
+      })
+    )
+  );
+  const failed = [];
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      failed.push(to[i]);
+      console.error('order email failed for', to[i], result.reason?.message || result.reason);
+    }
   });
+  if (failed.length === to.length) {
+    throw new Error(`Order email failed for all recipients: ${failed.join(', ')}`);
+  }
+  if (failed.length) {
+    console.warn('order email partial failure:', failed.join(', '));
+  }
 }
 
 /**
