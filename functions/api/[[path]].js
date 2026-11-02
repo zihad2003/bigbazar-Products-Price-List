@@ -882,29 +882,60 @@ async function bumpCatalogVersion(c) {
   return newVer;
 }
 
+// Strong refs so Node keeps SMTP/cache work alive after the HTTP response flushes.
+const pendingBackgroundTasks = new Set();
+
 // Background task helper. Never block the HTTP response on Node/Hostinger —
 // awaiting here caused proxy HTML timeouts ("Unexpected token '<' … JSON").
-async function runInBackground(c, promiseFn) {
+function runInBackground(c, promiseFn) {
+  const start = () => {
+    const task = Promise.resolve()
+      .then(promiseFn)
+      .catch((err) => console.error('BG err:', err?.message || err))
+      .finally(() => pendingBackgroundTasks.delete(task));
+    pendingBackgroundTasks.add(task);
+    return task;
+  };
+
   const waitFn = (c.executionCtx && typeof c.executionCtx.waitUntil === 'function')
     ? c.executionCtx.waitUntil.bind(c.executionCtx)
     : (c.env?.eventContext && typeof c.env.eventContext.waitUntil === 'function')
       ? c.env.eventContext.waitUntil.bind(c.env.eventContext)
       : null;
 
-  const run = () => Promise.resolve().then(promiseFn).catch((err) => console.error('BG err:', err?.message || err));
-
   if (waitFn) {
     try {
-      waitFn(run());
+      waitFn(start());
       return;
     } catch (_) {}
   }
   // Node (Hostinger): schedule after response can flush — do NOT await.
   if (typeof setImmediate === 'function') {
-    setImmediate(run);
+    setImmediate(() => { start(); });
   } else {
-    setTimeout(run, 0);
+    setTimeout(() => { start(); }, 0);
   }
+}
+
+/** Prefer order.customer_email; else users.email via orders.user_id. */
+async function resolveOrderCustomerEmail(conn, order) {
+  const fromOrder = normalizeOptionalEmail(order?.customer_email);
+  if (fromOrder) return { email: fromOrder, source: 'order' };
+
+  const userId = order?.user_id != null && String(order.user_id).trim() !== ''
+    ? String(order.user_id).trim()
+    : null;
+  if (!userId || !conn) return { email: null, source: null };
+
+  try {
+    const userRows = await conn.execute('SELECT email FROM users WHERE id = ? LIMIT 1', [userId]);
+    const row = Array.isArray(userRows) ? userRows[0] : userRows?.rows?.[0];
+    const fromUser = normalizeOptionalEmail(row?.email);
+    if (fromUser) return { email: fromUser, source: 'user' };
+  } catch (err) {
+    console.warn('resolveOrderCustomerEmail user lookup failed:', err?.message || err);
+  }
+  return { email: null, source: null };
 }
 
 async function checkRateLimitKV(c, endpoint, limit = 10, windowMs = 60000) {
@@ -1527,7 +1558,7 @@ async function sendOrderNotificationEmail(env, order, conn = null) {
 
 /**
  * Email the customer when admin confirms advance / marks order confirmed.
- * Non-blocking caller should catch errors. Skips if no customer_email or SMTP unset.
+ * Returns { ok, reason?, to? }. Caller must not await this on the HTTP path.
  */
 async function sendCustomerOrderConfirmedEmail(env, order) {
   const readEnv = (key) => env?.[key] || (typeof process !== 'undefined' && process.env?.[key]) || '';
@@ -1535,10 +1566,13 @@ async function sendCustomerOrderConfirmedEmail(env, order) {
   const smtpPass = String(readEnv('SMTP_PASS')).replace(/\s+/g, '');
   if (!smtpUser || !smtpPass) {
     console.warn('Customer confirm email skipped: SMTP_USER / SMTP_PASS not set');
-    return;
+    return { ok: false, reason: 'smtp_unset' };
   }
   const to = normalizeOptionalEmail(order.customer_email);
-  if (!to) return;
+  if (!to) {
+    console.warn('Customer confirm email skipped: no customer_email', order?.id);
+    return { ok: false, reason: 'no_customer_email' };
+  }
 
   const fromName = (readEnv('SMTP_FROM_NAME') || 'Big Bazar').replace(/[<>\n\r]/g, '').trim() || 'Big Bazar';
   const from = `${fromName} <${smtpUser}>`;
@@ -1598,6 +1632,7 @@ async function sendCustomerOrderConfirmedEmail(env, order) {
     html,
     text,
   });
+  return { ok: true, to };
 }
 
 function resolveAdminRole(user, env) {
@@ -3577,7 +3612,22 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     // Customer confirm mail: advance marked paid OR status → Confirmed.
     // Do not await SMTP here — Hostinger proxies return HTML on slow responses,
     // and the admin UI then shows "Unexpected token '<' … is not valid JSON".
+    const responseBody = { success: true };
     if (advanceJustPaid || becameConfirmed) {
+      const resolved = await resolveOrderCustomerEmail(conn, currentOrder);
+      let customerEmail = resolved.email;
+      if (customerEmail && resolved.source === 'user') {
+        try {
+          await conn.execute(
+            'UPDATE orders SET customer_email = ? WHERE id = ? AND (customer_email IS NULL OR customer_email = \'\')',
+            [customerEmail, id]
+          );
+          console.log('customer_email backfilled from users for order', id);
+        } catch (err) {
+          console.warn('customer_email backfill failed:', err?.message || err);
+        }
+      }
+
       const notifyOrder = {
         ...currentOrder,
         status: nextStatus || currentOrder.status,
@@ -3585,21 +3635,29 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
         payment_status: o.payment_status !== undefined ? o.payment_status : currentOrder.payment_status,
         advance_paid_amount: advancePaidAmount !== undefined ? advancePaidAmount : currentOrder.advance_paid_amount,
         total_amount: o.total_amount !== undefined ? o.total_amount : currentOrder.total_amount,
-        customer_email: currentOrder.customer_email,
+        customer_email: customerEmail,
       };
       if (advanceJustPaid) {
         runInBackground(c, () => sendOrderConfirmedSms(c.env, notifyOrder));
       }
-      if (!normalizeOptionalEmail(notifyOrder.customer_email)) {
-        console.warn('customer confirm email skipped: no customer_email on order', id);
+      if (!customerEmail) {
+        console.warn('customer confirm email skipped: no customer_email on order (and no users.email via user_id)', id);
+        responseBody.customer_email_sent = false;
+        responseBody.reason = 'no_customer_email';
       } else {
+        // Queued — actual SMTP delivery happens after JSON response flushes.
+        responseBody.customer_email_sent = true;
         runInBackground(c, async () => {
-          await sendCustomerOrderConfirmedEmail(c.env, notifyOrder);
-          console.log('customer confirm email sent for', id);
+          const result = await sendCustomerOrderConfirmedEmail(c.env, notifyOrder);
+          if (result?.ok) {
+            console.log('customer confirm email sent for', id, 'to', String(result.to || '').replace(/(.{2}).*(@.*)/, '$1***$2'));
+          } else {
+            console.warn('customer confirm email not delivered for', id, result?.reason || 'unknown');
+          }
         });
       }
     }
-    return c.json({ success: true });
+    return c.json(responseBody);
   } catch (err) {
     await tx.rollback();
     console.error('Order update transaction error:', err);

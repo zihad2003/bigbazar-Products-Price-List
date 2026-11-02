@@ -531,21 +531,42 @@ class QueryBuilder {
         const id = this._filters.id;
         if (!id) return { data: null, error: { message: 'No ID filter for update' } };
         const endpoint = this._getEndpoint();
-        const res = await fetch(`${API_BASE}${endpoint}/${id}`, {
-            method: 'PUT',
-            headers: headers(),
-            cache: 'no-store',
-            body: JSON.stringify(this._values)
-        });
-        const text = await res.text();
+        let res;
+        try {
+            res = await fetch(`${API_BASE}${endpoint}/${id}`, {
+                method: 'PUT',
+                headers: headers(),
+                cache: 'no-store',
+                body: JSON.stringify(this._values)
+            });
+        } catch {
+            return { data: null, error: { message: 'Network error. Please try again.' } };
+        }
+        let text = '';
+        try {
+            text = await res.text();
+        } catch {
+            return { data: null, error: { message: 'The server did not respond. Please try again.' } };
+        }
         if (!text) {
             return { data: null, error: { message: 'The server did not respond. Please try again.' } };
+        }
+        // Proxy/timeout HTML (e.g. "<!DOCTYPE …>") — never throw raw JSON parse errors in admin UI
+        const trimmed = text.trim();
+        if (trimmed.startsWith('<') || /^<!DOCTYPE/i.test(trimmed)) {
+            return {
+                data: null,
+                error: {
+                    message: res.ok
+                        ? 'The server sent an unreadable reply. Please try again.'
+                        : `Update failed (HTTP ${res.status}). Restart the API if this keeps happening.`,
+                },
+            };
         }
         let json;
         try {
             json = JSON.parse(text);
         } catch {
-            // Proxy/timeout HTML (e.g. "<!DOCTYPE …>") — never throw raw JSON parse errors in admin UI
             return {
                 data: null,
                 error: {
@@ -556,7 +577,8 @@ class QueryBuilder {
             };
         }
         if (!res.ok) return { data: null, error: { message: json.error || 'Update failed' } };
-        return { data: json.data, error: null };
+        // Prefer nested data when present; otherwise return full body (e.g. {success, customer_email_sent}).
+        return { data: typeof json.data !== 'undefined' ? json.data : json, error: null };
     }
 
     async _executeDelete() {

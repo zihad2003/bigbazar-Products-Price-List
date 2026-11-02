@@ -740,9 +740,17 @@ export default function Admin() {
         : `আপনি কি পরিবর্তন করে "${status}" করতে চান?`,
       confirmText: needsAdvanceRefund ? 'Cancel & Refund' : 'Update Status',
       onConfirm: async () => {
-        const { error } = await bigBazarApi.from('orders').update(patch).eq('id', id);
+        const { data, error } = await bigBazarApi.from('orders').update(patch).eq('id', id);
         if (error) setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
         else {
+          if (data?.customer_email_sent === false && data?.reason === 'no_customer_email') {
+            setAlertModal({
+              isOpen: true,
+              title: 'Status updated',
+              message: 'Saved, but no customer email was on file — confirmation email was not sent.',
+              type: 'success',
+            });
+          }
           fetchOrders();
           if (selectedOrder?.id === id) {
             setSelectedOrder({ ...selectedOrder, ...patch });
@@ -816,7 +824,7 @@ export default function Admin() {
       message: `পেমেন্ট স্ট্যাটাস "${nextStatus}" করতে চান?`,
       confirmText: 'Update Payment',
       onConfirm: async () => {
-        const { error } = await bigBazarApi
+        const { data, error } = await bigBazarApi
           .from('orders')
           .update(patch)
           .eq('id', order.id);
@@ -837,6 +845,14 @@ export default function Admin() {
             }
           }
         } else {
+          if (data?.customer_email_sent === false && data?.reason === 'no_customer_email') {
+            setAlertModal({
+              isOpen: true,
+              title: 'Payment updated',
+              message: 'Saved, but no customer email was on file — confirmation email was not sent.',
+              type: 'success',
+            });
+          }
           fetchOrders();
           if (selectedOrder?.id === order.id) {
             setSelectedOrder({ ...selectedOrder, ...patch });
@@ -856,10 +872,18 @@ export default function Admin() {
       payment_status: fully ? 'Fully Paid' : 'Advance Paid',
     };
     if (!order.status || order.status === 'Pending') patch.status = 'Confirmed';
-    const { error } = await bigBazarApi.from('orders').update(patch).eq('id', order.id);
+    const { data, error } = await bigBazarApi.from('orders').update(patch).eq('id', order.id);
     if (error) {
       setAlertModal({ isOpen: true, title: 'Error', message: error.message, type: 'error' });
       return;
+    }
+    if (data?.customer_email_sent === false && data?.reason === 'no_customer_email') {
+      setAlertModal({
+        isOpen: true,
+        title: 'Order confirmed',
+        message: 'Order saved, but no customer email was on file — confirmation email was not sent.',
+        type: 'success',
+      });
     }
     fetchOrders();
     if (selectedOrder?.id === order.id) setSelectedOrder({ ...selectedOrder, ...patch });
