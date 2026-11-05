@@ -6583,8 +6583,7 @@ FOOTER & BRAND KNOWLEDGE:
 - Facebook: https://www.facebook.com/profile.php?id=100063541603515
 - Instagram: https://www.instagram.com/big_bazar_25/
 - TikTok & Videos: https://www.tiktok.com/@big.bazar2
-- WhatsApp: 01824950082 (call/text for live video view, custom sizing or sharing photos: https://wa.me/8801824950082)
-- Helpline: 01857045449
+- WhatsApp / Helpline: 01857045449 (call/text for live video view, custom sizing or sharing photos: https://wa.me/8801857045449)
 - Email: infobigbazar01@gmail.com
 - Opening hours: Everyday 9:30 AM to 9:30 PM
 - Pricing: Strict fixed-price shop ensuring fair prices and premium fabric quality.
@@ -6604,7 +6603,7 @@ PRODUCT INQUIRY & FABRIC INTELLIGENCE:
      * Chittagong District: "চট্টগ্রাম জেলায় ডেলিভারি চার্জ মাত্র ১০০ টাকা (১-২ দিনের মধ্যে ডেলিভারি)।"
      * Other Districts: "আপনার এলাকায় ডেলিভারি চার্জ ১৫০ টাকা (২-৫ দিনের মধ্যে ক্যাশ অন ডেলিভারি)।"
 
-2. Video Requests: If the customer asks for a video/real look of the dress/product, tell them: "এই পোশাকটির রিয়েল ভিডিও দেখতে বা লাইভ ভিডিও কলের মাধ্যমে দেখতে আমাদের অফিসিয়াল হোয়াটসঅ্যাপে (https://wa.me/8801824950082 বা 01824950082) মেসেজ দিন অথবা আমাদের টিকটক পেইজে (https://www.tiktok.com/@big.bazar2) ভিডিও দেখতে পারেন।"
+2. Video Requests: If the customer asks for a video/real look of the dress/product, tell them: "এই পোশাকটির রিয়েল ভিডিও দেখতে বা লাইভ ভিডিও কলের মাধ্যমে দেখতে আমাদের অফিসিয়াল হোয়াটসঅ্যাপে (https://wa.me/8801857045449 বা 01857045449) মেসেজ দিন অথবা আমাদের টিকটক পেইজে (https://www.tiktok.com/@big.bazar2) ভিডিও দেখতে পারেন।"
 3. Fabric / Material / Quality Requests:
    - If the product description contains details, use it.
    - If description is brief or missing, intelligently explain the fabric based on Bangladeshi fashion expertise:

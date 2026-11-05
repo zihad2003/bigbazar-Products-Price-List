@@ -81,7 +81,7 @@ export default function Footer({ onTrackOrder, onSelectCategory }) {
                         {/* Social media icons */}
                         <div className="flex items-center gap-3 pt-2">
                             {[
-                                { icon: MessageCircle, url: 'https://wa.me/8801824950082' },
+                                { icon: MessageCircle, url: 'https://wa.me/8801857045449' },
                                 { icon: Facebook, url: 'https://www.facebook.com/profile.php?id=100063541603515' },
                                 { icon: Instagram, url: 'https://www.instagram.com/big_bazar_25/' },
                                 { icon: TikTokIcon, url: 'https://www.tiktok.com/@big.bazar2' }

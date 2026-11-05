@@ -56,7 +56,7 @@ const SEOHead = ({ title, description, image, productData }) => {
         'Big Bazar at Jomidar Plaza, Baraiyarhat. Fixed price family fashion and bridal wear, trusted by over 100K followers.';
     } else if (!title && location.pathname === '/contact-us') {
       pageTitle = 'Contact Us | Big Bazar Baraiyarhat';
-      pageDesc = 'Helpline 01857045449, WhatsApp 01824950082. Jomidar Plaza, Baraiyarhat, Mirsharai.';
+      pageDesc = 'Helpline / WhatsApp 01857045449. Jomidar Plaza, Baraiyarhat, Mirsharai.';
     } else if (!title && location.pathname === '/store-locations') {
       pageTitle = 'Store Location | Big Bazar Baraiyarhat';
       pageDesc = 'Visit us at 2nd Floor, Jomidar Plaza, Baraiyarhat, Mirsharai, Chattogram. Open daily 9 AM to 9 PM.';

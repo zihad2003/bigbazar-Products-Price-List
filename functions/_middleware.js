@@ -199,7 +199,7 @@ export async function onRequest(context) {
   } else if (path === '/contact-us') {
     pageTitle = 'Contact Us | Big Bazar Baraiyarhat';
     pageDesc =
-      'Helpline 01857045449, WhatsApp 01824950082. Jomidar Plaza, Baraiyarhat, Mirsharai.';
+      'Helpline / WhatsApp 01857045449. Jomidar Plaza, Baraiyarhat, Mirsharai.';
   } else if (path === '/privacy-policy') {
     pageTitle = 'Privacy Policy | Big Bazar Baraiyarhat';
     pageDesc = 'How onlinebigbazar.com stores and uses your personal information.';
