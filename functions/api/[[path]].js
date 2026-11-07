@@ -141,6 +141,31 @@ async function ensureOrderContactedColumns(conn) {
   orderContactedReady = true;
 }
 
+let orderStockRestoredReady = false;
+async function ensureOrderStockRestoredColumn(conn) {
+  if (orderStockRestoredReady) return;
+  try {
+    await conn.execute('ALTER TABLE orders ADD COLUMN stock_restored TINYINT(1) NOT NULL DEFAULT 0');
+  } catch (_) {
+    /* column already exists */
+  }
+  orderStockRestoredReady = true;
+}
+
+function orderStockWasRestored(order) {
+  return order?.stock_restored === 1
+    || order?.stock_restored === true
+    || order?.stock_restored === '1';
+}
+
+/** True when cancel/delete path already returned stock (flag, or legacy status). */
+function orderStockAlreadyReturned(order) {
+  if (!order) return false;
+  return orderStockWasRestored(order)
+    || isCancelOrderStatus(order.status)
+    || order.status === 'Deleted';
+}
+
 function adminActorLabel(c) {
   const user = c.get('user') || {};
   return String(user.email || user.id || 'admin').trim().slice(0, 255) || 'admin';
@@ -3069,6 +3094,11 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
         return { status: 400, body: { error: `Product "${product.name}" is no longer available` } };
       }
 
+      if (product.is_sold_out) {
+        await tx.rollback();
+        return { status: 400, body: { error: `Product "${product.name}" is sold out` } };
+      }
+
       const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
       const requestedQty = parseInt(item.quantity) || 1;
 
@@ -3077,10 +3107,27 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
         return { status: 400, body: { error: `Product "${product.name}" is out of stock (Requested: ${requestedQty}, Available: ${product.stock_count})` } };
       }
 
+      let availableColorsParsed = parseAvailableColorsJson(product.available_colors);
+      const sizeStock = findVariantSizeStock(
+        availableColorsParsed,
+        item.selectedColor || null,
+        item.selectedSize || null
+      );
+      if (sizeStock !== null && sizeStock < requestedQty) {
+        await tx.rollback();
+        return {
+          status: 400,
+          body: {
+            error: `Product "${product.name}" size is out of stock (Color: ${item.selectedColor}, Size: ${item.selectedSize}, Requested: ${requestedQty}, Available: ${sizeStock})`
+          }
+        };
+      }
+
       // Calculate true price of the product item
       const itemUnitPrice = parseFloat(product.price || 0);
       calculatedSubtotal += itemUnitPrice * requestedQty;
       orderLines.push({
+        id: item.id,
         name: product.name,
         qty: requestedQty,
         unitPrice: itemUnitPrice,
@@ -3094,32 +3141,12 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
         updatedGlobalStock = Math.max(0, product.stock_count - requestedQty);
       }
 
-      // Decrement color/size variant stock
-      let availableColorsParsed = [];
-      try {
-        availableColorsParsed = typeof product.available_colors === 'string'
-          ? JSON.parse(product.available_colors)
-          : (product.available_colors || []);
-      } catch (e) {
-        availableColorsParsed = [];
-      }
-
-      if (item.selectedColor && availableColorsParsed.length > 0) {
-        availableColorsParsed = availableColorsParsed.map(color => {
-          const colorName = typeof color === 'object' ? color.name : color;
-          if (colorName === item.selectedColor && color.sizes?.length > 0) {
-            const updatedSizes = color.sizes.map(sz => {
-              const szName = typeof sz === 'object' ? sz.name : sz;
-              if (szName === item.selectedSize) {
-                return { ...sz, stock: Math.max(0, (sz.stock || 0) - requestedQty) };
-              }
-              return sz;
-            });
-            return { ...color, sizes: updatedSizes };
-          }
-          return color;
-        });
-      }
+      availableColorsParsed = adjustVariantStock(
+        availableColorsParsed,
+        item.selectedColor || null,
+        item.selectedSize || null,
+        -requestedQty
+      );
 
       await tx.execute(
         'UPDATE products SET stock_count = ?, is_sold_out = ?, available_colors = ? WHERE id = ?',
@@ -3130,6 +3157,23 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
           item.id
         ]
       );
+    }
+
+    // Ensure product_name carries Qty/PID so cancel restore uses the correct quantity
+    let finalProductName = String(o.product_name || '').trim();
+    const hasQtyToken = /\((?:Qty|পরিমাণ):\s*\d+\)/i.test(finalProductName);
+    const hasPidToken = /\(PID:\s*[^)]+\)/i.test(finalProductName);
+    if (!finalProductName || !hasQtyToken || !hasPidToken) {
+      finalProductName = orderLines.map((line) => {
+        let name = line.name || 'Item';
+        if (line.color) name += ` (Color: ${line.color})`;
+        if (line.size) name += ` (Size: ${line.size})`;
+        name += ` (Qty: ${line.qty})`;
+        name += ` (PID: ${line.id})`;
+        return name;
+      }).join(' + ').substring(0, 1000);
+    } else {
+      finalProductName = finalProductName.substring(0, 1000);
     }
 
     // Normalize delivery area aliases (legacy clients sent "chittagong")
@@ -3169,7 +3213,7 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
     // Build INSERT with optional user_id / gift columns
     const orderCols = 'id, product_id, product_name, product_price, customer_name, customer_phone, customer_address, customer_note, delivery_area, delivery_charge, total_amount, last_four_digits, status, size, color, is_advance_paid, is_exclusive_order, payment_status, moderator_reference';
     const orderVals = [
-      id, o.product_id, o.product_name, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
+      id, o.product_id, finalProductName, calculatedSubtotal, o.customer_name, o.customer_phone, o.customer_address, o.customer_note || null,
       normalizedArea || 'outside', calculatedDeliveryCharge, calculatedTotalAmount, o.last_four_digits || 'COD', 'Pending',
       o.size || null, o.color || null, safeAdvancePaid, o.is_exclusive_order ? 1 : 0, safePaymentStatus, o.moderator_reference || null
     ];
@@ -3337,115 +3381,166 @@ app.post('/orders', optionalCustomerAuth, async (c) => {
   return c.json(result.body, result.status);
 });
 
-async function restoreOrderStock(tx, order) {
-  if (!order) return;
+function parseOrderStockLine(str) {
+  const res = { name: str, size: null, color: null, sku: null, qty: 1, pid: null };
+  const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
+  const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
+  const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
+  const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
+  const pidMatch = str.match(/\(PID:\s*([^)]*)\)/i);
+  if (colorMatch) res.color = colorMatch[1].trim();
+  if (sizeMatch) res.size = sizeMatch[1].trim();
+  if (skuMatch) res.sku = skuMatch[1].trim();
+  if (qtyMatch) res.qty = parseInt(qtyMatch[1], 10) || 1;
+  if (pidMatch) res.pid = pidMatch[1].trim();
+  res.name = str.split('(')[0].trim();
+  return res;
+}
 
-  const parseLine = (str) => {
-    const res = { name: str, size: null, color: null, sku: null, qty: 1, pid: null };
-    const colorMatch = str.match(/\((?:Color|রঙ):\s*([^)]*)\)/i);
-    const sizeMatch = str.match(/\((?:Size|সাইজ):\s*([^)]*)\)/i);
-    const skuMatch = str.match(/\((?:SKU):\s*([^)]*)\)/i);
-    const qtyMatch = str.match(/\((?:Qty|পরিমাণ):\s*(\d+)\)/i);
-    // Bug #5 fix: parse embedded product ID for reliable lookup
-    const pidMatch = str.match(/\(PID:\s*([^)]*)\)/i);
-    if (colorMatch) res.color = colorMatch[1].trim();
-    if (sizeMatch) res.size = sizeMatch[1].trim();
-    if (skuMatch) res.sku = skuMatch[1].trim();
-    if (qtyMatch) res.qty = parseInt(qtyMatch[1], 10) || 1;
-    if (pidMatch) res.pid = pidMatch[1].trim();
-    res.name = str.split('(')[0].trim();
-    return res;
-  };
+function parseAvailableColorsJson(raw) {
+  try {
+    return typeof raw === 'string' ? JSON.parse(raw) : (raw || []);
+  } catch (_) {
+    return [];
+  }
+}
 
-  const parsedLines = (order.product_name || '').split(' + ').map(parseLine);
+function findVariantSizeStock(availableColorsParsed, selectedColor, selectedSize) {
+  if (!selectedColor || !selectedSize || !Array.isArray(availableColorsParsed)) return null;
+  const colorObj = availableColorsParsed.find((color) => {
+    const colorName = typeof color === 'object' ? color.name : color;
+    return colorName === selectedColor;
+  });
+  if (!colorObj || !Array.isArray(colorObj.sizes)) return null;
+  const sizeObj = colorObj.sizes.find((sz) => {
+    const szName = typeof sz === 'object' ? sz.name : sz;
+    return szName === selectedSize;
+  });
+  if (!sizeObj || typeof sizeObj !== 'object') return null;
+  if (sizeObj.stock === undefined || sizeObj.stock === null) return null;
+  const n = parseInt(sizeObj.stock, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function adjustVariantStock(availableColorsParsed, selectedColor, selectedSize, deltaQty) {
+  if (!selectedColor || !availableColorsParsed?.length) return availableColorsParsed;
+  return availableColorsParsed.map((color) => {
+    const colorName = typeof color === 'object' ? color.name : color;
+    if (colorName === selectedColor && color.sizes?.length > 0) {
+      const updatedSizes = color.sizes.map((sz) => {
+        const szName = typeof sz === 'object' ? sz.name : sz;
+        if (szName === selectedSize) {
+          const current = typeof sz === 'object' && sz.stock !== undefined && sz.stock !== null
+            ? (parseInt(sz.stock, 10) || 0)
+            : 0;
+          return { ...sz, stock: Math.max(0, current + deltaQty) };
+        }
+        return sz;
+      });
+      return { ...color, sizes: updatedSizes };
+    }
+    return color;
+  });
+}
+
+async function resolveOrderLineProductId(tx, order, item, lineIndex) {
+  let productId = (lineIndex === 0 && order.product_id) ? order.product_id : null;
+  if (!productId && item.pid) productId = item.pid;
+  if (!productId && item.sku) {
+    const pBySku = await tx.execute(
+      'SELECT id FROM products WHERE platform_id = ? OR serial_no = ? LIMIT 1',
+      [item.sku, item.sku]
+    );
+    if (pBySku.length > 0) productId = pBySku[0].id;
+  }
+  if (!productId && item.name) {
+    const pByName = await tx.execute('SELECT id FROM products WHERE name = ? LIMIT 1', [item.name]);
+    if (pByName.length > 0) productId = pByName[0].id;
+  }
+  if (!productId && order.product_id) productId = order.product_id;
+  return productId;
+}
+
+/** direction: +1 restore (cancel), -1 deduct (revive / re-hold). */
+async function applyOrderStockDelta(tx, order, direction) {
+  if (!order || (direction !== 1 && direction !== -1)) return { ok: true };
+
+  const parsedLines = String(order.product_name || '').split(' + ').map(parseOrderStockLine);
 
   for (let i = 0; i < parsedLines.length; i++) {
     const item = parsedLines[i];
     const qty = item.qty || 1;
     const selectedColor = item.color || order.color || null;
     const selectedSize = item.size || order.size || null;
-
-    let productId = (i === 0 && order.product_id) ? order.product_id : null;
-
-    // Bug #5 fix: use embedded PID first (most reliable, rename-proof)
-    if (!productId && item.pid) {
-      productId = item.pid;
-    }
-
-    if (!productId && item.sku) {
-      const pBySku = await tx.execute('SELECT id FROM products WHERE platform_id = ? OR serial_no = ? LIMIT 1', [item.sku, item.sku]);
-      if (pBySku.length > 0) productId = pBySku[0].id;
-    }
-
-    if (!productId && item.name) {
-      const pByName = await tx.execute('SELECT id FROM products WHERE name = ? LIMIT 1', [item.name]);
-      if (pByName.length > 0) productId = pByName[0].id;
-    }
-
-    if (!productId && order.product_id) {
-      productId = order.product_id;
-    }
+    const productId = await resolveOrderLineProductId(tx, order, item, i);
 
     if (!productId) {
-      console.warn(`restoreOrderStock: Could not find product for order ${order.id}, line item: "${item.name}"`);
+      console.warn(`applyOrderStockDelta: Could not find product for order ${order.id}, line item: "${item.name}"`);
       continue;
     }
 
-    // Lock product row inside transaction
     const products = await tx.execute(
-      'SELECT stock_count, is_sold_out, available_colors FROM products WHERE id = ? FOR UPDATE',
+      'SELECT name, stock_count, is_sold_out, available_colors FROM products WHERE id = ? FOR UPDATE',
       [productId]
     );
-
     if (products.length === 0) continue;
 
     const product = products[0];
     const hadRealStock = product.stock_count !== null && product.stock_count !== undefined;
+    let availableColorsParsed = parseAvailableColorsJson(product.available_colors);
 
-    // 1. Increment global stock count
+    if (direction < 0) {
+      if (product.is_sold_out) {
+        return { ok: false, error: `Product "${product.name}" is sold out — cannot revive this order` };
+      }
+      if (hadRealStock && product.stock_count < qty) {
+        return {
+          ok: false,
+          error: `Insufficient stock to revive order (Product "${product.name}": need ${qty}, available ${product.stock_count})`
+        };
+      }
+      const sizeStock = findVariantSizeStock(availableColorsParsed, selectedColor, selectedSize);
+      if (sizeStock !== null && sizeStock < qty) {
+        return {
+          ok: false,
+          error: `Insufficient size stock to revive order (Product "${product.name}" ${selectedColor}/${selectedSize}: need ${qty}, available ${sizeStock})`
+        };
+      }
+    }
+
     let updatedGlobalStock = product.stock_count;
     if (hadRealStock) {
-      updatedGlobalStock = product.stock_count + qty;
+      updatedGlobalStock = direction > 0
+        ? product.stock_count + qty
+        : Math.max(0, product.stock_count - qty);
     }
 
-    // 2. Increment color/size variant stock
-    let availableColorsParsed = [];
-    try {
-      availableColorsParsed = typeof product.available_colors === 'string'
-        ? JSON.parse(product.available_colors)
-        : (product.available_colors || []);
-    } catch (e) {
-      availableColorsParsed = [];
-    }
+    availableColorsParsed = adjustVariantStock(
+      availableColorsParsed,
+      selectedColor,
+      selectedSize,
+      direction * qty
+    );
 
-    if (selectedColor && availableColorsParsed.length > 0) {
-      availableColorsParsed = availableColorsParsed.map(color => {
-        const colorName = typeof color === 'object' ? color.name : color;
-        if (colorName === selectedColor && color.sizes?.length > 0) {
-          const updatedSizes = color.sizes.map(sz => {
-            const szName = typeof sz === 'object' ? sz.name : sz;
-            if (szName === selectedSize) {
-              return { ...sz, stock: (sz.stock || 0) + qty };
-            }
-            return sz;
-          });
-          return { ...color, sizes: updatedSizes };
-        }
-        return color;
-      });
-    }
+    const soldOutFlag = direction > 0
+      ? (hadRealStock && updatedGlobalStock > 0 ? 0 : product.is_sold_out)
+      : (hadRealStock && updatedGlobalStock <= 0 ? 1 : (product.is_sold_out ? 1 : 0));
 
-    // 3. Update product in DB and reset is_sold_out to 0 if stock is restored
     await tx.execute(
       'UPDATE products SET stock_count = ?, is_sold_out = ?, available_colors = ? WHERE id = ?',
-      [
-        updatedGlobalStock,
-        hadRealStock && updatedGlobalStock > 0 ? 0 : product.is_sold_out,
-        JSON.stringify(availableColorsParsed),
-        productId
-      ]
+      [updatedGlobalStock, soldOutFlag, JSON.stringify(availableColorsParsed), productId]
     );
   }
+
+  return { ok: true };
+}
+
+async function restoreOrderStock(tx, order) {
+  await applyOrderStockDelta(tx, order, 1);
+}
+
+async function deductOrderStock(tx, order) {
+  return applyOrderStockDelta(tx, order, -1);
 }
 
 app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
@@ -3455,6 +3550,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
   await ensureOrderPaymentColumns(conn);
   await ensureOrderAdvanceRefundColumns(conn);
   await ensureOrderContactedColumns(conn);
+  await ensureOrderStockRestoredColumn(conn);
 
   let advancePaidAmount;
   if (o.advance_paid_amount !== undefined) {
@@ -3479,12 +3575,29 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
     const currentOrder = currentOrders[0];
 
-    // 2. Restore stock when moving to Cancelled OR Deleted (trash), if not already restored
-    const stockAlreadyRestored = isCancelOrderStatus(currentOrder.status) || currentOrder.status === 'Deleted';
+    // 2. Stock lifecycle: restore on cancel/delete once; re-hold on revive from cancel/delete
+    const stockAlreadyRestored = orderStockAlreadyReturned(currentOrder);
     const isTransitioningToCancelled = isCancelOrderStatus(o.status) && !stockAlreadyRestored;
     const isTransitioningToDeleted = o.status === 'Deleted' && !stockAlreadyRestored;
+    let stockRestoredFlag = undefined;
     if (isTransitioningToCancelled || isTransitioningToDeleted) {
       await restoreOrderStock(tx, currentOrder);
+      stockRestoredFlag = 1;
+    }
+
+    const nextStatusForStock = o.status !== undefined ? String(o.status || '') : String(currentOrder.status || '');
+    const isRevivingStock =
+      o.status !== undefined
+      && (isCancelOrderStatus(currentOrder.status) || currentOrder.status === 'Deleted')
+      && !isCancelOrderStatus(nextStatusForStock)
+      && nextStatusForStock !== 'Deleted';
+    if (isRevivingStock) {
+      const deductResult = await deductOrderStock(tx, currentOrder);
+      if (!deductResult.ok) {
+        await tx.rollback();
+        return c.json({ error: deductResult.error }, 400);
+      }
+      stockRestoredFlag = 0;
     }
 
     // Advance refund: cancel of an advance-held order auto-deducts from Advance totals.
@@ -3524,6 +3637,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
       total_amount: o.total_amount,
       advance_paid_amount: advancePaidAmount,
       customer_note: customerNote,
+      stock_restored: stockRestoredFlag,
     };
 
     // Admin "কথা হয়েছে" / Contacted toggle (spoken with customer)
@@ -3573,12 +3687,12 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
         await tx.execute(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = ?`, params);
       } catch (updateErr) {
         const msg = String(updateErr?.message || '');
-        if (!/unknown column|advance_refund/i.test(msg)) throw updateErr;
-        // Older schema without refund columns — retry core fields only
+        if (!/unknown column|advance_refund|stock_restored/i.test(msg)) throw updateErr;
+        // Older schema without refund/stock_restored columns — retry core fields only
         const core = {};
         for (const [key, val] of Object.entries(fields)) {
           if (val === undefined) continue;
-          if (/^advance_refund/.test(key)) continue;
+          if (/^advance_refund/.test(key) || key === 'stock_restored') continue;
           core[key] = val;
         }
         const coreClauses = [];
@@ -3595,7 +3709,7 @@ app.put('/orders/:id', requireAuth, requireAdmin, async (c) => {
     }
 
     await tx.commit();
-    if (isTransitioningToCancelled || isTransitioningToDeleted) {
+    if (isTransitioningToCancelled || isTransitioningToDeleted || isRevivingStock) {
       await bumpCatalogVersion(c);
       runInBackground(c, () => prewarmCatalogCache(c));
     }
@@ -4477,14 +4591,20 @@ app.delete('/orders', requireAuth, requireAdmin, async (c) => {
   const status = c.req.query('status');
   if (!status) return c.json({ error: 'status query param required' }, 400);
   const conn = getDb(c.env);
+  await ensureOrderStockRestoredColumn(conn);
   const tx = await conn.begin();
   try {
     const orders = await tx.execute('SELECT * FROM orders WHERE status = ? FOR UPDATE', [status]);
     let restoredAny = false;
     for (const order of orders) {
-      // Cancelled/Deleted already restored stock on status transition — do not double-restore
-      if (!isCancelOrderStatus(order.status) && order.status !== 'Deleted') {
+      // Flag + Cancelled/Deleted status: stock already returned — do not double-restore
+      if (!orderStockAlreadyReturned(order)) {
         await restoreOrderStock(tx, order);
+        try {
+          await tx.execute('UPDATE orders SET stock_restored = 1 WHERE id = ?', [order.id]);
+        } catch (_) {
+          /* column may be missing on older schemas */
+        }
         restoredAny = true;
       }
     }
@@ -4504,6 +4624,7 @@ app.delete('/orders', requireAuth, requireAdmin, async (c) => {
 
 app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
   const conn = getDb(c.env);
+  await ensureOrderStockRestoredColumn(conn);
   const id = c.req.param('id');
   const tx = await conn.begin();
   try {
@@ -4513,9 +4634,14 @@ app.delete('/orders/:id', requireAuth, requireAdmin, async (c) => {
     if (orders.length > 0) {
       const order = orders[0];
 
-      // 2. Restore stock unless already restored via Cancelled/Deleted transition
-      if (!isCancelOrderStatus(order.status) && order.status !== 'Deleted') {
+      // 2. Restore stock unless already restored (flag or Cancelled/Deleted transition)
+      if (!orderStockAlreadyReturned(order)) {
         await restoreOrderStock(tx, order);
+        try {
+          await tx.execute('UPDATE orders SET stock_restored = 1 WHERE id = ?', [order.id]);
+        } catch (_) {
+          /* column may be missing on older schemas */
+        }
         stockWasRestored = true;
       }
 

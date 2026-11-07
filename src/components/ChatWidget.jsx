@@ -816,10 +816,18 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
     const advanceAmount = getAdvanceAmount(orderModalProduct, deliveryInfo);
     const senderDigits = orderForm.senderNumber.replace(/\D/g, '');
 
+    // Match Checkout product_name tokens so cancel restore uses Qty (not default 1)
+    const orderQty = Math.max(1, parseInt(orderForm.quantity, 10) || 1);
+    let chatProductName = orderModalProduct.name || 'Item';
+    if (orderForm.color) chatProductName += ` (Color: ${orderForm.color})`;
+    if (orderForm.size) chatProductName += ` (Size: ${orderForm.size})`;
+    chatProductName += ` (Qty: ${orderQty})`;
+    chatProductName += ` (PID: ${orderModalProduct.id})`;
+
     // Payment ref only — admin confirms Advance Paid after verifying transfer
     const orderPayload = {
       product_id: orderModalProduct.id,
-      product_name: orderModalProduct.name,
+      product_name: chatProductName.substring(0, 1000),
       product_price: productPrice,
       customer_name: orderForm.name.trim(),
       customer_phone: cleanPhone,
@@ -833,6 +841,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
       status: 'Pending',
       size: orderForm.size || null,
       color: orderForm.color || null,
+      quantity: orderQty,
       is_advance_paid: 0,
       payment_status: 'Unpaid',
       is_exclusive_order: Boolean(orderModalProduct.is_exclusive),
@@ -841,7 +850,7 @@ export default function ChatWidget({ onOpenAuth: _onOpenAuth, hidden = false }) 
       recipient_phone: orderForm.isGift ? String(orderForm.recipientPhone || '').replace(/\D/g, '') : null,
       items: [{
         id: orderModalProduct.id,
-        quantity: orderForm.quantity,
+        quantity: orderQty,
         selectedColor: orderForm.color || null,
         selectedSize: orderForm.size || null
       }]

@@ -287,6 +287,26 @@ export default function ProductDetails() {
 
     const isOutOfStock = product.is_sold_out || (product.stock_count !== null && product.stock_count <= 0);
 
+    const maxQty = React.useMemo(() => {
+        if (!product) return 1;
+        let max = product.stock_count !== null && product.stock_count !== undefined
+            ? parseInt(product.stock_count, 10)
+            : 99;
+        if (!Number.isFinite(max) || max < 1) max = 99;
+        if (selectedSize && activeSizes?.length) {
+            const sizeObj = activeSizes.find((s) => (typeof s === 'object' ? s.name : s) === selectedSize);
+            if (sizeObj && typeof sizeObj === 'object' && sizeObj.stock !== undefined && sizeObj.stock !== null) {
+                const sizeStock = parseInt(sizeObj.stock, 10);
+                if (Number.isFinite(sizeStock)) max = Math.min(max, sizeStock);
+            }
+        }
+        return Math.max(1, max);
+    }, [product, selectedSize, activeSizes]);
+
+    useEffect(() => {
+        setQuantity((q) => Math.min(Math.max(1, q), maxQty));
+    }, [maxQty]);
+
     const hasValidColors = product.available_colors?.some(c => {
         const name = typeof c === 'object' ? c.name : c;
         return name && String(name).trim() !== '';
@@ -613,6 +633,7 @@ export default function ProductDetails() {
                                     </p>
                                     <div className="flex items-center gap-5 pr-2">
                                         <button
+                                            type="button"
                                             onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                             className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
                                         >
@@ -620,8 +641,10 @@ export default function ProductDetails() {
                                         </button>
                                         <span className="text-sm font-black text-neutral-900 w-4 text-center">{quantity}</span>
                                         <button
-                                            onClick={() => setQuantity(quantity + 1)}
-                                            className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm"
+                                            type="button"
+                                            onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
+                                            disabled={quantity >= maxQty}
+                                            className="w-9 h-9 rounded-lg bg-white border border-neutral-100 flex items-center justify-center text-neutral-900 hover:bg-neutral-900 hover:text-white transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:pointer-events-none"
                                         >
                                             <span className="text-base font-bold">+</span>
                                         </button>
