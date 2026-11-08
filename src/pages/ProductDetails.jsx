@@ -231,6 +231,17 @@ export default function ProductDetails() {
         return product.available_sizes || [];
     }, [product, selectedColorObj]);
 
+    // True only when at least one size in activeSizes has positive stock configured.
+    // Prevents Admin.jsx default `stock: 0` checkboxes from disabling all sizes.
+    const hasConfiguredSizeStock = React.useMemo(() => {
+        if (!Array.isArray(activeSizes) || activeSizes.length === 0) return false;
+        return activeSizes.some((s) => {
+            if (!s || typeof s !== 'object' || s.stock === undefined || s.stock === null || s.stock === '') return false;
+            const val = parseInt(s.stock, 10);
+            return Number.isFinite(val) && val > 0;
+        });
+    }, [activeSizes]);
+
     // Auto reset selectedSize if not valid for newly selected color
     useEffect(() => {
         if (selectedColor && activeSizes.length > 0 && selectedSize) {
@@ -238,11 +249,34 @@ export default function ProductDetails() {
             if (!sizeObj) {
                 setSelectedSize('');
             } else if (typeof sizeObj === 'object') {
-                const isAvail = sizeObj.is_available !== false && (sizeObj.stock === undefined || parseInt(sizeObj.stock) > 0);
+                const sizeStockVal = sizeObj.stock !== undefined && sizeObj.stock !== null && sizeObj.stock !== ''
+                    ? parseInt(sizeObj.stock, 10)
+                    : null;
+                const isAvail = sizeObj.is_available !== false && (!hasConfiguredSizeStock || sizeStockVal === null || sizeStockVal > 0);
                 if (!isAvail) setSelectedSize('');
             }
         }
-    }, [selectedColor, activeSizes]);
+    }, [selectedColor, activeSizes, selectedSize, hasConfiguredSizeStock]);
+
+    const maxQty = React.useMemo(() => {
+        if (!product) return 1;
+        let max = product.stock_count !== null && product.stock_count !== undefined
+            ? parseInt(product.stock_count, 10)
+            : 99;
+        if (!Number.isFinite(max) || max < 1) max = 99;
+        if (hasConfiguredSizeStock && selectedSize && activeSizes?.length) {
+            const sizeObj = activeSizes.find((s) => (typeof s === 'object' ? s.name : s) === selectedSize);
+            if (sizeObj && typeof sizeObj === 'object' && sizeObj.stock !== undefined && sizeObj.stock !== null && sizeObj.stock !== '') {
+                const sizeStock = parseInt(sizeObj.stock, 10);
+                if (Number.isFinite(sizeStock) && sizeStock > 0) max = Math.min(max, sizeStock);
+            }
+        }
+        return Math.max(1, max);
+    }, [product, selectedSize, activeSizes, hasConfiguredSizeStock]);
+
+    useEffect(() => {
+        setQuantity((q) => Math.min(Math.max(1, q), maxQty));
+    }, [maxQty]);
 
     if (loading) {
         return (
@@ -286,26 +320,6 @@ export default function ProductDetails() {
         : 0;
 
     const isOutOfStock = product.is_sold_out || (product.stock_count !== null && product.stock_count <= 0);
-
-    const maxQty = React.useMemo(() => {
-        if (!product) return 1;
-        let max = product.stock_count !== null && product.stock_count !== undefined
-            ? parseInt(product.stock_count, 10)
-            : 99;
-        if (!Number.isFinite(max) || max < 1) max = 99;
-        if (selectedSize && activeSizes?.length) {
-            const sizeObj = activeSizes.find((s) => (typeof s === 'object' ? s.name : s) === selectedSize);
-            if (sizeObj && typeof sizeObj === 'object' && sizeObj.stock !== undefined && sizeObj.stock !== null) {
-                const sizeStock = parseInt(sizeObj.stock, 10);
-                if (Number.isFinite(sizeStock)) max = Math.min(max, sizeStock);
-            }
-        }
-        return Math.max(1, max);
-    }, [product, selectedSize, activeSizes]);
-
-    useEffect(() => {
-        setQuantity((q) => Math.min(Math.max(1, q), maxQty));
-    }, [maxQty]);
 
     const hasValidColors = product.available_colors?.some(c => {
         const name = typeof c === 'object' ? c.name : c;
@@ -580,9 +594,11 @@ export default function ProductDetails() {
                                             return name && String(name).trim() !== '';
                                         }).map((s, i) => {
                                             const name = typeof s === 'object' ? s.name : s;
-                                            const sStock = typeof s === 'object' ? (s.stock !== undefined ? parseInt(s.stock) : 1) : 1;
+                                            const sStock = typeof s === 'object' && s.stock !== undefined && s.stock !== null && s.stock !== ''
+                                                ? parseInt(s.stock, 10)
+                                                : null;
                                             const sAvail = typeof s === 'object' ? (s.is_available !== false) : true;
-                                            const isDisabled = isOutOfStock || !sAvail || sStock <= 0;
+                                            const isDisabled = isOutOfStock || !sAvail || (hasConfiguredSizeStock && sStock !== null && sStock <= 0);
                                             return (
                                                 <button
                                                     key={i}

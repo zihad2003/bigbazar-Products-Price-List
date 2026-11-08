@@ -3801,7 +3801,7 @@ export default function Admin() {
                                               <input type="checkbox" checked={isLinked} onChange={() => {
                                                 const updated = [...form.available_colors];
                                                 const curSizes = color.sizes || [];
-                                                const newSizes = isLinked ? curSizes.filter(s => (typeof s === 'object' ? s.name : s) !== sName) : [...curSizes, { name: sName, stock: 0, sku: '' }];
+                                                const newSizes = isLinked ? curSizes.filter(s => (typeof s === 'object' ? s.name : s) !== sName) : [...curSizes, { name: sName, stock: null, sku: '' }];
                                                 updated[idx] = { ...color, sizes: newSizes };
                                                 setForm({ ...form, available_colors: updated });
                                               }} className="w-4 h-4 accent-[#ce112d]" />
@@ -3810,9 +3810,11 @@ export default function Admin() {
                                               <div className="space-y-2">
                                                 <div>
                                                   <p className="text-[10px] text-zinc-500 mb-1">Stock</p>
-                                                  <input type="number" value={sObj.stock || 0} onChange={e => {
+                                                  <input type="number" placeholder="Auto" value={sObj.stock !== undefined && sObj.stock !== null ? sObj.stock : ''} onChange={e => {
                                                     const updated = [...form.available_colors];
-                                                    const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, stock: parseInt(e.target.value) || 0 } : s);
+                                                    const rawVal = e.target.value;
+                                                    const nextStock = rawVal === '' ? null : Math.max(0, parseInt(rawVal, 10) || 0);
+                                                    const newSizes = color.sizes.map(s => (typeof s === 'object' ? s.name : s) === sName ? { ...s, stock: nextStock } : s);
                                                     updated[idx] = { ...color, sizes: newSizes };
                                                     setForm({ ...form, available_colors: updated });
                                                   }} className="w-full bg-zinc-900 border border-white/10 rounded-md h-8 px-2 text-xs text-white outline-none focus:border-[#ce112d]" />

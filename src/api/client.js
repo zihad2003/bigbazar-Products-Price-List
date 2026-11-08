@@ -183,14 +183,54 @@ function getCachedOrFetch(cacheKey, ttlMs, fetchFn) {
         _inFlightRequests.delete(cacheKey);
         if (result && !result.error) {
             _inMemoryCache.set(cacheKey, { data: result, time: Date.now() });
+            return result;
+        }
+        if (cached && cached.data) {
+            return cached.data;
         }
         return result;
     }).catch(err => {
         _inFlightRequests.delete(cacheKey);
+        if (cached && cached.data) {
+            return cached.data;
+        }
         throw err;
     });
     _inFlightRequests.set(cacheKey, promise);
     return promise;
+}
+
+async function fetchSelectJson(url, isAdmin, retries = 2) {
+    let lastError = 'Failed to load data';
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        if (attempt > 0) {
+            await new Promise((r) => setTimeout(r, attempt * 350));
+        }
+        try {
+            const res = await fetch(url, {
+                headers: headers(),
+                cache: isAdmin ? 'no-store' : 'default',
+            });
+            const text = await res.text();
+            let json = null;
+            try {
+                json = text ? JSON.parse(text) : null;
+            } catch (_) {
+                json = null;
+            }
+            if (res.ok && json && typeof json === 'object') {
+                return { ok: true, json };
+            }
+            lastError = json?.error || json?.detail || `Request failed (${res.status})`;
+            // Only retry on transient server / rate-limit / proxy HTML failures
+            if (res.status < 500 && res.status !== 429 && json) {
+                return { ok: false, error: lastError };
+            }
+        } catch (err) {
+            lastError = err?.message || 'Network error';
+        }
+    }
+    return { ok: false, error: lastError };
 }
 
 export function invalidateClientCache(prefix) {
@@ -462,34 +502,20 @@ class QueryBuilder {
                     ? 30000
                     : 0;
 
+        const runFetch = async () => {
+            const { ok, json, error } = await fetchSelectJson(url, isAdmin);
+            if (!ok || !json) return { data: null, error: { message: error || 'Request failed' }, count: 0 };
+            let data = json.data;
+            const count = json.count || (Array.isArray(data) ? data.length : (data ? 1 : 0));
+            if (this._single) data = Array.isArray(data) ? data[0] || null : data;
+            return { data, error: null, count, nav: json.nav || null };
+        };
+
         if (cacheTtl > 0) {
-            return getCachedOrFetch(url, cacheTtl, async () => {
-                const res = await fetch(url, { headers: headers(), cache: 'no-store' });
-                const json = await res.json();
-                if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
-                let data = json.data;
-                const count = json.count || (Array.isArray(data) ? data.length : (data ? 1 : 0));
-                if (this._single) data = Array.isArray(data) ? data[0] || null : data;
-                return { data, error: null, count, nav: json.nav || null };
-            });
+            return getCachedOrFetch(url, cacheTtl, runFetch);
         }
 
-        const res = await fetch(url, { 
-            headers: headers(),
-            cache: isAdmin ? 'no-store' : 'default'
-        });
-        const json = await res.json();
-        
-        if (!res.ok) return { data: null, error: { message: json.error }, count: 0 };
-
-        let data = json.data;
-        const count = json.count || (Array.isArray(data) ? data.length : (data ? 1 : 0));
-        
-        if (this._single) {
-            data = Array.isArray(data) ? data[0] || null : data;
-        }
-        
-        return { data, error: null, count, nav: json.nav || null };
+        return runFetch();
     }
 
     // Lazy action queueing

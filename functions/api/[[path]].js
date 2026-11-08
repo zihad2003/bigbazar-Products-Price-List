@@ -399,28 +399,30 @@ function getClientIp(c) {
 }
 
 /**
- * Rate-limit identity: prefer CF / socket / rightmost XFF so clients cannot
- * rotate spoofed leftmost X-Forwarded-For hops to bypass limits.
+ * Rate-limit identity: prefer real client header (CF / True-Client / X-Real-IP / XFF)
+ * and ignore Hostinger/Cloudflare reverse-proxy peer IPs (e.g. 5.90.143.78) so
+ * all shoppers on the site do not share a single proxy rate-limit bucket.
  */
 function getRateLimitIp(c) {
-  const cf = normalizeIp(c.req.header('CF-Connecting-IP'));
-  if (cf) return cf;
-
   const remote = socketRemoteIp(c);
-  if (remote && !isPrivateIp(remote)) return remote;
+  const clientIp = customerIpOrEmpty(c.env, getClientIp(c), remote);
+  if (clientIp) return clientIp;
+
+  const cf = normalizeIp(c.req.header('CF-Connecting-IP'));
+  if (cf && !isIgnoredCustomerIp(c.env, cf, remote)) return cf;
 
   const xff = String(c.req.header('X-Forwarded-For') || '')
     .split(',')
     .map((part) => normalizeIp(part))
     .filter(Boolean);
-  for (let i = xff.length - 1; i >= 0; i -= 1) {
-    if (!isPrivateIp(xff[i])) return xff[i];
+  for (let i = 0; i < xff.length; i += 1) {
+    if (!isIgnoredCustomerIp(c.env, xff[i], remote)) return xff[i];
   }
 
   const realIp = normalizeIp(c.req.header('X-Real-IP') || c.req.header('True-Client-IP'));
-  if (realIp) return realIp;
+  if (realIp && !isIgnoredCustomerIp(c.env, realIp, remote)) return realIp;
   if (remote) return remote;
-  if (xff.length) return xff[xff.length - 1];
+  if (xff.length) return xff[0];
   return '127.0.0.1';
 }
 
@@ -912,6 +914,8 @@ const pendingBackgroundTasks = new Set();
 
 // Background task helper. Never block the HTTP response on Node/Hostinger —
 // awaiting here caused proxy HTML timeouts ("Unexpected token '<' … JSON").
+// IMPORTANT: Hono's `c.executionCtx` getter throws "This context has no ExecutionContext"
+// on Node.js (@hono/node-server), so accessing it MUST be wrapped in try/catch.
 function runInBackground(c, promiseFn) {
   const start = () => {
     const task = Promise.resolve()
@@ -922,11 +926,23 @@ function runInBackground(c, promiseFn) {
     return task;
   };
 
-  const waitFn = (c.executionCtx && typeof c.executionCtx.waitUntil === 'function')
-    ? c.executionCtx.waitUntil.bind(c.executionCtx)
-    : (c.env?.eventContext && typeof c.env.eventContext.waitUntil === 'function')
-      ? c.env.eventContext.waitUntil.bind(c.env.eventContext)
-      : null;
+  let waitFn = null;
+  try {
+    const execCtx = c && c.executionCtx;
+    if (execCtx && typeof execCtx.waitUntil === 'function') {
+      waitFn = execCtx.waitUntil.bind(execCtx);
+    }
+  } catch (_) {
+    // Expected on Node.js / Hostinger where no Cloudflare ExecutionContext exists
+  }
+  if (!waitFn) {
+    try {
+      const evtCtx = c?.env?.eventContext;
+      if (evtCtx && typeof evtCtx.waitUntil === 'function') {
+        waitFn = evtCtx.waitUntil.bind(evtCtx);
+      }
+    } catch (_) {}
+  }
 
   if (waitFn) {
     try {
@@ -1667,11 +1683,12 @@ function resolveAdminRole(user, env) {
 }
 
 /**
- * Check if request originates from Admin panel or explicitly requests fresh data
+ * Check if request originates from Admin panel or explicitly requests fresh data.
+ * Note: Do NOT treat generic browser Cache-Control: no-cache headers as admin cache bypass,
+ * because catalog mutations already bump catalog_version immediately.
  */
 const isAdminOrNoCache = async (c) => {
   const authHeader = c.req.header('Authorization');
-  const cacheCtrl = c.req.header('Cache-Control');
   const { _admin, _t } = c.req.query();
   // Only bypass cache if the token is actually an admin token (not customer)
   let isAdminAuth = false;
@@ -1683,10 +1700,9 @@ const isAdminOrNoCache = async (c) => {
     } catch (_) {}
   }
   return !!(
-    isAdminAuth || 
-    _admin === 'true' || 
-    _t || 
-    (cacheCtrl && (cacheCtrl.includes('no-cache') || cacheCtrl.includes('no-store')))
+    isAdminAuth ||
+    _admin === 'true' ||
+    _t
   );
 };
 
@@ -2601,7 +2617,7 @@ app.get('/products/subcategory-counts', async (c) => {
 
 app.get('/products', async (c) => {
   const ip = getRateLimitIp(c);
-  if (!checkRateLimit(ip, 'products', 150, 60000)) {
+  if (!checkRateLimit(ip, 'products', 300, 60000)) {
     return c.json({ error: 'Too many requests' }, 429);
   }
 
@@ -3060,6 +3076,12 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
   }
   let issuedTrackCode = await mintTrackCode(conn, o.customer_phone);
 
+  let calculatedSubtotal = 0;
+  const orderLines = [];
+  let normalizedArea = 'outside';
+  let calculatedDeliveryCharge = 150;
+  let calculatedTotalAmount = 0;
+
   const tx = await conn.begin();
   try {
     // Fallback when clients omit items[]: honor quantity from payload (never hardcode 1)
@@ -3072,9 +3094,6 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
           selectedColor: o.color || null,
           selectedSize: o.size || null
         }];
-
-    let calculatedSubtotal = 0;
-    const orderLines = [];
 
     for (const item of itemsToProcess) {
       // 1. Fetch product and lock row inside transaction
@@ -3178,7 +3197,6 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
 
     // Normalize delivery area aliases (legacy clients sent "chittagong")
     const rawArea = String(o.delivery_area || 'outside').toLowerCase().trim();
-    let normalizedArea = 'outside';
     if (rawArea === 'mirsarai') {
       normalizedArea = 'mirsarai';
     } else if (rawArea === 'chattogram' || rawArea === 'chittagong' || rawArea.includes('chittagong') || rawArea.includes('chattogram')) {
@@ -3195,14 +3213,13 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
       normalizedArea = 'chattogram';
     }
 
-    let calculatedDeliveryCharge = 150;
     if (normalizedArea === 'mirsarai') {
       calculatedDeliveryCharge = 0;
     } else if (normalizedArea === 'chattogram') {
       calculatedDeliveryCharge = 100;
     }
 
-    const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
+    calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
 
     // Payment confirmation is admin-only. Customers may send a payment ref
     // (last_four_digits) as evidence, but never set Advance/Fully Paid themselves.
@@ -3272,29 +3289,46 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
     }
 
     await tx.commit();
+  } catch (err) {
+    await tx.rollback();
+    console.error('Order placement transaction error:', err);
+    return { status: 500, body: { error: err.message } };
+  }
 
-    // Persist IP/UA/geo immediately so admin "Near {area}" matches carts even if
-    // Hostinger drops waitUntil / background work after the response.
-    let storedGeo = seededGeo;
-    if (!storedGeo && clientIp && !isPrivateIp(clientIp)) {
+  // Post-commit side effects: NEVER fail the HTTP response once the order is committed in DB.
+  try {
+    await conn.execute(
+      'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
+      [clientIp || null, userAgent, seededGeo ? JSON.stringify(seededGeo) : null, id]
+    );
+  } catch (err) {
+    console.error('order ip save error:', err?.message || err);
+  }
+
+  try {
+    await bumpCatalogVersion(c);
+  } catch (_) {}
+
+  runInBackground(c, async () => {
+    let geo = seededGeo;
+    if (!geo && clientIp && !isPrivateIp(clientIp)) {
       try {
-        storedGeo = await lookupIpGeo(c.env, clientIp);
+        geo = await lookupIpGeo(c.env, clientIp);
       } catch (err) {
         console.error('order geo lookup error:', err?.message || err);
       }
-    }
-    try {
-      await conn.execute(
-        'UPDATE orders SET customer_ip = ?, user_agent = ?, ip_geo = ? WHERE id = ?',
-        [clientIp || null, userAgent, storedGeo ? JSON.stringify(storedGeo) : null, id]
-      );
-    } catch (err) {
-      console.error('order ip save error:', err?.message || err);
+      if (geo) {
+        try {
+          await conn.execute(
+            'UPDATE orders SET ip_geo = ? WHERE id = ?',
+            [JSON.stringify(geo), id]
+          );
+        } catch (err) {
+          console.error('order geo save error:', err?.message || err);
+        }
+      }
     }
 
-    // Await SMTP before responding. Test email works because it awaits; fire-and-forget
-    // notify jobs were often dropped on Hostinger right after the HTTP response closed.
-    // Fraud enrich stays async so a slow courier lookup never blocks the customer.
     const emailPayload = {
       id,
       customerName: o.customer_name,
@@ -3310,7 +3344,7 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
       isGift: asGift,
       recipientName: asGift ? recipientName : null,
       recipientPhone: asGift ? recipientPhone : null,
-      geo: storedGeo || null,
+      geo: geo || null,
       risk: null,
     };
     try {
@@ -3320,59 +3354,38 @@ async function placeShopOrder(c, o, customerId = null, signals = null) {
       console.error('order email error:', err?.message || err);
     }
 
-    runInBackground(c, async () => {
-      let geo = storedGeo;
-      if (!geo && clientIp && !isPrivateIp(clientIp)) {
-        geo = await lookupIpGeo(c.env, clientIp);
-      }
-      if (geo && !storedGeo) {
-        try {
-          await conn.execute(
-            'UPDATE orders SET ip_geo = ? WHERE id = ?',
-            [JSON.stringify(geo), id]
-          );
-        } catch (err) {
-          console.error('order geo save error:', err?.message || err);
-        }
-      }
+    try {
+      let courier = null;
+      try { courier = await steadfastFraudCheck(c.env, o.customer_phone); } catch (_) {}
+      await computeOrderRisk(conn, {
+        id,
+        customer_name: o.customer_name,
+        customer_phone: o.customer_phone,
+        customer_address: o.customer_address,
+        customer_ip: clientIp,
+        ip_geo: geo,
+        courier,
+      });
+    } catch (err) {
+      console.error('order risk error:', err?.message || err);
+    }
+  });
 
-      try {
-        let courier = null;
-        try { courier = await steadfastFraudCheck(c.env, o.customer_phone); } catch (_) {}
-        await computeOrderRisk(conn, {
-          id,
-          customer_name: o.customer_name,
-          customer_phone: o.customer_phone,
-          customer_address: o.customer_address,
-          customer_ip: clientIp,
-          ip_geo: geo,
-          courier,
-        });
-      } catch (err) {
-        console.error('order risk error:', err?.message || err);
-      }
-    });
+  runInBackground(c, () => prewarmCatalogCache(c));
 
-    await bumpCatalogVersion(c);
-    runInBackground(c, () => prewarmCatalogCache(c));
-    return {
-      status: 200,
-      body: {
-        success: true,
-        order_id: id,
-        track_code: issuedTrackCode || null,
-        data: { id, order_id: id, track_code: issuedTrackCode || null },
-      },
-    };
-  } catch (err) {
-    await tx.rollback();
-    console.error('Order placement transaction error:', err);
-    return { status: 500, body: { error: err.message } };
-  }
+  return {
+    status: 200,
+    body: {
+      success: true,
+      order_id: id,
+      track_code: issuedTrackCode || null,
+      data: { id, order_id: id, track_code: issuedTrackCode || null },
+    },
+  };
 }
 
 app.post('/orders', optionalCustomerAuth, async (c) => {
-  if (!(await checkRateLimitKV(c, 'orders', 5, 60000))) {
+  if (!(await checkRateLimitKV(c, 'orders', 20, 60000))) {
     return c.json({ error: 'Too many order requests. Please try again after a minute.' }, 429);
   }
 
@@ -3412,12 +3425,21 @@ function findVariantSizeStock(availableColorsParsed, selectedColor, selectedSize
     return colorName === selectedColor;
   });
   if (!colorObj || !Array.isArray(colorObj.sizes)) return null;
+  // When every size in this color has stock <= 0 (or unset), the admin only linked
+  // sizes in Admin.jsx (which previously defaulted to stock: 0) and tracks inventory
+  // via global stock_count. Treat as unconfigured so orders are not falsely blocked.
+  const hasConfiguredSizeStock = colorObj.sizes.some((sz) => {
+    if (!sz || typeof sz !== 'object' || sz.stock === undefined || sz.stock === null || sz.stock === '') return false;
+    const val = parseInt(sz.stock, 10);
+    return Number.isFinite(val) && val > 0;
+  });
+  if (!hasConfiguredSizeStock) return null;
   const sizeObj = colorObj.sizes.find((sz) => {
     const szName = typeof sz === 'object' ? sz.name : sz;
     return szName === selectedSize;
   });
   if (!sizeObj || typeof sizeObj !== 'object') return null;
-  if (sizeObj.stock === undefined || sizeObj.stock === null) return null;
+  if (sizeObj.stock === undefined || sizeObj.stock === null || sizeObj.stock === '') return null;
   const n = parseInt(sizeObj.stock, 10);
   return Number.isFinite(n) ? n : null;
 }
@@ -3427,12 +3449,21 @@ function adjustVariantStock(availableColorsParsed, selectedColor, selectedSize, 
   return availableColorsParsed.map((color) => {
     const colorName = typeof color === 'object' ? color.name : color;
     if (colorName === selectedColor && color.sizes?.length > 0) {
+      const hasConfiguredSizeStock = color.sizes.some((sz) => {
+        if (!sz || typeof sz !== 'object' || sz.stock === undefined || sz.stock === null || sz.stock === '') return false;
+        const val = parseInt(sz.stock, 10);
+        return Number.isFinite(val) && val > 0;
+      });
+      if (deltaQty < 0 && !hasConfiguredSizeStock) {
+        return color;
+      }
       const updatedSizes = color.sizes.map((sz) => {
         const szName = typeof sz === 'object' ? sz.name : sz;
         if (szName === selectedSize) {
-          const current = typeof sz === 'object' && sz.stock !== undefined && sz.stock !== null
-            ? (parseInt(sz.stock, 10) || 0)
-            : 0;
+          if (typeof sz !== 'object' || sz.stock === undefined || sz.stock === null || sz.stock === '') {
+            return sz;
+          }
+          const current = parseInt(sz.stock, 10) || 0;
           return { ...sz, stock: Math.max(0, current + deltaQty) };
         }
         return sz;

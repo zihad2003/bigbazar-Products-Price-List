@@ -2,6 +2,19 @@ import mysql from 'mysql2/promise';
 
 let mysqlPool = null;
 
+function isTransientDbError(err) {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '');
+  return (
+    code === 'PROTOCOL_CONNECTION_LOST' ||
+    code === 'ECONNRESET' ||
+    code === 'EPIPE' ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNREFUSED' ||
+    /closed state|connection lost|read ECONNRESET|write EPIPE|Can't add new command|Server has gone away/i.test(msg)
+  );
+}
+
 /**
  * Returns a database connection for the given environment.
  * Hostinger MySQL over a standard TCP connection via mysql2,
@@ -30,7 +43,17 @@ export const getDb = (env = {}) => {
     const targetHost = host === 'localhost' ? '127.0.0.1' : host;
 
     if (databaseUrl) {
-      mysqlPool = mysql.createPool(databaseUrl);
+      mysqlPool = mysql.createPool({
+        uri: databaseUrl,
+        waitForConnections: true,
+        connectionLimit: 10,
+        maxIdle: 5,
+        idleTimeout: 30000,
+        connectTimeout: 10000,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
+      });
     } else {
       mysqlPool = mysql.createPool({
         host: targetHost,
@@ -40,9 +63,12 @@ export const getDb = (env = {}) => {
         database: database,
         waitForConnections: true,
         connectionLimit: 10,
+        maxIdle: 5,
+        idleTimeout: 30000,
+        connectTimeout: 10000,
         queueLimit: 0,
         enableKeepAlive: true,
-        keepAliveInitialDelay: 0,
+        keepAliveInitialDelay: 10000,
       });
     }
   }
@@ -51,8 +77,14 @@ export const getDb = (env = {}) => {
     async execute(sql, params = []) {
       // Normalize undefined params to null for mysql2
       const safeParams = (params || []).map(p => p === undefined ? null : p);
-      const [results] = await mysqlPool.execute(sql, safeParams);
-      return results;
+      try {
+        const [results] = await mysqlPool.execute(sql, safeParams);
+        return results;
+      } catch (err) {
+        if (!isTransientDbError(err)) throw err;
+        const [results] = await mysqlPool.execute(sql, safeParams);
+        return results;
+      }
     },
 
     /**
@@ -60,8 +92,15 @@ export const getDb = (env = {}) => {
      * Holds one pooled connection for the full begin → execute* → commit/rollback cycle.
      */
     async begin() {
-      const connection = await mysqlPool.getConnection();
-      await connection.beginTransaction();
+      let connection = await mysqlPool.getConnection();
+      try {
+        await connection.beginTransaction();
+      } catch (err) {
+        try { connection.destroy(); } catch (_) {}
+        if (!isTransientDbError(err)) throw err;
+        connection = await mysqlPool.getConnection();
+        await connection.beginTransaction();
+      }
       let finished = false;
 
       const releaseOnce = () => {
