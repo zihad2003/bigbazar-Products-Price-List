@@ -112,6 +112,16 @@ function shouldResizeLocal(path, options) {
  */
 export const getOptimizedUrl = (originalUrl, options = {}) => {
   if (!originalUrl) return '';
+  // Guard: image data from the DB/JSON can occasionally be a non-string
+  // (e.g. {url, image_url} object). Coerce so render never throws on .startsWith.
+  if (typeof originalUrl !== 'string') {
+    if (typeof originalUrl === 'object') {
+      originalUrl = originalUrl.url || originalUrl.image_url || originalUrl.image || '';
+    } else {
+      originalUrl = String(originalUrl);
+    }
+    if (!originalUrl || typeof originalUrl !== 'string') return '';
+  }
 
   if (
     originalUrl.startsWith('data:') ||
