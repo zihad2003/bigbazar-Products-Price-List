@@ -25,6 +25,8 @@ export default function ProductDetails() {
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
+    const [retryToken, setRetryToken] = useState(0);
     const [showCartSuccess, setShowCartSuccess] = useState(false);
     const [messengerNotice, setMessengerNotice] = useState('');
     const [showMessengerModal, setShowMessengerModal] = useState(false);
@@ -83,6 +85,7 @@ export default function ProductDetails() {
     useEffect(() => {
         if (productId) {
             setLoading(true);
+            setLoadError(false);
             bigBazarApi.from('products').select('*').eq('id', productId).single()
                 .then(res => {
                     if (res && res.data) {
@@ -122,19 +125,27 @@ export default function ProductDetails() {
                         const validSizes = getValidOptions(prod.available_sizes);
                         if (validSizes.length === 1) setSelectedSize(typeof validSizes[0] === 'object' ? validSizes[0].name : validSizes[0]);
                         else setSelectedSize('');
+                    } else if (res && res.error) {
+                        // Fetch/server error (network, 5xx, 429…) — NOT a real 404.
+                        // fetchSelectJson already retried transparently; surface a retry UI.
+                        console.error('Failed to load product details:', res.error);
+                        setProduct(null);
+                        setLoadError(true);
                     } else {
+                        // API succeeded but returned no data — genuine not-found.
                         setProduct(null);
                     }
                 })
                 .catch(err => {
                     console.error("Failed to load product details:", err);
                     setProduct(null);
+                    setLoadError(true);
                 })
                 .finally(() => {
                     setLoading(false);
                 });
         }
-    }, [productId]);
+    }, [productId, retryToken]);
 
     useEffect(() => {
         if (!product) return;
@@ -289,24 +300,71 @@ export default function ProductDetails() {
         );
     }
 
+    if (!product && loadError) {
+        // Transient fetch/server failure — the product may exist; offer retry, never say "not found".
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-24 md:py-32" style={bnFont}>
+                <div className="max-w-sm mx-auto text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-neutral-400">
+                        Connection issue
+                    </p>
+                    <h1 className="mt-4 text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 leading-snug">
+                        {language === 'bn' ? 'লোড হচ্ছে না' : 'Could not load this product'}
+                    </h1>
+                    <p className="mt-3 text-sm text-neutral-500 leading-relaxed">
+                        {language === 'bn'
+                            ? 'ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।'
+                            : 'Please check your connection and try again.'}
+                    </p>
+                    <div className="mt-8 flex items-center justify-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setRetryToken((t) => t + 1)}
+                            className="inline-flex items-center justify-center bg-[#ce112d] hover:bg-[#b00e26] text-white px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        >
+                            {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Try Again'}
+                        </button>
+                        <Link
+                            to="/"
+                            className="inline-flex items-center justify-center border border-neutral-200 text-neutral-700 hover:border-neutral-400 px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        >
+                            {language === 'bn' ? 'হোম' : 'Home'}
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!product) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-20 text-center space-y-6">
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <ShoppingBag className="text-red-500" size={44} />
-                </div>
-                <h1 className="text-2xl font-black italic uppercase text-neutral-800 leading-none tracking-tight">
-                    {language === 'bn' ? 'পণ্যটি পাওয়া যায়নি' : 'Product Not Found'}
-                </h1>
-                <p className="text-neutral-500 text-sm max-w-md mx-auto">
-                    {language === 'bn'
-                        ? 'দুঃখিত,পণ্যটি খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আমাদের কালেকশন চেক করুন।'
-                        : 'Sorry, we could not find the product you are looking for. Please browse our collections.'}
-                </p>
-                <div className="pt-4">
-                    <Link to="/" className="inline-flex bg-[#ce112d] text-white px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-all">
-                        {language === 'bn' ? 'হোমে ফিরে যান' : 'Back to Home'}
-                    </Link>
+            <div className="max-w-7xl mx-auto px-4 py-24 md:py-32" style={bnFont}>
+                <div className="max-w-sm mx-auto text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-neutral-400">
+                        Product not found
+                    </p>
+                    <h1 className="mt-4 text-2xl md:text-3xl font-bold tracking-tight text-neutral-900 leading-snug">
+                        {language === 'bn' ? 'পণ্যটি পাওয়া যায়নি' : 'This product is no longer available'}
+                    </h1>
+                    <p className="mt-3 text-sm text-neutral-500 leading-relaxed">
+                        {language === 'bn'
+                            ? 'পণ্যটি সরিয়ে ফেলা হয়েছে বা লিংকটি সঠিক নয়। আমাদের কালেকশন দেখুন।'
+                            : 'It may have been removed, or the link is incorrect. Explore our latest collections instead.'}
+                    </p>
+                    <div className="mt-8 flex items-center justify-center gap-3">
+                        <Link
+                            to="/products"
+                            className="inline-flex items-center justify-center bg-neutral-900 hover:bg-black text-white px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        >
+                            {language === 'bn' ? 'কালেকশন দেখুন' : 'Browse collections'}
+                        </Link>
+                        <Link
+                            to="/"
+                            className="inline-flex items-center justify-center border border-neutral-200 text-neutral-700 hover:border-neutral-400 px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                        >
+                            {language === 'bn' ? 'হোম' : 'Home'}
+                        </Link>
+                    </div>
                 </div>
             </div>
         );

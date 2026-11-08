@@ -33,10 +33,13 @@ export default function Products() {
   const [isFiltering, setIsFiltering] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const searchRef = useRef(null);
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
+  const autoRetriedRef = useRef(false);
 
   useEffect(() => {
     bigBazarApi.from('site_settings').select('*').then(({ data }) => {
@@ -74,10 +77,13 @@ export default function Products() {
     setPage(0);
     setProducts([]);
     setHasMore(true);
+    setLoadError(false);
+    autoRetriedRef.current = false;
   }, [selectedCategory, selectedSubcategory, debouncedSearchQuery]);
 
   useEffect(() => {
     let isMounted = true;
+    let retryTimer = null;
     const fetchProducts = async () => {
       loadingRef.current = true;
       if (page === 0) setLoading(true);
@@ -114,14 +120,25 @@ export default function Products() {
         query = query.or(`name.ilike.%${cleanSearch}%,description.ilike.%${cleanSearch}%`);
       }
 
-      const { data, count } = await query;
+      const { data, count, error } = await query;
 
       if (isMounted) {
         if (data) {
+          setLoadError(false);
           if (page === 0) setProducts(data);
           else setProducts((prev) => [...prev, ...data]);
           setHasMore(count > (page + 1) * PAGE_SIZE);
           setTotalCount(count || 0);
+        } else if (page === 0 && error && !autoRetriedRef.current) {
+          // First load failed (network / cold start / 5xx) — auto-retry once after a
+          // short delay, keeping the skeleton visible. Never show a silent empty grid.
+          autoRetriedRef.current = true;
+          retryTimer = setTimeout(() => setRetryToken((t) => t + 1), 1200);
+          return;
+        } else if (page === 0 && error) {
+          // Retry also failed — show an explicit retry UI instead of "no products".
+          setLoadError(true);
+          setHasMore(false);
         } else {
           setHasMore(false);
         }
@@ -133,8 +150,14 @@ export default function Products() {
     };
 
     fetchProducts();
-    return () => { isMounted = false; };
-  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery]);
+    return () => { isMounted = false; if (retryTimer) clearTimeout(retryTimer); };
+  }, [page, selectedCategory, selectedSubcategory, debouncedSearchQuery, retryToken]);
+
+  const retryLoad = useCallback(() => {
+    setLoadError(false);
+    setLoading(true);
+    setRetryToken((t) => t + 1);
+  }, []);
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingRef.current || loading || loadingMore) return;
@@ -328,7 +351,30 @@ export default function Products() {
               )}
             </div>
 
-            {!loading && products.length === 0 && (
+            {!loading && products.length === 0 && loadError && (
+              <div className="max-w-md mx-auto my-10 border border-zinc-200/80 rounded-3xl px-6 py-14 text-center shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-neutral-400">
+                  Connection issue
+                </p>
+                <h2 className="mt-4 text-xl md:text-2xl font-bold tracking-tight text-neutral-900">
+                  {language === 'bn' ? 'পণ্য লোড হচ্ছে না' : 'Could not load products'}
+                </h2>
+                <p className="mt-3 text-xs md:text-sm text-neutral-500 leading-relaxed">
+                  {language === 'bn'
+                    ? 'ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।'
+                    : 'Please check your connection and try again.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={retryLoad}
+                  className="mt-7 inline-flex items-center justify-center bg-[#ce112d] hover:bg-[#b00e26] text-white px-7 py-3 rounded-xl font-bold text-xs uppercase tracking-widest active:scale-95 transition-all"
+                >
+                  {language === 'bn' ? 'আবার চেষ্টা করুন' : 'Try Again'}
+                </button>
+              </div>
+            )}
+
+            {!loading && products.length === 0 && !loadError && (
               <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300">
                   <ShoppingBag size={28} strokeWidth={1.5} />

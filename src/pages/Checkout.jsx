@@ -90,6 +90,11 @@ export default function Checkout() {
                     const prod = Array.isArray(data) ? data[0] : data;
                     if (prod) {
                         setSingleProduct(prod);
+                    } else if (error) {
+                        // Fetch/server failure — NOT a real 404; the product may still exist.
+                        setError(language === 'bn'
+                            ? "পণ্য লোড করতে সমস্যা হচ্ছে। ইন্টারনেট সংযোগ চেক করে পেজটি রিলোড করুন।"
+                            : "Could not load the product. Please check your connection and reload the page.");
                     } else {
                         setError(language === 'bn' ? "পণ্যটি পাওয়া যায়নি।" : "Product not found.");
                     }
