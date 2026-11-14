@@ -25,6 +25,10 @@ export function CartProvider({ children }) {
     });
 
     const cartReady = useRef(false);
+    // Flag: set true when clearCart() is called after checkout so we skip
+    // the empty-cart report that would otherwise reset the order_id flush timer.
+    const suppressNextEmpty = useRef(false);
+
     useEffect(() => {
         try {
             localStorage.setItem('bigbazar_cart', JSON.stringify(cartItems));
@@ -34,6 +38,12 @@ export function CartProvider({ children }) {
         if (!cartReady.current) {
             cartReady.current = true;
             if (cartItems.length === 0) return;
+        }
+        // Skip reporting an empty cart when clearCart() was called from checkout
+        // (the order activity was already flushed synchronously before clearCart).
+        if (cartItems.length === 0 && suppressNextEmpty.current) {
+            suppressNextEmpty.current = false;
+            return;
         }
         reportCart(cartItems);
     }, [cartItems]);
@@ -104,6 +114,7 @@ export function CartProvider({ children }) {
     };
 
     const clearCart = () => {
+        suppressNextEmpty.current = true;
         setCartItems([]);
     };
 

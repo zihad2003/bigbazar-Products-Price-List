@@ -531,7 +531,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
   const [notice, setNotice] = useState('');
   const [busyId, setBusyId] = useState('');
   const [contactBusyId, setContactBusyId] = useState('');
-  const [filter, setFilter] = useState('ready'); // ready | browsing | followup | contacted | converted | all
+  const [filter, setFilter] = useState('active'); // active | checkouts | carts | ready | followup | contacted | converted | all
 
   const photos = useMemo(() => {
     const map = new Map();
@@ -669,7 +669,10 @@ export default function AdminShoppers({ products = [], onConverted }) {
 
   const readyRows = openSessions.filter((entry) => entry.ready);
   const browsingRows = openSessions.filter((entry) => !entry.ready);
-  const followUpCount = openSessions.filter((entry) => entry.followUp).length;
+  const inCheckoutRows = openSessions.filter((entry) => entry.kind === 'checkout');
+  const inCartRows = openSessions.filter((entry) => entry.kind === 'cart');
+  const followUpRows = openSessions.filter((entry) => entry.followUp);
+  const followUpCount = followUpRows.length;
   const contactedOpen = openSessions.filter((entry) => isContacted(entry.row));
   const contactedConverted = converted.filter((row) => isContacted(row));
   const contactedCount = contactedOpen.length + contactedConverted.length;
@@ -684,18 +687,6 @@ export default function AdminShoppers({ products = [], onConverted }) {
     followUp: false,
     badge: row.checkout_source === 'buy_now' ? 'Buy Now' : row.checkout_source ? 'From cart' : 'Converted',
   }));
-
-  const visibleReady = filter === 'followup'
-    ? readyRows.filter((entry) => entry.followUp)
-    : filter === 'ready' || filter === 'all'
-      ? readyRows
-      : [];
-
-  const visibleBrowsing = filter === 'browsing' || filter === 'all'
-    ? browsingRows
-    : filter === 'followup'
-      ? browsingRows.filter((entry) => entry.followUp)
-      : [];
 
   const visibleContacted = filter === 'contacted'
     ? [
@@ -712,7 +703,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
       ]
     : [];
 
-  const visibleConverted = filter === 'converted' || filter === 'all' ? convertedEntries : [];
+  const visibleConverted = (filter === 'converted' || filter === 'all') ? convertedEntries : [];
 
   const renderEntry = (entry) => (
     <SessionCard
@@ -732,23 +723,26 @@ export default function AdminShoppers({ products = [], onConverted }) {
     />
   );
 
-  // Same chip pattern as Orders admin filters (solid selected, neutral idle hover).
   const filters = [
-    { id: 'ready', label: 'Ready', count: readyRows.length },
-    { id: 'browsing', label: 'Browsing', count: browsingRows.length },
+    { id: 'active', label: 'Live Active', count: openSessions.length },
+    { id: 'checkouts', label: 'In Checkout', count: inCheckoutRows.length },
+    { id: 'carts', label: 'In Cart', count: inCartRows.length },
+    { id: 'ready', label: 'Ready to Convert', count: readyRows.length },
     { id: 'followup', label: 'Follow-up', count: followUpCount },
     { id: 'contacted', label: 'Contacted', count: contactedCount },
     { id: 'converted', label: 'Converted', count: converted.length },
-    { id: 'all', label: 'All', count: allCount },
+    { id: 'all', label: 'All History', count: allCount },
   ];
 
   const filterHint = {
-    ready: 'Name, phone, and address complete — convert is available.',
-    browsing: 'Interest report for partial carts — not the convert card grid.',
-    followup: 'Idle 30+ min with cart or checkout, no order yet.',
-    contacted: 'Marked after you spoke with the shopper.',
-    converted: 'Sessions already sent to Orders — kept for follow-up history.',
-    all: 'Ready cards, browsing report, and converted sessions.',
+    active: 'All real-time shoppers with items in bag or currently on checkout.',
+    checkouts: 'Shoppers who proceeded to checkout or filled customer information.',
+    carts: 'Shoppers with items added to bag who haven’t proceeded to checkout yet.',
+    ready: 'Name, phone, and address complete — 1-click convert to order available.',
+    followup: 'Idle 30+ min with items in cart or checkout — ready for WhatsApp message.',
+    contacted: 'Shoppers already contacted or followed up by phone/WhatsApp.',
+    converted: 'Sessions that successfully placed an order — saved for tracking.',
+    all: 'Complete list of active sessions, converted orders, and product reports.',
   }[filter] || '';
 
   return (
@@ -759,7 +753,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
             Carts & <span className="text-[#ce112d]">Checkouts</span>
           </h2>
           <p className="text-[11px] text-zinc-500 mt-0.5 truncate">
-            Ready shoppers first · converted sessions stay listed
+            Live visitor carts & checkouts · one-click convert · WhatsApp follow-up
           </p>
         </div>
         <button
@@ -774,9 +768,9 @@ export default function AdminShoppers({ products = [], onConverted }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
-          { label: 'Ready', value: readyRows.length },
-          { label: 'Browsing', value: browsingRows.length },
-          { label: 'Checkouts today', value: shoppers.today.checkouts },
+          { label: 'Live Active', value: openSessions.length },
+          { label: 'In Checkout', value: inCheckoutRows.length },
+          { label: 'In Cart', value: inCartRows.length },
           { label: 'Converted · 30d', value: converted.length },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/10 bg-[#121215]/80 px-3 py-2.5">
@@ -825,27 +819,58 @@ export default function AdminShoppers({ products = [], onConverted }) {
       )}
 
       <div className="space-y-5">
-        {(filter === 'ready' || filter === 'followup' || filter === 'all') && (
+        {filter === 'active' && (
           <Column
-            title="Ready to convert"
-            hint="Four-across on desktop · name, phone, and address complete."
-            accent="text-emerald-300"
-            rows={visibleReady}
-            empty={loading
-              ? 'Loading…'
-              : filter === 'followup'
-                ? 'No convert-ready shoppers need follow-up right now.'
-                : 'No convert-ready carts yet.'}
+            title="Live Carts & Checkouts"
+            hint="All live shoppers who added items to bag or proceeded to checkout."
+            accent="text-rose-400"
+            rows={openSessions}
+            empty={loading ? 'Loading…' : 'No active carts or checkouts right now.'}
             render={renderEntry}
           />
         )}
 
-        {(filter === 'browsing'
-          || ((filter === 'all' || filter === 'followup') && (loading || visibleBrowsing.length > 0))) && (
-          <BrowsingReport
-            rows={visibleBrowsing}
-            photos={photos}
-            loading={loading}
+        {filter === 'checkouts' && (
+          <Column
+            title="In Checkout"
+            hint="Shoppers currently on checkout or who filled customer information."
+            accent="text-amber-300"
+            rows={inCheckoutRows}
+            empty={loading ? 'Loading…' : 'No shoppers in checkout right now.'}
+            render={renderEntry}
+          />
+        )}
+
+        {filter === 'carts' && (
+          <Column
+            title="In Cart"
+            hint="Shoppers who added products to their shopping bag."
+            accent="text-sky-300"
+            rows={inCartRows}
+            empty={loading ? 'Loading…' : 'No shoppers with items in bag right now.'}
+            render={renderEntry}
+          />
+        )}
+
+        {filter === 'ready' && (
+          <Column
+            title="Ready to Convert"
+            hint="Name, phone, and address complete — click Convert to create order."
+            accent="text-emerald-300"
+            rows={readyRows}
+            empty={loading ? 'Loading…' : 'No convert-ready carts right now.'}
+            render={renderEntry}
+          />
+        )}
+
+        {filter === 'followup' && (
+          <Column
+            title="Needs Follow-up"
+            hint="Idle 30+ mins with cart or checkout — send WhatsApp recovery message."
+            accent="text-amber-400"
+            rows={followUpRows}
+            empty={loading ? 'Loading…' : 'No shoppers need follow-up right now.'}
+            render={renderEntry}
           />
         )}
 
@@ -860,7 +885,7 @@ export default function AdminShoppers({ products = [], onConverted }) {
           />
         )}
 
-        {(filter === 'converted' || filter === 'all') && (
+        {filter === 'converted' && (
           <Column
             title="Converted"
             hint="Already sent to Orders — kept here so nothing disappears after convert."
@@ -868,6 +893,37 @@ export default function AdminShoppers({ products = [], onConverted }) {
             rows={visibleConverted}
             empty={loading ? 'Loading…' : 'Nothing converted in the last 30 days.'}
             render={renderEntry}
+          />
+        )}
+
+        {filter === 'all' && (
+          <>
+            <Column
+              title="Active Sessions"
+              hint="All current active carts and checkouts."
+              accent="text-white"
+              rows={openSessions}
+              empty={loading ? 'Loading…' : 'No active sessions.'}
+              render={renderEntry}
+            />
+            {visibleConverted.length > 0 && (
+              <Column
+                title="Converted"
+                hint="Sessions that converted to orders."
+                accent="text-emerald-400"
+                rows={visibleConverted}
+                empty="Nothing converted yet."
+                render={renderEntry}
+              />
+            )}
+          </>
+        )}
+
+        {(filter === 'active' || filter === 'carts' || filter === 'all') && browsingRows.length > 0 && (
+          <BrowsingReport
+            rows={browsingRows}
+            photos={photos}
+            loading={loading}
           />
         )}
       </div>

@@ -9,7 +9,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { trackInitiateCheckout, trackPurchase } from '../utils/analytics';
-import { reportCheckout, reportShopperOrder } from '../utils/shopperActivity';
+import { reportCheckout, reportShopperOrder, flushShopperActivity, rotateShopperId } from '../utils/shopperActivity';
 import { getOptimizedUrl } from '../utils/media';
 import { PRESET_SWATCHES, COLOR_MAP } from '../utils/colorNames';
 
@@ -437,13 +437,11 @@ export default function Checkout() {
 
             if (insertError) throw insertError;
 
-            // Clear Cart if checking out from Cart
-            if (!productIdQuery) {
-                clearCart();
-            }
-
             const newOrderId = insertedData?.order_id || insertedData?.id || (Array.isArray(insertedData) ? (insertedData[0]?.order_id || insertedData[0]?.id) : null) || `ORD-${Date.now().toString().slice(-6)}`;
             const trackCode = insertedData?.track_code || (Array.isArray(insertedData) ? insertedData[0]?.track_code : '') || '';
+
+            // Bug fix: reportShopperOrder BEFORE clearCart so the order_id flush
+            // is not cancelled/delayed by the cart-empty reportCart() debounce.
             reportShopperOrder(newOrderId, {
                 phone: formData.phone,
                 name: formData.name,
@@ -451,6 +449,16 @@ export default function Checkout() {
                 checkout_items: items,
                 cart: productIdQuery ? undefined : [],
             });
+            // Immediately flush so the order_id reaches the server before clearCart()
+            // triggers another reportCart([]) which previously reset the debounce timer.
+            flushShopperActivity();
+            // Rotate shopper ID so future cart/checkout activity from this browser starts as a fresh active cart
+            rotateShopperId();
+
+            // Clear Cart AFTER flushing the order activity
+            if (!productIdQuery) {
+                clearCart();
+            }
             trackPurchase(newOrderId, items, finalTotal);
             if (isLoggedIn && formData.phone && !user?.phone) {
                 updatePhone(formData.phone).catch(() => {});

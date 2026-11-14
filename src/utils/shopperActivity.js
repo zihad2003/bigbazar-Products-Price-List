@@ -19,6 +19,16 @@ export function getShopperId() {
     }
 }
 
+export function rotateShopperId() {
+    try {
+        const newId = (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem(KEY, newId);
+        return newId;
+    } catch (_) {
+        return '';
+    }
+}
+
 function itemImage(item) {
     const color = String(item.selectedColor || item.color || '').trim().toLowerCase();
     if (color && Array.isArray(item.available_colors)) {
@@ -74,7 +84,10 @@ export function reportShopperActivity(payload = {}) {
     pending = { ...pending, ...payload, browser_id: browserId };
     if (Object.prototype.hasOwnProperty.call(payload, 'cart')) pending.cart = payload.cart;
     if (timer) clearTimeout(timer);
-    timer = setTimeout(flushShopperActivity, payload.order_id ? 0 : DEBOUNCE_MS);
+    // Bug fix: if order_id is already in pending (from a previous reportShopperOrder call),
+    // keep the flush immediate — don't let a clearCart() debounce push it back 2 seconds.
+    const flushDelay = (payload.order_id || pending.order_id) ? 0 : DEBOUNCE_MS;
+    timer = setTimeout(flushShopperActivity, flushDelay);
 }
 
 export function flushShopperActivity() {

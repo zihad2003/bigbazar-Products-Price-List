@@ -5096,6 +5096,8 @@ app.post('/shopper/activity', async (c) => {
     : null;
   const storedForm = mergeShopperForm(parseShopperJson(existing?.checkout_form, null), incomingForm);
   const formJson = storedForm ? JSON.stringify(storedForm) : null;
+  const isOrderPlaced = Boolean(orderId);
+  const resetOrderId = !orderId && ((hasCart && cartCount > 0) || Boolean(checkoutSource));
 
   await conn.execute(
     `INSERT INTO shopper_sessions
@@ -5109,7 +5111,7 @@ app.post('/shopper/activity', async (c) => {
       phone = IF(VALUES(phone) = '', phone, VALUES(phone)),
       customer_name = IF(VALUES(customer_name) = '', customer_name, VALUES(customer_name)),
       checkout_form = COALESCE(VALUES(checkout_form), checkout_form),
-      order_id = COALESCE(NULLIF(VALUES(order_id), ''), order_id),
+      order_id = IF(? = 1, VALUES(order_id), IF(? = 1, NULL, order_id)),
       customer_ip = VALUES(customer_ip),
       ip_geo = VALUES(ip_geo),
       last_seen_at = NOW()`,
@@ -5128,6 +5130,8 @@ app.post('/shopper/activity', async (c) => {
       hasCart ? 1 : 0,
       hasCart ? 1 : 0,
       hasCheckoutItems ? 1 : 0,
+      isOrderPlaced ? 1 : 0,
+      resetOrderId ? 1 : 0,
     ]
   );
 
